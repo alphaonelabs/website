@@ -1,0 +1,86 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter test
+
+  build_linux:
+    name: Build Linux App
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+      - run: flutter build linux
+      - name: Archive Linux build
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-build
+          path: build/linux/x64/release/bundle
+
+  build_android:
+    name: Build Android App
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build apk
+      - name: Archive Android build
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-build
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  build_ios:
+    name: Build iOS App
+    needs: test
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - name: Archive iOS build
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-build
+          path: build/ios/iphoneos 
