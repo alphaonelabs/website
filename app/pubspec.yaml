@@ -30,3 +30,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true 
+
+# Override file_picker for desktop platforms to fix warnings
+dependency_overrides:
+  file_picker:
+    git:
+      url: https://github.com/miguelpruivo/flutter_file_picker.git
+      ref: master 
