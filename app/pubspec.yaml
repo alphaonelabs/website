@@ -29,7 +29,14 @@ dev_dependencies:
   build_runner: ^2.4.7
 
 flutter:
-  uses-material-design: true 
+  uses-material-design: true
+  platforms:
+    android:
+    ios:
+    linux:
+    macos:
+    web:
+    windows:
 
 # Override file_picker for desktop platforms to fix warnings
 dependency_overrides:

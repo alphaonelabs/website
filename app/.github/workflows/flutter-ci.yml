@@ -38,6 +38,11 @@ jobs:
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
       - run: flutter config --enable-linux-desktop
       - run: flutter pub get
+      - name: Create Linux project files
+        run: |
+          # Create Linux desktop project
+          mkdir -p linux/runner
+          flutter create --platforms=linux .
       # Use continue-on-error to prevent the workflow from failing due to file_picker warnings
       - name: Build Linux app
         run: flutter build linux --no-tree-shake-icons
