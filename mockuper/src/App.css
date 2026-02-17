@@ -1,0 +1,322 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #e8e8e8;
+  color: #333;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #d0d0d0;
+  border-bottom: 2px solid #a0a0a0;
+  height: 60px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px;
+  border-right: 1px solid #999;
+}
+
+.toolbar-group:last-child {
+  border-right: none;
+}
+
+.btn {
+  padding: 6px 12px;
+  background: #f5f5f5;
+  border: 2px solid #999;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #fff;
+  border-color: #666;
+}
+
+.btn:active {
+  background: #e0e0e0;
+}
+
+.btn.active {
+  background: #c0c0c0;
+  border-color: #666;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 250px;
+  background: #d8d8d8;
+  border-right: 2px solid #a0a0a0;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.sidebar h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.components-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.component-btn {
+  padding: 16px 8px;
+  background: #f0f0f0;
+  border: 2px solid #999;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.component-btn:hover {
+  background: #fff;
+  border-color: #666;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  cursor: default;
+}
+
+.canvas.grabbing {
+  cursor: grabbing;
+}
+
+.canvas-content {
+  position: relative;
+  transform-origin: 0 0;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    repeating-linear-gradient(0deg, #ddd 0, #ddd 1px, transparent 1px, transparent 20px),
+    repeating-linear-gradient(90deg, #ddd 0, #ddd 1px, transparent 1px, transparent 20px);
+  pointer-events: none;
+}
+
+.element {
+  position: absolute;
+  cursor: move;
+  user-select: none;
+}
+
+.element.selected {
+  outline: 2px dashed #666;
+  outline-offset: 2px;
+}
+
+.element-content {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border: 2px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  font-size: 14px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #666;
+  border: 1px solid #333;
+}
+
+.resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+.resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+.resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+.resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+.resize-handle.n { top: -5px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+.resize-handle.s { bottom: -5px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+.resize-handle.w { top: 50%; left: -5px; transform: translateY(-50%); cursor: w-resize; }
+.resize-handle.e { top: 50%; right: -5px; transform: translateY(-50%); cursor: e-resize; }
+
+.pages-list {
+  margin-bottom: 20px;
+}
+
+.page-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  background: #f0f0f0;
+  border: 2px solid #999;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-item:hover {
+  background: #fff;
+}
+
+.page-item.active {
+  background: #c0c0c0;
+  border-color: #666;
+}
+
+.page-name {
+  flex: 1;
+  font-size: 13px;
+  color: #333;
+}
+
+.page-delete {
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid #999;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #666;
+}
+
+.page-delete:hover {
+  background: #f00;
+  color: #fff;
+  border-color: #f00;
+}
+
+.zoom-control {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 4px;
+  background: #d0d0d0;
+  border: 2px solid #999;
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.zoom-btn {
+  padding: 4px 8px;
+  background: #f5f5f5;
+  border: 1px solid #999;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #333;
+}
+
+.zoom-btn:hover {
+  background: #fff;
+}
+
+.zoom-level {
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #333;
+  min-width: 50px;
+  text-align: center;
+}
+
+.property-panel {
+  width: 250px;
+  background: #d8d8d8;
+  border-left: 2px solid #a0a0a0;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.property-group {
+  margin-bottom: 16px;
+}
+
+.property-group label {
+  display: block;
+  font-size: 12px;
+  color: #333;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.property-group input,
+.property-group textarea {
+  width: 100%;
+  padding: 6px;
+  background: #f5f5f5;
+  border: 2px solid #999;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+  font-family: inherit;
+}
+
+.property-group textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.property-group input:focus,
+.property-group textarea:focus {
+  outline: none;
+  border-color: #666;
+  background: #fff;
+}
