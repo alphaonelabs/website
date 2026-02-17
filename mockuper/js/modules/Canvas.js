@@ -318,6 +318,10 @@ class Canvas {
         e.preventDefault();
         e.stopPropagation();
         
+        // Ensure canvas panning is not active when dragging an element
+        this.isCanvasPanning = false;
+        this.panStart = null;
+        
         this.state.selectElement(elementId);
         this.isDragging = true;
         

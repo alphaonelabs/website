@@ -358,6 +358,59 @@ class StateManager {
         this.showGrid = !this.showGrid;
         this.notify();
     }
+
+    // Export project to JSON
+    exportToJSON() {
+        const projectData = {
+            version: '1.0',
+            pages: this.pages,
+            currentPageId: this.currentPageId,
+            nextElementId: this.nextElementId,
+            exportDate: new Date().toISOString()
+        };
+        return JSON.stringify(projectData, null, 2);
+    }
+
+    // Import project from JSON
+    importFromJSON(jsonString) {
+        try {
+            const projectData = JSON.parse(jsonString);
+            
+            // Validate the imported data
+            if (!projectData.pages || !Array.isArray(projectData.pages)) {
+                throw new Error('Invalid project data: missing pages array');
+            }
+            
+            // Load the project data
+            this.pages = projectData.pages;
+            this.currentPageId = projectData.currentPageId || (projectData.pages.length > 0 ? projectData.pages[0].id : null);
+            this.nextElementId = projectData.nextElementId || 1;
+            
+            // Ensure we have at least one page
+            if (this.pages.length === 0) {
+                this.pages = [{
+                    id: '1',
+                    name: 'Page 1',
+                    elements: []
+                }];
+                this.currentPageId = '1';
+            }
+            
+            // Clear selection and history
+            this.selectedElementId = null;
+            this.history = [];
+            this.historyIndex = -1;
+            
+            // Save and notify
+            this.saveHistory();
+            this.notify();
+            
+            return true;
+        } catch (error) {
+            console.error('Failed to import project:', error);
+            return false;
+        }
+    }
 }
 
 export default StateManager;
