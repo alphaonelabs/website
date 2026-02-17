@@ -6,6 +6,7 @@
 import StateManager from './modules/StateManager.js';
 import Canvas from './modules/Canvas.js';
 import UIController from './modules/UIController.js';
+import VersionManager from './modules/VersionManager.js';
 
 class WireframeApp {
     constructor() {
@@ -16,6 +17,7 @@ class WireframeApp {
             document.getElementById('canvas-content')
         );
         this.ui = new UIController(this.state);
+        this.versionManager = new VersionManager();
         
         this.init();
     }
@@ -30,6 +32,9 @@ class WireframeApp {
         // Initial render
         this.canvas.render();
         this.ui.update();
+        
+        // Fetch and display version
+        this.versionManager.displayVersion();
         
         console.log('Wireframe Studio initialized');
     }
