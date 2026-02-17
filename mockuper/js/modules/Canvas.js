@@ -172,9 +172,7 @@ class Canvas {
 
     handleMouseUp() {
         if (this.isDragging || this.isResizing) {
-            if (this.isDragging || this.isResizing) {
-                this.state.saveHistory();
-            }
+            this.state.saveHistory();
             this.isDragging = false;
             this.isResizing = false;
             this.dragStart = null;
