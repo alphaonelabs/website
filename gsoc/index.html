@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpha One Labs - Google Summer of Code 2026</title>
+  <meta name="description" content="Join Alpha One Labs for Google Summer of Code 2026. Contribute to open-source education projects and grow your skills.">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Styles -->
+  <style>
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slide-up {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes fade-in-up {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes gradient-x {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    
+    .animate-fade-in {
+      animation: fade-in 1s ease-in-out;
+    }
+    
+    .animate-slide-up {
+      animation: slide-up 1s ease-in-out;
+    }
+    
+    .animate-fade-in-up {
+      animation: fade-in-up 1s ease-in-out;
+    }
+    
+    .animate-gradient-x {
+      background-size: 200% 200%;
+      animation: gradient-x 3s ease infinite;
+    }
+    
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #111827;
+        color: #f9fafb;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+  <!-- Hero Section -->
+  <section class="relative w-full bg-gradient-to-r from-teal-600 to-orange-500 text-white py-16 text-center">
+    <div class="max-w-4xl mx-auto px-6">
+      <h1 class="text-5xl font-extrabold mb-4 animate-fade-in">🚀 Google Summer of Code 2026</h1>
+      <p class="text-lg text-white/90 mb-6 animate-slide-up">
+        Kickstart your open-source journey with Google Summer of Code. Learn, contribute, and grow with us! 🌍✨
+      </p>
+      <a href="https://summerofcode.withgoogle.com/"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="inline-block px-6 py-3 text-lg font-semibold bg-white text-teal-700 rounded-full shadow-md hover:bg-gray-100 transition-all duration-200">
+        Apply Now
+      </a>
+    </div>
+  </section>
+
+  <!-- Contributor Leaderboard Section -->
+  <section class="w-full py-12 bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-6xl mx-auto px-4 md:px-6">
+      <div class="text-center mb-10">
+        <h2 class="text-4xl font-bold text-gray-900 dark:text-white">🏆 Top GSoC Contributors</h2>
+        <p class="mt-3 text-lg text-gray-600 dark:text-gray-300">
+          Recognizing our most active contributors based on merged pull requests
+        </p>
+      </div>
+      
+      <div class="mx-auto max-w-4xl overflow-hidden bg-white dark:bg-gray-800 shadow-lg rounded-lg">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-teal-600 dark:bg-teal-800 text-white">
+                <th class="px-6 py-3 text-left text-sm font-medium tracking-wider">Rank</th>
+                <th class="px-6 py-3 text-left text-sm font-medium tracking-wider">Contributor</th>
+                <th class="px-6 py-3 text-left text-sm font-medium tracking-wider">Merged PRs</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr class="bg-white dark:bg-gray-800">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="text-2xl">🥇</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                      <img class="h-10 w-10 rounded-full"
+                           src="https://avatars.githubusercontent.com/u/1?v=4"
+                           alt="Placeholder avatar for top contributor"
+                           height="40"
+                           width="40" />
+                    </div>
+                    <div class="ml-4">
+                      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/pulls?q=is%3Apr+is%3Amerged"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         title="View pull requests"
+                         class="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                        Start Contributing!
+                      </a>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="p-3 text-xs text-gray-500 dark:text-gray-400 text-center italic">
+          Note: Contributor data will be updated once the GSoC program begins.
+        </div>
+      </div>
+
+      <div class="mt-6 text-center">
+        <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/pulls?q=is%3Apr+is%3Amerged"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="inline-flex items-center px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors">
+          <i class="fas fa-code-branch mr-2"></i> View All Pull Requests
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tips Section -->
+  <main class="flex-1 w-full max-w-[90rem] mx-auto mt-10 px-4 md:px-6">
+    <div class="space-y-8 text-center">
+      <h2 class="text-4xl font-bold text-gray-900 dark:text-white">💡 Essential Tips for GSoC</h2>
+      <p class="text-lg text-gray-600 dark:text-gray-300">
+        Follow these key strategies to improve your chances of selection! 🚀
+      </p>
+
+      <!-- Grid Layout -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Tip 1 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition-transform transform hover:scale-105 hover:shadow-2xl overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">📖 Understand the Program</h3>
+          <p class="text-gray-600 dark:text-gray-300">
+            Learn about GSoC's structure, timeline, and goals. Visit the
+            <a href="https://summerofcode.withgoogle.com/"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+              official GSoC website
+            </a> to get started.
+          </p>
+        </div>
+
+        <!-- Tip 2 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition-transform transform hover:scale-105 hover:shadow-2xl overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">🔍 Find the Right Project</h3>
+          <p class="text-gray-600 dark:text-gray-300">
+            Explore our
+            <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+              project ideas
+            </a> and choose one that aligns with your skills and interests.
+          </p>
+        </div>
+
+        <!-- Tip 3 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition-transform transform hover:scale-105 hover:shadow-2xl overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">🤝 Connect with Mentors</h3>
+          <p class="text-gray-600 dark:text-gray-300">
+            Engage with mentors and the open-source community via our
+            <a href="https://t.co/Uskb6jkZKz"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+              Slack community.
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Getting Started Section -->
+    <div class="mt-16 space-y-8">
+      <h2 class="text-4xl font-bold text-gray-900 dark:text-white text-center">
+        Getting Started with Google Summer of Code (GSoC) - Alpha One Labs!
+      </h2>
+      <p class="text-lg text-gray-600 dark:text-gray-300 text-center">
+        Google Summer of Code (GSoC) is a great opportunity for students to contribute to open-source projects, gain experience, and earn a stipend. Here are some tips to help you get started and make the most of your GSoC journey with the Alpha One Labs Educational Website project:
+      </p>
+
+      <!-- Tips Layout for Getting Started Section -->
+      <div class="space-y-8">
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">1. Research Alpha One Labs</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Explore the Project</strong>: Visit the
+              <a href="https://github.com/alphaonelabs/alphaonelabs-education-website"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+                Alpha One Labs Educational Website repository
+              </a> to understand the project's goals, structure, and existing features.
+            </li>
+            <li>
+              <strong>Read Documentation</strong>: Familiarize yourself with the project's documentation, including the README, contributing guidelines, and any other relevant information.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">2. Get Involved Early</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Start Early</strong>: Begin exploring the repository and interacting with the community well before the GSoC application period.
+            </li>
+            <li>
+              <strong>Join Communication Channels</strong>: Subscribe to the mailing lists, join chat channels, or participate in forums related to Alpha One Labs.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">3. Contribute to the Community</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Understand the Codebase</strong>: The Alpha One Labs Educational Website project uses HTML, Python, and Shell. Set up the development environment and explore the codebase to understand how it works.
+            </li>
+            <li>
+              <strong>Setup Instructions</strong>: Follow the setup instructions provided in the
+              <a href="https://github.com/alphaonelabs/alphaonelabs-education-website"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+                repository setup guide
+              </a> to get your development environment ready.
+            </li>
+            <li>
+              <strong>Start Small</strong>: Begin with small contributions like fixing bugs, improving documentation, or adding tests. This helps you understand the workflow and gain the trust of the community.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">4. Communicate Effectively</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Ask Questions</strong>: Don't hesitate to ask questions on mailing lists, chat channels, or forums. Be polite and specific in your queries.
+            </li>
+            <li>
+              <strong>Be Active</strong>: Participate in discussions, attend meetings, and engage with the community. Show your enthusiasm and commitment.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">5. Prepare a Strong Proposal</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Understand the Project</strong>: Thoroughly understand the project you want to work on. Read the project ideas list and discuss your ideas with mentors.
+            </li>
+            <li>
+              <strong>Detailed Proposal</strong>: Write a detailed proposal that outlines your project plan, timeline, milestones, and deliverables. Highlight your skills and previous contributions.
+            </li>
+            <li>
+              <strong>Seek Feedback</strong>: Share your draft proposal with mentors and the community for feedback. Revise and improve based on their suggestions.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">6. Stay Organized</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Time Management</strong>: Plan your time effectively to balance GSoC with your academic commitments. Stick to your project timeline and regularly update your mentors.
+            </li>
+            <li>
+              <strong>Documentation</strong>: Keep thorough documentation of your work, progress, and challenges. This helps in tracking your progress and makes it easier for others to understand your contributions.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">7. Learn and Grow</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Be Open to Learning</strong>: GSoC is a learning experience, so be open to new ideas, technologies, and feedback.
+            </li>
+            <li>
+              <strong>Network</strong>: Build connections with mentors, fellow students, and contributors. Networking can lead to future opportunities and collaborations.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">8. Adhere to the Code of Conduct</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Alpha One Labs Code of Conduct</strong>: Follow the
+              <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/blob/main/CODE_OF_CONDUCT.md"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+                Alpha One Labs Code of Conduct
+              </a> to ensure a welcoming and inclusive environment for all contributors.
+            </li>
+            <li>
+              <strong>GSoC Code of Conduct</strong>: Abide by the
+              <a href="https://summerofcode.withgoogle.com/rules"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">
+                GSoC Code of Conduct
+              </a> to maintain professionalism and respect within the GSoC community.
+            </li>
+          </ul>
+        </div>
+
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">9. Enjoy the Process</h3>
+          <ul class="list-disc list-inside text-gray-600 dark:text-gray-300">
+            <li>
+              <strong>Have Fun</strong>: Enjoy the process of contributing to open-source and learning from the community. Your enthusiasm and passion will reflect in your work.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add space after the last point -->
+    <div class="mb-16"></div>
+
+    <!-- Alpha One Labs x GSoC: First-Time Participation -->
+    <div class="mt-24 space-y-8">
+      <h2 class="text-4xl font-bold text-gray-900 dark:text-white text-center animate-fade-in-up">
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-orange-500 animate-gradient-x">
+          Alpha One Labs x GSoC: First-Time Participation
+        </span>
+      </h2>
+      <p class="text-lg text-gray-600 dark:text-gray-300 text-center max-w-3xl mx-auto animate-fade-in-up">
+        As a first-time participant in Google Summer of Code, Alpha One Labs is excited to welcome students to contribute
+        to our open-source projects. Here's what you can expect:
+      </p>
+
+      <!-- Highlights Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in-up">
+        <!-- Highlight 1 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition-transform transform hover:scale-105 hover:shadow-2xl overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">What to Expect</h3>
+          <p class="text-gray-600 dark:text-gray-300">
+            "As a first-time GSoC organization, Alpha One Labs is committed to providing a supportive and enriching
+            environment for students to learn, grow, and make meaningful contributions to open-source."
+          </p>
+        </div>
+
+        <!-- Highlight 2 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition-transform transform hover:scale-105 hover:shadow-2xl overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Mentorship</h3>
+          <p class="text-gray-600 dark:text-gray-300">
+            "Our mentors are experienced developers who will guide you through the project, ensuring you gain valuable
+            skills and experience in open-source development."
+          </p>
+        </div>
+
+        <!-- Highlight 3 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transition-transform transform hover:scale-105 hover:shadow-2xl overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Community</h3>
+          <p class="text-gray-600 dark:text-gray-300">
+            "Join a vibrant community of developers and contributors who are passionate about education, open-source, and
+            innovation."
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline Section -->
+    <div class="mt-24 space-y-8">
+      <h2 class="text-4xl font-bold text-gray-900 dark:text-white text-center">
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-orange-500">GSoC 2026 Timeline</span>
+      </h2>
+      <p class="text-lg text-gray-600 dark:text-gray-300 text-center max-w-3xl mx-auto">
+        Mark your calendars! Here's what to expect during the Google Summer of Code 2026 journey with Alpha One Labs.
+      </p>
+
+      <!-- Timeline Component -->
+      <div class="relative py-8">
+        <!-- Timeline Line -->
+        <div class="absolute h-full w-1 bg-gradient-to-b from-teal-500 to-orange-500 left-1/2 transform -translate-x-1/2 hidden md:block">
+        </div>
+
+        <!-- Timeline Items -->
+        <div class="flex flex-col items-center">
+          <!-- Item 1 -->
+          <div class="flex flex-col md:flex-row w-full items-center mb-16">
+            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
+              <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">January - February</h3>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Organization Applications</h4>
+                <p class="text-gray-600 dark:text-gray-300 mt-2">Organizations like Alpha One Labs apply to be a part of GSoC 2026.</p>
+              </div>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-900 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
+              1
+            </div>
+            <div class="flex-1 md:pl-8 md:order-3 order-3"></div>
+          </div>
+
+          <!-- Item 2 -->
+          <div class="flex flex-col md:flex-row w-full items-center mb-16">
+            <div class="flex-1 md:pr-8 md:text-right order-2 md:order-1"></div>
+            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-900 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
+              2
+            </div>
+            <div class="flex-1 md:pl-8 order-3 md:order-3">
+              <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">March</h3>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Organization Announcement</h4>
+                <p class="text-gray-600 dark:text-gray-300 mt-2">Google announces the list of accepted mentoring organizations.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Item 3 -->
+          <div class="flex flex-col md:flex-row w-full items-center mb-16">
+            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
+              <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <h3 class="text-xl font-semibold text-orange-600 dark:text-orange-400">March - April</h3>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Student Application Period</h4>
+                <p class="text-gray-600 dark:text-gray-300 mt-2">Students explore projects and submit proposals to organizations.</p>
+              </div>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-900 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
+              3
+            </div>
+            <div class="flex-1 md:pl-8 order-3 md:order-3"></div>
+          </div>
+
+          <!-- Item 4 -->
+          <div class="flex flex-col md:flex-row w-full items-center mb-16">
+            <div class="flex-1 md:pr-8 md:text-right order-2 md:order-1"></div>
+            <div class="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-900 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
+              4
+            </div>
+            <div class="flex-1 md:pl-8 order-3 md:order-3">
+              <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <h3 class="text-xl font-semibold text-orange-600 dark:text-orange-400">May</h3>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Student Selection Announced</h4>
+                <p class="text-gray-600 dark:text-gray-300 mt-2">Selected students are announced and paired with mentors.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Item 5 -->
+          <div class="flex flex-col md:flex-row w-full items-center mb-16">
+            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
+              <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">May - June</h3>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Community Bonding</h4>
+                <p class="text-gray-600 dark:text-gray-300 mt-2">
+                  Students get to know mentors, read documentation, and get up to speed.
+                </p>
+              </div>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-900 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
+              5
+            </div>
+            <div class="flex-1 md:pl-8 order-3 md:order-3"></div>
+          </div>
+
+          <!-- Item 6 -->
+          <div class="flex flex-col md:flex-row w-full items-center mb-16">
+            <div class="flex-1 md:pr-8 md:text-right order-2 md:order-1"></div>
+            <div class="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-900 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
+              6
+            </div>
+            <div class="flex-1 md:pl-8 order-3 md:order-3">
+              <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <h3 class="text-xl font-semibold text-orange-600 dark:text-orange-400">June - August</h3>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Coding Period</h4>
+                <p class="text-gray-600 dark:text-gray-300 mt-2">Students work on their projects with guidance from mentors.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Item 7 -->
+          <div class="flex flex-col md:flex-row w-full items-center">
+            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
+              <div class="p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">September</h3>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Project Completion</h4>
+                <p class="text-gray-600 dark:text-gray-300 mt-2">
+                  Final evaluations and project submissions. Successful students pass GSoC!
+                </p>
+              </div>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-900 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
+              7
+            </div>
+            <div class="flex-1 md:pl-8 order-3 md:order-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQs Section -->
+    <div class="mt-24 space-y-8">
+      <h2 class="text-4xl font-bold text-gray-900 dark:text-white text-center">
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-orange-500">FAQs</span>
+      </h2>
+      <p class="text-lg text-gray-600 dark:text-gray-300 text-center max-w-3xl mx-auto">
+        Have questions about GSoC or Alpha One Labs? Here are some common questions and answers to help you out.
+      </p>
+
+      <!-- FAQs Accordion -->
+      <div class="space-y-4">
+        <!-- FAQ 1 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">What is Google Summer of Code (GSoC)?</h3>
+          <p class="text-gray-600 dark:text-gray-300 mt-2">
+            Google Summer of Code is a global program that offers students the opportunity to work on open-source projects
+            during the summer. Participants receive a stipend and mentorship while contributing to real-world projects.
+          </p>
+        </div>
+
+        <!-- FAQ 2 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">How do I apply for GSoC with Alpha One Labs?</h3>
+          <p class="text-gray-600 dark:text-gray-300 mt-2">
+            To apply, visit the <a href="https://summerofcode.withgoogle.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">GSoC
+            website</a>, explore our project ideas, and submit a proposal. Make sure to engage with the community and
+            seek feedback on your proposal.
+          </p>
+        </div>
+
+        <!-- FAQ 3 -->
+        <div class="relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">What kind of projects does Alpha One Labs offer?</h3>
+          <p class="text-gray-600 dark:text-gray-300 mt-2">
+            Alpha One Labs offers projects in web development, educational tools, and open-source software. Check out our
+            <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors">project
+              ideas</a> for more details.
+          </p>
+        </div>
+      </div>
+
+      <div class="mb-16"></div>
+    </div>
+  </main>
+
+  <!-- Floating Apply Now Button -->
+  <a href="https://summerofcode.withgoogle.com/"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="fixed bottom-6 right-6 px-6 py-3 bg-orange-600 text-white text-lg font-semibold rounded-full shadow-lg hover:bg-orange-700 transition-all duration-200 animate-bounce z-50">
+    Apply Now 🚀
+  </a>
+
+  <!-- Footer -->
+  <footer class="w-full bg-gray-800 dark:bg-gray-950 text-white py-8 mt-16">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 text-center">
+      <p class="text-lg font-semibold mb-2">Alpha One Labs</p>
+      <p class="text-sm text-gray-400 mb-4">Building the future of open-source education</p>
+      <div class="flex justify-center space-x-6">
+        <a href="https://github.com/alphaonelabs/alphaonelabs-education-website"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="text-gray-400 hover:text-white transition-colors">
+          <i class="fab fa-github text-2xl"></i>
+        </a>
+        <a href="https://t.co/Uskb6jkZKz"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="text-gray-400 hover:text-white transition-colors">
+          <i class="fab fa-slack text-2xl"></i>
+        </a>
+      </div>
+      <p class="text-xs text-gray-500 mt-4">
+        © 2026 Alpha One Labs. Licensed under the GNU Affero General Public License v3.0
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
