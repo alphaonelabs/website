@@ -258,6 +258,16 @@ class Canvas {
                 document.removeEventListener('click', closeMenu);
             }
         };
+        
+        // Also remove listener when menu is removed by other means
+        const observer = new MutationObserver((mutations) => {
+            if (!document.body.contains(menu)) {
+                document.removeEventListener('click', closeMenu);
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
+        
         setTimeout(() => document.addEventListener('click', closeMenu), 0);
     }
 }

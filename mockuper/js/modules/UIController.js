@@ -76,8 +76,6 @@ class UIController {
         
         // Components - Enable dragging
         this.componentsGrid.querySelectorAll('.component-btn').forEach(btn => {
-            btn.setAttribute('draggable', 'true');
-            
             btn.addEventListener('dragstart', (e) => {
                 const type = e.target.dataset.type;
                 e.dataTransfer.effectAllowed = 'copy';

@@ -218,6 +218,7 @@ class StateManager {
             if (higherElements.length > 0) {
                 const nextZ = Math.min(...higherElements.map(el => el.zIndex));
                 element.zIndex = nextZ + 0.5;
+                this.normalizeZIndices();
             }
             this.saveHistory();
             this.notify();
@@ -235,10 +236,23 @@ class StateManager {
             if (lowerElements.length > 0) {
                 const prevZ = Math.max(...lowerElements.map(el => el.zIndex));
                 element.zIndex = prevZ - 0.5;
+                this.normalizeZIndices();
             }
             this.saveHistory();
             this.notify();
         }
+    }
+
+    // Normalize z-indices to clean integer values
+    normalizeZIndices() {
+        const page = this.getCurrentPage();
+        if (!page) return;
+
+        // Sort elements by z-index and reassign clean integer values
+        const sortedElements = [...page.elements].sort((a, b) => a.zIndex - b.zIndex);
+        sortedElements.forEach((element, index) => {
+            element.zIndex = index;
+        });
     }
 
     // Page management
