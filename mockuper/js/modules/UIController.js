@@ -99,22 +99,36 @@ class UIController {
 
             // Touch events for mobile
             let touchStartData = null;
+            let touchMoveDistance = 0;
             
             btn.addEventListener('touchstart', (e) => {
-                const type = e.target.dataset.type || e.target.closest('.component-btn').dataset.type;
+                const target = e.target.closest('.component-btn');
+                if (!target) return;
+                
+                const type = target.dataset.type;
                 const touch = e.touches[0];
                 touchStartData = {
                     type,
                     startX: touch.clientX,
                     startY: touch.clientY,
-                    button: e.target.closest('.component-btn')
+                    button: target
                 };
+                touchMoveDistance = 0;
                 touchStartData.button.style.opacity = '0.5';
             });
             
             btn.addEventListener('touchmove', (e) => {
                 if (touchStartData) {
-                    e.preventDefault(); // Prevent scrolling while dragging
+                    const touch = e.touches[0];
+                    touchMoveDistance = Math.sqrt(
+                        Math.pow(touch.clientX - touchStartData.startX, 2) + 
+                        Math.pow(touch.clientY - touchStartData.startY, 2)
+                    );
+                    
+                    // Only prevent default if we've moved enough to be dragging
+                    if (touchMoveDistance > 5) {
+                        e.preventDefault(); // Prevent scrolling while dragging
+                    }
                 }
             });
             
@@ -123,6 +137,7 @@ class UIController {
                     touchStartData.button.style.opacity = '1';
                     const touch = e.changedTouches[0];
                     const canvas = document.getElementById('canvas');
+                    const canvasContent = document.getElementById('canvas-content');
                     const rect = canvas.getBoundingClientRect();
                     
                     // Check if touch ended on canvas
@@ -137,6 +152,15 @@ class UIController {
                     }
                     
                     touchStartData = null;
+                    touchMoveDistance = 0;
+                }
+            });
+            
+            btn.addEventListener('touchcancel', (e) => {
+                if (touchStartData) {
+                    touchStartData.button.style.opacity = '1';
+                    touchStartData = null;
+                    touchMoveDistance = 0;
                 }
             });
         });
