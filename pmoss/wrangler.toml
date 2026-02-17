@@ -1,0 +1,18 @@
+name = "oss-project-management"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "oss-pm-db"
+database_id = "placeholder-database-id"
+
+# Environment variables (set these via wrangler secret)
+# GITHUB_CLIENT_ID
+# GITHUB_CLIENT_SECRET
+# GITHUB_WEBHOOK_SECRET
+# SESSION_SECRET
+
+[vars]
+GITHUB_REDIRECT_URI = "https://your-worker.workers.dev/auth/callback"

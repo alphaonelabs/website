@@ -1,0 +1,4 @@
+httpx==0.25.2
+pyjwt==2.8.0
+cryptography==41.0.7
+python-dotenv==1.0.0

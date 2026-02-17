@@ -1,0 +1,21 @@
+{
+  "name": "oss-project-management",
+  "version": "1.0.0",
+  "description": "Open Source project management interface to Github Issues",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute oss-pm-db --file=./schema.sql"
+  },
+  "keywords": [
+    "project-management",
+    "github",
+    "cloudflare-workers"
+  ],
+  "author": "Alpha One Labs",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.22.0"
+  }
+}
