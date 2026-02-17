@@ -97,6 +97,16 @@ class Canvas {
         
         // Pinch-to-zoom on canvas
         this.canvas.addEventListener('touchstart', this.handleCanvasTouchStart.bind(this), { passive: false });
+        
+        // Update grid on window resize with debouncing
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => this.updateGridScale(), 150);
+        });
+        
+        // Initialize grid scale using requestAnimationFrame for reliable timing
+        requestAnimationFrame(() => this.updateGridScale());
     }
 
     render() {
@@ -109,12 +119,39 @@ class Canvas {
 
         // Apply zoom
         this.content.style.transform = `scale(${this.state.zoom})`;
+        
+        // Update grid to scale with zoom and extend beyond viewport
+        this.updateGridScale();
 
         // Render elements sorted by z-index
         const sortedElements = [...page.elements].sort((a, b) => a.zIndex - b.zIndex);
         sortedElements.forEach(element => {
             this.renderElement(element);
         });
+    }
+    
+    updateGridScale() {
+        const grid = document.getElementById('grid');
+        if (!grid) return;
+        
+        const zoom = this.state.zoom;
+        const baseGridSize = 20; // Base grid size in pixels
+        const scaledGridSize = baseGridSize * zoom;
+        
+        // Make grid much larger than viewport to prevent edge visibility
+        // Use a large multiplier to ensure grid covers canvas at all zoom levels
+        const viewportWidth = this.canvas.clientWidth;
+        const viewportHeight = this.canvas.clientHeight;
+        
+        // Calculate required grid size based on zoom
+        // When zoomed in (zoom > 1), we need LESS coverage
+        // When zoomed out (zoom < 1), we need MORE coverage
+        const widthMultiplier = Math.max(3, 10 / zoom);
+        const heightMultiplier = Math.max(3, 10 / zoom);
+        
+        grid.style.width = (viewportWidth * widthMultiplier) + 'px';
+        grid.style.height = (viewportHeight * heightMultiplier) + 'px';
+        grid.style.backgroundSize = `${scaledGridSize}px ${scaledGridSize}px`;
     }
 
     renderElement(element) {
@@ -419,7 +456,7 @@ class Canvas {
                 const zoomFactor = 1 + (delta / 500); // Adjust sensitivity
                 
                 let newZoom = this.state.zoom * zoomFactor;
-                newZoom = Math.max(0.5, Math.min(2, newZoom)); // Clamp between 0.5 and 2
+                newZoom = Math.max(0.1, Math.min(3, newZoom)); // Clamp between 0.1 and 3
                 
                 this.state.setZoom(newZoom);
             }
