@@ -233,6 +233,31 @@ class Canvas {
         });
     }
 
+    // Helper method to get DOM node for an element
+    getElementDomNode(elementId) {
+        return this.content.querySelector(`[data-id="${elementId}"]`);
+    }
+
+    // Helper method to update element position in DOM
+    updateElementPosition(elementId, x, y) {
+        const domElement = this.getElementDomNode(elementId);
+        if (domElement) {
+            domElement.style.left = x + 'px';
+            domElement.style.top = y + 'px';
+        }
+    }
+
+    // Helper method to update element styles in DOM
+    updateElementStyles(elementId, updates) {
+        const domElement = this.getElementDomNode(elementId);
+        if (domElement) {
+            if (updates.x !== undefined) domElement.style.left = updates.x + 'px';
+            if (updates.y !== undefined) domElement.style.top = updates.y + 'px';
+            if (updates.width !== undefined) domElement.style.width = updates.width + 'px';
+            if (updates.height !== undefined) domElement.style.height = updates.height + 'px';
+        }
+    }
+
     handleElementMouseDown(e, elementId) {
         if (e.button !== 0) return;
         e.stopPropagation();
@@ -271,11 +296,7 @@ class Canvas {
             this.state.updateElementSilent(this.state.selectedElementId, { x: newX, y: newY });
             
             // Manually update DOM element position for smooth dragging
-            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
-            if (domElement) {
-                domElement.style.left = newX + 'px';
-                domElement.style.top = newY + 'px';
-            }
+            this.updateElementPosition(this.state.selectedElementId, newX, newY);
             
         } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
             const dx = e.clientX - this.resizeStart.x;
@@ -303,13 +324,7 @@ class Canvas {
             this.state.updateElementSilent(this.state.selectedElementId, updates);
             
             // Manually update DOM element for smooth resizing
-            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
-            if (domElement) {
-                if (updates.x !== undefined) domElement.style.left = updates.x + 'px';
-                if (updates.y !== undefined) domElement.style.top = updates.y + 'px';
-                if (updates.width !== undefined) domElement.style.width = updates.width + 'px';
-                if (updates.height !== undefined) domElement.style.height = updates.height + 'px';
-            }
+            this.updateElementStyles(this.state.selectedElementId, updates);
         }
 
         // Update cursor
@@ -396,11 +411,7 @@ class Canvas {
             this.state.updateElementSilent(this.state.selectedElementId, { x: newX, y: newY });
             
             // Manually update DOM element position for smooth dragging
-            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
-            if (domElement) {
-                domElement.style.left = newX + 'px';
-                domElement.style.top = newY + 'px';
-            }
+            this.updateElementPosition(this.state.selectedElementId, newX, newY);
             
         } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
             e.preventDefault();
@@ -430,13 +441,7 @@ class Canvas {
             this.state.updateElementSilent(this.state.selectedElementId, updates);
             
             // Manually update DOM element for smooth resizing
-            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
-            if (domElement) {
-                if (updates.x !== undefined) domElement.style.left = updates.x + 'px';
-                if (updates.y !== undefined) domElement.style.top = updates.y + 'px';
-                if (updates.width !== undefined) domElement.style.width = updates.width + 'px';
-                if (updates.height !== undefined) domElement.style.height = updates.height + 'px';
-            }
+            this.updateElementStyles(this.state.selectedElementId, updates);
         }
 
         // Update cursor
