@@ -44,6 +44,15 @@ class UIController {
         this.propY = document.getElementById('prop-y');
         this.propWidth = document.getElementById('prop-width');
         this.propHeight = document.getElementById('prop-height');
+        
+        // Collapse buttons
+        this.leftSidebar = document.getElementById('left-sidebar');
+        this.leftCollapseBtn = document.getElementById('left-collapse-btn');
+        this.rightCollapseBtn = document.getElementById('right-collapse-btn');
+        
+        // Collapse state
+        this.leftSidebarCollapsed = false;
+        this.rightPanelCollapsed = false;
     }
 
     bindEvents() {
@@ -144,6 +153,10 @@ class UIController {
         this.zoomInBtn.addEventListener('click', () => this.state.zoomIn());
         this.zoomOutBtn.addEventListener('click', () => this.state.zoomOut());
         this.zoomResetBtn.addEventListener('click', () => this.state.resetZoom());
+        
+        // Collapse buttons
+        this.leftCollapseBtn.addEventListener('click', () => this.toggleLeftSidebar());
+        this.rightCollapseBtn.addEventListener('click', () => this.toggleRightPanel());
         
         // Properties
         this.propText.addEventListener('input', (e) => {
@@ -278,6 +291,32 @@ class UIController {
             this.propHeight.value = Math.round(element.height);
         } else {
             this.propertyPanel.style.display = 'none';
+        }
+    }
+
+    toggleLeftSidebar() {
+        this.leftSidebarCollapsed = !this.leftSidebarCollapsed;
+        if (this.leftSidebarCollapsed) {
+            this.leftSidebar.classList.add('collapsed');
+            this.leftCollapseBtn.textContent = '›';
+            this.leftCollapseBtn.title = 'Expand sidebar';
+        } else {
+            this.leftSidebar.classList.remove('collapsed');
+            this.leftCollapseBtn.textContent = '‹';
+            this.leftCollapseBtn.title = 'Collapse sidebar';
+        }
+    }
+
+    toggleRightPanel() {
+        this.rightPanelCollapsed = !this.rightPanelCollapsed;
+        if (this.rightPanelCollapsed) {
+            this.propertyPanel.classList.add('collapsed');
+            this.rightCollapseBtn.textContent = '‹';
+            this.rightCollapseBtn.title = 'Expand panel';
+        } else {
+            this.propertyPanel.classList.remove('collapsed');
+            this.rightCollapseBtn.textContent = '›';
+            this.rightCollapseBtn.title = 'Collapse panel';
         }
     }
 
