@@ -76,6 +76,7 @@ class UIController {
         
         // Components - Enable dragging
         this.componentsGrid.querySelectorAll('.component-btn').forEach(btn => {
+            // Desktop drag events
             btn.addEventListener('dragstart', (e) => {
                 const type = e.target.dataset.type;
                 e.dataTransfer.effectAllowed = 'copy';
@@ -85,6 +86,49 @@ class UIController {
             
             btn.addEventListener('dragend', (e) => {
                 e.target.style.opacity = '1';
+            });
+
+            // Touch events for mobile
+            let touchStartData = null;
+            
+            btn.addEventListener('touchstart', (e) => {
+                const type = e.target.dataset.type || e.target.closest('.component-btn').dataset.type;
+                const touch = e.touches[0];
+                touchStartData = {
+                    type,
+                    startX: touch.clientX,
+                    startY: touch.clientY,
+                    button: e.target.closest('.component-btn')
+                };
+                touchStartData.button.style.opacity = '0.5';
+            });
+            
+            btn.addEventListener('touchmove', (e) => {
+                if (touchStartData) {
+                    e.preventDefault(); // Prevent scrolling while dragging
+                }
+            });
+            
+            btn.addEventListener('touchend', (e) => {
+                if (touchStartData) {
+                    touchStartData.button.style.opacity = '1';
+                    const touch = e.changedTouches[0];
+                    const canvas = document.getElementById('canvas');
+                    const rect = canvas.getBoundingClientRect();
+                    
+                    // Check if touch ended on canvas
+                    if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+                        touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+                        const scrollLeft = canvas.scrollLeft;
+                        const scrollTop = canvas.scrollTop;
+                        const x = (touch.clientX - rect.left + scrollLeft) / this.state.zoom;
+                        const y = (touch.clientY - rect.top + scrollTop) / this.state.zoom;
+                        
+                        this.state.addElementAtPosition(touchStartData.type, x, y);
+                    }
+                    
+                    touchStartData = null;
+                }
             });
         });
         

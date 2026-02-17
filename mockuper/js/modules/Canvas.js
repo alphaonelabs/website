@@ -19,8 +19,14 @@ class Canvas {
     }
 
     init() {
-        // Canvas click to deselect
+        // Canvas click/touch to deselect
         this.canvas.addEventListener('click', (e) => {
+            if (e.target === this.canvas || e.target === this.content) {
+                this.state.deselectElement();
+            }
+        });
+
+        this.canvas.addEventListener('touchstart', (e) => {
             if (e.target === this.canvas || e.target === this.content) {
                 this.state.deselectElement();
             }
@@ -64,6 +70,10 @@ class Canvas {
         // Global mouse handlers
         document.addEventListener('mousemove', this.handleMouseMove.bind(this));
         document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+
+        // Global touch handlers
+        document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+        document.addEventListener('touchend', this.handleTouchEnd.bind(this));
     }
 
     render() {
@@ -145,8 +155,9 @@ class Canvas {
             this.addResizeHandles(el);
         }
 
-        // Drag handler
+        // Drag handlers
         el.addEventListener('mousedown', (e) => this.handleElementMouseDown(e, element.id));
+        el.addEventListener('touchstart', (e) => this.handleElementTouchStart(e, element.id));
 
         this.content.appendChild(el);
     }
@@ -157,6 +168,7 @@ class Canvas {
             const div = document.createElement('div');
             div.className = `resize-handle ${handle}`;
             div.addEventListener('mousedown', (e) => this.handleResizeMouseDown(e, handle));
+            div.addEventListener('touchstart', (e) => this.handleResizeTouchStart(e, handle));
             el.appendChild(div);
         });
     }
@@ -231,6 +243,93 @@ class Canvas {
     }
 
     handleMouseUp() {
+        if (this.isDragging || this.isResizing) {
+            this.state.saveHistory();
+            this.isDragging = false;
+            this.isResizing = false;
+            this.dragStart = null;
+            this.resizeStart = null;
+            this.resizeHandle = null;
+            this.canvas.classList.remove('grabbing');
+        }
+    }
+
+    handleElementTouchStart(e, elementId) {
+        e.stopPropagation();
+        
+        this.state.selectElement(elementId);
+        this.isDragging = true;
+        
+        const touch = e.touches[0];
+        const element = this.state.getCurrentPage().elements.find(el => el.id === elementId);
+        this.dragStart = {
+            x: touch.clientX - element.x * this.state.zoom,
+            y: touch.clientY - element.y * this.state.zoom
+        };
+    }
+
+    handleResizeTouchStart(e, handle) {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        this.isResizing = true;
+        this.resizeHandle = handle;
+        
+        const touch = e.touches[0];
+        const element = this.state.getSelectedElement();
+        this.resizeStart = {
+            x: touch.clientX,
+            y: touch.clientY,
+            elementX: element.x,
+            elementY: element.y,
+            elementWidth: element.width,
+            elementHeight: element.height
+        };
+    }
+
+    handleTouchMove(e) {
+        if (this.isDragging && this.state.selectedElementId && this.dragStart) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const newX = (touch.clientX - this.dragStart.x) / this.state.zoom;
+            const newY = (touch.clientY - this.dragStart.y) / this.state.zoom;
+            this.state.updateElement(this.state.selectedElementId, { x: newX, y: newY });
+            
+        } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const dx = touch.clientX - this.resizeStart.x;
+            const dy = touch.clientY - this.resizeStart.y;
+            
+            const updates = {};
+            
+            if (this.resizeHandle.includes('e')) {
+                updates.width = Math.max(20, this.resizeStart.elementWidth + dx / this.state.zoom);
+            }
+            if (this.resizeHandle.includes('w')) {
+                const newWidth = Math.max(20, this.resizeStart.elementWidth - dx / this.state.zoom);
+                updates.width = newWidth;
+                updates.x = this.resizeStart.elementX + (this.resizeStart.elementWidth - newWidth);
+            }
+            if (this.resizeHandle.includes('s')) {
+                updates.height = Math.max(20, this.resizeStart.elementHeight + dy / this.state.zoom);
+            }
+            if (this.resizeHandle.includes('n')) {
+                const newHeight = Math.max(20, this.resizeStart.elementHeight - dy / this.state.zoom);
+                updates.height = newHeight;
+                updates.y = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
+            }
+            
+            this.state.updateElement(this.state.selectedElementId, updates);
+        }
+
+        // Update cursor
+        if (this.isDragging) {
+            this.canvas.classList.add('grabbing');
+        }
+    }
+
+    handleTouchEnd() {
         if (this.isDragging || this.isResizing) {
             this.state.saveHistory();
             this.isDragging = false;
