@@ -260,7 +260,7 @@ class Canvas {
         }
 
         // Update cursor
-        if (this.isDragging) {
+        if (this.isDragging && !this.canvas.classList.contains('grabbing')) {
             this.canvas.classList.add('grabbing');
         }
     }
@@ -365,7 +365,7 @@ class Canvas {
         }
 
         // Update cursor
-        if (this.isDragging || this.isCanvasPanning) {
+        if ((this.isDragging || this.isCanvasPanning) && !this.canvas.classList.contains('grabbing')) {
             this.canvas.classList.add('grabbing');
         }
     }
