@@ -26,6 +26,42 @@ class Canvas {
             }
         });
 
+        // Drag and drop handlers for components
+        const dropHandler = (e) => {
+            e.preventDefault();
+            const componentType = e.dataTransfer.getData('componentType');
+            if (componentType) {
+                // Calculate position relative to canvas and zoom
+                const rect = this.canvas.getBoundingClientRect();
+                const scrollLeft = this.canvas.scrollLeft;
+                const scrollTop = this.canvas.scrollTop;
+                const x = (e.clientX - rect.left + scrollLeft) / this.state.zoom;
+                const y = (e.clientY - rect.top + scrollTop) / this.state.zoom;
+                
+                this.state.addElementAtPosition(componentType, x, y);
+            }
+        };
+        
+        const dragOverHandler = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        };
+        
+        this.canvas.addEventListener('dragover', dragOverHandler);
+        this.canvas.addEventListener('drop', dropHandler);
+        this.content.addEventListener('dragover', dragOverHandler);
+        this.content.addEventListener('drop', dropHandler);
+
+        // Context menu for z-index management
+        this.content.addEventListener('contextmenu', (e) => {
+            const element = e.target.closest('.element');
+            if (element) {
+                e.preventDefault();
+                const elementId = element.dataset.id;
+                this.showContextMenu(e.clientX, e.clientY, elementId);
+            }
+        });
+
         // Global mouse handlers
         document.addEventListener('mousemove', this.handleMouseMove.bind(this));
         document.addEventListener('mouseup', this.handleMouseUp.bind(this));
@@ -180,6 +216,59 @@ class Canvas {
             this.resizeHandle = null;
             this.canvas.classList.remove('grabbing');
         }
+    }
+
+    showContextMenu(x, y, elementId) {
+        // Remove existing context menu
+        const existingMenu = document.querySelector('.context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+
+        // Create context menu
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+
+        const menuItems = [
+            { label: 'Bring Forward', action: () => this.state.bringForward(elementId) },
+            { label: 'Send Backward', action: () => this.state.sendBackward(elementId) },
+            { label: 'Bring to Front', action: () => this.state.bringToFront(elementId) },
+            { label: 'Send to Back', action: () => this.state.sendToBack(elementId) },
+        ];
+
+        menuItems.forEach(item => {
+            const menuItem = document.createElement('div');
+            menuItem.className = 'context-menu-item';
+            menuItem.textContent = item.label;
+            menuItem.addEventListener('click', () => {
+                item.action();
+                menu.remove();
+            });
+            menu.appendChild(menuItem);
+        });
+
+        document.body.appendChild(menu);
+
+        // Close menu on click outside
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        
+        // Also remove listener when menu is removed by other means
+        const observer = new MutationObserver((mutations) => {
+            if (!document.body.contains(menu)) {
+                document.removeEventListener('click', closeMenu);
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
+        
+        setTimeout(() => document.addEventListener('click', closeMenu), 0);
     }
 }
 

@@ -109,6 +109,40 @@ class StateManager {
         this.notify();
     }
 
+    // Add element at specific position (for drag-and-drop)
+    addElementAtPosition(type, x, y) {
+        const page = this.getCurrentPage();
+        if (!page) return;
+
+        const componentTypes = {
+            button: { width: 120, height: 40, label: 'Button' },
+            input: { width: 200, height: 40, label: 'Input' },
+            text: { width: 150, height: 30, label: 'Text' },
+            image: { width: 200, height: 150, label: 'Image' },
+            navbar: { width: 800, height: 60, label: 'Nav Bar' },
+            table: { width: 400, height: 200, label: 'Table' },
+            modal: { width: 400, height: 300, label: 'Modal' },
+            frame: { width: 300, height: 400, label: 'Frame' }
+        };
+
+        const config = componentTypes[type];
+        const newElement = {
+            id: String(this.nextElementId++),
+            type,
+            x: Math.max(0, x - config.width / 2), // Center on drop position
+            y: Math.max(0, y - config.height / 2),
+            width: config.width,
+            height: config.height,
+            text: config.label,
+            zIndex: page.elements.length
+        };
+
+        page.elements.push(newElement);
+        this.selectedElementId = newElement.id;
+        this.saveHistory();
+        this.notify();
+    }
+
     // Update element
     updateElement(id, updates) {
         const page = this.getCurrentPage();
@@ -171,6 +205,54 @@ class StateManager {
             this.saveHistory();
             this.notify();
         }
+    }
+
+    bringForward(id) {
+        const page = this.getCurrentPage();
+        if (!page) return;
+
+        const element = page.elements.find(el => el.id === id);
+        if (element) {
+            // Find the next higher z-index
+            const higherElements = page.elements.filter(el => el.zIndex > element.zIndex);
+            if (higherElements.length > 0) {
+                const nextZ = Math.min(...higherElements.map(el => el.zIndex));
+                element.zIndex = nextZ + 0.5;
+                this.normalizeZIndices();
+            }
+            this.saveHistory();
+            this.notify();
+        }
+    }
+
+    sendBackward(id) {
+        const page = this.getCurrentPage();
+        if (!page) return;
+
+        const element = page.elements.find(el => el.id === id);
+        if (element) {
+            // Find the next lower z-index
+            const lowerElements = page.elements.filter(el => el.zIndex < element.zIndex);
+            if (lowerElements.length > 0) {
+                const prevZ = Math.max(...lowerElements.map(el => el.zIndex));
+                element.zIndex = prevZ - 0.5;
+                this.normalizeZIndices();
+            }
+            this.saveHistory();
+            this.notify();
+        }
+    }
+
+    // Normalize z-indices to clean integer values
+    normalizeZIndices() {
+        const page = this.getCurrentPage();
+        if (!page) return;
+
+        // Sort elements by z-index and reassign clean integer values
+        const sortedElements = [...page.elements].sort((a, b) => a.zIndex - b.zIndex);
+        sortedElements.forEach((element, index) => {
+            element.zIndex = index;
+        });
     }
 
     // Page management
