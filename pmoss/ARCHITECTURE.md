@@ -2,6 +2,10 @@
 
 Technical architecture of the OSS Project Management system.
 
+## Key Technology
+
+**Python Cloudflare Workers** - This project uses Python for the backend instead of JavaScript. Python Workers run on Cloudflare's V8 engine with Python support, accessing browser APIs via the `js` module. **No separate Python runtime or pip packages are needed** - everything runs directly on Cloudflare's edge.
+
 ## Overview
 
 ```
@@ -14,8 +18,8 @@ Technical architecture of the OSS Project Management system.
 ┌─────────────────────────────────────────┐
 │   Cloudflare Workers (Edge Network)     │
 │  ┌────────────────────────────────┐     │
-│  │       src/index.js             │     │
-│  │    (Request Router)            │     │
+│  │       src/main.py              │     │
+│  │    (Request Router - Python)   │     │
 │  └────────────┬───────────────────┘     │
 │               │                          │
 │    ┌──────────┼──────────┐              │
@@ -42,9 +46,9 @@ Technical architecture of the OSS Project Management system.
 
 ## Components
 
-### 1. Frontend (src/ui.js)
+### 1. Frontend (src/ui.py)
 
-**Technology**: Vanilla JavaScript, HTML, CSS
+**Technology**: Vanilla JavaScript, HTML, CSS (served from Python)
 
 **Responsibilities**:
 - Render single-page application
@@ -362,8 +366,9 @@ GitHub OAuth Dev App      GitHub OAuth Prod App
 
 ### Runtime
 - **Platform**: Cloudflare Workers
-- **Language**: JavaScript (ES2020+)
-- **Runtime**: V8 JavaScript engine
+- **Language**: **Python 3** (with browser API access via `js` module)
+- **Runtime**: V8 JavaScript engine with Python support
+- **Key Benefit**: No pip packages or Python installation needed
 
 ### Storage
 - **Database**: Cloudflare D1 (SQLite)
@@ -384,10 +389,9 @@ GitHub OAuth Dev App      GitHub OAuth Prod App
 
 ### Logging
 
-```javascript
-console.log()   → Cloudflare Logs
-console.error() → Cloudflare Logs
-wrangler tail   → Real-time logs
+```python
+print()           → Cloudflare Logs
+wrangler tail     → Real-time logs
 ```
 
 ### Metrics
@@ -428,7 +432,16 @@ Cloudflare Dashboard  # Metrics & logs
 ✅ Low latency  
 ✅ Cost-effective  
 
-### Why Vanilla JavaScript?
+### Why Python Workers?
+
+✅ Familiar Python syntax  
+✅ No pip packages needed  
+✅ Direct browser API access via `js` module  
+✅ Same performance as JavaScript Workers  
+✅ No Node.js or npm dependency  
+✅ Built-in JSON, datetime, uuid libraries  
+
+### Why Vanilla JavaScript (Frontend)?
 
 ✅ No build step required  
 ✅ Fast initial load  
@@ -447,11 +460,11 @@ Cloudflare Dashboard  # Metrics & logs
 
 To extend the system:
 
-1. **Add new API endpoints**: Edit src/api.js
-2. **Add UI features**: Edit src/ui.js
+1. **Add new API endpoints**: Edit src/api.py
+2. **Add UI features**: Edit src/ui.py
 3. **Add database tables**: Update schema.sql
 4. **Add integrations**: Create new module in src/
-5. **Add analytics**: Edit src/metrics.js
+5. **Add analytics**: Edit src/metrics.py
 
 ## Future Architecture Considerations
 

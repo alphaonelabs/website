@@ -6,12 +6,22 @@ Get your OSS Project Management system running in under 10 minutes!
 
 ✅ Cloudflare account ([Sign up free](https://dash.cloudflare.com/sign-up))  
 ✅ GitHub account  
-✅ Node.js 16+ installed
+✅ **Wrangler CLI** (for deployment only)  
+❌ **No Node.js, npm, or Python installation required!**
 
 ## 1. Install Wrangler CLI
 
+Choose one method:
+
 ```bash
+# Option 1: Using npm (quickest)
 npm install -g wrangler
+
+# Option 2: Using Cargo (Rust)
+cargo install wrangler
+
+# Option 3: Using Homebrew (macOS)
+brew install cloudflare-wrangler2
 ```
 
 ## 2. Login to Cloudflare
@@ -27,8 +37,7 @@ wrangler login
 git clone https://github.com/alphaonelabs/alphaonelabs-oss-project-management.git
 cd alphaonelabs-oss-project-management
 
-# Install dependencies
-npm install
+# No npm install or pip install needed! Python Workers run directly
 ```
 
 ## 4. Create D1 Database
