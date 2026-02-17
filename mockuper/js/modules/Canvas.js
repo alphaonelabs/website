@@ -315,6 +315,7 @@ class Canvas {
     }
 
     handleElementTouchStart(e, elementId) {
+        e.preventDefault();
         e.stopPropagation();
         
         this.state.selectElement(elementId);
