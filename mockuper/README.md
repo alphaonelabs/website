@@ -1,16 +1,79 @@
-# React + Vite
+# Wireframe Studio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based low-fidelity wireframing application with a hand-drawn sketch style and grayscale UI. Built for fast prototyping and design collaboration.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Drag-and-Drop Canvas** - Intuitive component placement and movement
+- **8 Component Types** - Button, Input, Text, Image, Nav Bar, Table, Modal, Frame
+- **Resizable Components** - 8 resize handles for precise sizing
+- **Editable Properties** - Modify text, position, width, and height
+- **Grayscale UI** - Clean, professional interface optimized for fast prototyping
+- **Multi-Page Support** - Create and manage multiple pages in one project
+- **Zoom Controls** - Zoom in/out (50%-200%) with reset button
+- **Grid Toggle** - Show/hide alignment grid (20px spacing)
+- **Undo/Redo** - Full history support with keyboard shortcuts
+- **Layer Ordering** - Bring to front/send to back for proper layering
+- **Export** - Export to PNG or PDF format
+- **Local Storage** - Projects automatically save and restore on reload
 
-## React Compiler
+## 🎯 Usage
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Adding Components
+1. Click any component button in the left sidebar
+2. Component appears on canvas at position (100, 100)
+3. Drag to reposition, use handles to resize
 
-## Expanding the ESLint configuration
+### Editing Components
+1. Click to select a component
+2. Use the property panel on the right to edit:
+   - Text content
+   - X/Y position
+   - Width and height
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Keyboard Shortcuts
+- `Delete` or `Backspace` - Delete selected component
+- `Ctrl+Z` (or `Cmd+Z`) - Undo
+- `Ctrl+Y` (or `Cmd+Shift+Z`) - Redo
+
+### Managing Pages
+- Click "+ Add Page" to create a new page
+- Click page names to switch between pages
+- Click "✕" to delete a page (must have at least one page)
+
+### Exporting
+- Click "📷 PNG" to export current page as PNG
+- Click "📄 PDF" to export current page as PDF
+
+## 🛠️ Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## 🌐 Deployment
+
+This app is configured for GitHub Pages deployment. When pushed to the `main` branch, GitHub Actions automatically builds and deploys the app.
+
+## 📦 Technology Stack
+
+- React 19 with hooks
+- Vite for fast development
+- html2canvas for PNG export
+- jsPDF for PDF export
+- Local storage for persistence
+
+## 📝 License
+
+See LICENSE file for details.
+
