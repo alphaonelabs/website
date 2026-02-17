@@ -400,6 +400,7 @@ body {
   transform-origin: 0 0;
   min-width: 100%;
   min-height: 100%;
+  pointer-events: auto;
 }
 
 .grid {
@@ -857,8 +858,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   transition: all 0.2s;
+  pointer-events: auto;
 }
 
 .collapse-btn:hover {
@@ -873,6 +875,9 @@ body {
 .sidebar.collapsed .collapse-btn {
   right: -26px;
   border-radius: 0 4px 4px 0;
+  position: fixed;
+  left: 0;
+  right: auto;
 }
 
 .property-panel .collapse-btn {
