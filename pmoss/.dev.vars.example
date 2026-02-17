@@ -1,0 +1,15 @@
+# Development Configuration
+# Copy this to .dev.vars for local development
+
+# GitHub OAuth Credentials (create a separate OAuth app for development)
+GITHUB_CLIENT_ID=your_dev_client_id
+GITHUB_CLIENT_SECRET=your_dev_client_secret
+
+# Webhook Secret (generate with: openssl rand -hex 32)
+GITHUB_WEBHOOK_SECRET=your_webhook_secret
+
+# Optional Session Secret
+SESSION_SECRET=your_session_secret
+
+# Note: .dev.vars is automatically loaded by Wrangler for local development
+# and is already in .gitignore so it won't be committed
