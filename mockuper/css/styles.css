@@ -435,6 +435,7 @@ body {
   position: absolute;
   cursor: move;
   user-select: none;
+  touch-action: none; /* Allow custom touch handling for dragging */
 }
 
 .element.selected {
@@ -616,6 +617,7 @@ body {
   font-size: 13px;
   color: #333;
   font-family: inherit;
+  touch-action: auto; /* Allow normal touch interactions for inputs */
 }
 
 .property-group textarea {

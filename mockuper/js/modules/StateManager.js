@@ -159,6 +159,17 @@ class StateManager {
         }
     }
 
+    // Update element without triggering notification (for dragging/resizing)
+    updateElementSilent(id, updates) {
+        const page = this.getCurrentPage();
+        if (!page) return;
+
+        const element = page.elements.find(el => el.id === id);
+        if (element) {
+            Object.assign(element, updates);
+        }
+    }
+
     // Delete element
     deleteElement(id) {
         const page = this.getCurrentPage();
@@ -174,8 +185,10 @@ class StateManager {
 
     // Select element
     selectElement(id) {
-        this.selectedElementId = id;
-        this.notify();
+        if (this.selectedElementId !== id) {
+            this.selectedElementId = id;
+            this.notify();
+        }
     }
 
     // Deselect element

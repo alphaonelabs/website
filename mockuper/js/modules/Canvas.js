@@ -268,7 +268,14 @@ class Canvas {
         if (this.isDragging && this.state.selectedElementId && this.dragStart) {
             const newX = (e.clientX - this.dragStart.x) / this.state.zoom;
             const newY = (e.clientY - this.dragStart.y) / this.state.zoom;
-            this.state.updateElement(this.state.selectedElementId, { x: newX, y: newY });
+            this.state.updateElementSilent(this.state.selectedElementId, { x: newX, y: newY });
+            
+            // Manually update DOM element position for smooth dragging
+            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
+            if (domElement) {
+                domElement.style.left = newX + 'px';
+                domElement.style.top = newY + 'px';
+            }
             
         } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
             const dx = e.clientX - this.resizeStart.x;
@@ -293,7 +300,16 @@ class Canvas {
                 updates.y = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
             }
             
-            this.state.updateElement(this.state.selectedElementId, updates);
+            this.state.updateElementSilent(this.state.selectedElementId, updates);
+            
+            // Manually update DOM element for smooth resizing
+            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
+            if (domElement) {
+                if (updates.x !== undefined) domElement.style.left = updates.x + 'px';
+                if (updates.y !== undefined) domElement.style.top = updates.y + 'px';
+                if (updates.width !== undefined) domElement.style.width = updates.width + 'px';
+                if (updates.height !== undefined) domElement.style.height = updates.height + 'px';
+            }
         }
 
         // Update cursor
@@ -305,6 +321,7 @@ class Canvas {
     handleMouseUp() {
         if (this.isDragging || this.isResizing) {
             this.state.saveHistory();
+            this.state.notify(); // Trigger re-render with final positions
             this.isDragging = false;
             this.isResizing = false;
             this.dragStart = null;
@@ -376,7 +393,14 @@ class Canvas {
             const touch = e.touches[0];
             const newX = (touch.clientX - this.dragStart.x) / this.state.zoom;
             const newY = (touch.clientY - this.dragStart.y) / this.state.zoom;
-            this.state.updateElement(this.state.selectedElementId, { x: newX, y: newY });
+            this.state.updateElementSilent(this.state.selectedElementId, { x: newX, y: newY });
+            
+            // Manually update DOM element position for smooth dragging
+            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
+            if (domElement) {
+                domElement.style.left = newX + 'px';
+                domElement.style.top = newY + 'px';
+            }
             
         } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
             e.preventDefault();
@@ -403,7 +427,16 @@ class Canvas {
                 updates.y = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
             }
             
-            this.state.updateElement(this.state.selectedElementId, updates);
+            this.state.updateElementSilent(this.state.selectedElementId, updates);
+            
+            // Manually update DOM element for smooth resizing
+            const domElement = this.content.querySelector(`[data-id="${this.state.selectedElementId}"]`);
+            if (domElement) {
+                if (updates.x !== undefined) domElement.style.left = updates.x + 'px';
+                if (updates.y !== undefined) domElement.style.top = updates.y + 'px';
+                if (updates.width !== undefined) domElement.style.width = updates.width + 'px';
+                if (updates.height !== undefined) domElement.style.height = updates.height + 'px';
+            }
         }
 
         // Update cursor
@@ -415,6 +448,7 @@ class Canvas {
     handleTouchEnd() {
         if (this.isDragging || this.isResizing) {
             this.state.saveHistory();
+            this.state.notify(); // Trigger re-render with final positions
             this.isDragging = false;
             this.isResizing = false;
             this.dragStart = null;
