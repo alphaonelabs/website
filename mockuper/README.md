@@ -93,5 +93,5 @@ No build step needed - it's pure vanilla JavaScript!
 
 ## 📝 License
 
-See LICENSE file for details.
+See LICENSE file for details.,
 
