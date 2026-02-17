@@ -1,3 +1,10 @@
+:root {
+  --collapse-btn-offset: -13px;
+  --collapse-btn-offset-collapsed: -26px;
+  --collapse-btn-offset-mobile: -10px;
+  --collapse-btn-offset-collapsed-mobile: -18px;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -166,7 +173,9 @@ body {
   min-width: 0;
   padding: 0;
   border-right: none;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  z-index: 1001;
 }
 
 @media (max-width: 768px) {
@@ -201,6 +210,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  touch-action: none; /* Allow custom touch handling for dragging */
 }
 
 .component-btn span {
@@ -379,6 +389,7 @@ body {
   position: relative;
   overflow: hidden;
   background: #f5f5f5;
+  touch-action: none; /* Allow custom touch handling */
 }
 
 .canvas {
@@ -398,6 +409,7 @@ body {
   transform-origin: 0 0;
   min-width: 100%;
   min-height: 100%;
+  pointer-events: auto;
 }
 
 .grid {
@@ -855,8 +867,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   transition: all 0.2s;
+  pointer-events: auto;
 }
 
 .collapse-btn:hover {
@@ -865,27 +878,43 @@ body {
 }
 
 .sidebar .collapse-btn {
-  right: -13px;
+  right: var(--collapse-btn-offset);
 }
 
 .sidebar.collapsed .collapse-btn {
-  right: -26px;
+  right: var(--collapse-btn-offset-collapsed);
   border-radius: 0 4px 4px 0;
 }
 
 .property-panel .collapse-btn {
-  left: -13px;
+  left: var(--collapse-btn-offset);
 }
 
 .property-panel.collapsed .collapse-btn {
-  left: -26px;
+  left: var(--collapse-btn-offset-collapsed);
   border-radius: 4px 0 0 4px;
 }
 
 @media (max-width: 768px) {
   .collapse-btn {
-    width: 20px;
-    height: 50px;
-    font-size: 16px;
+    width: 16px;
+    height: 40px;
+    font-size: 14px;
+  }
+  
+  .sidebar .collapse-btn {
+    right: var(--collapse-btn-offset-mobile);
+  }
+  
+  .sidebar.collapsed .collapse-btn {
+    right: var(--collapse-btn-offset-collapsed-mobile);
+  }
+  
+  .property-panel .collapse-btn {
+    left: var(--collapse-btn-offset-mobile);
+  }
+  
+  .property-panel.collapsed .collapse-btn {
+    left: var(--collapse-btn-offset-collapsed-mobile);
   }
 }
