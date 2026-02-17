@@ -74,7 +74,23 @@ class UIController {
         // Pages
         this.addPageBtn.addEventListener('click', () => this.state.addPage());
         
-        // Components
+        // Components - Enable dragging
+        this.componentsGrid.querySelectorAll('.component-btn').forEach(btn => {
+            btn.setAttribute('draggable', 'true');
+            
+            btn.addEventListener('dragstart', (e) => {
+                const type = e.target.dataset.type;
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('componentType', type);
+                e.target.style.opacity = '0.5';
+            });
+            
+            btn.addEventListener('dragend', (e) => {
+                e.target.style.opacity = '1';
+            });
+        });
+        
+        // Components - Click to add (fallback)
         this.componentsGrid.addEventListener('click', (e) => {
             if (e.target.classList.contains('component-btn')) {
                 const type = e.target.dataset.type;
