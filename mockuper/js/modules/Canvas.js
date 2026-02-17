@@ -15,6 +15,10 @@ class Canvas {
         this.resizeStart = null;
         this.resizeHandle = null;
         
+        // Pinch zoom state
+        this.lastPinchDistance = null;
+        this.isPinching = false;
+        
         this.init();
     }
 
@@ -74,6 +78,9 @@ class Canvas {
         // Global touch handlers
         document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
         document.addEventListener('touchend', this.handleTouchEnd.bind(this));
+        
+        // Pinch-to-zoom on canvas
+        this.canvas.addEventListener('touchstart', this.handleCanvasTouchStart.bind(this), { passive: false });
     }
 
     render() {
@@ -288,6 +295,12 @@ class Canvas {
     }
 
     handleTouchMove(e) {
+        // Handle pinch zoom first
+        if (this.isPinching && e.touches.length === 2) {
+            this.handlePinchZoom(e);
+            return;
+        }
+        
         if (this.isDragging && this.state.selectedElementId && this.dragStart) {
             e.preventDefault();
             const touch = e.touches[0];
@@ -338,6 +351,45 @@ class Canvas {
             this.resizeStart = null;
             this.resizeHandle = null;
             this.canvas.classList.remove('grabbing');
+        }
+        
+        // Reset pinch zoom state
+        this.lastPinchDistance = null;
+        this.isPinching = false;
+    }
+
+    handleCanvasTouchStart(e) {
+        // Detect pinch gesture (two fingers)
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            this.isPinching = true;
+            this.lastPinchDistance = this.getPinchDistance(e.touches);
+        }
+    }
+
+    getPinchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    handlePinchZoom(e) {
+        if (this.isPinching && e.touches.length === 2) {
+            e.preventDefault();
+            
+            const currentDistance = this.getPinchDistance(e.touches);
+            
+            if (this.lastPinchDistance) {
+                const delta = currentDistance - this.lastPinchDistance;
+                const zoomFactor = 1 + (delta / 500); // Adjust sensitivity
+                
+                let newZoom = this.state.zoom * zoomFactor;
+                newZoom = Math.max(0.5, Math.min(2, newZoom)); // Clamp between 0.5 and 2
+                
+                this.state.setZoom(newZoom);
+            }
+            
+            this.lastPinchDistance = currentDistance;
         }
     }
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Wireframe Studio</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -39,7 +39,8 @@
         </header>
 
         <div class="main-content">
-            <aside class="sidebar">
+            <aside class="sidebar" id="left-sidebar">
+                <button class="collapse-btn" id="left-collapse-btn" title="Collapse sidebar">‹</button>
                 <h3>Pages</h3>
                 <div class="pages-list" id="pages-list"></div>
                 <button class="btn" id="add-page-btn" style="width: 100%; margin-top: 8px;">+ Add Page</button>
@@ -105,6 +106,7 @@
             </div>
 
             <aside class="property-panel" id="property-panel" style="display: none;">
+                <button class="collapse-btn" id="right-collapse-btn" title="Collapse panel">›</button>
                 <h3>Properties</h3>
                 <div class="property-group">
                     <label>Text</label>

@@ -31,6 +31,15 @@ body {
   background: #d0d0d0;
   border-bottom: 2px solid #a0a0a0;
   height: 60px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 8px 12px;
+    height: auto;
+    min-height: 50px;
+  }
 }
 
 .logo {
@@ -40,6 +49,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+@media (max-width: 768px) {
+  .logo {
+    font-size: 16px;
+  }
+  
+  .logo .version {
+    display: none;
+  }
 }
 
 .version {
@@ -55,6 +74,15 @@ body {
   flex-wrap: wrap;
 }
 
+@media (max-width: 768px) {
+  .toolbar {
+    gap: 4px;
+    max-height: 80px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
 .toolbar-group {
   display: flex;
   gap: 4px;
@@ -64,6 +92,13 @@ body {
 
 .toolbar-group:last-child {
   border-right: none;
+}
+
+@media (max-width: 768px) {
+  .toolbar-group {
+    padding: 0 4px;
+    gap: 2px;
+  }
 }
 
 .btn {
@@ -76,6 +111,14 @@ body {
   color: #333;
   transition: all 0.2s;
   white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-width: 1px;
+  }
 }
 
 .btn:hover:not(:disabled) {
@@ -114,6 +157,23 @@ body {
   border-right: 2px solid #a0a0a0;
   padding: 16px;
   overflow-y: auto;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px;
+    padding: 12px;
+  }
 }
 
 .sidebar h3 {
@@ -494,6 +554,23 @@ body {
   border-left: 2px solid #a0a0a0;
   padding: 16px;
   overflow-y: auto;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.property-panel.collapsed {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-left: none;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .property-panel {
+    width: 200px;
+    padding: 12px;
+  }
 }
 
 .property-group {
@@ -760,4 +837,55 @@ body {
 
 .context-menu-item:hover {
   background: #f0f0f0;
+}
+
+.collapse-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 60px;
+  background: #c0c0c0;
+  border: 2px solid #999;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: all 0.2s;
+}
+
+.collapse-btn:hover {
+  background: #b0b0b0;
+  border-color: #666;
+}
+
+.sidebar .collapse-btn {
+  right: -13px;
+}
+
+.sidebar.collapsed .collapse-btn {
+  right: -26px;
+  border-radius: 0 4px 4px 0;
+}
+
+.property-panel .collapse-btn {
+  left: -13px;
+}
+
+.property-panel.collapsed .collapse-btn {
+  left: -26px;
+  border-radius: 4px 0 0 4px;
+}
+
+@media (max-width: 768px) {
+  .collapse-btn {
+    width: 20px;
+    height: 50px;
+    font-size: 16px;
+  }
 }
