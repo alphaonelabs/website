@@ -29,6 +29,7 @@ class Canvas {
         // Drag and drop handlers for components
         const dropHandler = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             const componentType = e.dataTransfer.getData('componentType');
             if (componentType) {
                 // Calculate position relative to canvas and zoom
@@ -49,8 +50,6 @@ class Canvas {
         
         this.canvas.addEventListener('dragover', dragOverHandler);
         this.canvas.addEventListener('drop', dropHandler);
-        this.content.addEventListener('dragover', dragOverHandler);
-        this.content.addEventListener('drop', dropHandler);
 
         // Context menu for z-index management
         this.content.addEventListener('contextmenu', (e) => {
@@ -110,6 +109,31 @@ class Canvas {
                 cell.textContent = `Cell ${i}`;
                 content.appendChild(cell);
             }
+        } else if (element.type === 'browser') {
+            // Browser window structure
+            const browserBar = document.createElement('div');
+            browserBar.className = 'browser-bar';
+            browserBar.innerHTML = '<div class="browser-controls"><span>○</span><span>○</span><span>○</span></div><div class="browser-address">https://example.com</div>';
+            content.appendChild(browserBar);
+            
+            const browserContent = document.createElement('div');
+            browserContent.className = 'browser-content';
+            browserContent.textContent = element.text;
+            content.appendChild(browserContent);
+        } else if (element.type === 'mobile') {
+            // Mobile app structure
+            const mobileHeader = document.createElement('div');
+            mobileHeader.className = 'mobile-header';
+            content.appendChild(mobileHeader);
+            
+            const mobileContent = document.createElement('div');
+            mobileContent.className = 'mobile-content';
+            mobileContent.textContent = element.text;
+            content.appendChild(mobileContent);
+            
+            const mobileFooter = document.createElement('div');
+            mobileFooter.className = 'mobile-footer';
+            content.appendChild(mobileFooter);
         } else {
             content.textContent = element.text;
         }

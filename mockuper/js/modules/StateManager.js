@@ -88,7 +88,9 @@ class StateManager {
             navbar: { width: 800, height: 60, label: 'Nav Bar' },
             table: { width: 400, height: 200, label: 'Table' },
             modal: { width: 400, height: 300, label: 'Modal' },
-            frame: { width: 300, height: 400, label: 'Frame' }
+            frame: { width: 300, height: 400, label: 'Frame' },
+            browser: { width: 800, height: 600, label: 'Browser Window' },
+            mobile: { width: 375, height: 667, label: 'Mobile App' }
         };
 
         const config = componentTypes[type];
@@ -122,7 +124,9 @@ class StateManager {
             navbar: { width: 800, height: 60, label: 'Nav Bar' },
             table: { width: 400, height: 200, label: 'Table' },
             modal: { width: 400, height: 300, label: 'Modal' },
-            frame: { width: 300, height: 400, label: 'Frame' }
+            frame: { width: 300, height: 400, label: 'Frame' },
+            browser: { width: 800, height: 600, label: 'Browser Window' },
+            mobile: { width: 375, height: 667, label: 'Mobile App' }
         };
 
         const config = componentTypes[type];
@@ -200,8 +204,14 @@ class StateManager {
 
         const element = page.elements.find(el => el.id === id);
         if (element) {
-            const minZ = Math.min(...page.elements.map(el => el.zIndex), 0);
-            element.zIndex = minZ - 1;
+            // Set to 0 to ensure it doesn't go behind the grid
+            element.zIndex = 0;
+            // Adjust other elements that were at 0 or below
+            page.elements.forEach(el => {
+                if (el.id !== id && el.zIndex <= 0) {
+                    el.zIndex++;
+                }
+            });
             this.saveHistory();
             this.notify();
         }
