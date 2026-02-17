@@ -137,7 +137,6 @@ class UIController {
                     touchStartData.button.style.opacity = '1';
                     const touch = e.changedTouches[0];
                     const canvas = document.getElementById('canvas');
-                    const canvasContent = document.getElementById('canvas-content');
                     const rect = canvas.getBoundingClientRect();
                     
                     // Check if touch ended on canvas

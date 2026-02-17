@@ -166,7 +166,9 @@ body {
   min-width: 0;
   padding: 0;
   border-right: none;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  z-index: 1001;
 }
 
 @media (max-width: 768px) {
@@ -875,9 +877,6 @@ body {
 .sidebar.collapsed .collapse-btn {
   right: -26px;
   border-radius: 0 4px 4px 0;
-  position: fixed;
-  left: 0;
-  right: auto;
 }
 
 .property-panel .collapse-btn {
