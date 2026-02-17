@@ -232,7 +232,7 @@ function App() {
       
       updateElement(selectedId, updates);
     }
-  }, [isDragging, isResizing, selectedId, dragStart, resizeStart, resizeHandle, zoom, updateElement, currentPage]);
+  }, [isDragging, isResizing, selectedId, dragStart, resizeStart, resizeHandle, zoom, updateElement]);
 
   const handleMouseUp = useCallback(() => {
     if (isDragging || isResizing) {
