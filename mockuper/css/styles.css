@@ -281,13 +281,13 @@ body {
 .mobile-preview::after {
   content: '';
   position: absolute;
-  bottom: 2px;
+  bottom: 3px;
   left: 50%;
   transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  border: 1px solid #666;
-  border-radius: 50%;
+  width: 10px;
+  height: 2px;
+  background: #666;
+  border-radius: 1px;
 }
 
 .component-btn:active {
