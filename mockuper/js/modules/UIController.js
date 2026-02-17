@@ -53,6 +53,9 @@ class UIController {
         // Collapse state
         this.leftSidebarCollapsed = false;
         this.rightPanelCollapsed = false;
+        
+        // Drag ghost element
+        this.dragGhost = null;
     }
 
     bindEvents() {
@@ -87,14 +90,34 @@ class UIController {
         this.componentsGrid.querySelectorAll('.component-btn').forEach(btn => {
             // Desktop drag events
             btn.addEventListener('dragstart', (e) => {
-                const type = e.target.dataset.type;
+                const target = e.target.closest('.component-btn');
+                if (!target) return;
+                
+                const type = target.dataset.type;
                 e.dataTransfer.effectAllowed = 'copy';
                 e.dataTransfer.setData('componentType', type);
-                e.target.style.opacity = '0.5';
+                target.style.opacity = '0.5';
+                
+                // Create a transparent drag image to hide default ghost
+                const img = new Image();
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                e.dataTransfer.setDragImage(img, 0, 0);
+                
+                // Create custom drag ghost
+                this.createDragGhost(type);
+            });
+            
+            btn.addEventListener('drag', (e) => {
+                // Update ghost position during drag
+                if (e.clientX !== 0 && e.clientY !== 0) {
+                    this.updateDragGhost(e.clientX, e.clientY);
+                }
             });
             
             btn.addEventListener('dragend', (e) => {
-                e.target.style.opacity = '1';
+                const target = e.target.closest('.component-btn');
+                if (target) target.style.opacity = '1';
+                this.removeDragGhost();
             });
 
             // Touch events for mobile
@@ -128,6 +151,14 @@ class UIController {
                     // Only prevent default if we've moved enough to be dragging
                     if (touchMoveDistance > 5) {
                         e.preventDefault(); // Prevent scrolling while dragging
+                        
+                        // Create drag ghost if not already created
+                        if (!this.dragGhost) {
+                            this.createDragGhost(touchStartData.type);
+                        }
+                        
+                        // Update ghost position
+                        this.updateDragGhost(touch.clientX, touch.clientY);
                     }
                 }
             });
@@ -135,6 +166,8 @@ class UIController {
             btn.addEventListener('touchend', (e) => {
                 if (touchStartData) {
                     touchStartData.button.style.opacity = '1';
+                    this.removeDragGhost();
+                    
                     const touch = e.changedTouches[0];
                     const canvas = document.getElementById('canvas');
                     const rect = canvas.getBoundingClientRect();
@@ -158,6 +191,7 @@ class UIController {
             btn.addEventListener('touchcancel', (e) => {
                 if (touchStartData) {
                     touchStartData.button.style.opacity = '1';
+                    this.removeDragGhost();
                     touchStartData = null;
                     touchMoveDistance = 0;
                 }
@@ -387,6 +421,111 @@ class UIController {
             console.error('Export to PDF failed:', error);
             alert('Export failed. Please try again.');
         }
+    }
+
+    createDragGhost(componentType) {
+        // Remove any existing ghost
+        this.removeDragGhost();
+        
+        // Create ghost element
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost element';
+        
+        // Get default dimensions for this component type
+        const dimensions = this.getComponentDimensions(componentType);
+        ghost.style.width = dimensions.width + 'px';
+        ghost.style.height = dimensions.height + 'px';
+        
+        // Create content based on component type
+        const content = document.createElement('div');
+        content.className = `element-content ${componentType}`;
+        
+        // Add component-specific content
+        if (componentType === 'table') {
+            for (let i = 1; i <= 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'table-cell';
+                cell.textContent = `Cell ${i}`;
+                content.appendChild(cell);
+            }
+        } else if (componentType === 'browser') {
+            const browserBar = document.createElement('div');
+            browserBar.className = 'browser-bar';
+            browserBar.innerHTML = '<div class="browser-controls"><span>○</span><span>○</span><span>○</span></div><div class="browser-address">https://example.com</div>';
+            content.appendChild(browserBar);
+            
+            const browserContent = document.createElement('div');
+            browserContent.className = 'browser-content';
+            browserContent.textContent = this.getComponentDefaultText(componentType);
+            content.appendChild(browserContent);
+        } else if (componentType === 'mobile') {
+            const mobileHeader = document.createElement('div');
+            mobileHeader.className = 'mobile-header';
+            content.appendChild(mobileHeader);
+            
+            const mobileContent = document.createElement('div');
+            mobileContent.className = 'mobile-content';
+            mobileContent.textContent = this.getComponentDefaultText(componentType);
+            content.appendChild(mobileContent);
+            
+            const mobileFooter = document.createElement('div');
+            mobileFooter.className = 'mobile-footer';
+            content.appendChild(mobileFooter);
+        } else {
+            content.textContent = this.getComponentDefaultText(componentType);
+        }
+        
+        ghost.appendChild(content);
+        document.body.appendChild(ghost);
+        
+        this.dragGhost = ghost;
+        return ghost;
+    }
+
+    updateDragGhost(x, y) {
+        if (this.dragGhost) {
+            this.dragGhost.style.left = x + 'px';
+            this.dragGhost.style.top = y + 'px';
+        }
+    }
+
+    removeDragGhost() {
+        if (this.dragGhost) {
+            this.dragGhost.remove();
+            this.dragGhost = null;
+        }
+    }
+
+    getComponentDimensions(type) {
+        const dimensions = {
+            button: { width: 120, height: 40 },
+            input: { width: 200, height: 40 },
+            text: { width: 150, height: 30 },
+            image: { width: 200, height: 150 },
+            navbar: { width: 400, height: 60 },
+            table: { width: 300, height: 200 },
+            modal: { width: 400, height: 300 },
+            frame: { width: 300, height: 250 },
+            browser: { width: 600, height: 400 },
+            mobile: { width: 280, height: 520 }
+        };
+        return dimensions[type] || { width: 150, height: 100 };
+    }
+
+    getComponentDefaultText(type) {
+        const texts = {
+            button: 'Button',
+            input: 'Input field',
+            text: 'Text content',
+            image: '',
+            navbar: 'Navigation',
+            table: '',
+            modal: 'Modal Content',
+            frame: 'Frame',
+            browser: 'Browser Content',
+            mobile: 'Mobile App'
+        };
+        return texts[type] || type;
     }
 }
 
