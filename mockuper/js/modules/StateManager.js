@@ -337,7 +337,7 @@ class StateManager {
 
     // Zoom controls
     setZoom(zoom) {
-        this.zoom = Math.max(0.5, Math.min(2, zoom));
+        this.zoom = Math.max(0.1, Math.min(3, zoom));
         this.notify();
     }
 
