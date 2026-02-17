@@ -1,3 +1,10 @@
+:root {
+  --collapse-btn-offset: -13px;
+  --collapse-btn-offset-collapsed: -26px;
+  --collapse-btn-offset-mobile: -10px;
+  --collapse-btn-offset-collapsed-mobile: -18px;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -871,20 +878,20 @@ body {
 }
 
 .sidebar .collapse-btn {
-  right: -13px;
+  right: var(--collapse-btn-offset);
 }
 
 .sidebar.collapsed .collapse-btn {
-  right: -26px;
+  right: var(--collapse-btn-offset-collapsed);
   border-radius: 0 4px 4px 0;
 }
 
 .property-panel .collapse-btn {
-  left: -13px;
+  left: var(--collapse-btn-offset);
 }
 
 .property-panel.collapsed .collapse-btn {
-  left: -26px;
+  left: var(--collapse-btn-offset-collapsed);
   border-radius: 4px 0 0 4px;
 }
 
@@ -896,18 +903,18 @@ body {
   }
   
   .sidebar .collapse-btn {
-    right: -10px;
+    right: var(--collapse-btn-offset-mobile);
   }
   
   .sidebar.collapsed .collapse-btn {
-    right: -18px;
+    right: var(--collapse-btn-offset-collapsed-mobile);
   }
   
   .property-panel .collapse-btn {
-    left: -10px;
+    left: var(--collapse-btn-offset-mobile);
   }
   
   .property-panel.collapsed .collapse-btn {
-    left: -18px;
+    left: var(--collapse-btn-offset-collapsed-mobile);
   }
 }
