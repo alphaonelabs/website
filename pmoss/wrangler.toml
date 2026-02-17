@@ -1,6 +1,7 @@
 name = "oss-project-management"
-main = "src/index.js"
+main = "src/main.py"
 compatibility_date = "2024-01-01"
+compatibility_flags = ["python_workers"]
 
 # D1 Database binding
 [[d1_databases]]

@@ -1,6 +1,15 @@
 # OSS Project Management System
 
-A minimal, fast open-source project management system that integrates with GitHub Issues. Built as a Cloudflare Worker with D1 database for high-performance caching and synchronization.
+A minimal, fast open-source project management system that integrates with GitHub Issues. Built as a **Python-based Cloudflare Worker** with D1 database for high-performance caching and synchronization.
+
+## Quick Links
+
+📚 **[Quick Start Guide](QUICKSTART.md)** - Get started in 10 minutes  
+🚀 **[Deployment Guide](DEPLOYMENT.md)** - Detailed deployment instructions  
+📖 **[API Documentation](API.md)** - Complete API reference  
+⚙️ **[Features](FEATURES.md)** - Full feature list  
+🏗️ **[Architecture](ARCHITECTURE.md)** - Technical architecture details  
+🤝 **[Contributing](CONTRIBUTING.md)** - How to contribute
 
 ## Features
 
@@ -12,20 +21,45 @@ A minimal, fast open-source project management system that integrates with GitHu
 - 🔐 **OAuth Authentication** - Secure GitHub OAuth integration
 - 📈 **Analytics Dashboard** - Label distribution, assignee stats, velocity tracking
 - ⚡ **Edge Performance** - Runs on Cloudflare's global network with D1 database
+- 🐍 **Python-Powered** - Pure Python backend, no Node.js or npm required
 
 ## Architecture
 
-- **Backend**: JavaScript on Cloudflare Workers
+- **Backend**: **Python** on Cloudflare Workers
 - **Database**: Cloudflare D1 (SQLite at the edge)
 - **Frontend**: Single-page application (vanilla JavaScript)
 - **Integration**: GitHub API v3 + OAuth + Webhooks
+
+## Project Structure
+
+```
+.
+├── src/
+│   ├── main.py       # Main worker entry point and request router
+│   ├── auth.py       # GitHub OAuth authentication
+│   ├── api.py        # API endpoints for issues CRUD
+│   ├── github.py     # GitHub API client and sync logic
+│   ├── webhook.py    # GitHub webhook handler
+│   ├── metrics.py    # Analytics and metrics engine
+│   └── ui.py         # Frontend single-page application
+├── schema.sql        # D1 database schema
+├── wrangler.toml     # Cloudflare Workers configuration
+├── requirements.txt  # Python dependencies (reference)
+├── README.md         # This file
+├── QUICKSTART.md     # Quick start guide
+├── DEPLOYMENT.md     # Detailed deployment guide
+├── API.md            # API documentation
+├── FEATURES.md       # Complete feature list
+├── ARCHITECTURE.md   # Technical architecture details
+└── CONTRIBUTING.md   # Contribution guidelines
+```
 
 ## Prerequisites
 
 - [Cloudflare Account](https://dash.cloudflare.com/sign-up)
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - [GitHub OAuth App](https://github.com/settings/developers)
-- Node.js 16+ (for development)
+- **No Node.js or npm required!** (Python Workers only need Wrangler CLI)
 
 ## Setup
 
@@ -36,10 +70,17 @@ git clone https://github.com/alphaonelabs/alphaonelabs-oss-project-management.gi
 cd alphaonelabs-oss-project-management
 \`\`\`
 
-### 2. Install Dependencies
+### 2. Install Wrangler CLI
 
 \`\`\`bash
-npm install
+# Using npm (only for Wrangler CLI, not for the project)
+npm install -g wrangler
+
+# Or using Cargo (Rust)
+cargo install wrangler
+
+# Or using Homebrew (macOS)
+brew install cloudflare-wrangler2
 \`\`\`
 
 ### 3. Create a D1 Database
@@ -182,10 +223,12 @@ The D1 database includes the following tables:
 
 \`\`\`bash
 # Run local development server
-npm run dev
+wrangler dev
 
 # Access at http://localhost:8787
 \`\`\`
+
+**Note**: Python Workers are fully supported by Wrangler. No separate Python installation or pip packages are needed.
 
 ### Testing Locally
 

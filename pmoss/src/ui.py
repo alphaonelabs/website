@@ -1,9 +1,13 @@
-/**
- * UI Handler - Serve the frontend application
- */
+"""
+UI Handler - Serve the frontend application
+"""
 
-export function serveUI(env) {
-  const html = `<!DOCTYPE html>
+from js import Response, Headers
+
+
+def serve_ui(env):
+    """Serve the frontend HTML application"""
+    html = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -457,11 +461,11 @@ export function serveUI(env) {
         const row = document.createElement('tr');
         
         const labels = issue.labels.map(l => 
-          \`<span class="label" style="background-color: #\${l.color}; color: \${getContrastColor(l.color)}">\${l.name}</span>\`
+          `<span class="label" style="background-color: #${l.color}; color: ${getContrastColor(l.color)}">${l.name}</span>`
         ).join('');
 
         const assignees = issue.assignees.map(a => 
-          \`<span class="assignee">@\${a}</span>\`
+          `<span class="assignee">@${a}</span>`
         ).join('');
 
         const createdDate = new Date(issue.created_at).toLocaleDateString();
@@ -469,16 +473,16 @@ export function serveUI(env) {
           ? formatTimeToClose(issue.time_to_close)
           : '-';
 
-        row.innerHTML = \`
-          <td><input type="checkbox" class="checkbox issue-checkbox" data-number="\${issue.number}" onchange="updateSelection()" /></td>
-          <td><a href="\${issue.html_url}" target="_blank" class="issue-number">#\${issue.number}</a></td>
-          <td><span class="issue-title">\${escapeHtml(issue.title)}</span></td>
-          <td><span class="state-badge state-\${issue.state}">\${issue.state}</span></td>
-          <td>\${labels}</td>
-          <td>\${assignees}</td>
-          <td class="time-value">\${createdDate}</td>
-          <td class="time-value">\${timeToClose}</td>
-        \`;
+        row.innerHTML = `
+          <td><input type="checkbox" class="checkbox issue-checkbox" data-number="${issue.number}" onchange="updateSelection()" /></td>
+          <td><a href="${issue.html_url}" target="_blank" class="issue-number">#${issue.number}</a></td>
+          <td><span class="issue-title">${escapeHtml(issue.title)}</span></td>
+          <td><span class="state-badge state-${issue.state}">${issue.state}</span></td>
+          <td>${labels}</td>
+          <td>${assignees}</td>
+          <td class="time-value">${createdDate}</td>
+          <td class="time-value">${timeToClose}</td>
+        `;
 
         tbody.appendChild(row);
       });
@@ -494,24 +498,24 @@ export function serveUI(env) {
 
         if (!response.ok) return;
 
-        const metricsHtml = \`
+        const metricsHtml = `
           <div class="metric-card">
             <h3>Total Issues</h3>
-            <div class="value">\${data.current.total_issues || 0}</div>
+            <div class="value">${data.current.total_issues || 0}</div>
           </div>
           <div class="metric-card">
             <h3>Open Issues</h3>
-            <div class="value">\${data.current.open_issues || 0}</div>
+            <div class="value">${data.current.open_issues || 0}</div>
           </div>
           <div class="metric-card">
             <h3>Closed Issues</h3>
-            <div class="value">\${data.current.closed_issues || 0}</div>
+            <div class="value">${data.current.closed_issues || 0}</div>
           </div>
           <div class="metric-card">
             <h3>Avg Time to Close</h3>
-            <div class="value">\${data.current.avg_time_to_close_days || 0} days</div>
+            <div class="value">${data.current.avg_time_to_close_days || 0} days</div>
           </div>
-        \`;
+        `;
 
         document.getElementById('metrics').innerHTML = metricsHtml;
       } catch (error) {
@@ -537,7 +541,7 @@ export function serveUI(env) {
       document.querySelectorAll('th').forEach(th => {
         th.classList.remove('sorted-asc', 'sorted-desc');
       });
-      const header = document.querySelector(\`th[onclick*="\${currentSort}"]\`);
+      const header = document.querySelector(`th[onclick*="${currentSort}"]`);
       if (header) {
         header.classList.add(currentOrder === 'asc' ? 'sorted-asc' : 'sorted-desc');
       }
@@ -549,13 +553,13 @@ export function serveUI(env) {
       let html = '';
 
       if (pagination.page > 1) {
-        html += \`<button class="btn btn-secondary btn-small" onclick="loadIssues(\${pagination.page - 1})">Previous</button>\`;
+        html += `<button class="btn btn-secondary btn-small" onclick="loadIssues(${pagination.page - 1})">Previous</button>`;
       }
 
-      html += \`<span style="padding: 0 16px; color: #8b949e;">Page \${pagination.page} of \${pagination.total_pages}</span>\`;
+      html += `<span style="padding: 0 16px; color: #8b949e;">Page ${pagination.page} of ${pagination.total_pages}</span>`;
 
       if (pagination.page < pagination.total_pages) {
-        html += \`<button class="btn btn-secondary btn-small" onclick="loadIssues(\${pagination.page + 1})">Next</button>\`;
+        html += `<button class="btn btn-secondary btn-small" onclick="loadIssues(${pagination.page + 1})">Next</button>`;
       }
 
       div.innerHTML = html;
@@ -580,7 +584,7 @@ export function serveUI(env) {
       
       if (selectedIssues.size > 0) {
         bulkActions.classList.add('active');
-        selectedCount.textContent = \`\${selectedIssues.size} selected\`;
+        selectedCount.textContent = `${selectedIssues.size} selected`;
       } else {
         bulkActions.classList.remove('active');
       }
@@ -649,7 +653,7 @@ export function serveUI(env) {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
 
-        alert(\`Synced \${data.count} issues from \${repository}\`);
+        alert(`Synced ${data.count} issues from ${repository}`);
         loadIssues(currentPage);
       } catch (error) {
         showError(error.message);
@@ -688,20 +692,19 @@ export function serveUI(env) {
     }
 
     function formatTimeToClose(hours) {
-      if (hours < 24) return \`\${hours}h\`;
+      if (hours < 24) return `${hours}h`;
       const days = Math.floor(hours / 24);
-      if (days < 7) return \`\${days}d\`;
+      if (days < 7) return `${days}d`;
       const weeks = Math.floor(days / 7);
-      return \`\${weeks}w\`;
+      return `${weeks}w`;
     }
 
     // Initialize
     checkAuth();
   </script>
 </body>
-</html>`;
-
-  return new Response(html, {
-    headers: { 'Content-Type': 'text/html' }
-  });
-}
+</html>"""
+    
+    headers = Headers.new()
+    headers.set('Content-Type', 'text/html')
+    return Response.new(html, headers=headers)
