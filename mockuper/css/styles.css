@@ -15,6 +15,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
   background: #f0f0f0;
+  touch-action: none; /* Prevent default browser zoom and pan on mobile */
 }
 
 * {
@@ -469,16 +470,18 @@ body {
   height: 10px;
   background: #666;
   border: 1px solid #333;
+  z-index: 10;
+  pointer-events: auto;
 }
 
 .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
 .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
 .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
 .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
-.resize-handle.n { top: -5px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
-.resize-handle.s { bottom: -5px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
-.resize-handle.w { top: 50%; left: -5px; transform: translateY(-50%); cursor: w-resize; }
-.resize-handle.e { top: 50%; right: -5px; transform: translateY(-50%); cursor: e-resize; }
+.resize-handle.n { top: -5px; left: 50%; margin-left: -5px; cursor: n-resize; }
+.resize-handle.s { bottom: -5px; left: 50%; margin-left: -5px; cursor: s-resize; }
+.resize-handle.w { top: 50%; margin-top: -5px; left: -5px; cursor: w-resize; }
+.resize-handle.e { top: 50%; margin-top: -5px; right: -5px; cursor: e-resize; }
 
 .pages-list {
   margin-bottom: 8px;
