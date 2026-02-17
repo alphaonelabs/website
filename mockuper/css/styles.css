@@ -205,18 +205,12 @@ body {
 
 .table-preview {
   border: 3px solid #333;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 1px;
-  background: #333;
-  padding: 1px;
-}
-
-.table-preview::before,
-.table-preview::after {
-  content: '';
-  background: #fff;
+  background: 
+    linear-gradient(#333 1px, transparent 1px),
+    linear-gradient(90deg, #333 1px, transparent 1px),
+    #fff;
+  background-size: 50% 50%;
+  background-position: 0 0, 0 0, 0 0;
 }
 
 .modal-preview {

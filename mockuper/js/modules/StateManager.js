@@ -206,12 +206,8 @@ class StateManager {
         if (element) {
             // Set to 0 to ensure it doesn't go behind the grid
             element.zIndex = 0;
-            // Adjust other elements that were at 0 or below
-            page.elements.forEach(el => {
-                if (el.id !== id && el.zIndex <= 0) {
-                    el.zIndex++;
-                }
-            });
+            // Normalize all z-indices to prevent inflation
+            this.normalizeZIndices();
             this.saveHistory();
             this.notify();
         }
