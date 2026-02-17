@@ -20,6 +20,9 @@ class UIController {
         this.deleteBtn = document.getElementById('delete-btn');
         this.exportPngBtn = document.getElementById('export-png-btn');
         this.exportPdfBtn = document.getElementById('export-pdf-btn');
+        this.exportJsonBtn = document.getElementById('export-json-btn');
+        this.importJsonBtn = document.getElementById('import-json-btn');
+        this.jsonFileInput = document.getElementById('json-file-input');
         
         // Page controls
         this.pagesList = document.getElementById('pages-list');
@@ -82,6 +85,11 @@ class UIController {
         // Export buttons
         this.exportPngBtn.addEventListener('click', () => this.exportToPNG());
         this.exportPdfBtn.addEventListener('click', () => this.exportToPDF());
+        this.exportJsonBtn.addEventListener('click', () => this.exportToJSON());
+        this.importJsonBtn.addEventListener('click', () => this.importFromJSON());
+        
+        // Handle file input change
+        this.jsonFileInput.addEventListener('change', (e) => this.handleFileSelect(e));
         
         // Pages
         this.addPageBtn.addEventListener('click', () => this.state.addPage());
@@ -526,6 +534,54 @@ class UIController {
             mobile: 'Mobile App'
         };
         return texts[type] || type;
+    }
+
+    exportToJSON() {
+        try {
+            const jsonData = this.state.exportToJSON();
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `wireframe-project-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Export to JSON failed:', error);
+            alert('Export failed. Please try again.');
+        }
+    }
+
+    importFromJSON() {
+        // Trigger the file input
+        this.jsonFileInput.click();
+    }
+
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const jsonString = event.target.result;
+            const success = this.state.importFromJSON(jsonString);
+            
+            if (success) {
+                alert('Project imported successfully!');
+            } else {
+                alert('Failed to import project. Please check the file format.');
+            }
+            
+            // Clear the file input so the same file can be selected again
+            this.jsonFileInput.value = '';
+        };
+        
+        reader.onerror = () => {
+            alert('Failed to read file. Please try again.');
+            this.jsonFileInput.value = '';
+        };
+        
+        reader.readAsText(file);
     }
 }
 
