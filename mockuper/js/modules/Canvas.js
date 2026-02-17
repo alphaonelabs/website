@@ -19,6 +19,10 @@ class Canvas {
         this.lastPinchDistance = null;
         this.isPinching = false;
         
+        // Canvas panning state
+        this.isCanvasPanning = false;
+        this.panStart = null;
+        
         this.init();
     }
 
@@ -31,8 +35,20 @@ class Canvas {
         });
 
         this.canvas.addEventListener('touchstart', (e) => {
-            if (e.target === this.canvas || e.target === this.content) {
-                this.state.deselectElement();
+            // Check if touch is on empty canvas area (not on an element)
+            if (e.target === this.canvas || e.target === this.content || e.target.classList.contains('grid')) {
+                // Single finger - start canvas panning
+                if (e.touches.length === 1) {
+                    this.state.deselectElement();
+                    this.isCanvasPanning = true;
+                    const touch = e.touches[0];
+                    this.panStart = {
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        scrollLeft: this.canvas.scrollLeft,
+                        scrollTop: this.canvas.scrollTop
+                    };
+                }
             }
         });
 
@@ -244,7 +260,7 @@ class Canvas {
         }
 
         // Update cursor
-        if (this.isDragging) {
+        if (this.isDragging && !this.canvas.classList.contains('grabbing')) {
             this.canvas.classList.add('grabbing');
         }
     }
@@ -301,6 +317,18 @@ class Canvas {
             return;
         }
         
+        // Handle canvas panning
+        if (this.isCanvasPanning && this.panStart && e.touches.length === 1) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - this.panStart.x;
+            const deltaY = touch.clientY - this.panStart.y;
+            
+            this.canvas.scrollLeft = this.panStart.scrollLeft - deltaX;
+            this.canvas.scrollTop = this.panStart.scrollTop - deltaY;
+            return;
+        }
+        
         if (this.isDragging && this.state.selectedElementId && this.dragStart) {
             e.preventDefault();
             const touch = e.touches[0];
@@ -337,7 +365,7 @@ class Canvas {
         }
 
         // Update cursor
-        if (this.isDragging) {
+        if ((this.isDragging || this.isCanvasPanning) && !this.canvas.classList.contains('grabbing')) {
             this.canvas.classList.add('grabbing');
         }
     }
@@ -350,6 +378,13 @@ class Canvas {
             this.dragStart = null;
             this.resizeStart = null;
             this.resizeHandle = null;
+            this.canvas.classList.remove('grabbing');
+        }
+        
+        // Reset canvas panning state
+        if (this.isCanvasPanning) {
+            this.isCanvasPanning = false;
+            this.panStart = null;
             this.canvas.classList.remove('grabbing');
         }
         

@@ -173,9 +173,13 @@ body {
   min-width: 0;
   padding: 0;
   border-right: none;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
   z-index: 1001;
+}
+
+.sidebar.collapsed > *:not(.collapse-btn) {
+  display: none;
 }
 
 @media (max-width: 768px) {
@@ -576,6 +580,10 @@ body {
   padding: 0;
   border-left: none;
   overflow: hidden;
+}
+
+.property-panel.collapsed > *:not(.collapse-btn) {
+  display: none;
 }
 
 @media (max-width: 768px) {
