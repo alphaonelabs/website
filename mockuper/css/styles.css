@@ -173,7 +173,7 @@ body {
   min-width: 0;
   padding: 0;
   border-right: none;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   z-index: 1001;
 }
@@ -579,7 +579,7 @@ body {
   min-width: 0;
   padding: 0;
   border-left: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .property-panel.collapsed > *:not(.collapse-btn) {
@@ -925,4 +925,17 @@ body {
   .property-panel.collapsed .collapse-btn {
     left: var(--collapse-btn-offset-collapsed-mobile);
   }
+}
+
+/* Drag ghost preview */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
+}
+
+.drag-ghost .element-content {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
