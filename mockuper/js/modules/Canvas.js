@@ -98,13 +98,15 @@ class Canvas {
         // Pinch-to-zoom on canvas
         this.canvas.addEventListener('touchstart', this.handleCanvasTouchStart.bind(this), { passive: false });
         
-        // Update grid on window resize
+        // Update grid on window resize with debouncing
+        let resizeTimeout;
         window.addEventListener('resize', () => {
-            this.updateGridScale();
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => this.updateGridScale(), 150);
         });
         
-        // Initialize grid scale
-        setTimeout(() => this.updateGridScale(), 100);
+        // Initialize grid scale using requestAnimationFrame for reliable timing
+        requestAnimationFrame(() => this.updateGridScale());
     }
 
     render() {
