@@ -20,6 +20,16 @@ This is a static GitHub Pages site that provides comprehensive information about
 
 The site is built with vanilla HTML and Tailwind CSS (loaded via CDN), making it lightweight and easy to maintain.
 
+### GitHub Pages Setup
+
+This repository is configured to automatically deploy to GitHub Pages when changes are pushed to the `main` or `master` branch. The deployment is handled by a GitHub Actions workflow (`.github/workflows/deploy.yml`).
+
+**To enable GitHub Pages:**
+1. Go to your repository settings
+2. Navigate to "Pages" in the left sidebar
+3. Under "Build and deployment", select "GitHub Actions" as the source
+4. The site will be automatically deployed when you push to the main branch
+
 ### Local Development
 
 To view the site locally, simply open `index.html` in your web browser:
