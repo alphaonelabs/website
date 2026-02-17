@@ -15,6 +15,7 @@ from api import (
 )
 from metrics import handle_get_metrics
 from ui import serve_ui
+from static_files import serve_css, serve_js
 import json
 
 
@@ -46,6 +47,13 @@ async def on_fetch(request, env):
         # Public routes
         if path == '/':
             return serve_ui(env)
+        
+        # Static files
+        if path == '/static/styles.css':
+            return serve_css()
+        
+        if path == '/static/app.js':
+            return serve_js()
         
         if path == '/auth':
             return handle_auth(env)
