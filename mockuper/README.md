@@ -1,6 +1,6 @@
 # Wireframe Studio
 
-A web-based low-fidelity wireframing application with a hand-drawn sketch style and grayscale UI. Built for fast prototyping and design collaboration.
+A web-based low-fidelity wireframing application built with vanilla HTML, CSS, and JavaScript. Features a clean grayscale UI optimized for fast prototyping and design collaboration.
 
 ## 🚀 Features
 
@@ -16,6 +16,7 @@ A web-based low-fidelity wireframing application with a hand-drawn sketch style 
 - **Layer Ordering** - Bring to front/send to back for proper layering
 - **Export** - Export to PNG or PDF format
 - **Local Storage** - Projects automatically save and restore on reload
+- **Modular Architecture** - Clean ES6 modules for easy maintenance
 
 ## 🎯 Usage
 
@@ -47,31 +48,48 @@ A web-based low-fidelity wireframing application with a hand-drawn sketch style 
 
 ## 🛠️ Development
 
+No build process required! Just open `index.html` in a modern browser or serve it with any web server:
+
 ```bash
-# Install dependencies
-npm install
+# Using Python
+python -m http.server 8000
 
-# Start development server
-npm run dev
+# Using Node.js
+npx serve
 
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+# Or just open index.html directly in your browser
 ```
+
+## 🏗️ Architecture
+
+The application is built with a modular architecture using ES6 modules:
+
+- **StateManager.js** - Manages application state with history for undo/redo
+- **Canvas.js** - Handles canvas rendering and drag/resize interactions
+- **UIController.js** - Manages UI updates and event bindings
+- **app.js** - Main entry point that ties everything together
 
 ## 🌐 Deployment
 
-This app is configured for GitHub Pages deployment. When pushed to the `main` branch, GitHub Actions automatically builds and deploys the app.
+This app is configured for GitHub Pages deployment. When pushed to the `main` branch, GitHub Actions automatically deploys the app.
+
+No build step needed - it's pure vanilla JavaScript!
 
 ## 📦 Technology Stack
 
-- React 19 with hooks
-- Vite for fast development
-- html2canvas for PNG export
-- jsPDF for PDF export
-- Local storage for persistence
+- Vanilla JavaScript (ES6 modules)
+- HTML5 & CSS3
+- html2canvas (via CDN) for PNG export
+- jsPDF (via CDN) for PDF export
+- Local Storage API for persistence
+
+## 🎨 Design Philosophy
+
+- **No Dependencies** - Pure vanilla JavaScript, no frameworks
+- **Modular** - Clean separation of concerns with ES6 modules
+- **Fast** - No build process, instant reload
+- **Lightweight** - Minimal footprint, fast loading
+- **Standards** - Modern web standards and best practices
 
 ## 📝 License
 
