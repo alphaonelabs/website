@@ -87,6 +87,12 @@
                       class="mt-3 w-full bg-gray-700 hover:bg-gray-600 p-2 rounded text-gray-300 text-xs flex items-center justify-center gap-2 transition">
                 <i class="fas fa-redo"></i> Reset All
               </button>
+              <a href="https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="mt-2 w-full bg-indigo-700 hover:bg-indigo-600 p-2 rounded text-white text-xs flex items-center justify-center gap-2 transition font-medium">
+                <i class="fas fa-code-branch"></i> Contribute
+              </a>
             </div>
             <div class="flex-1 relative bg-gray-950" id="viewport-wrapper">
               <canvas id="sim-canvas"
@@ -176,6 +182,16 @@
                   Blocks: <span id="block-count">0</span>
                 </div>
               </div>
+              <!-- LiDAR Detection Panel -->
+              <div class="mt-3 pt-3 border-t border-gray-700">
+                <div class="text-gray-400 text-xs mb-1 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse hidden" id="detection-indicator"></span>
+                  📡 Detection:
+                </div>
+                <div id="detection-info" class="text-[10px] space-y-0.5">
+                  <div class="text-gray-500">LiDAR not installed</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -230,6 +246,7 @@
 
       function generateBlocks() {
         blocks = [];
+        const shapes = ['square', 'circle', 'triangle'];
         for (let i = 0; i < 12; i++) {
           blocks.push({
             id: i,
@@ -237,6 +254,7 @@
             y: 80 + Math.random() * (canvas.height - 160),
             size: 25,
             color: `hsl(${i * 30}, 70%, 55%)`,
+            shape: shapes[Math.floor(Math.random() * shapes.length)],
             held: false,
           });
         }
@@ -331,6 +349,10 @@
         if (type === 'camera') {
           document.getElementById('camera-feed').classList.remove('hidden');
         }
+        if (type === 'lidar') {
+          lastDetectedId = null;
+          updateDetectionUI(null);
+        }
         updatePartsList();
         showMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} added!`);
       }
@@ -358,6 +380,13 @@
             b.held = false;
           }
           robot.holdingBlock = null;
+        }
+
+        // Handle lidar removal: clear detection
+        if (type === 'lidar') {
+          lastDetectedId = null;
+          document.getElementById('detection-info').innerHTML = '<div class="text-gray-500">LiDAR not installed</div>';
+          document.getElementById('detection-indicator').classList.add('hidden');
         }
 
         // Handle wheels removal: stop the robot
@@ -389,6 +418,9 @@
         document.getElementById('start-prompt').classList.remove('hidden');
         document.getElementById('camera-feed').classList.add('hidden');
         document.getElementById('block-count').textContent = '0';
+        lastDetectedId = null;
+        document.getElementById('detection-info').innerHTML = '<div class="text-gray-500">LiDAR not installed</div>';
+        document.getElementById('detection-indicator').classList.add('hidden');
         updatePartsList();
       }
 
@@ -442,6 +474,16 @@
         document.getElementById('pos-display').textContent = `${Math.round(robot.x)}, ${Math.round(robot.y)}`;
         document.getElementById('angle-display').textContent = `${Math.round((robot.angle * 180) / Math.PI)}°`;
         document.getElementById('speed-display').textContent = robot.speed.toFixed(1);
+
+        // LiDAR object detection
+        if (robot.parts.lidar) {
+          const detected = getLidarDetection();
+          const newId = detected ? detected.id : null;
+          if (newId !== lastDetectedId) {
+            lastDetectedId = newId;
+            updateDetectionUI(detected);
+          }
+        }
       }
 
       function drawGrid() {
@@ -465,10 +507,26 @@
         blocks.forEach((b) => {
           if (b.held) return; // draw held block with robot
           ctx.fillStyle = b.color;
-          ctx.fillRect(b.x, b.y, b.size, b.size);
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
-          ctx.strokeRect(b.x, b.y, b.size, b.size);
+
+          if (b.shape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(b.x + b.size / 2, b.y + b.size / 2, b.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          } else if (b.shape === 'triangle') {
+            ctx.beginPath();
+            ctx.moveTo(b.x + b.size / 2, b.y);
+            ctx.lineTo(b.x, b.y + b.size);
+            ctx.lineTo(b.x + b.size, b.y + b.size);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.fillRect(b.x, b.y, b.size, b.size);
+            ctx.strokeRect(b.x, b.y, b.size, b.size);
+          }
 
           // Glow if near gripper and arm attached
           if (robot.parts.arm && robot.holdingBlock === null) {
@@ -477,7 +535,20 @@
             if (Math.hypot(gx - (b.x + b.size / 2), gy - (b.y + b.size / 2)) < 45) {
               ctx.shadowColor = '#fff';
               ctx.shadowBlur = 12;
-              ctx.strokeRect(b.x, b.y, b.size, b.size);
+              if (b.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(b.x + b.size / 2, b.y + b.size / 2, b.size / 2, 0, Math.PI * 2);
+                ctx.stroke();
+              } else if (b.shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(b.x + b.size / 2, b.y);
+                ctx.lineTo(b.x, b.y + b.size);
+                ctx.lineTo(b.x + b.size, b.y + b.size);
+                ctx.closePath();
+                ctx.stroke();
+              } else {
+                ctx.strokeRect(b.x, b.y, b.size, b.size);
+              }
               ctx.shadowBlur = 0;
             }
           }
@@ -527,7 +598,7 @@
           const sw = (((Date.now() / 15) % 360) * Math.PI) / 180;
           ctx.beginPath();
           ctx.moveTo(0, -32);
-          ctx.lineTo(Math.cos(sw - Math.PI / 2) * 70, -32 + Math.sin(sw - Math.PI / 2) * 70);
+          ctx.lineTo(Math.cos(sw - Math.PI / 2) * 100, -32 + Math.sin(sw - Math.PI / 2) * 100);
           ctx.stroke();
         }
 
@@ -567,10 +638,25 @@
             const b = blocks.find((bl) => bl.id === robot.holdingBlock);
             if (b) {
               ctx.fillStyle = b.color;
-              ctx.fillRect(-b.size / 2, 55, b.size, b.size);
               ctx.strokeStyle = '#fff';
               ctx.lineWidth = 2;
-              ctx.strokeRect(-b.size / 2, 55, b.size, b.size);
+              if (b.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(0, 55 + b.size / 2, b.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+              } else if (b.shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(0, 55);
+                ctx.lineTo(-b.size / 2, 55 + b.size);
+                ctx.lineTo(b.size / 2, 55 + b.size);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+              } else {
+                ctx.fillRect(-b.size / 2, 55, b.size, b.size);
+                ctx.strokeRect(-b.size / 2, 55, b.size, b.size);
+              }
             }
           }
         }
@@ -647,7 +733,105 @@
         render();
         requestAnimationFrame(loop);
       }
+
+      // ========== LIDAR DETECTION ==========
+      let lastDetectedId = null;
+
       loop();
+
+      function segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+        const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (denom === 0) return false;
+        const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+        const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+        return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+      }
+
+      function segmentIntersectsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+        if (x2 >= rx && x2 <= rx + rw && y2 >= ry && y2 <= ry + rh) return true;
+        return (
+          segmentsIntersect(x1, y1, x2, y2, rx, ry, rx + rw, ry) ||
+          segmentsIntersect(x1, y1, x2, y2, rx + rw, ry, rx + rw, ry + rh) ||
+          segmentsIntersect(x1, y1, x2, y2, rx, ry + rh, rx + rw, ry + rh) ||
+          segmentsIntersect(x1, y1, x2, y2, rx, ry, rx, ry + rh)
+        );
+      }
+
+      function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+        const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+        const lenSq = C * C + D * D;
+        const param = lenSq !== 0 ? Math.max(0, Math.min(1, (A * C + B * D) / lenSq)) : 0;
+        return Math.hypot(px - (x1 + param * C), py - (y1 + param * D));
+      }
+
+      function beamIntersectsBlock(x1, y1, x2, y2, b) {
+        const cx = b.x + b.size / 2, cy = b.y + b.size / 2;
+        if (b.shape === 'circle') {
+          return pointToSegmentDist(cx, cy, x1, y1, x2, y2) < b.size / 2;
+        } else if (b.shape === 'triangle') {
+          const tx1 = b.x + b.size / 2, ty1 = b.y;
+          const tx2 = b.x, ty2 = b.y + b.size;
+          const tx3 = b.x + b.size, ty3 = b.y + b.size;
+          // Check all three edges, or if beam endpoint is inside triangle
+          return (
+            segmentsIntersect(x1, y1, x2, y2, tx1, ty1, tx2, ty2) ||
+            segmentsIntersect(x1, y1, x2, y2, tx2, ty2, tx3, ty3) ||
+            segmentsIntersect(x1, y1, x2, y2, tx3, ty3, tx1, ty1)
+          );
+        } else {
+          return segmentIntersectsRect(x1, y1, x2, y2, b.x, b.y, b.size, b.size);
+        }
+      }
+
+      function getLidarDetection() {
+        if (!robot.parts.lidar || blocks.length === 0) return null;
+        const sw = (((Date.now() / 15) % 360) * Math.PI) / 180;
+        // Lidar center in world coordinates (local offset: 0, -32)
+        const lidarX = robot.x + 32 * Math.sin(robot.angle);
+        const lidarY = robot.y - 32 * Math.cos(robot.angle);
+        // World beam direction angle
+        const worldBeamAngle = sw - Math.PI / 2 + robot.angle;
+        const beamRange = 100;
+        const beamEndX = lidarX + Math.cos(worldBeamAngle) * beamRange;
+        const beamEndY = lidarY + Math.sin(worldBeamAngle) * beamRange;
+        for (const b of blocks) {
+          if (b.held) continue;
+          if (beamIntersectsBlock(lidarX, lidarY, beamEndX, beamEndY, b)) return b;
+        }
+        return null;
+      }
+
+      function getColorName(hslColor) {
+        const match = hslColor.match(/hsl\((\d+)/);
+        if (!match) return hslColor;
+        const hue = parseInt(match[1]);
+        const names = [
+          [15, 'Red'], [45, 'Orange'], [75, 'Yellow'], [105, 'Yellow-Green'],
+          [135, 'Green'], [165, 'Teal'], [195, 'Cyan'], [225, 'Sky Blue'],
+          [255, 'Blue'], [285, 'Purple'], [315, 'Magenta'], [345, 'Pink'],
+        ];
+        for (const [max, name] of names) {
+          if (hue < max) return name;
+        }
+        return 'Red';
+      }
+
+      function updateDetectionUI(detected) {
+        const el = document.getElementById('detection-info');
+        const indicator = document.getElementById('detection-indicator');
+        if (detected) {
+          const colorName = getColorName(detected.color);
+          const shapeName = detected.shape.charAt(0).toUpperCase() + detected.shape.slice(1);
+          el.innerHTML =
+            '<div class="text-green-400 font-semibold">● OBJECT DETECTED</div>' +
+            '<div class="text-gray-300 mt-0.5">Shape: <span class="text-yellow-300">' + shapeName + '</span></div>' +
+            '<div class="text-gray-300">Color: <span style="color:' + detected.color + ';font-weight:600">' + colorName + '</span></div>';
+          indicator.classList.remove('hidden');
+        } else {
+          el.innerHTML = '<div class="text-gray-500">No objects detected</div>';
+          indicator.classList.add('hidden');
+        }
+      }
     </script>
   </body>
 </html>
