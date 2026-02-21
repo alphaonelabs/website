@@ -1,0 +1,311 @@
+"""
+Static file handler
+"""
+
+from js import Response, Headers
+
+# CSS content
+CSS_CONTENT = """* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0d1117;
+  color: #c9d1d9;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  padding: 16px 0;
+  margin-bottom: 24px;
+}
+
+header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #58a6ff;
+}
+
+.auth-section {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.auth-section h2 {
+  margin-bottom: 16px;
+  font-size: 32px;
+}
+
+.auth-section p {
+  color: #8b949e;
+  margin-bottom: 24px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #238636;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #2ea043;
+}
+
+.btn-secondary {
+  background: #21262d;
+  border: 1px solid #30363d;
+}
+
+.btn-secondary:hover {
+  background: #30363d;
+}
+
+.btn-small {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.controls {
+  background: #161b22;
+  padding: 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.control-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.control-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+input[type="text"], select {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+input[type="text"] {
+  min-width: 300px;
+}
+
+label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #8b949e;
+}
+
+.bulk-actions {
+  display: none;
+  gap: 8px;
+  padding: 12px;
+  background: #21262d;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.bulk-actions.active {
+  display: flex;
+}
+
+table {
+  width: 100%;
+  background: #161b22;
+  border-radius: 6px;
+  overflow: hidden;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #21262d;
+}
+
+th {
+  background: #0d1117;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #8b949e;
+  cursor: pointer;
+  user-select: none;
+}
+
+th:hover {
+  background: #161b22;
+}
+
+th.sortable::after {
+  content: ' ⇅';
+  opacity: 0.3;
+}
+
+th.sorted-asc::after {
+  content: ' ↑';
+  opacity: 1;
+}
+
+th.sorted-desc::after {
+  content: ' ↓';
+  opacity: 1;
+}
+
+tr:hover {
+  background: #0d1117;
+}
+
+.issue-number {
+  color: #8b949e;
+  text-decoration: none;
+}
+
+.issue-number:hover {
+  color: #58a6ff;
+}
+
+.issue-title {
+  color: #c9d1d9;
+  font-weight: 500;
+}
+
+.state-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.state-open {
+  background: #238636;
+  color: white;
+}
+
+.state-closed {
+  background: #8250df;
+  color: white;
+}
+
+.label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.assignee {
+  display: inline-block;
+  margin-right: 4px;
+  color: #58a6ff;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: #161b22;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+}
+
+.metric-card h3 {
+  font-size: 12px;
+  color: #8b949e;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.metric-card .value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #58a6ff;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #8b949e;
+}
+
+.error {
+  background: #da3633;
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.time-value {
+  color: #8b949e;
+  font-size: 12px;
+}"""
+
+
+def serve_css():
+    """Serve CSS file"""
+    headers = Headers.new()
+    headers.set('Content-Type', 'text/css')
+    return Response.new(CSS_CONTENT, headers=headers)
+
+
+# Import JS content from app module
+from static_app import JS_CONTENT
+
+
+def serve_js():
+    """Serve JavaScript file"""
+    headers = Headers.new()
+    headers.set('Content-Type', 'application/javascript')
+    return Response.new(JS_CONTENT, headers=headers)
