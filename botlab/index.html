@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-black text-white antialiased">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpha One Labs - Instrument</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Courier New', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            sys: {
+              dark: '#050505',
+              grid: '#111111',
+              accent: '#f0f0f0',
+              muted: '#666666',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #050505;/Users/lakshyagupta/Desktop/new_osl/hh.html
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .content-layer {
+      position: relative;
+      z-index: 10;
+    }
+    ::-webkit-scrollbar {
+      width: 0px;
+    }
+    .system-font {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      letter-spacing: -0.02em;
+    }
+    .stagger-text span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    .interactive-canvas {
+      pointer-events: auto !important;
+      cursor: crosshair;
+    }
+
+    /* High-Tech Button */
+    .tech-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 40px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(0, 255, 200, 0.3);
+      color: #00ffc8;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 13px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      z-index: 20;
+    }
+
+    .tech-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(0, 255, 200, 0.05) 40%,
+        rgba(0, 255, 200, 0.05) 60%,
+        transparent 100%
+      );
+      transform: translateX(-100%);
+      transition: transform 0.6s ease;
+    }
+
+    .tech-btn:hover::before {
+      transform: translateX(100%);
+    }
+
+    .tech-btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 200, 0.03) 2px,
+        rgba(0, 255, 200, 0.03) 4px
+      );
+      pointer-events: none;
+    }
+
+    .tech-btn:hover {
+      border-color: rgba(0, 255, 200, 0.8);
+      box-shadow:
+        0 0 20px rgba(0, 255, 200, 0.15),
+        0 0 60px rgba(0, 255, 200, 0.05),
+        inset 0 0 20px rgba(0, 255, 200, 0.05);
+      color: #fff;
+      background: rgba(0, 255, 200, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .tech-btn .btn-icon {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.3s ease;
+    }
+
+    .tech-btn:hover .btn-icon {
+      transform: translateX(4px);
+    }
+
+    .tech-btn .btn-corner {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-color: rgba(0, 255, 200, 0.6);
+      transition: all 0.3s ease;
+    }
+
+    .tech-btn .btn-corner.tl {
+      top: -1px;
+      left: -1px;
+      border-top: 2px solid;
+      border-left: 2px solid;
+    }
+
+    .tech-btn .btn-corner.tr {
+      top: -1px;
+      right: -1px;
+      border-top: 2px solid;
+      border-right: 2px solid;
+    }
+
+    .tech-btn .btn-corner.bl {
+      bottom: -1px;
+      left: -1px;
+      border-bottom: 2px solid;
+      border-left: 2px solid;
+    }
+
+    .tech-btn .btn-corner.br {
+      bottom: -1px;
+      right: -1px;
+      border-bottom: 2px solid;
+      border-right: 2px solid;
+    }
+
+    .tech-btn:hover .btn-corner {
+      border-color: #00ffc8;
+      width: 12px;
+      height: 12px;
+    }
+
+    .tech-btn .btn-pulse {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 120%;
+      height: 120%;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(0, 255, 200, 0.1);
+      border-radius: 2px;
+      animation: techPulse 2.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes techPulse {
+      0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.98); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); }
+    }
+
+    .tech-btn .btn-status {
+      width: 6px;
+      height: 6px;
+      background: #00ffc8;
+      border-radius: 50%;
+      animation: statusBlink 1.5s ease-in-out infinite;
+      box-shadow: 0 0 6px rgba(0, 255, 200, 0.8);
+    }
+
+    @keyframes statusBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Page Transition Overlay */
+    .page-transition {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .page-transition.active {
+      pointer-events: all;
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .page-transition .overlay-bg {
+      position: absolute;
+      inset: 0;
+      background: #050505;
+      transform: scaleY(0);
+      transform-origin: bottom;
+      transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+    }
+
+    .page-transition.active .overlay-bg {
+      transform: scaleY(1);
+    }
+
+    .page-transition .scanlines {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 200, 0.03) 2px,
+        rgba(0, 255, 200, 0.03) 4px
+      );
+      opacity: 0;
+      transition: opacity 0.3s ease 0.3s;
+    }
+
+    .page-transition.active .scanlines {
+      opacity: 1;
+    }
+
+    .page-transition .wipe-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #00ffc8, transparent);
+      box-shadow: 0 0 30px 10px rgba(0, 255, 200, 0.3);
+      top: 100%;
+      transition: top 0.6s cubic-bezier(0.77, 0, 0.175, 1) 0.2s;
+    }
+
+    .page-transition.active .wipe-line {
+      top: -2px;
+    }
+
+    .page-transition .loader-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #00ffc8;
+      opacity: 0;
+      transition: opacity 0.3s ease 0.5s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-transition.active .loader-text {
+      opacity: 1;
+    }
+
+    .page-transition .loader-text .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0, 255, 200, 0.2);
+      border-top-color: #00ffc8;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .page-transition .corner-mark {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(0, 255, 200, 0.4);
+      opacity: 0;
+      transition: opacity 0.3s ease 0.5s;
+    }
+
+    .page-transition.active .corner-mark { opacity: 1; }
+
+    .page-transition .corner-mark.tl { top: 20px; left: 20px; border-top: 2px solid; border-left: 2px solid; }
+    .page-transition .corner-mark.tr { top: 20px; right: 20px; border-top: 2px solid; border-right: 2px solid; }
+    .page-transition .corner-mark.bl { bottom: 20px; left: 20px; border-bottom: 2px solid; border-left: 2px solid; }
+    .page-transition .corner-mark.br { bottom: 20px; right: 20px; border-bottom: 2px solid; border-right: 2px solid; }
+  </style>
+</head>
+<body>
+  <!-- Page Transition Overlay -->
+  <div class="page-transition" id="page-transition">
+    <div class="overlay-bg"></div>
+    <div class="scanlines"></div>
+    <div class="wipe-line"></div>
+    <div class="loader-text">
+      <div class="spinner"></div>
+      <span>Loading System</span>
+    </div>
+    <div class="corner-mark tl"></div>
+    <div class="corner-mark tr"></div>
+    <div class="corner-mark bl"></div>
+    <div class="corner-mark br"></div>
+  </div>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useRef, useState } = React;
+    gsap.registerPlugin(ScrollTrigger);
+
+    const CanvasSystem = () => {
+      const canvasRef = useRef(null);
+      const mouse = useRef({ x: window.innerWidth/2, y: window.innerHeight/2 });
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+        let rAF;
+
+        const resize = () => {
+          width = window.innerWidth;
+          height = window.innerHeight;
+          canvas.width = width * window.devicePixelRatio;
+          canvas.height = height * window.devicePixelRatio;
+          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+          initParticles();
+        };
+
+        const initParticles = () => {
+          particles = [];
+          const count = 150;
+          for (let i = 0; i < count; i++) {
+            particles.push({
+              x: Math.random() * width,
+              y: Math.random() * height,
+              vx: (Math.random() - 0.5) * 0.5,
+              vy: (Math.random() - 0.5) * 0.5,
+              baseSize: Math.random() * 2 + 1,
+              connections: []
+            });
+          }
+        };
+
+        const drawGrid = () => {
+          ctx.strokeStyle = '#111111';
+          ctx.lineWidth = 1;
+          const gridSize = 50;
+          for (let x = 0; x < width; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          }
+          for (let y = 0; y < height; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+          }
+        };
+
+        const render = () => {
+          ctx.clearRect(0, 0, width, height);
+          drawGrid();
+
+          const maxDist = 150;
+
+          particles.forEach((p, i) => {
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 0 || p.x > width) p.vx *= -1;
+            if (p.y < 0 || p.y > height) p.vy *= -1;
+
+            const dx = mouse.current.x - p.x;
+            const dy = mouse.current.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 200) {
+              const force = (200 - dist) / 200;
+              p.x -= (dx * force * 0.05);
+              p.y -= (dy * force * 0.05);
+            }
+
+            ctx.fillStyle = '#666666';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.baseSize, 0, Math.PI * 2);
+            ctx.fill();
+            for (let j = i + 1; j < particles.length; j++) {
+              const p2 = particles[j];
+              const dist2 = Math.hypot(p.x - p2.x, p.y - p2.y);
+              if (dist2 < maxDist) {
+                ctx.strokeStyle = `rgba(150, 150, 150, ${0.15 * (1 - dist2 / maxDist)})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+              }
+            }
+          });
+
+          rAF = requestAnimationFrame(render);
+        };
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', (e) => {
+          mouse.current = { x: e.clientX, y: e.clientY };
+        });
+
+        resize();
+        render();
+
+        return () => {
+          window.removeEventListener('resize', resize);
+          cancelAnimationFrame(rAF);
+        };
+      }, []);
+
+      return <canvas ref={canvasRef} className="interactive-canvas opacity-60" />;
+    };
+
+    const StaggerText = ({ text, className }) => {
+      const ref = useRef(null);
+      
+      useEffect(() => {
+        const textElements = ref.current.querySelectorAll('span');
+        gsap.to(textElements, {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.03,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ref.current,
+            start: "top 80%",
+          }
+        });
+      }, []);
+
+      return (
+        <div ref={ref} className={`stagger-text ${className}`}>
+          {text.split('').map((char, i) => (
+            <span key={i} style={{ display: char === ' ' ? 'inline' : 'inline-block' }}>
+              {char === ' ' ? '\u00A0' : char}
+            </span>
+          ))}
+        </div>
+      );
+    };
+
+    const App = () => {
+      const containerRef = useRef(null);
+      
+      useEffect(() => {
+
+        const sections = gsap.utils.toArray('.js-section');
+        
+        sections.forEach((sec, i) => {
+          gsap.fromTo(sec, 
+            { opacity: 0, y: 50 }, 
+            {
+              opacity: 1, 
+              y: 0,
+              duration: 1,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: sec,
+                start: "top 75%",
+                end: "bottom 25%",
+                toggleActions: "play reverse play reverse"
+              }
+            }
+          );
+        });
+      }, []);
+
+      const dataSources = [
+        "Chassis & Core Processing Unit",
+        "Omni-directional Wheels (WASD)",
+        "Lidar Scanning Systems",
+        "First-Person Camera Feeds",
+        "Articulated Robotic Arms",
+      ];
+
+      return (
+        <div ref={containerRef} className="content-layer system-font w-full">
+          <CanvasSystem />
+          
+          {/* SECTION 1: PRESENCE */}
+          <section className="h-screen flex flex-col justify-center px-12 md:px-24">
+            <div className="text-xs text-sys-muted uppercase tracking-widest mb-4">OPEN SCIENCE LABS // ALPHA ONE LABS</div>
+            <h1 className="text-5xl md:text-8xl font-medium tracking-tighter leading-none mb-6 text-sys-accent">
+              <StaggerText text="VIRTUAL ROBOTICS" />
+            </h1>
+            <p className="text-lg md:text-2xl text-sys-muted max-w-2xl leading-relaxed">
+              Next-Generation Robotics Simulation Playground. 
+              <br/>Build, configure, and test autonomous mobile robots with real-time physics and sensor telemetry directly in your browser.
+            </p>
+
+            <a href="home.html" className="tech-btn mt-10" onClick={(e) => {
+              e.preventDefault();
+              const overlay = document.getElementById('page-transition');
+              overlay.classList.add('active');
+              setTimeout(() => { window.location.href = 'home.html'; }, 1200);
+            }}>
+              <span className="btn-corner tl"></span>
+              <span className="btn-corner tr"></span>
+              <span className="btn-corner bl"></span>
+              <span className="btn-corner br"></span>
+              <span className="btn-pulse"></span>
+              <span className="btn-status"></span>
+              <span>Enter System</span>
+              <svg className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </a>
+            <div className="absolute bottom-12 left-12 md:left-24 text-xs text-sys-muted flex items-center gap-4">
+              <span className="animate-pulse h-2 w-2 bg-sys-accent rounded-full"></span>
+              SCROLL TO INITIATE SEQUENCE
+            </div>
+          </section>
+
+          {/* SECTION 2: CONCEPT */}
+          <section className="min-h-screen flex flex-col justify-center px-12 md:px-24 js-section py-24">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div>
+                <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-8">MODULAR ENGINEERING BAY</h2>
+                <div className="space-y-6">
+                  <p className="text-sys-muted text-lg border-l border-sys-muted pl-4">
+                    Assemble your chassis, equip sensors, and deploy your robot in a persistent sandbox environment.
+                  </p>
+                  <p className="text-sys-accent text-sm font-mono bg-sys-grid inline-block px-3 py-1 border border-[#333]">
+                    STATUS: Simulation Engine Online. Physics Core stable.
+                  </p>
+                </div>
+                
+                <div className="mt-12 space-y-2 text-sm text-sys-muted">
+                  <div className="uppercase tracking-widest mb-4 text-xs border-b border-[#333] pb-2">Available Components</div>
+                  {dataSources.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center hover:text-sys-accent hover:border-sys-accent transition-colors border border-transparent p-2 cursor-pointer group">
+                      <span className="group-hover:translate-x-2 transition-transform">{item}</span>
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="relative h-[400px] border border-[#333] bg-[#000] p-6 flex flex-col justify-between overflow-hidden group">
+                <div className="text-xs text-sys-muted">Simulation Bay Monitor</div>
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#111] via-[#050505] to-[#000] z-0"></div>
+                <div className="z-10 text-center">
+                  <div className="inline-block p-4 border border-sys-accent/20 rounded-full mb-4 group-hover:scale-110 transition-transform bg-black">
+                    <svg className="w-8 h-8 text-sys-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="text-xl tracking-tight"><a href="home.html" className="hover:underline">Boot Sequence</a></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* SECTION 3: EVIDENCE */}
+          <section className="min-h-screen px-12 md:px-24 js-section py-24 bg-[#0a0a0a] border-y border-[#222]">
+            <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-16 text-center">TESTING PROTOCOLS</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px] bg-[#222]">
+              {/* Hardware */}
+              <div className="bg-[#0a0a0a] p-12">
+                <h3 className="text-xl mb-8 uppercase tracking-widest text-sys-accent">Hardware Modules</h3>
+                <ul className="space-y-6 text-sys-muted">
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">01</span>
+                    <span>Chassis deployment and core systems initialization</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">02</span>
+                    <span>Omni-directional movement with custom wheel configurations</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">03</span>
+                    <span>Lidar point cloud simulation and obstacle detection</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">04</span>
+                    <span>Live first-person camera feeds with FOV rendering</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">05</span>
+                    <span>Object manipulation using articulated robotic arms</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Telemetry */}
+              <div className="bg-[#0a0a0a] p-12">
+                <h3 className="text-xl mb-8 uppercase tracking-widest text-sys-accent">Telemetry Systems</h3>
+                <ul className="space-y-6 text-sys-muted">
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">01</span>
+                    <span>Real-time coordinate tracking and spatial positioning</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">02</span>
+                    <span>Live orientation, heading, and angular velocity data</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">03</span>
+                    <span>Adjustable motor power and turning speed variables</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">04</span>
+                    <span>Component state logs and active hardware monitoring</span>
+                  </li>
+                  <li className="flex items-start gap-4 hover:text-white transition-colors">
+                    <span className="text-xs mt-1 text-[#444]">05</span>
+                    <span>Robot customization and visual identifier tags</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* SECTION 4: DATA */}
+          <section className="min-h-screen px-12 md:px-24 js-section py-24 flex flex-col justify-center">
+            <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-8">SYSTEM DIAGNOSTICS</h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Column 1 */}
+              <div className="space-y-8">
+                <div className="border border-[#333] p-6 hover:bg-[#111] transition-colors cursor-crosshair">
+                  <div className="text-xs text-sys-muted uppercase mb-4">🏆 Deployment Scenarios</div>
+                  <div className="text-lg mb-2 text-sys-accent">Navigate the complex maze environment</div>
+                  <p className="text-sm text-sys-muted leading-relaxed">
+                    Test your robot's sensors and mobility by navigating through a procedurally generated maze without colliding.
+                    <br/><br/><span className="font-mono text-xs">Status: Pending Deployment</span>
+                  </p>
+                </div>
+                <div className="border border-[#333] p-6 hover:bg-[#111] transition-colors cursor-crosshair">
+                  <div className="text-xs text-sys-muted uppercase mb-4"> Leaderboard</div>
+                  <p className="text-sm text-sys-muted">
+                    No entries yet. Complete scenarios to earn your spot!
+                  </p>
+                </div>
+              </div>
+
+              {/* Column 2 */}
+              <div className="space-y-8">
+                <div className="border border-[#333] p-6 hover:bg-[#111] transition-colors cursor-crosshair h-full">
+                  <div className="text-xs text-sys-muted uppercase mb-4">🎬 Simulation Logs</div>
+                  <div className="text-5xl font-light mb-4 text-sys-accent">24</div>
+                  <p className="text-sm text-sys-muted leading-relaxed">
+                    Review past deployments and test runs to analyze performance, sensor blind-spots, and movement efficiency.
+                  </p>
+                  <a href="#" className="inline-block mt-6 text-xs uppercase hover:underline">Access Archives ↑</a>
+                </div>
+              </div>
+
+              {/* Column 3 */}
+              <div className="space-y-8 block">
+                <div className="border border-[#333] p-6 text-sm text-sys-muted cursor-crosshair">
+                  <div className="text-xs uppercase mb-2">System Alert</div>
+                  <div className="text-sys-accent mb-2">Physics Engine Optimization</div>
+                  <p className="mb-2 italic">"Collision algorithms updated to support high-speed impacts without clipping." — SysAdmin</p>
+                  <a href="#" className="text-xs hover:underline">View Details →</a>
+                </div>
+                <div className="border border-[#333] p-6 text-sm text-sys-muted cursor-crosshair">
+                  <div className="text-xs uppercase mb-2">Patch Notes</div>
+                  <div className="text-sys-accent mb-2">Update v2.4.1 Released</div>
+                  <p className="mb-2">Added new articulation joints for the robotic arm, allowing more precise manipulation.</p>
+                  <a href="#" className="text-xs hover:underline">Read More →</a>
+                </div>
+                <div className="border border-[#333] p-6 text-sm text-sys-muted cursor-crosshair flex justify-between items-center bg-[#0a0a0a]">
+                  <span className="uppercase text-xs tracking-widest text-sys-accent">Diagnostic Tool</span>
+                  <a href="#" className="border border-[#333] px-3 py-1 hover:bg-white hover:text-black transition-colors">Run</a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* SECTION 5: COMMITMENT */}
+          <section className="h-screen flex flex-col justify-center items-center text-center px-12 js-section border-t border-[#222]">
+            <h2 className="text-4xl md:text-7xl font-medium tracking-tight mb-16 text-sys-accent">INITIALIZE DEPLOYMENT</h2>
+            
+            <div className="flex flex-col md:flex-row gap-6 md:gap-12 w-full max-w-4xl">
+              <a href="home.html" className="flex-1 border border-[#444] p-12 hover:bg-white hover:text-black transition-all group flex flex-col items-center">
+                <span className="text-3xl mb-4 font-light">Deploy Blank Chassis</span>
+                <span className="text-sm text-sys-muted group-hover:text-black transition-colors">Start from scratch and build your custom robot rig</span>
+              </a>
+              <a href="home.html" className="flex-1 border border-[#444] p-12 hover:bg-white hover:text-black transition-all group flex flex-col items-center">
+                <span className="text-3xl mb-4 font-light">Load Preset Rig</span>
+                <span className="text-sm text-sys-muted group-hover:text-black transition-colors">Launch a pre-configured robot with standard sensors</span>
+              </a>
+            </div>
+
+            <div className="mt-24 text-sm text-sys-muted max-w-lg mx-auto">
+              <span className="inline-block px-3 py-1 border border-[#333] mb-4 uppercase text-xs">Alpha Phase</span>
+              <p>The simulation environment is currently in active development. Expect occasional physics anomalies.</p>
+            </div>
+
+            <footer className="absolute bottom-6 w-full text-center text-xs text-[#444] flex flex-col md:flex-row justify-center gap-4">
+              <span>© 2026 Alpha One Labs. All rights reserved.</span>
+              <span className="hidden md:inline">|</span>
+              <div className="flex justify-center gap-4">
+                <a href="#" className="hover:text-white">About Us</a>
+                <a href="#" className="hover:text-white">Terms & Conditions</a>
+                <a href="#" className="hover:text-white">Privacy Policy</a>
+                <a href="#" className="hover:text-white">Cookie Policy</a>
+              </div>
+            </footer>
+          </section>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+
