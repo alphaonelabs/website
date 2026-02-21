@@ -315,9 +315,9 @@
 
       // Plot explicit functions: y = f(x)
       function plotExplicit(equation, color) {
-          let exprStr = equation.trim();
-          if (exprStr.startsWith("y=")) {
-              exprStr = exprStr.substring(2);
+          let exprStr = equation;
+          if (exprStr.includes("=")) {
+              exprStr = equation.split("=")[1].trim();
           }
           let compiled;
           try {
@@ -330,6 +330,7 @@
           ctx.lineWidth = 2;
           ctx.beginPath();
           let firstPoint = true;
+          let prevY = null;
           const xMin = toMathCoords(0, 0).x;
           const xMax = toMathCoords(canvas.width, 0).x;
           const step = (xMax - xMin) / canvas.width;
@@ -347,6 +348,11 @@
                   firstPoint = true;
                   continue;
               }
+
+              if (prevY !== null && Math.abs(y - prevY) > (canvas.height / scale)) {
+                  firstPoint = true;
+              }
+              prevY = y;
               const {
                   x: cx,
                   y: cy
@@ -373,7 +379,7 @@
       // Plot implicit functions using marching squares: f(x,y)=0
       function plotImplicit(equation, color) {
           const parts = equation.split("=");
-          if (parts.length !== 2) {
+          if (parts.length !== 2 || parts[0].trim() === "" || parts[1].trim() === "") {
               alert("Invalid implicit equation format.");
               return;
           }
@@ -416,7 +422,11 @@
                   if (v4 > 0) index |= 8;
                   if (index === 0 || index === 15) continue;
                   let points = [];
-                  if ((index & 1) !== (index & 2)) {
+                  const b1 = v1 > 0;
+                  const b2 = v2 > 0;
+                  const b3 = v3 > 0;
+                  const b4 = v4 > 0;
+                  if (b1 !== b2) {
                       points.push(interpolate({
                           x: i,
                           y: j
@@ -425,7 +435,7 @@
                           y: j
                       }, v1, v2));
                   }
-                  if ((index & 2) !== (index & 4)) {
+                  if (b2 !== b3) {
                       points.push(interpolate({
                           x: i + gridStep,
                           y: j
@@ -434,7 +444,7 @@
                           y: j + gridStep
                       }, v2, v3));
                   }
-                  if ((index & 8) !== (index & 4)) {
+                  if (b3 !== b4) {
                       points.push(interpolate({
                           x: i,
                           y: j + gridStep
@@ -443,7 +453,7 @@
                           y: j + gridStep
                       }, v4, v3));
                   }
-                  if ((index & 1) !== (index & 8)) {
+                  if (b1 !== b4) {
                       points.push(interpolate({
                           x: i,
                           y: j
@@ -468,12 +478,29 @@
 
       // Determine whether to plot explicit or implicit based on input format
       function plotEquation(equation, color) {
-          if (equation.trim().startsWith("y=")) {
+          if (equation.split("=")[0].trim() === "y") {
               plotExplicit(equation, color);
           } else if (equation.includes("=")) {
               plotImplicit(equation, color);
           } else {
-              plotExplicit("y=" + equation, color);
+              let hasYVariable = false;
+
+              try {
+                  const parseMath = math.parse(equation);
+
+                  const yNodes = parseMath.filter(function(node) {
+                      return node.isSymbolNode && node.name === "y";
+                  });
+                  if (yNodes.length > 0) {
+                      hasYVariable = true;
+                  }
+              } catch (err) {}
+
+              if (hasYVariable) {
+                  alert("Invalid implicit equation format.");
+              } else {
+                  plotExplicit("y=" + equation, color);
+              }
           }
       }
 
