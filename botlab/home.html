@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virtual Robotics Playground - Alpha One Labs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Space Grotesk"', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Google Fonts: Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <style>
+      body {
+        font-family: 'Space Grotesk', sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        animation: fadeInPage 0.6s ease-out forwards;
+      }
+
+      @keyframes fadeInPage {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-gray-900 h-screen font-sans">
+      <section id="playground" class="h-full">
+        <div class="h-full">
+          <div class="bg-gray-900 flex flex-col lg:flex-row h-full">
+            <div class="w-full lg:w-52 bg-gray-800 border-b lg:border-b-0 lg:border-r border-gray-700 p-3 flex flex-col">
+              <div class="font-bold text-gray-300 mb-2 text-sm">🧰 Toolbox</div>
+              <div class="space-y-2 flex-1">
+                <button onclick="addPart('chassis')"
+                        class="w-full bg-teal-700 hover:bg-teal-600 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
+                  <i class="fas fa-cube"></i> Chassis
+                </button>
+                <button onclick="addPart('wheels')"
+                        class="w-full bg-orange-600 hover:bg-orange-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
+                  <i class="fas fa-circle-notch"></i> Wheels (WASD)
+                </button>
+                <button onclick="addPart('lidar')"
+                        class="w-full bg-red-600 hover:bg-red-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
+                  <i class="fas fa-satellite-dish"></i> Lidar
+                </button>
+                <button onclick="addPart('camera')"
+                        class="w-full bg-blue-600 hover:bg-blue-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
+                  <i class="fas fa-video"></i> Camera (View)
+                </button>
+                <button onclick="addPart('arm')"
+                        class="w-full bg-purple-600 hover:bg-purple-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
+                  <i class="fas fa-hand-paper"></i> Arm (SPACE)
+                </button>
+              </div>
+              <button onclick="resetAll()"
+                      class="mt-3 w-full bg-gray-700 hover:bg-gray-600 p-2 rounded text-gray-300 text-xs flex items-center justify-center gap-2 transition">
+                <i class="fas fa-redo"></i> Reset All
+              </button>
+            </div>
+            <div class="flex-1 relative bg-gray-950" id="viewport-wrapper">
+              <canvas id="sim-canvas"
+                      class="bg-gray-900 w-full h-full"
+                      role="img"
+                      aria-label="Robot simulation canvas where you can control and view your robot"></canvas>
+              <div class="absolute top-3 right-3 bg-black/80 text-green-400 font-mono text-xs p-2 rounded-lg border border-green-900">
+                <div>
+                  <span class="text-gray-500">POS:</span> <span id="pos-display">0, 0</span>
+                </div>
+                <div>
+                  <span class="text-gray-500">ANGLE:</span> <span id="angle-display">0°</span>
+                </div>
+                <div>
+                  <span class="text-gray-500">SPEED:</span> <span id="speed-display">0</span>
+                </div>
+                <div class="mt-1 pt-1 border-t border-gray-700 text-gray-400 text-[10px]">
+                  Move: <span class="text-white">WASD</span> | Pick: <span class="text-purple-400">SPACE</span>
+                </div>
+              </div>
+              <div id="camera-feed"
+                   class="hidden absolute top-3 left-3 w-44 h-28 bg-black border-2 border-blue-500 rounded overflow-hidden shadow-xl">
+                <canvas id="cam-canvas"
+                        class="w-full h-full"
+                        role="img"
+                        aria-label="Robot camera view showing first-person perspective"></canvas>
+                <div class="absolute bottom-1 left-2 text-blue-400 text-[10px] font-mono flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> LIVE
+                </div>
+              </div>
+              <!-- Action Message -->
+              <div id="action-msg"
+                   class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-4 py-2 rounded-full text-sm font-bold transition-opacity duration-500 opacity-0 pointer-events-none">
+                Block picked!
+              </div>
+              <!-- Prompt -->
+              <div id="start-prompt"
+                   class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 pointer-events-none">
+                <i class="fas fa-plus-circle text-3xl mb-2 opacity-50"></i>
+                <div class="text-sm">
+                  Add a <strong>Chassis</strong> to start
+                </div>
+              </div>
+            </div>
+            <!-- Right Sidebar: Properties -->
+            <div class="w-full lg:w-52 bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700 p-3 flex flex-col">
+              <div class="font-bold text-gray-300 mb-2 text-sm">⚙️ Settings</div>
+              <div class="space-y-3 flex-1">
+                <div>
+                  <label class="text-gray-400 text-xs flex justify-between">
+                    <span>Power</span><span id="power-val" class="text-teal-400">50%</span>
+                  </label>
+                  <input type="range"
+                         id="power-slider"
+                         min="10"
+                         max="100"
+                         value="50"
+                         class="w-full accent-teal-500 mt-1"
+                         oninput="updatePower()" />
+                </div>
+                <div>
+                  <label class="text-gray-400 text-xs flex justify-between">
+                    <span>Turn</span><span id="turn-val" class="text-teal-400">5°</span>
+                  </label>
+                  <input type="range"
+                         id="turn-slider"
+                         min="1"
+                         max="15"
+                         value="5"
+                         class="w-full accent-teal-500 mt-1"
+                         oninput="updateTurn()" />
+                </div>
+                <div>
+                  <label class="text-gray-400 text-xs">Color</label>
+                  <input type="color"
+                         id="color-picker"
+                         value="#0d9488"
+                         class="w-full h-6 rounded mt-1 cursor-pointer"
+                         oninput="updateColor()" />
+                </div>
+              </div>
+              <!-- Parts & Info -->
+              <div class="mt-3 pt-3 border-t border-gray-700">
+                <div class="text-gray-400 text-xs mb-1">Parts:</div>
+                <div id="parts-list" class="text-gray-500 text-xs">None</div>
+                <div class="mt-2 text-gray-500 text-[10px]">
+                  Blocks: <span id="block-count">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      // ========== CANVAS SETUP ==========
+      const canvas = document.getElementById('sim-canvas');
+      const ctx = canvas.getContext('2d');
+      const camCanvas = document.getElementById('cam-canvas');
+      const camCtx = camCanvas.getContext('2d');
+
+      // Error handling for canvas context
+      if (!ctx || !camCtx) {
+        console.error('Canvas 2D context not supported');
+        document.getElementById('start-prompt').innerHTML =
+          '<div class="text-red-500">Your browser does not support canvas. Please use a modern browser.</div>';
+      }
+
+      function resizeCanvas() {
+        const wrapper = document.getElementById('viewport-wrapper');
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+        camCanvas.width = 176;
+        camCanvas.height = 112;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // ========== ROBOT STATE ==========
+      let robot = {
+        x: 0,
+        y: 0,
+        angle: 0,
+        speed: 0,
+        color: '#0d9488',
+        holdingBlock: null,
+        parts: {
+          chassis: false,
+          wheels: false,
+          lidar: false,
+          camera: false,
+          arm: false,
+        },
+      };
+
+      let motorPower = 50;
+      let turnSpeed = 5;
+
+      // ========== BLOCKS ==========
+      let blocks = [];
+
+      function generateBlocks() {
+        blocks = [];
+        for (let i = 0; i < 12; i++) {
+          blocks.push({
+            id: i,
+            x: 80 + Math.random() * (canvas.width - 160),
+            y: 80 + Math.random() * (canvas.height - 160),
+            size: 25,
+            color: `hsl(${i * 30}, 70%, 55%)`,
+            held: false,
+          });
+        }
+        document.getElementById('block-count').textContent = blocks.length;
+      }
+
+      // ========== INPUT ==========
+      let keys = {};
+      let spaceJustPressed = false;
+
+      document.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        keys[k] = true;
+        if (e.code === 'Space' && !spaceJustPressed) {
+          spaceJustPressed = true;
+          handlePickDrop();
+        }
+        if (
+          ['w', 'a', 's', 'd', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k) ||
+          e.code === 'Space'
+        ) {
+          e.preventDefault();
+        }
+      });
+      document.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+        if (e.code === 'Space') spaceJustPressed = false;
+      });
+
+      // ========== PICK / DROP ==========
+      function handlePickDrop() {
+        if (!robot.parts.arm || !robot.parts.chassis) return;
+
+        const gripX = robot.x + Math.sin(robot.angle) * 65;
+        const gripY = robot.y - Math.cos(robot.angle) * 65;
+
+        if (robot.holdingBlock !== null) {
+          // DROP
+          const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+          if (b) {
+            b.x = gripX - b.size / 2;
+            b.y = gripY - b.size / 2;
+            b.held = false;
+          }
+          robot.holdingBlock = null;
+          showMsg('Dropped!');
+        } else {
+          // PICK
+          for (let b of blocks) {
+            if (b.held) continue;
+            const cx = b.x + b.size / 2;
+            const cy = b.y + b.size / 2;
+            const dist = Math.hypot(gripX - cx, gripY - cy);
+            if (dist < 45) {
+              b.held = true;
+              robot.holdingBlock = b.id;
+              showMsg('Grabbed! SPACE to drop');
+              break;
+            }
+          }
+        }
+      }
+
+      function showMsg(txt) {
+        const el = document.getElementById('action-msg');
+        el.textContent = txt;
+        el.classList.remove('opacity-0');
+        setTimeout(() => el.classList.add('opacity-0'), 1500);
+      }
+
+      // ========== PARTS ==========
+      function addPart(type) {
+        if (type !== 'chassis' && !robot.parts.chassis) {
+          alert('Add Chassis first!');
+          return;
+        }
+
+        // Toggle: if part is already added, remove it
+        if (robot.parts[type]) {
+          removePart(type);
+          return;
+        }
+
+        robot.parts[type] = true;
+
+        if (type === 'chassis') {
+          robot.x = canvas.width / 2;
+          robot.y = canvas.height / 2;
+          document.getElementById('start-prompt').classList.add('hidden');
+          generateBlocks();
+        }
+        if (type === 'camera') {
+          document.getElementById('camera-feed').classList.remove('hidden');
+        }
+        updatePartsList();
+        showMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} added!`);
+      }
+
+      function removePart(type) {
+        // Removing chassis removes everything
+        if (type === 'chassis') {
+          resetAll();
+          return;
+        }
+
+        robot.parts[type] = false;
+
+        // Handle camera removal: hide the camera feed
+        if (type === 'camera') {
+          document.getElementById('camera-feed').classList.add('hidden');
+        }
+
+        // Handle arm removal: drop any held block
+        if (type === 'arm' && robot.holdingBlock !== null) {
+          const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+          if (b) {
+            b.x = robot.x + Math.sin(robot.angle) * 65 - b.size / 2;
+            b.y = robot.y - Math.cos(robot.angle) * 65 - b.size / 2;
+            b.held = false;
+          }
+          robot.holdingBlock = null;
+        }
+
+        // Handle wheels removal: stop the robot
+        if (type === 'wheels') {
+          robot.speed = 0;
+        }
+
+        updatePartsList();
+        showMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} removed!`);
+      }
+
+      function resetAll() {
+        robot = {
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          angle: 0,
+          speed: 0,
+          color: document.getElementById('color-picker').value,
+          holdingBlock: null,
+          parts: {
+            chassis: false,
+            wheels: false,
+            lidar: false,
+            camera: false,
+            arm: false,
+          },
+        };
+        blocks = [];
+        document.getElementById('start-prompt').classList.remove('hidden');
+        document.getElementById('camera-feed').classList.add('hidden');
+        document.getElementById('block-count').textContent = '0';
+        updatePartsList();
+      }
+
+      function updatePartsList() {
+        const list = Object.keys(robot.parts).filter((k) => robot.parts[k]);
+        document.getElementById('parts-list').textContent = list.length ? list.join(', ') : 'None';
+      }
+
+      function updatePower() {
+        motorPower = +document.getElementById('power-slider').value;
+        document.getElementById('power-val').textContent = motorPower + '%';
+      }
+
+      function updateTurn() {
+        turnSpeed = +document.getElementById('turn-slider').value;
+        document.getElementById('turn-val').textContent = turnSpeed + '°';
+      }
+
+      function updateColor() {
+        robot.color = document.getElementById('color-picker').value;
+      }
+
+      // ========== GAME LOOP ==========
+      function update() {
+        if (!robot.parts.chassis) return;
+
+        if (robot.parts.wheels) {
+          const acc = motorPower / 400;
+          if (keys['w'] || keys['arrowup']) robot.speed = Math.min(robot.speed + acc, motorPower / 8);
+          else if (keys['s'] || keys['arrowdown']) robot.speed = Math.max(robot.speed - acc, -motorPower / 15);
+          else robot.speed *= 0.92;
+
+          if (keys['a'] || keys['arrowleft']) robot.angle -= turnSpeed * 0.015;
+          if (keys['d'] || keys['arrowright']) robot.angle += turnSpeed * 0.015;
+        }
+
+        robot.x += Math.sin(robot.angle) * robot.speed;
+        robot.y -= Math.cos(robot.angle) * robot.speed;
+        robot.x = Math.max(35, Math.min(canvas.width - 35, robot.x));
+        robot.y = Math.max(35, Math.min(canvas.height - 35, robot.y));
+
+        // Move held block
+        if (robot.holdingBlock !== null) {
+          const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+          if (b) {
+            b.x = robot.x + Math.sin(robot.angle) * 65 - b.size / 2;
+            b.y = robot.y - Math.cos(robot.angle) * 65 - b.size / 2;
+          }
+        }
+
+        document.getElementById('pos-display').textContent = `${Math.round(robot.x)}, ${Math.round(robot.y)}`;
+        document.getElementById('angle-display').textContent = `${Math.round((robot.angle * 180) / Math.PI)}°`;
+        document.getElementById('speed-display').textContent = robot.speed.toFixed(1);
+      }
+
+      function drawGrid() {
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 50) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 50) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+      }
+
+      function drawBlocks() {
+        blocks.forEach((b) => {
+          if (b.held) return; // draw held block with robot
+          ctx.fillStyle = b.color;
+          ctx.fillRect(b.x, b.y, b.size, b.size);
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(b.x, b.y, b.size, b.size);
+
+          // Glow if near gripper and arm attached
+          if (robot.parts.arm && robot.holdingBlock === null) {
+            const gx = robot.x + Math.sin(robot.angle) * 65;
+            const gy = robot.y - Math.cos(robot.angle) * 65;
+            if (Math.hypot(gx - (b.x + b.size / 2), gy - (b.y + b.size / 2)) < 45) {
+              ctx.shadowColor = '#fff';
+              ctx.shadowBlur = 12;
+              ctx.strokeRect(b.x, b.y, b.size, b.size);
+              ctx.shadowBlur = 0;
+            }
+          }
+        });
+      }
+
+      function drawRobot() {
+        if (!robot.parts.chassis) return;
+        ctx.save();
+        ctx.translate(robot.x, robot.y);
+        ctx.rotate(robot.angle);
+
+        // Chassis
+        ctx.fillStyle = robot.color;
+        ctx.fillRect(-22, -28, 44, 56);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-22, -28, 44, 56);
+
+        // Wheels
+        if (robot.parts.wheels) {
+          ctx.fillStyle = '#2a2a2a';
+          ctx.fillRect(-30, -18, 9, 36);
+          ctx.fillRect(21, -18, 9, 36);
+          ctx.strokeStyle = '#444';
+          const wo = ((Date.now() / 40) * Math.abs(robot.speed)) % 12;
+          for (let i = -18; i < 18; i += 12) {
+            ctx.beginPath();
+            ctx.moveTo(-30, i + (wo % 12));
+            ctx.lineTo(-21, i + (wo % 12));
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(21, i + (wo % 12));
+            ctx.lineTo(30, i + (wo % 12));
+            ctx.stroke();
+          }
+        }
+
+        // Lidar
+        if (robot.parts.lidar) {
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(0, -32, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(239,68,68,0.5)';
+          ctx.lineWidth = 2;
+          const sw = (((Date.now() / 15) % 360) * Math.PI) / 180;
+          ctx.beginPath();
+          ctx.moveTo(0, -32);
+          ctx.lineTo(Math.cos(sw - Math.PI / 2) * 70, -32 + Math.sin(sw - Math.PI / 2) * 70);
+          ctx.stroke();
+        }
+
+        // Camera
+        if (robot.parts.camera) {
+          ctx.fillStyle = '#3b82f6';
+          ctx.beginPath();
+          ctx.arc(0, -18, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#1e3a5f';
+          ctx.beginPath();
+          ctx.arc(0, -18, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Arm
+        if (robot.parts.arm) {
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, 24);
+          ctx.lineTo(0, 45);
+          ctx.lineTo(0, 65);
+          ctx.stroke();
+
+          const grip = robot.holdingBlock === null ? 10 : 5;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(-grip, 65);
+          ctx.lineTo(0, 72);
+          ctx.lineTo(grip, 65);
+          ctx.stroke();
+
+          // Draw held block
+          if (robot.holdingBlock !== null) {
+            const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+            if (b) {
+              ctx.fillStyle = b.color;
+              ctx.fillRect(-b.size / 2, 55, b.size, b.size);
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(-b.size / 2, 55, b.size, b.size);
+            }
+          }
+        }
+
+        ctx.restore();
+      }
+
+      function drawCameraView() {
+        if (!robot.parts.camera) return;
+
+        // Sky gradient
+        const sky = camCtx.createLinearGradient(0, 0, 0, 56);
+        sky.addColorStop(0, '#0c1929');
+        sky.addColorStop(1, '#1e3a5f');
+        camCtx.fillStyle = sky;
+        camCtx.fillRect(0, 0, 176, 56);
+
+        // Ground gradient
+        const gnd = camCtx.createLinearGradient(0, 56, 0, 112);
+        gnd.addColorStop(0, '#374151');
+        gnd.addColorStop(1, '#1f2937');
+        camCtx.fillStyle = gnd;
+        camCtx.fillRect(0, 56, 176, 56);
+
+        // Render blocks in view
+        blocks.forEach((b) => {
+          const cx = b.x + b.size / 2;
+          const cy = b.y + b.size / 2;
+          const dx = cx - robot.x;
+          const dy = cy - robot.y;
+          const dist = Math.hypot(dx, dy);
+
+          let worldAng = Math.atan2(dx, -dy);
+          let relAng = worldAng - robot.angle;
+          while (relAng > Math.PI) relAng -= 2 * Math.PI;
+          while (relAng < -Math.PI) relAng += 2 * Math.PI;
+
+          const fov = Math.PI / 2;
+          if (Math.abs(relAng) < fov / 2 && dist < 400 && dist > 40) {
+            const screenX = 88 + (relAng / (fov / 2)) * 88;
+            const sz = Math.max(6, 600 / dist);
+            const screenY = 56 - sz / 2 + dist / 30;
+
+            camCtx.fillStyle = b.color;
+            camCtx.fillRect(screenX - sz / 2, Math.max(5, screenY), sz, sz);
+            camCtx.strokeStyle = '#fff';
+            camCtx.lineWidth = 1;
+            camCtx.strokeRect(screenX - sz / 2, Math.max(5, screenY), sz, sz);
+          }
+        });
+
+        // Crosshair
+        camCtx.strokeStyle = '#22d3ee';
+        camCtx.lineWidth = 1;
+        camCtx.beginPath();
+        camCtx.moveTo(88, 46);
+        camCtx.lineTo(88, 66);
+        camCtx.moveTo(78, 56);
+        camCtx.lineTo(98, 56);
+        camCtx.stroke();
+      }
+
+      function render() {
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawBlocks();
+        drawRobot();
+        drawCameraView();
+      }
+
+      function loop() {
+        update();
+        render();
+        requestAnimationFrame(loop);
+      }
+      loop();
+    </script>
+  </body>
+</html>
