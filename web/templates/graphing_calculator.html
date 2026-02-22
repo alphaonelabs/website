@@ -317,7 +317,7 @@
       function plotExplicit(equation, color) {
           let exprStr = equation;
           if (exprStr.includes("=")) {
-              exprStr = equation.split("=")[1].trim();
+              exprStr = equation.split("=").slice(1).join("=").trim();
           }
           let compiled;
           try {
@@ -494,7 +494,9 @@
                   if (yNodes.length > 0) {
                       hasYVariable = true;
                   }
-              } catch (err) {}
+              } catch (err) {
+                  console.warn("Could not parse equation to detect y variable:", equation, err);
+              }
 
               if (hasYVariable) {
                   alert("Invalid implicit equation format.");
