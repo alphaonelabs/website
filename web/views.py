@@ -8844,3 +8844,38 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+def global_search_api(request):
+    """API endpoint for global search of subjects and courses."""
+    query = request.GET.get("q", "").strip()
+    if not query or len(query) < 2:
+        return JsonResponse({"results": []})
+
+    results = []
+
+    # Search Subjects
+    subjects = Subject.objects.filter(name__icontains=query)[:5]
+    for subject in subjects:
+        results.append(
+            {
+                "type": "subject",
+                "title": subject.name,
+                "url": reverse("course_search") + f"?subject={subject.slug}",
+                "icon": "fas fa-tag",
+            }
+        )
+
+    # Search Courses
+    courses = Course.objects.filter(Q(title__icontains=query) | Q(tags__icontains=query), status="published")[:5]
+    for course in courses:
+        results.append(
+            {
+                "type": "course",
+                "title": course.title,
+                "url": reverse("course_detail", kwargs={"slug": course.slug}),
+                "icon": "fas fa-book",
+            }
+        )
+
+    return JsonResponse({"results": results})
