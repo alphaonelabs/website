@@ -7,32 +7,36 @@
   <div class="relative">
     <!-- ===== Tutorial Overlay ===== -->
     <div id="tutorial-overlay"
-         class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
-        <h3 class="text-2xl font-bold text-gray-800 mb-2">
+         class="fixed inset-0 bg-gray-800 dark:bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
           Step <span id="step-number">1</span> of 4
         </h3>
         <ul id="step-list"
-            class="mt-4 text-gray-700 list-disc list-inside space-y-2">
+            class="mt-4 text-gray-700 dark:text-gray-300 list-disc list-inside space-y-2">
           <!-- Populated by JS -->
         </ul>
         <div class="mt-6 flex justify-end space-x-2">
           <button id="tutorial-prev"
-                  class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 disabled:opacity-50"
+                  class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50"
                   disabled>Previous</button>
           <button id="tutorial-next"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>
+                  class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800">
+            Next
+          </button>
           <button id="tutorial-skip"
-                  class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Skip Tutorial</button>
+                  class="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700">
+            Skip Tutorial
+          </button>
         </div>
       </div>
     </div>
     <!-- ===== End Tutorial Overlay ===== -->
     <div class="max-w-5xl mx-auto px-6 py-8 space-y-8">
-      <div class="bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-2xl font-bold text-gray-800 mb-2">Mass–Spring Oscillation</h2>
-          <p class="text-gray-600">
+      <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Mass–Spring Oscillation</h2>
+          <p class="text-gray-600 dark:text-gray-300">
             Drag the mass horizontally to set its initial displacement. Adjust the spring constant \(k\) and mass \(m\).
             Click “Start” to see the mass oscillate. A live Position vs. Time graph and numeric readouts will update in real time.
             After one full oscillation, a post-lab quiz will appear.
@@ -42,64 +46,72 @@
           <!-- ===== Left Column: Canvas + Controls + Quiz ===== -->
           <div class="space-y-4">
             <!-- Controls: k, m, A, Start/Stop/Reset -->
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-wrap gap-4">
-              <div class="flex items-center space-x-2">
-                <label for="k-slider" class="font-medium text-gray-700">Spring \(k\) (N/m):</label>
+            <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4 space-y-3">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <label for="k-slider"
+                       class="font-medium text-gray-700 dark:text-gray-300 w-full sm:w-auto">
+                  Spring \(k\) (N/m):
+                </label>
                 <input type="range"
                        id="k-slider"
                        min="1"
                        max="100"
                        step="1"
                        value="25"
-                       class="w-40" />
-                <span id="k-value" class="ml-2 font-semibold text-gray-800">25</span>
+                       class="flex-1 sm:w-40" />
+                <span id="k-value"
+                      class="font-semibold text-gray-800 dark:text-gray-100 w-16">25</span>
               </div>
-              <div class="flex items-center space-x-2">
-                <label for="m-slider" class="font-medium text-gray-700">Mass \(m\) (kg):</label>
+              <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <label for="m-slider"
+                       class="font-medium text-gray-700 dark:text-gray-300 w-full sm:w-auto">Mass \(m\) (kg):</label>
                 <input type="range"
                        id="m-slider"
                        min="0.1"
                        max="5.0"
                        step="0.1"
                        value="1.0"
-                       class="w-40" />
-                <span id="m-value" class="ml-2 font-semibold text-gray-800">1.0 kg</span>
+                       class="flex-1 sm:w-40" />
+                <span id="m-value"
+                      class="font-semibold text-gray-800 dark:text-gray-100 w-16">1.0 kg</span>
               </div>
-              <div class="flex items-center space-x-2">
-                <label for="A-slider" class="font-medium text-gray-700">Initial \(A\) (m):</label>
+              <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <label for="A-slider"
+                       class="font-medium text-gray-700 dark:text-gray-300 w-full sm:w-auto">Initial \(A\) (m):</label>
                 <input type="range"
                        id="A-slider"
                        min="0.05"
                        max="0.5"
                        step="0.01"
                        value="0.2"
-                       class="w-40" />
-                <span id="A-value" class="ml-2 font-semibold text-gray-800">0.20 m</span>
+                       class="flex-1 sm:w-40" />
+                <span id="A-value"
+                      class="font-semibold text-gray-800 dark:text-gray-100 w-16">0.20 m</span>
               </div>
-              <div class="flex space-x-4 pt-1">
+              <div class="flex flex-col sm:flex-row gap-2 pt-1">
                 <button id="start-mass-spring"
-                        class="px-4 py-2 bg-yellow-500 text-black font-medium rounded hover:bg-yellow-600 transition">
+                        class="flex-1 px-4 py-2 bg-yellow-500 dark:bg-yellow-600 text-black font-medium rounded hover:bg-yellow-600 dark:hover:bg-yellow-700 transition">
                   Start
                 </button>
                 <button id="stop-mass-spring"
-                        class="px-4 py-2 bg-red-500 text-white font-medium rounded hover:bg-red-600 transition disabled:opacity-50"
+                        class="flex-1 px-4 py-2 bg-red-500 dark:bg-red-600 text-white font-medium rounded hover:bg-red-600 dark:hover:bg-red-700 transition disabled:opacity-50"
                         disabled>Stop</button>
                 <button id="reset-mass-spring"
-                        class="px-4 py-2 bg-gray-500 text-white font-medium rounded hover:bg-gray-600 transition">
+                        class="flex-1 px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white font-medium rounded hover:bg-gray-600 dark:hover:bg-gray-700 transition">
                   Reset
                 </button>
               </div>
             </div>
             <!-- Canvas + Numeric Readouts -->
-            <div class="relative bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-xl border border-gray-300">
+            <div class="relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-xl border border-gray-300 dark:border-gray-600 overflow-hidden">
               <canvas id="mass-spring-canvas"
                       width="600"
                       height="400"
-                      class="rounded-lg"
+                      class="w-full h-auto"
                       role="img"
                       aria-label="Mass-spring oscillation simulation showing spring, mass, and motion"></canvas>
               <!-- Numeric Readouts (top-left overlay) -->
-              <div class="absolute top-2 left-2 bg-white bg-opacity-80 p-2 rounded text-sm">
+              <div class="absolute top-2 left-2 bg-white dark:bg-gray-800 bg-opacity-80 dark:bg-opacity-90 p-2 rounded text-xs sm:text-sm dark:text-gray-300 max-w-48 sm:max-w-none">
                 <p>
                   <strong>Time</strong>: <span id="readout-t">0.00</span> s
                 </p>
@@ -122,9 +134,9 @@
             </div>
             <!-- Post-Lab Quiz (moved here, below the canvas) -->
             <div id="postlab-quiz"
-                 class="hidden bg-gray-50 border-t border-gray-200 p-4 rounded-lg">
-              <h3 class="text-xl font-semibold text-gray-800 mb-2">Post-Lab Quiz</h3>
-              <ol class="list-decimal list-inside text-gray-700 space-y-2">
+                 class="hidden bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 p-4 rounded-lg">
+              <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Post-Lab Quiz</h3>
+              <ol class="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2">
                 <li>
                   Derive the period \(T = 2\pi \sqrt{\frac{m}{k}}\). Compare your measured period from the graph to the theoretical value.
                 </li>
@@ -135,21 +147,21 @@
           <!-- ===== Right Column: Position vs Time Graph + Energy Bars ===== -->
           <div class="space-y-6">
             <!-- Real-Time Graph: Position vs Time -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Position vs Time</h3>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Position vs Time</h3>
               <canvas id="position-chart" height="200"></canvas>
             </div>
             <!-- Energy Bars (moved here, below the graph) -->
-            <div class="flex space-x-4 items-end">
-              <div class="w-1/2">
-                <p class="text-center text-sm font-semibold">Potential Energy</p>
-                <div class="h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+            <div class="flex flex-col sm:flex-row gap-4 items-end">
+              <div class="w-full sm:w-1/2">
+                <p class="text-center text-xs sm:text-sm font-semibold dark:text-gray-300">Potential Energy</p>
+                <div class="h-24 sm:h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
                   <div id="bar-pe" class="bg-green-500 w-full h-0"></div>
                 </div>
               </div>
-              <div class="w-1/2">
-                <p class="text-center text-sm font-semibold">Kinetic Energy</p>
-                <div class="h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+              <div class="w-full sm:w-1/2">
+                <p class="text-center text-xs sm:text-sm font-semibold dark:text-gray-300">Kinetic Energy</p>
+                <div class="h-24 sm:h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
                   <div id="bar-ke" class="bg-indigo-500 w-full h-0"></div>
                 </div>
               </div>

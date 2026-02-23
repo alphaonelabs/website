@@ -7,32 +7,36 @@
   <div class="relative">
     <!-- ===== Tutorial Overlay ===== -->
     <div id="tutorial-overlay"
-         class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
-        <h3 class="text-2xl font-bold text-gray-800 mb-2">
+         class="fixed inset-0 bg-gray-800 dark:bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
           Step <span id="step-number">1</span> of 4
         </h3>
         <ul id="step-list"
-            class="mt-4 text-gray-700 list-disc list-inside space-y-2">
+            class="mt-4 text-gray-700 dark:text-gray-300 list-disc list-inside space-y-2">
           <!-- Populated by JS -->
         </ul>
         <div class="mt-6 flex justify-end space-x-2">
           <button id="tutorial-prev"
-                  class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 disabled:opacity-50"
+                  class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50"
                   disabled>Previous</button>
           <button id="tutorial-next"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>
+                  class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800">
+            Next
+          </button>
           <button id="tutorial-skip"
-                  class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Skip Tutorial</button>
+                  class="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700">
+            Skip Tutorial
+          </button>
         </div>
       </div>
     </div>
     <!-- ===== End Tutorial Overlay ===== -->
     <div class="max-w-5xl mx-auto px-6 py-8 space-y-8">
-      <div class="bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-2xl font-bold text-gray-800 mb-2">Basic Electrical Circuit</h2>
-          <p class="text-gray-600">
+      <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Basic Electrical Circuit</h2>
+          <p class="text-gray-600 dark:text-gray-300">
             Build a simple RC circuit: a battery \(V_0\), a resistor \(R\), and a capacitor \(C\). Adjust \(V_0\), \(R\), and \(C\), then click “Start” to watch the capacitor charge. Observe real‐time \(V_C(t)\), \(I(t)\), and a live graph of capacitor voltage over time. After \(5\tau\), a quiz appears.
           </p>
         </div>
@@ -40,9 +44,9 @@
           <!-- ===== Left Column: Canvas + Controls + Quiz ===== -->
           <div class="space-y-4">
             <!-- Controls -->
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-wrap gap-4">
+            <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4 flex flex-wrap gap-4">
               <div class="flex items-center space-x-2">
-                <label for="V-slider" class="font-medium text-gray-700">Battery \(V_0\) (V):</label>
+                <label for="V-slider" class="font-medium text-gray-700 dark:text-gray-300">Battery \(V_0\) (V):</label>
                 <input type="range"
                        id="V-slider"
                        min="1"
@@ -50,10 +54,11 @@
                        step="0.1"
                        value="5"
                        class="w-40" />
-                <span id="V-value" class="ml-2 font-semibold text-gray-800">5.0 V</span>
+                <span id="V-value"
+                      class="ml-2 font-semibold text-gray-800 dark:text-gray-100">5.0 V</span>
               </div>
               <div class="flex items-center space-x-2">
-                <label for="R-slider" class="font-medium text-gray-700">Resistor \(R\) (Ω):</label>
+                <label for="R-slider" class="font-medium text-gray-700 dark:text-gray-300">Resistor \(R\) (Ω):</label>
                 <input type="range"
                        id="R-slider"
                        min="10"
@@ -61,10 +66,11 @@
                        step="10"
                        value="100"
                        class="w-40" />
-                <span id="R-value" class="ml-2 font-semibold text-gray-800">100 Ω</span>
+                <span id="R-value"
+                      class="ml-2 font-semibold text-gray-800 dark:text-gray-100">100 Ω</span>
               </div>
               <div class="flex items-center space-x-2">
-                <label for="C-slider" class="font-medium text-gray-700">Capacitor \(C\) (µF):</label>
+                <label for="C-slider" class="font-medium text-gray-700 dark:text-gray-300">Capacitor \(C\) (µF):</label>
                 <input type="range"
                        id="C-slider"
                        min="1"
@@ -72,24 +78,25 @@
                        step="1"
                        value="100"
                        class="w-40" />
-                <span id="C-value" class="ml-2 font-semibold text-gray-800">100 µF</span>
+                <span id="C-value"
+                      class="ml-2 font-semibold text-gray-800 dark:text-gray-100">100 µF</span>
               </div>
               <div class="flex space-x-4 pt-1">
                 <button id="start-circuit"
-                        class="px-4 py-2 bg-yellow-500 text-black font-medium rounded hover:bg-yellow-600 transition">
+                        class="px-4 py-2 bg-yellow-500 dark:bg-yellow-600 text-black font-medium rounded hover:bg-yellow-600 dark:hover:bg-yellow-700 transition">
                   Start
                 </button>
                 <button id="stop-circuit"
-                        class="px-4 py-2 bg-red-500 text-white font-medium rounded hover:bg-red-600 transition disabled:opacity-50"
+                        class="px-4 py-2 bg-red-500 dark:bg-red-600 text-white font-medium rounded hover:bg-red-600 dark:hover:bg-red-700 transition disabled:opacity-50"
                         disabled>Stop</button>
                 <button id="reset-circuit"
-                        class="px-4 py-2 bg-gray-500 text-white font-medium rounded hover:bg-gray-600 transition">
+                        class="px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white font-medium rounded hover:bg-gray-600 dark:hover:bg-gray-700 transition">
                   Reset
                 </button>
               </div>
             </div>
             <!-- Canvas + Numeric Readouts -->
-            <div class="relative bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-xl border border-gray-300">
+            <div class="relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-xl border border-gray-300 dark:border-gray-600">
               <canvas id="circuit-canvas"
                       width="600"
                       height="400"
@@ -97,7 +104,7 @@
                       role="img"
                       aria-label="RC circuit simulation showing battery, resistor, and capacitor"></canvas>
               <!-- Numeric Readouts (top-left overlay) -->
-              <div class="absolute top-2 left-2 bg-white bg-opacity-90 p-2 rounded text-sm">
+              <div class="absolute top-2 left-2 bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 p-2 rounded text-sm dark:text-gray-300">
                 <p>
                   <strong>Time</strong>: <span id="readout-t">0.00</span> s
                 </p>
@@ -114,9 +121,9 @@
             </div>
             <!-- Post-Lab Quiz -->
             <div id="postlab-quiz"
-                 class="hidden bg-gray-50 border-t border-gray-200 p-4 rounded-lg">
-              <h3 class="text-xl font-semibold text-gray-800 mb-2">Post-Lab Quiz</h3>
-              <ol class="list-decimal list-inside text-gray-700 space-y-2">
+                 class="hidden bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 p-4 rounded-lg">
+              <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Post-Lab Quiz</h3>
+              <ol class="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2">
                 <li>
                   Write the expression for \(\tau = R\,C\). Based on the sliders, calculate the theoretical \(\tau\). Compare it to the time at which \(V_C(t)\) reaches ~63% of \(V_0\).
                 </li>
@@ -129,13 +136,13 @@
           <!-- ===== Right Column: Graph + (formerly Energy Bars) ===== -->
           <div class="space-y-6">
             <!-- Real‐Time Graph: \(V_C\) vs Time -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Capacitor Voltage vs Time</h3>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Capacitor Voltage vs Time</h3>
               <canvas id="vc-chart" height="200"></canvas>
             </div>
             <!-- (Optional) Current vs Time Graph -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Current vs Time</h3>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Current vs Time</h3>
               <canvas id="i-chart" height="200"></canvas>
             </div>
           </div>

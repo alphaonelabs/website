@@ -171,6 +171,7 @@ from .models import (
     TeamInvite,
     TimeSlot,
     UserBadge,
+    UserMembership,
     VideoRequest,
     VirtualClassroom,
     VirtualClassroomCustomization,
@@ -1569,6 +1570,14 @@ def course_search(request):
             # Create a set of titles
             user_courses = {course.course.title for course in enrollments}
 
+    # Get dynamic subject choices from courses that are published
+    available_subjects = (
+        Subject.objects.filter(courses__status="published")
+        .distinct()
+        .order_by("order", "name")
+        .values_list("slug", "name")
+    )
+
     context = {
         "page_obj": page_obj,
         "query": query,
@@ -1577,7 +1586,7 @@ def course_search(request):
         "min_price": min_price,
         "max_price": max_price,
         "sort_by": sort_by,
-        "subject_choices": Course._meta.get_field("subject").choices,
+        "subject_choices": list(available_subjects),
         "level_choices": Course._meta.get_field("level").choices,
         "total_results": total_results,
         "is_teacher": is_teacher,
@@ -5617,11 +5626,15 @@ def create_donation_subscription(request: HttpRequest) -> JsonResponse:
         # Create or get customer
         customer = None
         # Try to retrieve existing customer for authenticated users
-        if request.user.is_authenticated and hasattr(request.user, "stripe_customer_id"):
-            from contextlib import suppress
+        if request.user.is_authenticated:
+            try:
+                membership = request.user.membership
+                if membership.stripe_customer_id:
+                    customer = stripe.Customer.retrieve(membership.stripe_customer_id)
+            except (UserMembership.DoesNotExist, stripe.error.InvalidRequestError):
+                # No membership or invalid customer ID
+                customer = None
 
-            with suppress(stripe.error.InvalidRequestError):
-                customer = stripe.Customer.retrieve(request.user.stripe_customer_id)
         # Create new customer if needed
         if not customer:
             customer = stripe.Customer.create(
@@ -5631,8 +5644,13 @@ def create_donation_subscription(request: HttpRequest) -> JsonResponse:
                 },
             )
             if request.user.is_authenticated:
-                request.user.stripe_customer_id = customer.id
-                request.user.save()
+                # Store customer ID in user membership
+                membership, _ = UserMembership.objects.get_or_create(
+                    user=request.user, defaults={"plan_id": 1, "stripe_customer_id": customer.id}
+                )
+                if not membership.stripe_customer_id:
+                    membership.stripe_customer_id = customer.id
+                    membership.save()
 
         # Create a PaymentIntent for the first payment with setup_future_usage
         payment_intent = stripe.PaymentIntent.create(

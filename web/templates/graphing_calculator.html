@@ -116,15 +116,6 @@
                    class="w-full"
                    oninput="updateGridSize(this.value)" />
           </div>
-          <div>
-            <label class="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              <input type="checkbox"
-                     id="darkMode"
-                     onclick="toggleDarkMode()"
-                     class="rounded text-blue-600" />
-              <span>Dark Mode</span>
-            </label>
-          </div>
         </div>
       </div>
     </div>
@@ -171,7 +162,11 @@
           y: canvas.height / 2
       };
       let showGrid = true;
-      let isDarkMode = false;
+
+      // Function to check if dark mode is currently active
+      function isDarkModeActive() {
+          return document.documentElement.classList.contains('dark');
+      }
 
       // Mouse interaction for dragging (panning)
       let isDragging = false;
@@ -233,10 +228,11 @@
       // Draw grid, axes, and labels
       function drawGrid() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          const backgroundColor = isDarkMode ? "#1F2937" : "#FFFFFF";
-          const gridColor = isDarkMode ? "#4B5563" : "#E5E7EB";
-          const axisColor = isDarkMode ? "#D1D5DB" : "#000000";
-          const textColor = isDarkMode ? "#D1D5DB" : "#000000";
+          const darkMode = isDarkModeActive();
+          const backgroundColor = darkMode ? "#1F2937" : "#FFFFFF";
+          const gridColor = darkMode ? "#4B5563" : "#E5E7EB";
+          const axisColor = darkMode ? "#D1D5DB" : "#000000";
+          const textColor = darkMode ? "#D1D5DB" : "#000000";
           ctx.fillStyle = backgroundColor;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -611,27 +607,6 @@
           redraw();
       }
 
-      function toggleDarkMode() {
-          isDarkMode = document.getElementById('darkMode').checked;
-
-          // ✅ Save user choice
-          localStorage.setItem('darkMode', isDarkMode.toString());
-
-          if (isDarkMode) {
-              document.documentElement.classList.add('dark');
-          } else {
-              document.documentElement.classList.remove('dark');
-          }
-
-          redraw();
-
-          // ✅ Optional: notify other components
-          document.dispatchEvent(new CustomEvent('themeChanged', {
-              detail: isDarkMode
-          }));
-      }
-
-
       function exportImage() {
           const link = document.createElement('a');
           link.download = 'graph.png';
@@ -639,39 +614,25 @@
           link.click();
       }
 
+      // Initialize on page load
       window.addEventListener('load', () => {
-          // Read theme from localStorage as string
-          const darkModeSetting = localStorage.getItem('darkMode');
-
-          // Convert it to a boolean (handle null case as fallback)
-          const prefersDark =
-              darkModeSetting === 'true' ||
-              (darkModeSetting === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-          // Sync UI elements
-          document.getElementById('darkMode').checked = prefersDark;
-          isDarkMode = prefersDark;
-
-          // Apply or remove the dark class
-          if (prefersDark) {
-              document.documentElement.classList.add('dark');
-          } else {
-              document.documentElement.classList.remove('dark');
-          }
-
           resetView();
       });
-      document.addEventListener('themeChanged', (e) => {
-          isDarkMode = e.detail;
-          document.getElementById('darkMode').checked = isDarkMode;
 
-          if (isDarkMode) {
-              document.documentElement.classList.add('dark');
-          } else {
-              document.documentElement.classList.remove('dark');
-          }
+      // Listen for changes to the document's dark mode class
+      const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+              if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                  // Redraw when dark mode class changes
+                  redraw();
+              }
+          });
+      });
 
-          redraw();
+      // Start observing the document element for class changes
+      observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['class']
       });
   </script>
 {% endblock %}

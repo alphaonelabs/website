@@ -2,90 +2,171 @@
 
 {% load static %}
 
+{% block extra_head %}
+{% endblock extra_head %}
 {% block content %}
-  <main class="flex-1 w-full max-w-[90rem] mx-auto mt-6 px-4 md:px-6">
+  <main class="flex-1 w-full">
     {% if is_debug %}
-      <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
+      <div class="max-w-[90rem] mx-auto px-4 md:px-6 mt-4">
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4 rounded">
+          <div class="flex items-center">
             <i class="fas fa-code text-yellow-500"></i>
-          </div>
-          <div class="ml-3">
-            <p class="text-sm text-yellow-700">Debug Mode: This banner and buttons are only visible in development.</p>
-            <div class="mt-2">
+            <div class="ml-3">
+              <p class="text-sm text-yellow-700">Debug Mode: visible in development only.</p>
               <a href="{% url 'create_test_data' %}"
-                 class="bg-teal-300 hover:bg-teal-400 text-white px-4 py-2 rounded-lg transition duration-200 inline-flex items-center">
-                <i class="fas fa-database mr-2"></i>
-                Add Test Data
+                 class="mt-2 inline-flex items-center bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg transition">
+                <i class="fas fa-database mr-2"></i>Add Test Data
               </a>
             </div>
           </div>
         </div>
       </div>
     {% endif %}
-    <div class="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
-      <div class="md:w-3/4 space-y-7">
-        <div class="bg-white dark:bg-gray-800 border border-teal-300 dark:border-teal-400 rounded-lg shadow-lg p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <p class="text-sm uppercase tracking-wide text-teal-600 dark:text-teal-300 font-semibold">Live now</p>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-1">Global Virtual Classroom</h2>
-            <p class="text-gray-600 dark:text-gray-300 mt-1">Drop in, collaborate, and connect with learners worldwide.</p>
-            {% if global_classroom_participants %}
-              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {{ global_classroom_participants }} learners already inside.
-              </p>
-            {% endif %}
-          </div>
-          <div class="flex items-center gap-2">
-            {% if user.is_authenticated %}
-              <form method="post" action="{% url 'join_global_virtual_classroom' %}">
-                {% csrf_token %}
-                <button type="submit"
-                        class="bg-teal-300 hover:bg-teal-400 text-white px-5 py-3 rounded-lg font-semibold shadow-md transition duration-200 flex items-center gap-2">
-                  <i class="fas fa-door-open"></i>
-                  Join Now
-                </button>
-              </form>
-            {% else %}
-              <a href="{% url 'account_login' %}"
-                 class="bg-gray-900 hover:bg-gray-800 text-white px-5 py-3 rounded-lg font-semibold shadow-md transition duration-200 flex items-center gap-2">
-                <i class="fas fa-sign-in-alt"></i>
-                Sign in to Join
+    <!-- ===== 3D HERO SECTION ===== -->
+    <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 relative overflow-hidden py-20 md:py-28">
+      <!-- Floating 3D Icons -->
+      <div class="absolute inset-0 pointer-events-none select-none"
+           aria-hidden="true">
+        <div class="animate-bounce absolute top-[10%] left-[8%] text-white/20 text-6xl">
+          <i class="fas fa-atom"></i>
+        </div>
+        <div class="animate-pulse absolute top-[20%] right-[12%] text-white/15 text-7xl">
+          <i class="fas fa-book-open"></i>
+        </div>
+        <div class="animate-bounce absolute bottom-[15%] left-[15%] text-white/20 text-5xl">
+          <i class="fas fa-flask"></i>
+        </div>
+        <div class="animate-bounce delay-[3000ms] absolute bottom-[20%] right-[8%] text-white/15 text-6xl">
+          <i class="fas fa-graduation-cap"></i>
+        </div>
+        <div class="animate-pulse delay-[2000ms] absolute top-[50%] left-[50%] text-white/10 text-8xl">
+          <i class="fas fa-brain"></i>
+        </div>
+        <div class="animate-bounce delay-[1500ms] absolute top-[5%] left-[45%] text-white/15 text-5xl">
+          <i class="fas fa-lightbulb"></i>
+        </div>
+        <div class="animate-bounce delay-[4000ms] absolute bottom-[5%] left-[60%] text-white/10 text-6xl">
+          <i class="fas fa-rocket"></i>
+        </div>
+      </div>
+      <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
+        <div class="flex flex-col lg:flex-row items-center gap-10">
+          <!-- Hero Text -->
+          <div class="lg:w-3/5 text-center lg:text-left">
+            <span class="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-semibold bg-white/20 text-white backdrop-blur-sm border border-white/30">
+              🚀 Open Source Education Platform
+            </span>
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
+              Where <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Curiosity</span>
+              Meets <span class="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">Knowledge</span>
+            </h1>
+            <p class="text-lg md:text-xl text-teal-50 max-w-2xl mb-8 leading-relaxed">
+              Alpha One Labs connects passionate teachers with curious learners. Explore courses, join study groups, and
+              transform your learning journey.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <a href="{% url 'learn' %}"
+                 class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
+                <i class="fas fa-graduation-cap text-xl"></i>
+                Start Learning
+                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"></i>
               </a>
-            {% endif %}
+              <a href="{% url 'teach' %}"
+                 class="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
+                <i class="fas fa-chalkboard-user text-xl"></i>
+                Start Teaching
+              </a>
+            </div>
+          </div>
+          <!-- Live Classroom Glass Card -->
+          <div class="lg:w-2/5">
+            <div class="bg-white/10 dark:bg-black/20 backdrop-blur-lg border border-white/20 dark:border-white/10 rounded-2xl p-6 text-white shadow-lg shadow-teal-300/30">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                <span class="text-sm font-semibold uppercase tracking-wide">Live Now</span>
+              </div>
+              <h2 class="text-2xl font-bold mb-2">Global Virtual Classroom</h2>
+              <p class="text-teal-100 text-sm mb-4">Drop in, collaborate, and connect with learners worldwide.</p>
+              {% if global_classroom_participants %}
+                <div class="flex items-center gap-2 mb-4 text-sm text-teal-200">
+                  <div class="flex -space-x-2">
+                    <div class="w-6 h-6 rounded-full bg-orange-400 border-2 border-white/30 flex items-center justify-center text-xs">
+                      👤
+                    </div>
+                    <div class="w-6 h-6 rounded-full bg-blue-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
+                    <div class="w-6 h-6 rounded-full bg-purple-400 border-2 border-white/30 flex items-center justify-center text-xs">
+                      👤
+                    </div>
+                  </div>
+                  <span>{{ global_classroom_participants }} learners inside</span>
+                </div>
+              {% endif %}
+              {% if user.is_authenticated %}
+                <form method="post" action="{% url 'join_global_virtual_classroom' %}">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg flex items-center justify-center gap-2">
+                    <i class="fas fa-door-open"></i> Join Now
+                  </button>
+                </form>
+              {% else %}
+                <a href="{% url 'account_login' %}"
+                   class="block w-full text-center bg-white/20 hover:bg-white/30 text-white font-bold px-6 py-3 rounded-xl transition-all border border-white/30">
+                  <i class="fas fa-sign-in-alt mr-2"></i>Sign in to Join
+                </a>
+              {% endif %}
+            </div>
           </div>
         </div>
-        <div class="space-y-4">
-          <blockquote class="text-xl italic">
-            "Somewhere, something incredible is waiting to be known."
-            <span class="block text-right">- Carl Sagan</span>
-          </blockquote>
-          <p>
-            Alpha One Labs is an innovative platform dedicated to forging
-            meaningful connections between teachers and students. By bridging
-            the gap between knowledge seekers and knowledge givers, we
-            facilitate a dynamic educational experience that empowers everyone
-            involved. Whether you're sharing expertise or searching for
-            guidance, Alpha One Labs helps turn curiosity into collaborative
-            learning—because when passionate minds come together, new
-            understanding is always within reach.
-          </p>
-        </div>
-        <!-- Recent Courses (2 columns x 3 rows) -->
-        <div class="relative flex py-5 items-center mb-6">
-          <div class="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-          <div class="flex-shrink mx-4 flex items-center text-xl font-bold text-gray-800 dark:text-gray-200">
-            <i class="fas fa-graduation-cap text-teal-300 dark:text-teal-300 mr-3"></i>
-            Recent Courses
+      </div>
+    </section>
+    <!-- ===== PAGE SECTIONS ===== -->
+    <div class="max-w-[90rem] mx-auto px-4 md:px-6 mt-10 pb-12 space-y-14">
+      <!-- ===== SECTION 1: WHAT WOULD YOU LIKE TO DO? ===== -->
+      <section>
+        <div class="relative flex py-5 items-center mb-8">
+          <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+          <div class="flex-shrink mx-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+              <i class="fas fa-question-circle text-white text-lg"></i>
+            </div>
+            <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">What
+            Would You Like To Do?</span>
           </div>
-          <div class="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
+          <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <!-- Course Card 1 -->
-          {% for course in featured_courses %}
-            <!-- Course Card -->
-            <div class="rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div class="aspect-square w-full relative overflow-hidden rounded-lg mb-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <a href="{% url 'learn' %}"
+             class="group flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
+            <i class="fa-solid fa-graduation-cap text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
+            <span class="text-2xl font-bold mb-2">I Want to Learn</span>
+            <span class="text-sm font-normal opacity-90">Discover new skills and expand your knowledge</span>
+          </a>
+          <a href="{% url 'teach' %}"
+             class="group flex flex-col items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
+            <i class="fa-solid fa-chalkboard-user text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
+            <span class="text-2xl font-bold mb-2">I Want to Teach</span>
+            <span class="text-sm font-normal opacity-90">Share your knowledge with others</span>
+          </a>
+        </div>
+      </section>
+      <!-- ===== SECTION 2: RECENT COURSES (3 side by side) ===== -->
+      <section>
+        <div class="relative flex py-5 items-center mb-8">
+          <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+          <div class="flex-shrink mx-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+              <i class="fas fa-graduation-cap text-white text-lg"></i>
+            </div>
+            <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Recent
+            Courses</span>
+          </div>
+          <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+          {% for course in featured_courses|slice:":3" %}
+            <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <div class="aspect-video w-full relative overflow-hidden rounded-xl mb-4 group">
                 {% if course.image %}
                   <a href="{% url 'course_detail' course.slug %}">
                     <img src="{{ course.image.url }}"
@@ -200,31 +281,207 @@
               {% endif %}
             </div>
           {% empty %}
-            <p>No courses available.</p>
+            <p class="col-span-3 text-center text-gray-500 dark:text-gray-400">No courses available.</p>
           {% endfor %}
         </div>
-        <!-- Add view more link -->
-        <div class="text-right mt-4">
+        <div class="text-center mt-6">
           <a href="{% url 'course_search' %}"
-             class="text-orange-500 hover:text-orange-600 underline transition-colors duration-200">
-            <span>View More Courses</span>
-            <i class="fas fa-arrow-right ml-2"></i>
+             class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+            View All Courses
+            <i class="fas fa-arrow-right"></i>
           </a>
         </div>
-        <!-- Featured Products Section -->
-        <div class="relative flex py-5 items-center mb-6">
-          <div class="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-          <div class="flex-shrink mx-4 flex items-center text-xl font-bold text-gray-800 dark:text-gray-200">
-            <i class="fas fa-shopping-bag text-teal-300 dark:text-teal-300 mr-3"></i>
-            Featured Goods
-            <i class="fas fa-gift text-orange-400 ml-2"></i>
+      </section>
+      <!-- ===== SECTION 3: LEADERBOARD | REFERRAL | WEEKLY CHALLENGES ===== -->
+      <section>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Leaderboard -->
+          <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-yellow-400">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+              <i class="fa-solid fa-trophy text-yellow-500 mr-2"></i>
+              Leaderboard Champions
+            </h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Global leaderboard</p>
+            <div class="space-y-3">
+              {% for entry in top_leaderboard_users %}
+                <div class="flex items-center p-2 {% if forloop.counter == 1 %}bg-yellow-50 dark:bg-yellow-900/30{% elif forloop.counter == 2 %}bg-gray-50 dark:bg-gray-700/50{% elif forloop.counter == 3 %}bg-amber-50 dark:bg-amber-900/30{% endif %} rounded-lg">
+                  <div class="flex-shrink-0 mr-3 relative">
+                    {% if entry.user.profile.avatar %}
+                      <img src="{{ entry.user.profile.avatar.url }}"
+                           alt="{{ entry.user.username }}"
+                           class="w-10 h-10 rounded-full"
+                           width="40"
+                           height="40" />
+                    {% else %}
+                      <div class="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-white">
+                        {{ entry.user.username|make_list|first|upper }}
+                      </div>
+                    {% endif %}
+                    <div class="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs {% if forloop.counter == 1 %}bg-yellow-500{% elif forloop.counter == 2 %}bg-gray-500{% elif forloop.counter == 3 %}bg-amber-600{% endif %}">
+                      {{ forloop.counter }}
+                    </div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    {% if entry.user.id == user.id %}
+                      <p class="text-sm font-medium truncate">
+                        You <span class="bg-blue-200 dark:bg-blue-800 px-2 py-0.5 rounded-full text-xs">Excellent</span>
+                      </p>
+                    {% else %}
+                      <p class="text-sm font-medium truncate">{{ entry.user.username }}</p>
+                    {% endif %}
+                    <div class="flex mt-1 text-xs text-gray-500 dark:text-gray-400 space-x-3">
+                      <span><i class="fas fa-star text-yellow-500 mr-1"></i>{{ entry.points }}</span>
+                      <span><i class="fas fa-check-circle text-green-500 mr-1"></i>{{ entry.challenge_count }}</span>
+                      <span><i class="fas fa-fire text-orange-500 mr-1"></i>{{ entry.current_streak }}</span>
+                    </div>
+                  </div>
+                </div>
+              {% empty %}
+                <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                  No entries yet. Complete challenges to earn your spot!
+                </p>
+              {% endfor %}
+            </div>
+            <div class="mt-4">
+              <a href="{% url 'leaderboards' %}"
+                 class="block text-center bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-list-ol mr-2"></i>Full Leaderboard
+              </a>
+            </div>
           </div>
-          <div class="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
+          <!-- Referral Program -->
+          <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-purple-500">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+              <i class="fa-solid fa-gift text-purple-600 dark:text-purple-400 mr-2"></i>
+              Referral Program
+            </h2>
+            <div class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-purple-100 dark:border-purple-800 mb-4">
+              <h3 class="font-medium mb-2 text-purple-800 dark:text-purple-200">Share and Earn!</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                {% if user.is_authenticated %}
+                  {% if user.profile.is_teacher %}
+                    Get your first student and receive a $5 bonus! Share your unique referral link:
+                  {% else %}
+                    Get $5 when someone you refer enrolls in their first course! Share your link:
+                  {% endif %}
+                {% else %}
+                  Join our community and start earning rewards through our referral program!
+                {% endif %}
+              </p>
+              {% if user.is_authenticated %}
+                <div class="flex items-center space-x-2 mb-3">
+                  <input type="text"
+                         value="{{ request.scheme }}://{{ request.get_host }}{% url 'handle_referral' code=user.profile.referral_code %}"
+                         class="text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 flex-1 min-w-0"
+                         readonly
+                         id="referralLink" />
+                  <button onclick="copyReferralLink()"
+                          class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs whitespace-nowrap flex-shrink-0">
+                    <i class="fas fa-copy mr-1"></i>Copy
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Total referral earnings: ${{ user.profile.referral_earnings|default:"0" }}
+                </p>
+              {% else %}
+                <a href="{% url 'account_signup' %}"
+                   class="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm">
+                  <i class="fas fa-user-plus mr-2"></i>Sign Up to Start Earning
+                </a>
+              {% endif %}
+            </div>
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h4 class="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">
+                <i class="fas fa-crown text-yellow-500 mr-1"></i> Top Referral Activity
+              </h4>
+              <div class="space-y-2">
+                {% for referrer in top_referrers %}
+                  <div class="flex items-center justify-between text-sm {% if forloop.counter == 1 %}text-yellow-600 dark:text-yellow-400 font-medium{% endif %}">
+                    <div class="flex items-center space-x-2">
+                      <span class="w-5 text-center">
+                        {% if forloop.counter == 1 %}
+                          👑
+                        {% elif forloop.counter == 2 %}
+                          🥈
+                        {% elif forloop.counter == 3 %}
+                          🥉
+                        {% else %}
+                          {{ forloop.counter }}
+                        {% endif %}
+                      </span>
+                      <span>{{ referrer.user.username }}</span>
+                    </div>
+                    <div class="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400">
+                      <span><i class="fas fa-user-plus mr-1"></i>{{ referrer.total_signups }}</span>
+                      <span><i class="fas fa-graduation-cap mr-1"></i>{{ referrer.total_enrollments }}</span>
+                    </div>
+                  </div>
+                {% empty %}
+                  <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
+                    No referral activity yet. Share your link to be the first!
+                  </p>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <!-- Weekly Challenges -->
+          <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-teal-500">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+              <span class="mr-2 text-xl">🏆</span> Weekly Challenges
+            </h2>
+            {% if current_challenge %}
+              <div class="challenge-item">
+                <h3 class="text-base font-semibold mb-3 text-gray-800 dark:text-gray-200">{{ current_challenge.0.title }}</h3>
+                <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">{{ current_challenge.0.description }}</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                  <i class="fas fa-calendar-alt mr-1"></i>
+                  <strong>Duration:</strong> {{ current_challenge.0.start_date }} to {{ current_challenge.0.end_date }}
+                </p>
+                {% if user.is_authenticated %}
+                  <a href="{% url 'challenge_submit' current_challenge.0.id %}"
+                     class="inline-flex items-center bg-teal-600 text-white px-5 py-2.5 rounded-lg hover:bg-teal-700 transition-shadow shadow-md text-sm">
+                    <i class="fas fa-check mr-2"></i>Complete My Challenge
+                  </a>
+                {% else %}
+                  <a href="{% url 'account_login' %}"
+                     class="inline-flex items-center bg-teal-600 text-white px-5 py-2.5 rounded-lg hover:bg-teal-700 text-sm">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Log in to Participate
+                  </a>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="flex flex-col items-center justify-center py-8 text-center">
+                <i class="fas fa-hourglass-half text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
+                <p class="text-gray-500 dark:text-gray-400 font-medium">No challenges available at this time.</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Check back soon!</p>
+              </div>
+            {% endif %}
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <a href="{% url 'challenge_list' %}"
+                 class="block text-center bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm">
+                <i class="fas fa-list mr-2"></i>View All Challenges
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ===== SECTION 4: FEATURED GOODS ===== -->
+      <section>
+        <div class="relative flex py-5 items-center mb-8">
+          <div class="flex-grow border-t-2 border-orange-200 dark:border-orange-800"></div>
+          <div class="flex-shrink mx-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-lg">
+              <i class="fas fa-shopping-bag text-white text-lg"></i>
+            </div>
+            <span class="text-2xl font-extrabold bg-gradient-to-r from-orange-500 to-pink-500 dark:from-orange-400 dark:to-pink-400 bg-clip-text text-transparent">Featured
+            Goods</span>
+          </div>
+          <div class="flex-grow border-t-2 border-orange-200 dark:border-orange-800"></div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {% for product in featured_products %}
-            <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <!-- Product Image -->
+            <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
               <div class="relative aspect-square w-full overflow-hidden">
                 {% if product.image_url %}
                   <a href="{% url 'goods_detail' pk=product.id %}">
@@ -244,7 +501,6 @@
                   </a>
                 {% endif %}
               </div>
-              <!-- Product Details -->
               <div class="p-4">
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 line-clamp-2">
                   <a href="{% url 'goods_detail' pk=product.id %}"
@@ -260,7 +516,6 @@
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">{{ product.description }}</p>
               </div>
-              <!-- Stock and Add to Cart -->
               <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <div class="flex items-center justify-between">
                   {% if product.stock > 0 %}
@@ -285,1125 +540,239 @@
               </div>
             </div>
           {% empty %}
-            <p class="text-center text-gray-500 dark:text-gray-400">No featured products available.</p>
+            <p class="col-span-3 text-center text-gray-500 dark:text-gray-400">No featured products available.</p>
           {% endfor %}
         </div>
-        <!-- Add view more link -->
-        <div class="text-right mt-4">
+        <div class="text-center">
           <a href="{% url 'goods_listing' %}"
-             class="text-orange-500 hover:text-orange-600 underline transition-colors duration-200">
-            <span>View More Products</span>
-            <i class="fas fa-arrow-right ml-2"></i>
+             class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+            View More Products
+            <i class="fas fa-arrow-right"></i>
           </a>
         </div>
-        <!-- Two cards next to each other: For Learners & For Teachers -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      </section>
+      <!-- ===== SECTION 5: FORUM | BLOG | SUCCESS STORY ===== -->
+      <section>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Forum -->
+          <div class="flex flex-col rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-purple-500">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+              <i class="fa-solid fa-comments text-purple-600 dark:text-purple-400 mr-2"></i>
+              Recent Forum Post
+            </h2>
+            <div class="flex-1">
+              <strong class="block text-gray-900 dark:text-gray-200 mb-2 text-sm">{{ latest_topic.title|default:"How to get started with advanced mathematics?" }}</strong>
+              <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                "{{ latest_topic.content|default:"I'm looking for resources on group theory and number theory. Any recommendations?" }}"
+                — <em>posted by {{ latest_topic.author.username|default:"user123" }}</em>
+              </p>
+            </div>
+            <div class="mt-5 flex flex-wrap gap-3">
+              <a href="{% if latest_topic %}{% url 'forum_topic' latest_topic.category.slug latest_topic.id %}{% else %}{% url 'forum_categories' %}{% endif %}"
+                 class="inline-flex items-center text-purple-600 dark:text-purple-400 text-sm hover:underline">
+                View Discussion <i class="fas fa-arrow-right ml-1 text-xs"></i>
+              </a>
+              <a href="{% url 'forum_categories' %}"
+                 class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors">
+                <i class="fas fa-comments"></i> Browse Forum
+              </a>
+            </div>
+          </div>
+          <!-- Blog -->
+          <div class="flex flex-col rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-red-500">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+              <i class="fa-solid fa-blog text-red-600 dark:text-red-400 mr-2"></i>
+              Recent Blog Post
+            </h2>
+            <div class="flex-1">
+              <strong class="block text-gray-900 dark:text-gray-200 mb-2 text-sm">{{ latest_post.title|default:"The Future of Online Education" }}</strong>
+              <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                {{ latest_post.excerpt|default:"Learn how new technologies are shaping the way we teach and learn, including AI-driven insights and personalized curriculum..." }}
+              </p>
+            </div>
+            <div class="mt-5 flex flex-wrap gap-3">
+              <a href="{% if latest_post %}{% url 'blog_detail' latest_post.slug %}{% else %}{% url 'blog_list' %}{% endif %}"
+                 class="inline-flex items-center text-red-600 dark:text-red-400 text-sm hover:underline">
+                Read More <i class="fas fa-arrow-right ml-1 text-xs"></i>
+              </a>
+              <a href="{% url 'blog_list' %}"
+                 class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors">
+                <i class="fas fa-blog"></i> All Blog Posts
+              </a>
+            </div>
+          </div>
+          <!-- Success Story -->
+          <div class="flex flex-col rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-yellow-500">
+            <h2 class="text-lg font-bold mb-4 flex items-center">
+              <i class="fa-solid fa-trophy text-yellow-600 dark:text-yellow-400 mr-2"></i>
+              Success Story
+            </h2>
+            <div class="flex-1">
+              <strong class="block text-gray-900 dark:text-gray-200 mb-2 text-sm">{{ latest_success_story.title|default:"From Beginner to Expert in 3 Months" }}</strong>
+              <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                {{ latest_success_story.excerpt|default:"Discover how our platform helped a complete beginner transform into a confident expert through personalized learning paths and dedicated mentorship..." }}
+              </p>
+            </div>
+            <div class="mt-5 flex flex-wrap gap-3">
+              <a href="{% if latest_success_story %}{% url 'success_story_detail' latest_success_story.slug %}{% else %}{% url 'success_story_list' %}{% endif %}"
+                 class="inline-flex items-center text-yellow-600 dark:text-yellow-400 text-sm hover:underline">
+                Read More <i class="fas fa-arrow-right ml-1 text-xs"></i>
+              </a>
+              <a href="{% url 'create_success_story' %}"
+                 class="inline-flex items-center gap-1 px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-lg transition-colors">
+                <i class="fas fa-plus"></i> Share Your Story
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ===== SECTION 6: VIEW WAITING ROOMS | VIEW CONTRIBUTIONS ===== -->
+      <section>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- View Waiting Rooms -->
+          <a href="{% url 'waiting_room_list' %}"
+             class="group block rounded-2xl p-10 bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
+            <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-door-open text-4xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-3">View Waiting Rooms</h3>
+            <p class="text-blue-100 text-sm mb-6 max-w-sm mx-auto">
+              Browse open waiting rooms and connect with learners
+              seeking teachers for specific topics.
+            </p>
+            <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+              Browse Waiting Rooms <i class="fas fa-arrow-right"></i>
+            </span>
+          </a>
+          <!-- View Contributions -->
+          <a href="{% url 'contributors_list_view' %}"
+             class="group block rounded-2xl p-10 bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-800 dark:to-black text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
+            <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
+              <i class="fab fa-github text-4xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-3">View Contributions</h3>
+            <p class="text-gray-300 text-sm mb-6 max-w-sm mx-auto">
+              Explore contributions from our open source community.
+              See top contributors and recently merged pull requests.
+            </p>
+            <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+              View Contributors <i class="fas fa-arrow-right"></i>
+            </span>
+          </a>
+        </div>
+      </section>
+      <!-- ===== SECTION 7: FOR LEARNERS | FOR TEACHERS ===== -->
+      <section>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- For Learners -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <h3 class="text-lg font-semibold mb-2 flex items-center">
-              <i class="fa-solid fa-user-graduate text-teal-600 dark:text-teal-400 mr-2"></i>
-              For Learners
-            </h3>
-            <ul class="list-disc list-inside space-y-2 text-sm text-gray-800 dark:text-gray-200">
-              <li>
-                <i class="fa-solid fa-robot text-gray-600 dark:text-gray-300 mr-2"></i>
-                Advanced search with AI-powered recommendations
+          <div class="border border-gray-200 dark:border-gray-700 rounded-2xl p-6 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-blue-500">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                <i class="fa-solid fa-user-graduate text-white"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">For Learners</h3>
+            </div>
+            <ul class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-robot text-blue-600 dark:text-blue-400"></i></span>
+                AI-powered course recommendations
               </li>
-              <li>
-                <i class="fa-solid fa-calendar-check text-gray-600 dark:text-gray-300 mr-2"></i>
-                Flexible scheduling with calendar integration
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-calendar-check text-blue-600 dark:text-blue-400"></i></span>
+                Flexible scheduling & calendar
               </li>
-              <li>
-                <i class="fa-solid fa-trophy text-gray-600 dark:text-gray-300 mr-2"></i>
-                Track your progress and earn achievements
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-trophy text-blue-600 dark:text-blue-400"></i></span>
+                Progress tracking & achievements
               </li>
-              <li>
-                <i class="fa-solid fa-users text-gray-600 dark:text-gray-300 mr-2"></i>
-                Join study groups and connect with peers
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-users text-blue-600 dark:text-blue-400"></i></span>
+                Study groups & peer connections
               </li>
-              <li>
-                <i class="fa-solid fa-chalkboard-teacher text-gray-600 dark:text-gray-300 mr-2"></i>
-                Access both virtual and in-person classes
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-chalkboard-teacher text-blue-600 dark:text-blue-400"></i></span>
+                Virtual & in-person classes
               </li>
             </ul>
           </div>
           <!-- For Teachers -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <h3 class="text-lg font-semibold mb-2 flex items-center">
-              <i class="fa-solid fa-chalkboard-user text-teal-600 dark:text-teal-400 mr-2"></i>
-              For Teachers
-            </h3>
-            <ul class="list-disc list-inside space-y-2 text-sm text-gray-800 dark:text-gray-200">
-              <li>
-                <i class="fa-solid fa-clipboard-list text-gray-600 dark:text-gray-300 mr-2"></i>
-                Comprehensive course management tools
+          <div class="border border-gray-200 dark:border-gray-700 rounded-2xl p-6 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-orange-500">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg">
+                <i class="fa-solid fa-chalkboard-user text-white"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">For Teachers</h3>
+            </div>
+            <ul class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-clipboard-list text-orange-600 dark:text-orange-400"></i></span>
+                Course management tools
               </li>
-              <li>
-                <i class="fa-solid fa-chart-line text-gray-600 dark:text-gray-300 mr-2"></i>
-                Analytics and student progress tracking
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-chart-line text-orange-600 dark:text-orange-400"></i></span>
+                Analytics & progress tracking
               </li>
-              <li>
-                <i class="fa-solid fa-credit-card text-gray-600 dark:text-gray-300 mr-2"></i>
-                Secure payment processing and earnings management
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-credit-card text-orange-600 dark:text-orange-400"></i></span>
+                Secure payments & earnings
               </li>
-              <li>
-                <i class="fa-solid fa-bullhorn text-gray-600 dark:text-gray-300 mr-2"></i>
-                Marketing tools to promote your courses
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-bullhorn text-orange-600 dark:text-orange-400"></i></span>
+                Marketing tools for courses
               </li>
-              <li>
-                <i class="fa-solid fa-comments text-gray-600 dark:text-gray-300 mr-2"></i>
-                Direct communication with students
+              <li class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-comments text-orange-600 dark:text-orange-400"></i></span>
+                Direct student communication
               </li>
             </ul>
           </div>
         </div>
-        <!-- Affiliations Section -->
-        <div class="border border-gradient-to-r from-purple-500 to-pink-400 p-1 rounded-md shadow-md mb-4 rounded-lg p-6 shadow-lg bg-white dark:bg-gray-800 mb-6">
-          <h2 class="text-xl font-semibold flex items-center mb-4">
-            <i class="fas fa-handshake text-teal-600 dark:text-teal-400 mr-2"></i> Our Affiliations
-          </h2>
-          <div class="flex flex-wrap items-center justify-center gap-6">
-            <!-- OSL Logo -->
-            <a href="https://opensciencelabs.org/"
-               target="_blank"
-               rel="noopener"
-               class="block">
-              <img src="{% static 'images/logo-osl.svg' %}"
-                   alt="Open Source License"
-                   class="h-32 w-auto dark:hidden"
-                   title="Licensed under Open Source License (OSL)"
-                   height="128"
-                   width="auto" />
-              <img src="{% static 'images/osl-color-horizontal.png' %}"
-                   alt="Open Source License"
-                   class="h-16 w-auto hidden dark:block"
-                   title="Licensed under Open Source License (OSL)"
-                   height="128"
-                   width="auto" />
-            </a>
-            <!-- Space for additional affiliation logos -->
-          </div>
-          <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
-            Alpha One Labs is proudly affiliated with open source initiatives that advance education technology.
-          </p>
+      </section>
+      <!-- ===== SECTION 8: AFFILIATIONS ===== -->
+      <section class="rounded-2xl p-6 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold flex items-center mb-4">
+          <i class="fas fa-handshake text-teal-600 dark:text-teal-400 mr-2"></i> Our Affiliations
+        </h2>
+        <div class="flex flex-wrap items-center justify-center gap-6">
+          <a href="https://opensciencelabs.org/"
+             target="_blank"
+             rel="noopener"
+             class="block">
+            <img src="{% static 'images/logo-osl.svg' %}"
+                 alt="Open Source License"
+                 class="h-32 w-auto dark:hidden"
+                 title="Licensed under Open Source License (OSL)"
+                 height="128"
+                 width="auto" />
+            <img src="{% static 'images/osl-color-horizontal.png' %}"
+                 alt="Open Source License"
+                 class="h-16 w-auto hidden dark:block"
+                 title="Licensed under Open Source License (OSL)"
+                 height="128"
+                 width="auto" />
+          </a>
         </div>
-      </div>
-      <div class="md:w-1/4 space-y-8">
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-800 shadow-lg">
-          <h2 class="text-xl font-semibold mb-6 text-center text-gray-800 dark:text-gray-200">What Would You Like To Do?</h2>
-          <div class="space-y-4">
-            <a href="{% url 'teach' %}"
-               class="block w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-4 rounded-xl transition duration-200 text-center shadow-lg hover:shadow-xl flex flex-col items-center justify-center">
-              <i class="fa-solid fa-chalkboard-user text-2xl mb-2"></i>
-              <span class="text-lg">I Want to Teach</span>
-              <div class="text-sm font-normal">Share your knowledge with others</div>
-            </a>
-            <a href="{% url 'learn' %}"
-               class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-4 rounded-xl transition duration-200 text-center shadow-lg hover:shadow-xl flex flex-col items-center justify-center">
-              <i class="fa-solid fa-graduation-cap mr-3 text-2xl mb-2"></i>
-              <span class="text-lg">I Want to Learn</span>
-              <div class="text-sm font-normal">Discover new skills and expand your knowledge</div>
-            </a>
-          </div>
-        </div>
-        {% if user.is_authenticated and teaching_courses %}
-          <!-- Courses Teaching Section -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-800 shadow-lg">
-            <h2 class="text-lg font-semibold mb-4 flex items-center">
-              <i class="fa-solid fa-chalkboard-teacher text-teal-300 dark:text-teal-300 mr-2"></i>
-              My Teaching Courses
-            </h2>
-            <div class="space-y-3">
-              {% for course in teaching_courses %}
-                <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">
-                  <div class="flex items-center justify-between mb-1">
-                    <a href="{% url 'course_detail' course.slug %}"
-                       class="font-medium text-gray-800 dark:text-gray-200 hover:text-teal-300 dark:hover:text-teal-300 transition">
-                      {{ course.title|truncatechars:28 }}
-                    </a>
-                    <span class="text-xs {% if course.status == 'published' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% elif course.status == 'draft' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %} px-2 py-1 rounded-full">
-                      {{ course.get_status_display }}
-                    </span>
-                  </div>
-                  <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300">
-                    <div class="flex items-center">
-                      <i class="fas fa-eye text-gray-400 mr-1.5"></i>
-                      <span>{{ course.view_count|default:"0" }} views</span>
-                    </div>
-                    <div class="flex items-center">
-                      <i class="fas fa-users text-gray-400 mr-1.5"></i>
-                      <span>{{ course.enrolled_students }}/{{ course.max_students }} enrolled</span>
-                    </div>
-                  </div>
-                </div>
-              {% endfor %}
-              {% if teaching_courses.count > 3 %}
-                <a href="{% url 'teacher_dashboard' %}"
-                   class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-400 text-sm flex items-center justify-center mt-2">
-                  <span>View all courses</span>
-                  <i class="fas fa-arrow-right ml-1"></i>
-                </a>
-              {% endif %}
-            </div>
-          </div>
-        {% endif %}
-        <!-- Progress Trackers Dashboard -->
-        {% if user.is_authenticated %}
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center">
-              <i class="fa-solid fa-chart-line text-blue-600 dark:text-blue-400 mr-2"></i>
-              Progress Trackers
-            </h2>
-            {% if user.progress_trackers.exists %}
-              <div class="space-y-4">
-                {% for tracker in user.progress_trackers.all|slice:":3" %}
-                  <div>
-                    <div class="flex justify-between mb-1">
-                      <span class="text-gray-700 dark:text-gray-300">{{ tracker.title }}</span>
-                      <span class="text-gray-600 dark:text-gray-400">{{ tracker.percentage }}%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                      <div class="bg-{{ tracker.color }} h-3 rounded-full"
-                           {% verbatim %}
-                           style="width: {% endverbatim %}{{ tracker.percentage }}{% verbatim %}%"
-                           {% endverbatim %}></div>
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-              <div class="mt-4 text-center">
-                <a href="{% url 'tracker_list' %}"
-                   class="text-blue-600 hover:text-blue-800 dark:text-blue-400 inline-flex items-center">
-                  <span>View All Trackers</span>
-                  <i class="fas fa-arrow-right ml-2 text-xs"></i>
-                </a>
-              </div>
-            {% else %}
-              <p class="text-gray-600 dark:text-gray-400 mb-4">You haven't created any progress trackers yet.</p>
-              <div class="text-center">
-                <a href="{% url 'create_tracker' %}"
-                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center justify-center">
-                  <i class="fas fa-plus mr-2"></i>
-                  Create Your First Tracker
-                </a>
-              </div>
-            {% endif %}
-          </div>
-        {% endif %}
-        <!-- Leaderboard -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-4 flex items-center">
-            <i class="fa-solid fa-trophy text-yellow-600 dark:text-yellow-400 mr-2"></i>
-            Leaderboard Champions
-          </h2>
-          <div class="space-y-3">
-            <p class="text-gray-600 dark:text-gray-400 mb-6">Global leaderboard</p>
-            {% for entry in top_leaderboard_users %}
-              <div class="flex items-center p-2 {% if forloop.counter == 1 %}bg-yellow-50 dark:bg-yellow-900/30{% elif forloop.counter == 2 %}bg-gray-50 dark:bg-gray-700/50{% elif forloop.counter == 3 %}bg-amber-50 dark:bg-amber-900/30{% endif %} rounded-lg">
-                <div class="flex-shrink-0 mr-3 relative">
-                  {% if entry.user.profile.avatar %}
-                    <img src="{{ entry.user.profile.avatar.url }}"
-                         alt="{{ entry.user.username }}"
-                         class="w-10 h-10 rounded-full"
-                         width="40"
-                         height="40" />
-                  {% else %}
-                    <div class="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-white">
-                      {{ entry.user.username|make_list|first|upper }}
-                    </div>
-                  {% endif %}
-                  <div class="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-white {% if forloop.counter == 1 %}bg-yellow-500{% elif forloop.counter == 2 %}bg-gray-500{% elif forloop.counter == 3 %}bg-amber-600{% endif %}">
-                    {{ forloop.counter }}
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  {% if entry.user.id == user.id %}
-                    <p class="text-sm font-medium truncate">
-                      You
-                      <span class="bg-blue-200 px-3 py-1 rounded-full text-sm">Excellent Work</span>
-                    </p>
-                  {% else %}
-                    <p class="text-sm font-medium truncate">{{ entry.user.username }}</p>
-                  {% endif %}
-                  <div class="flex mt-2 text-xs text-gray-500 dark:text-gray-400 space-x-2">
-                    <span title="Points"><i class="fas fa-star text-yellow-500 mr-1"></i>{{ entry.points }}</span>
-                    <span title="Challenges Completed"><i class="fas fa-check-circle text-green-500 mr-1"></i>{{ entry.challenge_count }}</span>
-                    <span title="Streak"><i class="fas fa-fire text-orange-500 mr-1"></i>{{ entry.current_streak }}</span>
-                  </div>
-                </div>
-              </div>
-            {% empty %}
-              <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
-                No entries yet. Complete challenges to earn your spot!
-              </p>
-            {% endfor %}
-          </div>
-          <!-- Leaderboard Navigation Buttons -->
-          <div class="mt-4 space-y-2">
-            <a href="{% url 'leaderboards' %}"
-               class="block text-center bg-orange-500 hover:bg-orange-600 text-white font-medium px-4 py-2 rounded-lg transition-colors">
-              <i class="fas fa-list-ol mr-2"></i>Full Leaderboard
-            </a>
-          </div>
-        </div>
-        <!-- Referral Program -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 mt-6">
-          <h2 class="text-lg font-semibold mb-4 flex items-center">
-            <i class="fa-solid fa-gift text-purple-600 dark:text-purple-400 mr-2"></i>
-            Referral Program
-          </h2>
-          <div class="space-y-4">
-            <div class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-purple-100 dark:border-purple-800">
-              <h3 class="font-medium mb-2 text-purple-800 dark:text-purple-200">Share and Earn!</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                {% if user.is_authenticated %}
-                  {% if user.profile.is_teacher %}
-                    Get your first student and receive a $5 bonus! Share your unique referral link:
-                  {% else %}
-                    Get $5 when someone you refer enrolls in their first course! Share your unique referral link:
-                  {% endif %}
-                {% else %}
-                  Join our community and start earning rewards through our referral program!
-                {% endif %}
-              </p>
-              {% if user.is_authenticated %}
-                <div class="flex items-center space-x-2">
-                  <input type="text"
-                         value="{{ request.scheme }}://{{ request.get_host }}{% url 'handle_referral' code=user.profile.referral_code %}"
-                         class="text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 flex-1"
-                         readonly
-                         id="referralLink" />
-                  <button onclick="copyReferralLink()"
-                          class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm">
-                    <i class="fas fa-copy mr-1"></i>
-                    Copy
-                  </button>
-                </div>
-                <div class="mt-4 flex items-center justify-between">
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Your total referral earnings: ${{ user.profile.referral_earnings|default:"0" }}
-                  </p>
-                </div>
-              {% else %}
-                <a href="{% url 'account_signup' %}"
-                   class="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm">
-                  <i class="fas fa-user-plus mr-2"></i>
-                  Sign Up to Start Earning
-                </a>
-              {% endif %}
-              <!-- Mini Leaderboard -->
-              <div class="mt-4 border-t border-purple-100 dark:border-purple-800 pt-4">
-                <h4 class="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">
-                  <i class="fas fa-crown text-yellow-500 mr-2"></i>
-                  Top Referral Activity
-                </h4>
-                <div class="space-y-2">
-                  {% for referrer in top_referrers %}
-                    <div class="flex items-center justify-between text-sm {% if forloop.counter == 1 %}text-yellow-600 dark:text-yellow-400 font-medium{% endif %}">
-                      <div class="flex items-center space-x-2">
-                        <span class="w-5 text-center">
-                          {% if forloop.counter == 1 %}
-                            👑
-                          {% elif forloop.counter == 2 %}
-                            🥈
-                          {% elif forloop.counter == 3 %}
-                            🥉
-                          {% else %}
-                            {{ forloop.counter }}
-                          {% endif %}
-                        </span>
-                        <span>{{ referrer.user.username }}</span>
-                      </div>
-                      <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
-                        <span title="Signups"><i class="fas fa-user-plus mr-1"></i>{{ referrer.total_signups }}</span>
-                        <span title="Enrollments"><i class="fas fa-graduation-cap mr-1"></i>{{ referrer.total_enrollments }}</span>
-                        <span title="Clicks"><i class="fas fa-mouse-pointer mr-1"></i>{{ referrer.total_clicks }}</span>
-                      </div>
-                    </div>
-                  {% empty %}
-                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
-                      No referral activity yet. Share your link to be the first!
-                    </p>
-                  {% endfor %}
-                </div>
-              </div>
-            </div>
-          </div>
-          <script>
-              function copyReferralLink() {
-                  const linkInput = document.getElementById('referralLink');
-                  linkInput.select();
-                  document.execCommand('copy');
-
-                  // Show a temporary success message
-                  const button = event.target.closest('button');
-                  const originalText = button.innerHTML;
-                  button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
-                  button.classList.add('bg-green-600');
-
-                  setTimeout(() => {
-                      button.innerHTML = originalText;
-                      button.classList.remove('bg-green-600');
-                  }, 2000);
-              }
-          </script>
-        </div>
-        <!-- Weekly Challenge -->
-        <div class="container mx-auto px-4 py-8">
-          <h1 class="text-3xl font-bold mb-6 text-center">🏆 Weekly Challenges</h1>
-          {% if current_challenge %}
-            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-lg bg-white dark:bg-gray-800">
-              <!-- Only display the first challenge (current week) -->
-              <div class="challenge-item">
-                <!-- Challenge Title -->
-                <h2 class="text-xl font-semibold mb-4">{{ current_challenge.0.title }}</h2>
-                <!-- Challenge Description -->
-                <p class="text-gray-700 dark:text-gray-300 mb-4">{{ current_challenge.0.description }}</p>
-                <!-- Challenge Duration -->
-                <p class="text-gray-600 dark:text-gray-400 mb-4">
-                  <strong>Duration:</strong> {{ current_challenge.0.start_date }} to {{ current_challenge.0.end_date }}
-                </p>
-                <!-- Submission Button -->
-                {% if user.is_authenticated %}
-                  <a href="{% url 'challenge_submit' current_challenge.0.id %}"
-                     class="inline-block bg-teal-600 text-white px-5 py-2.5 rounded-lg hover:bg-teal-700 transition-shadow shadow-md">
-                    Complete My Challenge
-                  </a>
-                {% else %}
-                  <p class="text-red-600 dark:text-red-400 mt-4">Please log in to submit your result.</p>
-                {% endif %}
-              </div>
-            </div>
-          {% else %}
-            <p class="text-center text-gray-500 dark:text-gray-400">No challenges available at this time.</p>
-          {% endif %}
-        </div>
-        <!-- Educational Videos -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-lg bg-white dark:bg-gray-800 mb-6">
-          <h2 class="text-xl font-semibold flex flex-col items-start gap-1">
-            <div class="flex items-center">
-              <span class="mr-2 w-6 inline-flex items-center justify-center">🎬</span>
-              <span>Educational Videos</span>
-            </div>
-            <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center whitespace-nowrap">
-              <span class="mr-2 w-6 inline-flex items-center justify-center">
-                <i class="fas fa-video"></i>
-              </span>
-              <span>{{ video_count|default:"0" }} videos</span>
-            </div>
-          </h2>
-          <div class="col-span-full">
-            <div class="pt-4 text-center">
-              <p class="text-gray-600 dark:text-gray-300 mb-4 max-w-lg text-left">
-                Discover a wide range of educational videos shared by our community of teachers and learners.
-                From science and technology to arts and languages, find videos that help you learn new skills and concepts.
-              </p>
-              <!-- Quick‑Add YouTube Video (visible to everyone) -->
-              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4 max-w-lg mx-auto">
-                <h3 class="text-sm font-semibold mb-2 text-left">Quick Add YouTube Video</h3>
-                <form id="quick-video-form"
-                      action="{% url 'upload_educational_video' %}"
-                      method="post"
-                      class="flex flex-col gap-3">
-                  {% csrf_token %}
-                  <!-- Video URL + fetch‑title button -->
-                  <div class="flex flex-col sm:flex-row gap-2 w-full">
-                    <input type="url"
-                           id="video-url"
-                           name="video_url"
-                           placeholder="Paste YouTube URL here"
-                           required
-                           class="w-full sm:flex-1 min-w-0 px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500" />
-                    <button type="button"
-                            id="fetch-title-btn"
-                            class="bg-teal-300 hover:bg-teal-400 text-white px-3 py-2 rounded-lg transition w-full sm:w-auto flex items-center justify-center">
-                      <i class="fas fa-search"></i>
-                    </button>
-                  </div>
-                  <!-- Auto‑filled Title -->
-                  <input type="text"
-                         id="video-title"
-                         name="title"
-                         placeholder="Video title "
-                         class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-                  <!-- Hidden description (filled by JS) -->
-                  <input type="hidden" id="video-description" name="description" value="" />
-                  <!-- Category + submit -->
-                  <div class="flex flex-col sm:flex-row gap-2 w-full">
-                    <select id="video-category"
-                            name="category"
-                            required
-                            class="w-full sm:flex-1 min-w-0 px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
-                      <option value="">Select a category</option>
-                      {% for subject in subjects %}<option value="{{ subject.id }}">{{ subject.name }}</option>{% endfor %}
-                    </select>
-                    <button type="submit"
-                            class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center justify-center w-full sm:w-auto">
-                      <i class="fas fa-plus mr-2"></i> Add
-                    </button>
-                  </div>
-                  <!-- Feedback message -->
-                  <div id="quick-add-message" class="text-sm hidden"></div>
-                </form>
-              </div>
-              <div class="mt-4 flex flex-col sm:flex-row justify-center gap-4 w-full">
-                {% if user.is_authenticated %}
-                  <a href="{% url 'upload_educational_video' %}"
-                     class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded-full flex items-center justify-center w-full sm:w-auto">
-                    <i class="fas fa-upload mr-2"></i> Upload
-                  </a>
-                {% endif %}
-                <a href="{% url 'educational_videos_list' %}"
-                   class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded-full flex items-center justify-center w-full sm:w-auto">
-                  <i class="fas fa-play-circle mr-2"></i> Browse
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Recent Forum Post -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-2 flex items-center">
-            <i class="fa-solid fa-comments text-purple-600 dark:text-purple-400 mr-2"></i>
-            Recent Forum Post
-          </h2>
-          <p class="text-sm">
-            <strong class="block text-gray-900 dark:text-gray-200 mb-1">{{ latest_topic.title|default:"How to get started with advanced mathematics?" }}</strong>
-            "{{ latest_topic.content|default:"I'm looking for resources on group theory and number theory. Any recommendations?" }}" — <em>posted by {{ latest_topic.author.username|default:"user123" }}</em>
-          </p>
-          <a href="{% if latest_topic %}{% url 'forum_topic' latest_topic.category.slug latest_topic.id %}{% else %}{% url 'forum_categories' %}{% endif %}"
-             class="text-orange-500 dark:text-orange-400 text-sm hover:underline inline-block mt-2">View Discussion →</a>
-        </div>
-        <!-- Recent Blog Post -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-2 flex items-center">
-            <i class="fa-solid fa-blog text-red-600 dark:text-red-400 mr-2"></i>
-            Recent Blog Post
-          </h2>
-          <p class="text-sm">
-            <strong class="block text-gray-900 dark:text-gray-200 mb-1">{{ latest_post.title|default:"The Future of Online Education" }}</strong>
-            {{ latest_post.excerpt|default:"Learn how new technologies are shaping the way we teach and learn, including AI-driven insights and personalized curriculum..." }}
-          </p>
-          <a href="{% if latest_post %}{% url 'blog_detail' latest_post.slug %}{% else %}{% url 'blog_list' %}{% endif %}"
-             class="text-orange-500 dark:text-orange-400 text-sm hover:underline inline-block mt-2">Read More →</a>
-        </div>
-        <!-- Success Stories -->
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-2 flex items-center">
-            <i class="fa-solid fa-trophy text-yellow-600 dark:text-yellow-400 mr-2"></i>
-            Success Story
-          </h2>
-          <p class="text-sm">
-            <strong class="block text-gray-900 dark:text-gray-200 mb-1">{{ latest_success_story.title|default:"From Beginner to Expert in 3 Months" }}</strong>
-            {{ latest_success_story.excerpt|default:"Discover how our platform helped a complete beginner transform into a confident expert through personalized learning paths and dedicated mentorship..." }}
-          </p>
-          <div class="flex justify-between items-center mt-2">
-            <a href="{% if latest_success_story %}{% url 'success_story_detail' latest_success_story.slug %}{% else %}{% url 'success_story_list' %}{% endif %}"
-               class="text-orange-500 dark:text-orange-400 text-sm hover:underline inline-block">Read More →</a>
-            <a href="{% url 'create_success_story' %}"
-               class="bg-orange-500 hover:bg-orange-600 text-white text-sm px-3 py-1 rounded-md inline-flex items-center">
-              <i class="fas fa-plus mr-1"></i> Share Your Story
-            </a>
-          </div>
-        </div>
-        <div class="grid grid-cols-1  gap-4">
-          {% for request in latest_waiting_room_requests %}
-            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow duration-200">
-              <h3 class="text-lg font-medium mb-2">{{ request.title }}</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Created by <span class="font-semibold">{{ request.creator.username }}</span>
-              </p>
-              <div class="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <span class="mr-3">
-                  <i class="fa-solid fa-book mr-1"></i>
-                  {{ request.subject }}
-                </span>
-                <span>
-                  <i class="fa-solid fa-clock mr-1"></i>
-                  {{ request.created_at|date:"M d, Y" }}
-                </span>
-              </div>
-              <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">{{ request.description|truncatechars:120 }}</p>
-              <div class="flex flex-wrap gap-2 mb-3">
-                {% for topic in request.topics.split|slice:":3" %}
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                    {{ topic }}
-                  </span>
-                {% endfor %}
-              </div>
-              <div class="mt-2">
-                <a href="{% url 'waiting_room_detail' request.id %}"
-                   class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  View Details
-                  <i class="fa-solid fa-arrow-right ml-2"></i>
-                </a>
-              </div>
-            </div>
-          {% empty %}
-            <div class="col-span-full text-center py-4">
-              <p class="text-sm text-gray-600 dark:text-gray-400">No waiting room requests available at this time.</p>
-            </div>
-          {% endfor %}
-        </div>
-        <!-- GitHub Contributors Section (Now in sidebar) -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
-          <h3 class="text-lg font-semibold mb-4 flex items-center">
-            <i class="fa-brands fa-github text-gray-800 dark:text-gray-200 mr-2"></i>
-            Thank you to our Contributors!
-          </h3>
-          <!-- Top Contributors -->
-          <div class="mb-4">
-            <h4 class="text-sm font-medium mb-3 flex items-center">
-              <i class="fa-solid fa-trophy text-amber-600 dark:text-amber-400 mr-1"></i>
-              Top Contributors (<span id="current-month-display"></span>)
-            </h4>
-            <div class="space-y-2" id="top-contributors-section">
-              <div class="animate-pulse space-y-2">
-                {% for i in "12345"|make_list %}
-                  <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                    <div class="flex-1">
-                      <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                      <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-1"></div>
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-          <!-- New Contributors -->
-          <div class="mb-4">
-            <h4 class="text-sm font-medium mb-3 flex items-center">
-              <i class="fa-solid fa-user-plus text-green-600 dark:text-green-400 mr-1"></i>
-              New Contributors
-            </h4>
-            <div class="space-y-2" id="new-contributors-section">
-              <div class="animate-pulse space-y-2">
-                {% for i in "12345"|make_list %}
-                  <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                    <div class="flex-1">
-                      <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                      <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-1"></div>
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-          <!-- Recent Contributions -->
-          <div class="mb-4">
-            <h4 class="text-sm font-medium mb-3 flex items-center">
-              <i class="fa-solid fa-code-pull-request text-purple-600 dark:text-purple-400 mr-1"></i>
-              Recently Merged PRs
-            </h4>
-            <div class="space-y-2" id="recent-contributors-section">
-              <div class="animate-pulse space-y-2">
-                {% for i in "12345"|make_list %}
-                  <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                    <div class="flex-1">
-                      <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                      <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-1"></div>
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-          <div class="text-center">
-            <a href="{% url 'contributors_list_view' %}"
-               class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200">
-              <i class="fas fa-users mr-1"></i>
-              View All Contributors
-            </a>
-          </div>
-        </div>
-      </div>
+        <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
+          Alpha One Labs is proudly affiliated with open source initiatives that advance education technology.
+        </p>
+      </section>
     </div>
   </main>
   <script>
-      // Top Contributors - For Current Month
-      function fetchTopContributors() {
-          // Create a helper function to fetch paginated data
-          async function fetchPage(page) {
-              const response = await fetch(`https://api.github.com/repos/AlphaOneLabs/education-website/pulls?state=closed&per_page=100&page=${page}`);
-              return response.json();
-          }
+      function copyReferralLink() {
+          const linkInput = document.getElementById('referralLink');
+          linkInput.select();
+          document.execCommand('copy');
 
-          // Get the first day of the current month
-          const now = new Date();
-          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+          const button = event.target.closest('button');
+          const originalText = button.innerHTML;
+          button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+          button.classList.add('bg-green-600');
 
-          // Get month name for display
-          const monthNames = ["January", "February", "March", "April", "May", "June",
-              "July", "August", "September", "October", "November", "December"
-          ];
-          const currentMonth = monthNames[now.getMonth()];
-
-          // Display current month in the heading
-          document.getElementById('current-month-display').textContent = currentMonth;
-
-          // Fetch 2 pages of data
-          Promise.all([fetchPage(1), fetchPage(2)])
-              .then(results => {
-                  // Combine the results from both pages
-                  const pulls = [...results[0], ...results[1]];
-                  const contributors = {};
-                  pulls.forEach(pull => {
-                      const username = pull.user.login;
-                      const mergedAt = new Date(pull.merged_at);
-
-                      //skipping bots and specific users
-                      if (username.includes('[bot]') || username.includes('dependabot') || username === 'A1L13N') {
-                          return;
-                      }
-
-                      //only count merged PRs from the current month
-                      if (!pull.merged_at || mergedAt < firstDay) {
-                          return;
-                      }
-
-                      if (!contributors[username]) {
-                          contributors[username] = {
-                              username: username,
-                              avatar_url: pull.user.avatar_url,
-                              profile_url: pull.user.html_url,
-                              merged_count: 0,
-                              prs: [],
-                              latest_merged_at: null
-                          };
-                      }
-
-                      contributors[username].merged_count++;
-
-                      contributors[username].prs.push({
-                          number: pull.number,
-                          title: pull.title,
-                          url: pull.html_url,
-                          merged_at: pull.merged_at,
-                          created_at: pull.created_at
-                      });
-
-                      if (!contributors[username].latest_merged_at ||
-                          new Date(pull.merged_at) > new Date(contributors[username].latest_merged_at)) {
-                          contributors[username].latest_merged_at = pull.merged_at;
-                      }
-                  });
-
-                  //sort by number of PRs, then by most recent PR
-                  const topContributors = Object.values(contributors)
-                      .sort((a, b) => {
-                          const countDiff = b.merged_count - a.merged_count;
-                          if (countDiff !== 0) return countDiff;
-                          return new Date(b.latest_merged_at) - new Date(a.latest_merged_at);
-                      })
-                      .slice(0, 5); // taking top 5
-
-                  // Sort PRs for each contributor by merged_at date (newest first)
-                  topContributors.forEach(contributor => {
-                      contributor.prs.sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at));
-                  });
-
-                  const container = document.getElementById('top-contributors-section');
-                  container.innerHTML = '';
-
-                  if (topContributors.length === 0) {
-                      container.innerHTML = `
-            <div class="text-xs text-gray-600 dark:text-gray-400 text-center py-2">
-              No contributions found this month.
-            </div>
-          `;
-                      return;
-                  }
-
-                  // Top Contributors - Simplified for sidebar
-                  topContributors.forEach((contributor, index) => {
-                      const div = document.createElement('div');
-                      div.className = 'flex items-center space-x-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200';
-
-                      let rankBadgeInner = '';
-                      if (index === 0) {
-                          rankBadgeInner = '🥇';
-                      } else if (index === 1) {
-                          rankBadgeInner = '🥈';
-                      } else if (index === 2) {
-                          rankBadgeInner = '🥉';
-                      } else {
-                          rankBadgeInner = `${index + 1}`;
-                      }
-
-                      let rankBadgeClass = '';
-                      if (index === 0) {
-                          rankBadgeClass = 'bg-yellow-500 border-yellow-600';
-                      } else if (index === 1) {
-                          rankBadgeClass = 'bg-gray-300 border-gray-400';
-                      } else if (index === 2) {
-                          rankBadgeClass = 'bg-amber-600 border-amber-700';
-                      } else {
-                          rankBadgeClass = 'bg-blue-500 border-blue-600';
-                      }
-
-                      div.innerHTML = `
-                          <div class="relative">
-                              <img src="${contributor.avatar_url}" alt="${contributor.username}" class="w-8 h-8 rounded-full" loading="lazy" width="32" height="32" />
-                              <div class="absolute -bottom-1 -left-1 w-4 h-4 ${rankBadgeClass} text-white text-xs font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-gray-800">
-                                  ${rankBadgeInner}
-                              </div>
-                          </div>
-                          <div class="flex-1 min-w-0">
-                              <div class="flex items-center justify-between">
-                                  <a href="${window.location.pathname.split('/')[1]}/contributors/${contributor.username}/" class="text-xs font-medium text-gray-900 dark:text-gray-100 hover:text-orange-500 dark:hover:text-orange-400 truncate">
-                                     ${contributor.username || 'Unknown Contributor'}
-                                  </a>
-                                  <span class="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 text-xs px-1 py-0.5 rounded-full text-[10px]">
-                                      <i class="fas fa-code-pull-request mr-0.5 text-[8px]"></i>${contributor.merged_count}
-                                  </span>
-                              </div>
-                              <p class="text-[9px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                  Latest: <a href="${contributor.prs[0].url}" class="hover:underline">#${contributor.prs[0].number}</a> · ${new Date(contributor.prs[0].merged_at).toLocaleDateString()}
-                              </p>
-                          </div>
-                      `;
-                      container.appendChild(div);
-                  });
-              })
-              .catch(error => {
-                  const container = document.getElementById('top-contributors-section');
-                  container.innerHTML = `
-        <div class="text-xs text-gray-600 dark:text-gray-400 text-center py-2">
-          <i class="fas fa-exclamation-circle text-red-500 mr-1"></i>
-          Failed to load contributors.
-        </div>
-    `;
-                  console.error('Error fetching top contributors:', error);
-              });
+          setTimeout(() => {
+              button.innerHTML = originalText;
+              button.classList.remove('bg-green-600');
+          }, 2000);
       }
-
-      // New Contributors
-      function fetchNewContributors() {
-          // Create a helper function to fetch paginated data
-          async function fetchPage(page) {
-              const response = await fetch(`https://api.github.com/repos/AlphaOneLabs/education-website/pulls?state=all&per_page=100&page=${page}`);
-              return response.json();
-          }
-
-          // Calculate date 30 days ago for "new" threshold
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-          // Fetch 2 pages of data
-          Promise.all([fetchPage(1), fetchPage(2)])
-              .then(results => {
-                  // Combine the results from both pages
-                  const pulls = [...results[0], ...results[1]];
-                  const userPrs = {};
-                  const firstMergedPrDetails = {};
-
-                  pulls.forEach(pull => {
-                      const username = pull.user.login;
-
-                      //bots and specific users ignored
-                      if (username.includes('[bot]') || username.includes('dependabot') || username === 'A1L13N') {
-                          return;
-                      }
-
-                      if (!pull.merged_at) {
-                          return;
-                      }
-
-                      if (!userPrs[username]) {
-                          userPrs[username] = [];
-                      }
-
-                      userPrs[username].push({
-                          number: pull.number,
-                          title: pull.title,
-                          url: pull.html_url,
-                          merged_at: pull.merged_at,
-                          created_at: pull.created_at,
-                          avatar_url: pull.user.avatar_url,
-                          profile_url: pull.user.html_url,
-                          state: pull.state
-                      });
-                  });
-
-                  //finding the first merged PR for each user
-                  Object.entries(userPrs).forEach(([username, prs]) => {
-                      if (prs.length > 0) {
-                          //sorting PRs by merged_at date (oldest first)
-                          prs.sort((a, b) => new Date(a.merged_at) - new Date(b.merged_at));
-
-                          const firstPr = prs[0];
-                          const firstPrDate = new Date(firstPr.merged_at);
-
-                          // Only include if their first PR was within the last 30 days
-                          if (firstPrDate >= thirtyDaysAgo) {
-                              firstMergedPrDetails[username] = {
-                                  username: username,
-                                  avatar_url: firstPr.avatar_url,
-                                  pr_url: firstPr.url,
-                                  pr_title: firstPr.title,
-                                  pr_number: firstPr.number,
-                                  created_at: firstPr.created_at,
-                                  profile_url: firstPr.profile_url,
-                                  merged_at: firstPr.merged_at,
-                                  state: firstPr.state,
-                                  // Add the GSoC-style PRs URL
-                                  prs_url: `https://github.com/AlphaOneLabs/education-website/pulls?q=is:pr+author:${username}+is:merged`
-                              };
-                          }
-                      }
-                  });
-
-                  //converting to array and sorting by most recently merged first PR
-                  const newContributors = Object.values(firstMergedPrDetails)
-                      .sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at))
-                      .slice(0, 5); // taking top 5
-
-                  const container = document.getElementById('new-contributors-section');
-                  container.innerHTML = '';
-
-                  if (newContributors.length === 0) {
-                      container.innerHTML = `
-                          <div class="text-xs text-gray-600 dark:text-gray-400 text-center py-2">
-                              No new contributors in the last 30 days.
-                          </div>
-                      `;
-                      return;
-                  }
-
-                  newContributors.forEach(contributor => {
-                      const div = document.createElement('div');
-                      div.className = 'flex items-center space-x-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200';
-
-                      const daysAgo = Math.floor((new Date() - new Date(contributor.merged_at)) / (1000 * 60 * 60 * 24));
-                      const timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
-
-                      div.innerHTML = `
-                          <img src="${contributor.avatar_url}" alt="${contributor.username}" class="w-8 h-8 rounded-full" loading="lazy" width="32" height="32" />
-                          <div class="flex-1 min-w-0">
-                              <div class="flex items-center justify-between">
-                                  <a href="${contributor.prs_url}" target="_blank" class="text-xs font-medium text-gray-900 dark:text-gray-100 hover:text-orange-500 dark:hover:text-orange-400 truncate">
-                                      ${contributor.username}
-                                  </a>
-                                  <span class="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs px-1 py-0.5 rounded-full text-[10px]">
-                                      New
-                                  </span>
-                              </div>
-                              <p class="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                                  First PR: ${timeLabel}
-                              </p>
-                          </div>
-                      `;
-                      container.appendChild(div);
-                  });
-              })
-              .catch(error => {
-                  const container = document.getElementById('new-contributors-section');
-                  container.innerHTML = `
-                      <div class="text-xs text-gray-600 dark:text-gray-400 text-center py-2">
-                          <i class="fas fa-exclamation-circle text-red-500 mr-1"></i>
-                          Failed to load new contributors.
-                      </div>
-                  `;
-                  console.error('Error processing new contributors:', error);
-              });
-      }
-
-      // Recent Contributors
-      function fetchRecentContributions() {
-          // Create a helper function to fetch paginated data
-          async function fetchPage(page) {
-              const response = await fetch(`https://api.github.com/repos/AlphaOneLabs/education-website/pulls?state=all&per_page=100&page=${page}`);
-              return response.json();
-          }
-
-          // Fetch 2 pages of data
-          Promise.all([fetchPage(1), fetchPage(2)])
-              .then(results => {
-                  // Combine the results from both pages
-                  const pulls = [...results[0], ...results[1]];
-                  const filteredPulls = pulls.filter(pull => {
-                          const username = pull.user.login;
-                          return !username.includes('[bot]') &&
-                              !username.includes('dependabot') &&
-                              username !== 'A1L13N' &&
-                              pull.merged_at !== null;
-                      })
-                      .sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at))
-                      .slice(0, 5); //taking top 5
-
-                  const container = document.getElementById('recent-contributors-section');
-                  container.innerHTML = '';
-
-                  if (filteredPulls.length === 0) {
-                      container.innerHTML = `
-                          <div class="text-xs text-gray-600 dark:text-gray-400 text-center py-2">
-                              No merged pull requests found.
-                          </div>
-                      `;
-                      return;
-                  }
-
-                  filteredPulls.forEach(pull => {
-                      const div = document.createElement('div');
-                      div.className = 'flex items-center space-x-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200';
-
-                      // Create the GSoC-style PRs URL for this user
-                      const prs_url = `https://github.com/AlphaOneLabs/education-website/pulls?q=is:pr+author:${pull.user.login}+is:merged`;
-
-                      // Calculate how long ago the PR was merged
-                      const mergedDate = new Date(pull.merged_at);
-                      const now = new Date();
-                      const diffTime = Math.abs(now - mergedDate);
-                      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                      const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-                      let timeAgo;
-                      if (diffDays > 0) {
-                          timeAgo = diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
-                      } else if (diffHours > 0) {
-                          timeAgo = diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
-                      } else {
-                          const diffMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
-                          timeAgo = diffMinutes === 0 ? 'just now' :
-                              diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
-                      }
-
-                      div.innerHTML = `
-                          <img src="${pull.user.avatar_url}" alt="${pull.user.login}" class="w-8 h-8 rounded-full" loading="lazy" width="32" height="32" />
-                          <div class="flex-1 min-w-0">
-                              <div class="flex items-center justify-between">
-                                  <a href="${pull.user.html_url}" target="_blank" class="text-xs font-medium text-gray-900 dark:text-gray-100 hover:text-orange-500 dark:hover:text-orange-400 truncate">
-                                      ${pull.user.login}
-                                  </a>
-                                  <span class="text-[8px] text-gray-500 dark:text-gray-400">
-                                      <i class="fas fa-history mr-0.5"></i>${timeAgo}
-                                  </span>
-                              </div>
-                              <p class="text-[9px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                  PR <a href="${pull.html_url}" class="hover:underline">#${pull.number}</a>: ${pull.title.length > 25 ? pull.title.substring(0, 25) + '...' : pull.title}
-                              </p>
-                          </div>
-                      `;
-                      container.appendChild(div);
-                  });
-              })
-              .catch(error => {
-                  const container = document.getElementById('recent-contributors-section');
-                  container.innerHTML = `
-                      <div class="text-xs text-gray-600 dark:text-gray-400 text-center py-2">
-                          <i class="fas fa-exclamation-circle text-red-500 mr-1"></i>
-                          Failed to load contributions.
-                      </div>
-                  `;
-                  console.error('Error fetching recent contributions:', error);
-              });
-      }
-
-      document.addEventListener('DOMContentLoaded', function() {
-          fetchTopContributors();
-          fetchNewContributors();
-          fetchRecentContributions();
-      });
   </script>
 {% endblock content %}
-{% block extra_js %}
-  {{ block.super }}
-  <script>
-      document.addEventListener("DOMContentLoaded", function() {
-          const form = document.getElementById("quick-video-form");
-          const urlIn = document.getElementById("video-url");
-          const titleIn = document.getElementById("video-title");
-          const descIn = document.getElementById("video-description");
-          const catSelect = document.getElementById("video-category");
-          const fetchBtn = document.getElementById("fetch-title-btn");
-          const msgDiv = document.getElementById("quick-add-message");
-          const submitBtn = form.querySelector("button[type='submit']");
-
-          function showMessage(text, type) {
-              msgDiv.textContent = text;
-              msgDiv.className = type === "success" ?
-                  "text-green-600 dark:text-green-400" :
-                  "text-red-600 dark:text-red-400";
-              msgDiv.classList.remove("hidden");
-              setTimeout(() => msgDiv.classList.add("hidden"), 5000);
-          }
-
-          // 1) Fetch via oEmbed (YouTube or Vimeo)
-          fetchBtn.addEventListener("click", async () => {
-              const url = urlIn.value.trim();
-              let endpoint = null;
-
-              // YouTube ID
-              const yt = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/);
-              if (yt) {
-                  endpoint = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${yt[1]}&format=json`;
-              }
-              // Vimeo numeric ID
-              const vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-              if (!endpoint && vm) {
-                  endpoint = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`;
-              }
-              if (!endpoint) {
-                  return showMessage("Enter a valid YouTube or Vimeo link", "error");
-              }
-
-              try {
-                  const r = await fetch(endpoint);
-                  if (!r.ok) throw new Error();
-                  const data = await r.json();
-                  titleIn.value = data.title || "";
-                  descIn.value = data.description || data.title || "";
-                  showMessage("Info fetched!", "success");
-              } catch {
-                  showMessage("Failed to fetch video info", "error");
-              }
-          });
-
-          // 2+3) On submit: require category, auto-fetch title if blank, then AJAX POST
-          form.addEventListener("submit", async e => {
-              e.preventDefault();
-
-              if (!catSelect.value) {
-                  return showMessage("Please select a category", "error");
-              }
-
-              // if title still empty, trigger our fetch‑button & wait a brief moment
-              if (!titleIn.value.trim()) {
-                  fetchBtn.click();
-                  await new Promise(r => setTimeout(r, 600));
-              }
-
-              const orig = submitBtn.innerHTML;
-              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding…';
-              submitBtn.disabled = true;
-
-              try {
-                  const resp = await fetch(form.action, {
-                      method: form.method,
-                      credentials: "same-origin",
-                      headers: {
-                          "X-Requested-With": "XMLHttpRequest"
-                      },
-                      body: new FormData(form),
-                  });
-                  const data = await resp.json();
-                  if (resp.ok && data.success) {
-                      form.reset();
-                      showMessage(data.message || "Added!", "success");
-                  } else {
-                      showMessage(data.error || "Add failed", "error");
-                  }
-              } catch {
-                  showMessage("Network error—try again", "error");
-              } finally {
-                  submitBtn.innerHTML = orig;
-                  submitBtn.disabled = false;
-              }
-          });
-      });
-  </script>
-{% endblock extra_js %}
