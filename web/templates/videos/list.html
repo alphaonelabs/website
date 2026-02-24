@@ -146,7 +146,7 @@
                 {% endif %}
                 {% for i in page_obj.paginator.page_range %}
                   {% if i == page_obj.number %}
-                    <span class="relative inline-flex items-center px-4 py-2 border border-yellow-500 bg-yellow-50 dark:bg-yellow-900/30 text-sm font-medium text-white-700 dark:text-white-300">
+                    <span class="relative inline-flex items-center px-4 py-2 border border-yellow-500 bg-yellow-50 dark:bg-yellow-900/30 text-sm font-medium text-yellow-700 dark:text-yellow-300">
                     {{ i }}</span>
                   {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
                     <a href="?page={{ i }}{% if selected_category %}&category={{ selected_category }}{% endif %}"
