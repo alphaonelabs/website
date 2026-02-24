@@ -103,17 +103,6 @@
                         <i class="fas fa-play text-white text-4xl"></i>
                       </a>
                     </div>
-                  {% elif video.thumbnail_url %}
-                    <div class="relative aspect-w-16 aspect-h-9 overflow-hidden rounded-lg shadow-sm">
-                      <img src="{{ video.thumbnail_url }}"
-                           alt="{{ video.title }} thumbnail"
-                           class="w-full h-full object-cover" />
-                      <a href="{{ video.video_url }}"
-                         target="_blank"
-                         class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-25 hover:bg-opacity-0 transition-opacity">
-                        <i class="fas fa-play text-white text-4xl"></i>
-                      </a>
-                    </div>
                   {% elif 'vimeo.com' in video.video_url %}
                     <!-- your existing Vimeo preview here -->
                   {% else %}
@@ -157,7 +146,7 @@
                 {% endif %}
                 {% for i in page_obj.paginator.page_range %}
                   {% if i == page_obj.number %}
-                    <span class="relative inline-flex items-center px-4 py-2 border border-orange-500 bg-orange-50 dark:bg-orange-900/30 text-sm font-medium text-orange-700 dark:text-orange-300">
+                    <span class="relative inline-flex items-center px-4 py-2 border border-yellow-500 bg-yellow-50 dark:bg-yellow-900/30 text-sm font-medium text-white-700 dark:text-white-300">
                     {{ i }}</span>
                   {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
                     <a href="?page={{ i }}{% if selected_category %}&category={{ selected_category }}{% endif %}"
