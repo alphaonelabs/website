@@ -1,0 +1,95 @@
+# =============================================================================
+# docker-compose.dev.yml — Local development services
+#
+# Usage:  docker compose -f docker-compose.dev.yml up
+#
+# Provides:  Django (hot-reload), MySQL 8, Redis 7
+# Data persists across restarts via named volumes.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # MySQL 8 — relational database
+  # ---------------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: education_website
+      MYSQL_USER: django
+      MYSQL_PASSWORD: django_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — channel layer for Django Channels (WebSockets)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Django web application — development server with hot-reload
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      bash -c "
+        echo 'Waiting for MySQL...' &&
+        while ! mysqladmin ping -h db -u root -prootpassword --silent 2>/dev/null; do
+          sleep 1
+        done &&
+        echo 'MySQL is ready!' &&
+        python manage.py migrate --no-input &&
+        python manage.py create_test_data &&
+        python manage.py collectstatic --noinput &&
+        echo '========================================' &&
+        echo '  Dev server: http://localhost:8000' &&
+        echo '========================================' &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    volumes:
+      # Bind-mount the source code for hot-reload
+      - .:/app
+      # Prevent the container's venv from being overwritten by the bind mount
+      - /app/.venv
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=mysql://root:rootpassword@db:3306/education_website
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+      - DEBUG=True
+      - SECRET_KEY=docker-dev-secret-key-not-for-production
+      - DJANGO_SETTINGS_MODULE=web.settings
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

@@ -11,3 +11,6 @@ backup.json
 ansible/inventory.yml
 education-website-*.json
 *.sql
+node_modules/
+.venv/
+poetry.toml
