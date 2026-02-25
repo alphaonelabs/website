@@ -344,10 +344,12 @@
                   });
                   if (!isFinite(y)) {
                       firstPoint = true;
+                      prevY = null;
                       continue;
                   }
               } catch (err) {
                   firstPoint = true;
+                  prevY = null;
                   continue;
               }
 
@@ -486,12 +488,12 @@
 
       // Determine whether to plot explicit or implicit based on input format
       function plotEquation(equation, color) {
-          if (equation.split("=")[0].trim() === "y") {
+          if (equation.split("=")[0].trim().toLowerCase() === "y") {
               const rhsExpr = equation.split("=").slice(1).join("=").trim();
               try {
                   const rhsParsed = math.parse(rhsExpr);
                   const yNodes = rhsParsed.filter(function(node) {
-                      return node.isSymbolNode && node.name === "y";
+                      return node.isSymbolNode && node.name.toLowerCase() === "y";
                   });
                   if (yNodes.length > 0) {
                       alert("Invalid explicit equation: RHS must not reference y");
@@ -511,7 +513,7 @@
                   const parseMath = math.parse(equation);
 
                   const yNodes = parseMath.filter(function(node) {
-                      return node.isSymbolNode && node.name === "y";
+                      return node.isSymbolNode && node.name.toLowerCase() === "y";
                   });
                   if (yNodes.length > 0) {
                       hasYVariable = true;
