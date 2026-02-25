@@ -220,11 +220,14 @@ import secrets, string
 chars = string.ascii_letters + string.digits + '!@#\$%^&*(-_=+)'
 print(''.join(secrets.choice(chars) for _ in range(50)))
 ")
+    # Escape special characters (&, \, and |) for the sed replacement string
+    ESCAPED_SECRET=$(printf '%s\n' "$NEW_SECRET" | sed -e 's/[\/&]/\\&/g')
+    
     # Use a delimiter that won't conflict with the secret value
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s|^SECRET_KEY=.*|SECRET_KEY=${NEW_SECRET}|" "${PROJECT_ROOT}/.env"
+        sed -i '' "s|^SECRET_KEY=.*|SECRET_KEY=${ESCAPED_SECRET}|" "${PROJECT_ROOT}/.env"
     else
-        sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${NEW_SECRET}|" "${PROJECT_ROOT}/.env"
+        sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${ESCAPED_SECRET}|" "${PROJECT_ROOT}/.env"
     fi
     ok "Generated new SECRET_KEY"
 else
@@ -236,10 +239,13 @@ CURRENT_ENCRYPTION_KEY=$(grep '^MESSAGE_ENCRYPTION_KEY=' "${PROJECT_ROOT}/.env" 
 SAMPLE_KEY="5ezrkqK2lhifqBRt9f8_dZhFQF_f5ipSQDV8Vzv9Dek="
 if [ "${CURRENT_ENCRYPTION_KEY}" = "${SAMPLE_KEY}" ] || [ -z "${CURRENT_ENCRYPTION_KEY}" ]; then
     NEW_ENCRYPTION_KEY=$("${PYTHON}" -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    # Escape the encryption key in case it contains sed-special characters (though base64 usually doesn't, it's safer)
+    ESCAPED_ENCRYPTION_KEY=$(printf '%s\n' "$NEW_ENCRYPTION_KEY" | sed -e 's/[\/&]/\\&/g')
+    
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s|^MESSAGE_ENCRYPTION_KEY=.*|MESSAGE_ENCRYPTION_KEY=${NEW_ENCRYPTION_KEY}|" "${PROJECT_ROOT}/.env"
+        sed -i '' "s|^MESSAGE_ENCRYPTION_KEY=.*|MESSAGE_ENCRYPTION_KEY=${ESCAPED_ENCRYPTION_KEY}|" "${PROJECT_ROOT}/.env"
     else
-        sed -i "s|^MESSAGE_ENCRYPTION_KEY=.*|MESSAGE_ENCRYPTION_KEY=${NEW_ENCRYPTION_KEY}|" "${PROJECT_ROOT}/.env"
+        sed -i "s|^MESSAGE_ENCRYPTION_KEY=.*|MESSAGE_ENCRYPTION_KEY=${ESCAPED_ENCRYPTION_KEY}|" "${PROJECT_ROOT}/.env"
     fi
     ok "Generated new MESSAGE_ENCRYPTION_KEY"
 else
