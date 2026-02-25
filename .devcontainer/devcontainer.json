@@ -1,27 +1,15 @@
-// =============================================================================
-// VS Code Dev Container configuration
-//
-// Opens this project inside a Docker container with all services running.
-// Uses docker-compose.dev.yml for MySQL + Redis alongside the web container.
-//
-// Prerequisites: Docker Desktop + VS Code "Dev Containers" extension
-// =============================================================================
 {
     "name": "Alpha One Labs — Dev",
     "dockerComposeFile": "../docker-compose.dev.yml",
     "service": "web",
     "workspaceFolder": "/app",
-    // Forward the Django dev server port to the host
     "forwardPorts": [
         8000,
         3306,
         6379
     ],
-    // Run after the container is created (first time only)
     "postCreateCommand": "pip install poetry==1.8.3 && poetry config virtualenvs.create false --local && poetry install --no-interaction",
-    // Run every time the container starts
     "postStartCommand": "python manage.py migrate --no-input && python manage.py collectstatic --noinput",
-    // VS Code settings inside the container
     "customizations": {
         "vscode": {
             "settings": {
@@ -44,7 +32,6 @@
             ]
         }
     },
-    // Features to install in the container
     "features": {
         "ghcr.io/devcontainers/features/git:1": {}
     }
