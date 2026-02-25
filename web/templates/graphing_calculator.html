@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Graphing Calculator{% endblock %}
+{% block title %}
+  Graphing Calculator
+{% endblock title %}
 {% block content %}
   <div class="flex flex-col md:flex-row h-screen bg-gray-100 dark:bg-gray-900">
     <!-- Sidebar -->
@@ -385,8 +387,14 @@
           }
           const lhs = parts[0].trim();
           const rhs = parts[1].trim();
-          const lhsCompiled = math.compile(lhs);
-          const rhsCompiled = math.compile(rhs);
+          let lhsCompiled, rhsCompiled;
+          try {
+              lhsCompiled = math.compile(lhs);
+              rhsCompiled = math.compile(rhs);
+          } catch (err) {
+              alert("Error compiling implicit equation: " + err.message);
+              return;
+          }
 
           function f(x, y) {
               try {
@@ -479,6 +487,20 @@
       // Determine whether to plot explicit or implicit based on input format
       function plotEquation(equation, color) {
           if (equation.split("=")[0].trim() === "y") {
+              const rhsExpr = equation.split("=").slice(1).join("=").trim();
+              try {
+                  const rhsParsed = math.parse(rhsExpr);
+                  const yNodes = rhsParsed.filter(function(node) {
+                      return node.isSymbolNode && node.name === "y";
+                  });
+                  if (yNodes.length > 0) {
+                      alert("Invalid explicit equation: RHS must not reference y");
+                      return;
+                  }
+              } catch (err) {
+                  alert("Error parsing equation: " + err.message);
+                  return;
+              }
               plotExplicit(equation, color);
           } else if (equation.includes("=")) {
               plotImplicit(equation, color);
@@ -664,4 +686,4 @@
           attributeFilter: ['class']
       });
   </script>
-{% endblock %}
+{% endblock content %}
