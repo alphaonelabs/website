@@ -1116,14 +1116,25 @@ def github_update(request):
     # Always attempt a reload so code changes take effect (application systemd unit)
     # Only attempt systemctl restart on Linux systems where it's available
     import platform
+    import shutil
 
     if platform.system() == "Linux":
+        systemctl_path = shutil.which("systemctl") or "/usr/bin/systemctl"
         try:
-            subprocess.run(
-                ["/bin/systemctl", "restart", "education-website"], capture_output=True, check=False, timeout=30
+            proc = subprocess.run(
+                [systemctl_path, "restart", "education-website"],
+                capture_output=True,
+                check=False,
+                timeout=30,
+                text=True,
             )
+            log_lines.append(f"systemctl restart rc={proc.returncode}")
+            if proc.returncode != 0:
+                log_lines.append(f"Service restart failed: {proc.stderr[:200] if proc.stderr else 'non-zero exit'}")
+                ok = False
         except (FileNotFoundError, subprocess.TimeoutExpired) as e:
             log_lines.append(f"Service restart failed: {e}")
+            ok = False
     else:
         log_lines.append("Skipped service restart (not on Linux system)")
 
