@@ -60,7 +60,7 @@ jobs:
       - name: Run doctor
         run: |
           chmod +x scripts/doctor.sh
-          npm run doctor || true  # Warnings are OK in CI (e.g. no Docker)
+          npm run doctor
 
       - name: Boot server and hit health endpoint
         run: |
