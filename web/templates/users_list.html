@@ -6,19 +6,19 @@
 {% block content %}
   <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
-      <h1 class="text-3xl font-bold text-gray-800">User List</h1>
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-white">User List</h1>
     </div>
     {% if page_obj %}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for profile in page_obj %}
-          <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300"
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300"
                role="article"
                aria-labelledby="user-{{ profile.user.id }}">
             <div class="p-6">
               <div class="flex justify-between items-start">
                 <h3 id="user-{{ profile.user.id }}"
-                    class="text-xl font-semibold text-gray-800 mb-2">{{ profile.user.username }}</h3>
-                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                    class="text-xl font-semibold text-gray-800 dark:text-white mb-2">{{ profile.user.username }}</h3>
+                <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium px-2.5 py-0.5 rounded">
                   {% if profile.is_teacher %}
                     Teacher
                   {% else %}
@@ -26,29 +26,31 @@
                   {% endif %}
                 </span>
               </div>
-              <p class="text-gray-600 mb-4">Joined: {{ profile.user.date_joined|date:"F d, Y" }}</p>
+              <p class="text-gray-600 dark:text-gray-300 mb-4">Joined: {{ profile.user.date_joined|date:"F d, Y" }}</p>
               {% if profile.is_teacher %}
                 <div class="mt-2 space-y-1">
-                  <p class="text-sm text-gray-600">Courses: {{ profile.total_courses }}</p>
-                  <p class="text-sm text-gray-600">Students: {{ profile.total_students }}</p>
-                  {% if profile.avg_rating > 0 %}<p class="text-sm text-gray-600">Rating: {{ profile.avg_rating }}/5</p>{% endif %}
+                  <p class="text-sm text-gray-600 dark:text-gray-300">Courses: {{ profile.total_courses }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-300">Students: {{ profile.total_students }}</p>
+                  {% if profile.avg_rating > 0 %}
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Rating: {{ profile.avg_rating }}/5</p>
+                  {% endif %}
                 </div>
               {% else %}
                 <div class="mt-2 space-y-1">
-                  <p class="text-sm text-gray-600">Enrolled: {{ profile.total_courses }}</p>
-                  <p class="text-sm text-gray-600">Completed: {{ profile.total_completed }}</p>
-                  <p class="text-sm text-gray-600">Avg. Progress: {{ profile.avg_progress }}%</p>
-                  <p class="text-sm text-gray-600">Achievements: {{ profile.achievements_count }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-300">Enrolled: {{ profile.total_courses }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-300">Completed: {{ profile.total_completed }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-300">Avg. Progress: {{ profile.avg_progress }}%</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-300">Achievements: {{ profile.achievements_count }}</p>
                 </div>
               {% endif %}
               <div class="flex justify-between items-center">
                 {% if profile.user.groups.exists %}
-                  <span class="text-sm text-gray-500">{{ profile.user.groups.count }} group{{ profile.user.groups.count|pluralize }}</span>
+                  <span class="text-sm text-gray-500 dark:text-gray-400">{{ profile.user.groups.count }} group{{ profile.user.groups.count|pluralize }}</span>
                 {% else %}
-                  <span class="text-sm text-gray-500">0 groups</span>
+                  <span class="text-sm text-gray-500 dark:text-gray-400">0 groups</span>
                 {% endif %}
                 <a href="{% url 'public_profile' profile.user.username %}"
-                   class="text-blue-600 hover:text-blue-800 font-medium">View Profile</a>
+                   class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">View Profile</a>
               </div>
             </div>
           </div>
@@ -59,21 +61,23 @@
         <nav class="inline-flex">
           {% if page_obj.has_previous %}
             <a href="?page={{ page_obj.previous_page_number }}"
-               class="bg-white border border-gray-300 text-gray-500 hover:bg-gray-100 px-4 py-2 text-sm font-medium rounded-l-md">Previous</a>
+               class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2 text-sm font-medium rounded-l-md">Previous</a>
           {% endif %}
-          <span class="bg-blue-50 border border-gray-300 text-blue-600 px-4 py-2 text-sm font-medium">
+          <span class="bg-blue-50 dark:bg-blue-900 border border-gray-300 dark:border-gray-700 text-blue-600 dark:text-blue-300 px-4 py-2 text-sm font-medium">
             {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
           </span>
           {% if page_obj.has_next %}
             <a href="?page={{ page_obj.next_page_number }}"
-               class="bg-white border border-gray-300 text-gray-500 hover:bg-gray-100 px-4 py-2 text-sm font-medium rounded-r-md">Next</a>
+               class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2 text-sm font-medium rounded-r-md">Next</a>
           {% endif %}
         </nav>
       </div>
     {% else %}
       <div class="text-center py-8">
-        <p class="text-gray-600 mb-2">No public profiles found</p>
-        <p class="text-sm text-gray-500">Users need to set their profiles to public to appear in this list.</p>
+        <p class="text-gray-600 dark:text-gray-300 mb-2">No public profiles found</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Users need to set their profiles to public to appear in this list.
+        </p>
       </div>
     {% endif %}
   </div>

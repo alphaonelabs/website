@@ -2,6 +2,8 @@
 name: Deploy to Production
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:

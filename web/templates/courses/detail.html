@@ -442,11 +442,13 @@
                   <h3 class="text-sm font-semibold">Session Calendar</h3>
                   <div class="flex items-center space-x-4">
                     <button id="prev-month-btn"
+                            onclick="loadCalendar({{ prev_month.year }}, {{ prev_month.month }})"
                             class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
                       <i class="fas fa-chevron-left"></i>
                     </button>
                     <span class="text-sm font-medium" id="current-month">{{ current_month|date:"F Y" }}</span>
                     <button id="next-month-btn"
+                            onclick="loadCalendar({{ next_month.year }}, {{ next_month.month }})"
                             class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
                       <i class="fas fa-chevron-right"></i>
                     </button>
@@ -1505,7 +1507,7 @@
       }
 
       function loadCalendar(year, month) {
-          fetch(`/courses/{{ course.slug }}/calendar/?year=${year}&month=${month}`)
+          fetch(`{% url 'course_calendar' course.slug %}?year=${year}&month=${month}`)
               .then(response => response.json())
               .then(data => {
                   // Update month display

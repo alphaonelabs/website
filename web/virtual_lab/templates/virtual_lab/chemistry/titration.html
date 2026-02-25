@@ -7,53 +7,55 @@
 {% block extra_head %}{# no extra CSS needed #}{% endblock %}
 {% block virtual_lab_content %}
   <div class="max-w-5xl mx-auto py-10 px-4">
-    <h1 class="text-3xl font-bold mb-6">{% trans "Acid-Base Titration" %}</h1>
+    <h1 class="text-3xl font-bold mb-6 dark:text-gray-100">{% trans "Acid-Base Titration" %}</h1>
     <div class="grid md:grid-cols-3 gap-6">
       <!-- Controls -->
       <div class="space-y-4">
         <label class="block">
-          <span class="text-gray-700">{% trans "Acid Conc (M)" %}</span>
+          <span class="text-gray-700 dark:text-gray-300">{% trans "Acid Conc (M)" %}</span>
           <input id="acid-conc"
                  type="number"
                  value="0.1"
                  step="0.01"
                  min="0.01"
-                 class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                 class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-teal-300 dark:bg-gray-700 dark:text-gray-100" />
         </label>
         <label class="block">
-          <span class="text-gray-700">{% trans "Base Conc (M)" %}</span>
+          <span class="text-gray-700 dark:text-gray-300">{% trans "Base Conc (M)" %}</span>
           <input id="base-conc"
                  type="number"
                  value="0.1"
                  step="0.01"
                  min="0.01"
-                 class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                 class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-teal-300 dark:bg-gray-700 dark:text-gray-100" />
         </label>
         <label class="block">
-          <span class="text-gray-700">{% trans "Acid Volume (mL)" %}</span>
+          <span class="text-gray-700 dark:text-gray-300">{% trans "Acid Volume (mL)" %}</span>
           <input id="acid-vol"
                  type="number"
                  value="25"
                  step="1"
                  min="1"
-                 class="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                 class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-teal-300 dark:bg-gray-700 dark:text-gray-100" />
         </label>
         <button onclick="startTitration()"
-                class="w-full bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded transition">
+                class="w-full bg-teal-600 dark:bg-teal-700 hover:bg-teal-700 dark:hover:bg-teal-800 text-white px-4 py-2 rounded transition">
           {% trans "Start Titration" %}
         </button>
         <button onclick="resetTitration()"
-                class="w-full bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">
+                class="w-full bg-gray-400 dark:bg-gray-600 hover:bg-gray-500 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition">
           {% trans "Reset" %}
         </button>
-        <div class="mt-4 text-gray-800">
+        <div class="mt-4 text-gray-800 dark:text-gray-300">
           <strong>{% trans "Titrant Added:" %}</strong>
           <span id="titrant-volume">0</span> mL
         </div>
-        <div id="hint" class="mt-2 text-lg font-medium text-gray-700 italic">
+        <div id="hint"
+             class="mt-2 text-lg font-medium text-gray-700 dark:text-gray-400 italic">
           {% trans "Adjust the controls and start titration to see hints here..." %}
         </div>
-        <div id="property" class="mt-2 text-xl font-semibold text-gray-800">
+        <div id="property"
+             class="mt-2 text-xl font-semibold text-gray-800 dark:text-gray-200">
           {# will display: “Solution is Acidic/Neutral/Basic” #}
         </div>
       </div>
@@ -62,7 +64,7 @@
         <canvas id="titration-canvas"
                 width="600"
                 height="400"
-                class="border rounded bg-white shadow"></canvas>
+                class="border rounded bg-white dark:bg-gray-800 shadow"></canvas>
         <canvas id="drop-canvas"
                 width="600"
                 height="400"
