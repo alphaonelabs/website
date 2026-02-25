@@ -79,7 +79,7 @@ jobs:
             fi
             if [ $i -eq 30 ]; then
               echo "Server failed to start within 30 seconds"
-              kill $SERVER_PID 2>/dev/null || true
+              kill "${SERVER_PID}" 2>/dev/null || true
               exit 1
             fi
             sleep 1
@@ -93,11 +93,11 @@ jobs:
             echo "✔ Health check passed!"
           else
             echo "✖ Health check failed with HTTP ${HTTP_CODE}"
-            kill $SERVER_PID 2>/dev/null || true
+            kill "${SERVER_PID}" 2>/dev/null || true
             exit 1
           fi
 
           # Clean shutdown
-          kill $SERVER_PID 2>/dev/null || true
-          wait $SERVER_PID 2>/dev/null || true
+          kill "${SERVER_PID}" 2>/dev/null || true
+          wait "${SERVER_PID}" 2>/dev/null || true
           echo "✔ Server stopped cleanly"
