@@ -583,7 +583,7 @@ class CourseDetailTests(TestCase):
                     self.assertTrue(day["has_session"])
                     # Verify session details are included for tooltip
                     self.assertIn("sessions", day)
-                    self.assertTrue(len(day["sessions"]) > 0)
+                    self.assertGreater(len(day["sessions"]), 0)
                     session_info = day["sessions"][0]
                     self.assertIn("title", session_info)
                     self.assertIn("start_time", session_info)
@@ -616,7 +616,7 @@ class CourseDetailTests(TestCase):
                 if day["date"] and day["date"] == session_date.isoformat():
                     self.assertTrue(day["has_session"])
                     self.assertIn("sessions", day)
-                    self.assertTrue(len(day["sessions"]) > 0)
+                    self.assertGreater(len(day["sessions"]), 0)
                     session_info = day["sessions"][0]
                     self.assertEqual(session_info["title"], self.future_session.title)
                     self.assertIn("start_time", session_info)

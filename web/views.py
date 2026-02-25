@@ -850,7 +850,15 @@ def course_detail(request, slug):
         calendar_week = []
         for day in week:
             if day == 0:
-                calendar_week.append({"date": None, "in_month": False, "has_session": False, "sessions": []})
+                calendar_week.append(
+                    {
+                        "date": None,
+                        "in_month": False,
+                        "has_session": False,
+                        "is_today": False,
+                        "sessions": [],
+                    }
+                )
             else:
                 date = current_month.replace(day=day)
                 day_sessions = session_map.get(date, [])
