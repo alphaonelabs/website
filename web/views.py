@@ -827,12 +827,22 @@ def course_detail(request, slug):
     # Get the calendar for current month
     cal = calendar.monthcalendar(current_month.year, current_month.month)
 
-    # Get all session dates for this course in current month
-    session_dates = set(
-        session.start_time.date()
-        for session in sessions
-        if session.start_time.year == current_month.year and session.start_time.month == current_month.month
-    )
+    # Get all sessions for this course in current month, grouped by date
+    month_sessions = [
+        s for s in sessions if s.start_time.year == current_month.year and s.start_time.month == current_month.month
+    ]
+    session_map = {}
+    for s in month_sessions:
+        d = s.start_time.date()
+        if d not in session_map:
+            session_map[d] = []
+        session_map[d].append(
+            {
+                "title": s.title,
+                "start_time": s.start_time.strftime("%I:%M %p"),
+                "end_time": s.end_time.strftime("%I:%M %p"),
+            }
+        )
 
     # Prepare calendar weeks data
     calendar_weeks = []
@@ -840,10 +850,19 @@ def course_detail(request, slug):
         calendar_week = []
         for day in week:
             if day == 0:
-                calendar_week.append({"date": None, "in_month": False, "has_session": False})
+                calendar_week.append({"date": None, "in_month": False, "has_session": False, "sessions": []})
             else:
                 date = current_month.replace(day=day)
-                calendar_week.append({"date": date, "in_month": True, "has_session": date in session_dates})
+                day_sessions = session_map.get(date, [])
+                calendar_week.append(
+                    {
+                        "date": date,
+                        "in_month": True,
+                        "has_session": bool(day_sessions),
+                        "is_today": date == today,
+                        "sessions": day_sessions,
+                    }
+                )
         calendar_weeks.append(calendar_week)
 
     # Check if the current user has already reviewed this course
@@ -3359,7 +3378,7 @@ def get_course_calendar(request, slug):
         calendar_week = []
         for day in week:
             if day == 0:
-                calendar_week.append({"date": None, "has_session": False, "is_today": False})
+                calendar_week.append({"date": None, "has_session": False, "is_today": False, "sessions": []})
             else:
                 date = timezone.datetime(year, month, day).date()
                 sessions_on_day = [s for s in month_sessions if s.start_time.date() == date]
@@ -3368,6 +3387,14 @@ def get_course_calendar(request, slug):
                         "date": date.isoformat() if date else None,
                         "has_session": bool(sessions_on_day),
                         "is_today": date == today,
+                        "sessions": [
+                            {
+                                "title": s.title,
+                                "start_time": s.start_time.strftime("%I:%M %p"),
+                                "end_time": s.end_time.strftime("%I:%M %p"),
+                            }
+                            for s in sessions_on_day
+                        ],
                     }
                 )
         calendar_weeks.append(calendar_week)

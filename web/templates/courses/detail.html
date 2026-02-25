@@ -455,7 +455,7 @@
                   </div>
                 </div>
                 <div id="calendar-container"
-                     class="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 overflow-hidden">
+                     class="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 overflow-visible">
                   <div class="grid grid-cols-7 text-center text-xs font-medium border-b dark:border-gray-700">
                     <div class="py-2">Sun</div>
                     <div class="py-2">Mon</div>
@@ -470,12 +470,26 @@
                       {% for day in week %}
                         <div class="p-2 border-b border-r dark:border-gray-700 {% if day.is_today %}bg-gray-100 dark:bg-gray-700{% endif %}">
                           {% if day.date %}
-                            <div class="relative">
-                              <span class="{% if day.has_session %}font-bold text-teal-600 dark:text-teal-400{% endif %}">
+                            <div class="relative group">
+                              <span class="{% if day.has_session %}font-bold text-teal-600 dark:text-teal-400 cursor-pointer{% endif %}">
                                 {{ day.date|date:"j" }}
                               </span>
                               {% if day.has_session %}
                                 <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-teal-500 dark:bg-teal-400 rounded-full">
+                                </div>
+                                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                                  <div class="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600">
+                                    {% for session in day.sessions %}
+                                      <div class="{% if not forloop.first %}mt-1.5 pt-1.5 border-t border-gray-600{% endif %}">
+                                        <div class="font-semibold text-teal-300">{{ session.title }}</div>
+                                        <div class="text-gray-300 mt-0.5">
+                                          <i class="fas fa-clock mr-1 text-gray-400"></i>{{ session.start_time }} - {{ session.end_time }}
+                                        </div>
+                                      </div>
+                                    {% endfor %}
+                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900 dark:border-t-gray-700">
+                                    </div>
+                                  </div>
                                 </div>
                               {% endif %}
                             </div>
@@ -1519,16 +1533,36 @@
 
                   data.calendar_weeks.forEach(week => {
                       week.forEach(day => {
-                          const today = day.is_today ? 'bg-gray-100 dark:bg-gray-700' : '';
+                          const todayCls = day.is_today ? 'bg-gray-100 dark:bg-gray-700' : '';
+                          let tooltipHtml = '';
+                          if (day.has_session && day.sessions && day.sessions.length > 0) {
+                              const items = day.sessions.map((s, i) => {
+                                  const sep = i > 0 ? 'mt-1.5 pt-1.5 border-t border-gray-600' : '';
+                                  return `<div class="${sep}">
+                                      <div class="font-semibold text-teal-300">${s.title}</div>
+                                      <div class="text-gray-300 mt-0.5">
+                                          <i class="fas fa-clock mr-1 text-gray-400"></i>${s.start_time} - ${s.end_time}
+                                      </div>
+                                  </div>`;
+                              }).join('');
+                              tooltipHtml = `
+                                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                                      <div class="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg border border-gray-700 dark:border-gray-600">
+                                          ${items}
+                                          <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+                                      </div>
+                                  </div>`;
+                          }
                           html += `
-            <div class="p-2 border-b border-r dark:border-gray-700 ${today}">
+            <div class="p-2 border-b border-r dark:border-gray-700 ${todayCls}">
               ${day.date ? `
-                <div class="relative">
-                  <span class="${day.has_session ? 'font-bold text-teal-600 dark:text-teal-400' : ''}">
+                <div class="relative group">
+                  <span class="${day.has_session ? 'font-bold text-teal-600 dark:text-teal-400 cursor-pointer' : ''}">
                     ${day.date.split('-')[2].replace(/^0/, '')}
                   </span>
                   ${day.has_session ? `
                     <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-teal-500 dark:bg-teal-400 rounded-full"></div>
+                    ${tooltipHtml}
                   ` : ''}
                 </div>
               ` : ''}

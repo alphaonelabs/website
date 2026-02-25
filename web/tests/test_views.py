@@ -561,7 +561,7 @@ class CourseDetailTests(TestCase):
         self.assertContains(response, "Completed")
 
     def test_calendar_display(self):
-        """Test that the session calendar is correctly displayed"""
+        """Test that the session calendar is correctly displayed with session details for tooltips"""
         # Request the calendar for the month containing the session
         session_month = self.future_session.start_time.month
         session_year = self.future_session.start_time.year
@@ -581,12 +581,52 @@ class CourseDetailTests(TestCase):
             for day in week:
                 if day["date"] and day["date"] == session_date:
                     self.assertTrue(day["has_session"])
+                    # Verify session details are included for tooltip
+                    self.assertIn("sessions", day)
+                    self.assertTrue(len(day["sessions"]) > 0)
+                    session_info = day["sessions"][0]
+                    self.assertIn("title", session_info)
+                    self.assertIn("start_time", session_info)
+                    self.assertIn("end_time", session_info)
+                    self.assertEqual(session_info["title"], self.future_session.title)
                     session_day_found = True
                     break
             if session_day_found:
                 break
 
         self.assertTrue(session_day_found, "Session date not found in calendar")
+
+    def test_calendar_ajax_endpoint(self):
+        """Test that the AJAX calendar endpoint returns session details for tooltips"""
+        session_month = self.future_session.start_time.month
+        session_year = self.future_session.start_time.year
+        url = reverse("course_calendar", args=[self.course.slug])
+        response = self.client.get(f"{url}?year={session_year}&month={session_month}")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertIn("calendar_weeks", data)
+        self.assertIn("current_month", data)
+
+        # Find the session day in the JSON response
+        session_date = self.future_session.start_time.date()
+        session_day_found = False
+        for week in data["calendar_weeks"]:
+            for day in week:
+                if day["date"] and day["date"] == session_date.isoformat():
+                    self.assertTrue(day["has_session"])
+                    self.assertIn("sessions", day)
+                    self.assertTrue(len(day["sessions"]) > 0)
+                    session_info = day["sessions"][0]
+                    self.assertEqual(session_info["title"], self.future_session.title)
+                    self.assertIn("start_time", session_info)
+                    self.assertIn("end_time", session_info)
+                    session_day_found = True
+                    break
+            if session_day_found:
+                break
+
+        self.assertTrue(session_day_found, "Session date not found in AJAX calendar response")
 
     def test_session_completion_form(self):
         """Test session completion form for enrolled students"""
