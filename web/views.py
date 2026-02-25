@@ -1114,7 +1114,18 @@ def github_update(request):
             break
 
     # Always attempt a reload so code changes take effect (application systemd unit)
-    subprocess.run(["/bin/systemctl", "restart", "education-website"], capture_output=True)
+    # Only attempt systemctl restart on Linux systems where it's available
+    import platform
+
+    if platform.system() == "Linux":
+        try:
+            subprocess.run(
+                ["/bin/systemctl", "restart", "education-website"], capture_output=True, check=False, timeout=30
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+            log_lines.append(f"Service restart failed: {e}")
+    else:
+        log_lines.append("Skipped service restart (not on Linux system)")
 
     # Slack summary (truncate to avoid long messages)
     slack_msg = (

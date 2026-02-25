@@ -47,9 +47,13 @@ else:
     # Helpful notice for ops without breaking startup
     print("Sentry DSN not configured; error events will not be sent.")
 
-SECRET_KEY = env.str("SECRET_KEY", default="django-insecure-5kyff0s@l_##j3jawec5@b%!^^e(j7v)ouj4b7q6kru#o#a)o3")
-# Debug settings
+# Debug settings - must be defined before SECRET_KEY validation
 ENVIRONMENT = env.str("ENVIRONMENT", default="development")
+
+if ENVIRONMENT == "production" and not env.str("SECRET_KEY", default=""):
+    raise ValueError("SECRET_KEY environment variable must be set in production")
+
+SECRET_KEY = env.str("SECRET_KEY", default="django-insecure-5kyff0s@l_##j3jawec5@b%!^^e(j7v)ouj4b7q6kru#o#a)o3")
 
 # Default DEBUG to False for security
 DEBUG = False
