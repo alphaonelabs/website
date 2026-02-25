@@ -13,18 +13,20 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/**'
-      - 'package.json'
-      - 'pyproject.toml'
-      - 'poetry.lock'
-      - '.github/workflows/onboarding-smoke-test.yml'
+      - "scripts/**"
+      - "package.json"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".env.sample"
+      - ".github/workflows/onboarding-smoke-test.yml"
   pull_request:
     paths:
-      - 'scripts/**'
-      - 'package.json'
-      - 'pyproject.toml'
-      - 'poetry.lock'
-      - '.github/workflows/onboarding-smoke-test.yml'
+      - "scripts/**"
+      - "package.json"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".env.sample"
+      - ".github/workflows/onboarding-smoke-test.yml"
   workflow_dispatch:
 
 permissions:
@@ -42,13 +44,13 @@ jobs:
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: "3.10"
+          cache: "pip"
 
       - name: Set up Node.js (for npm run commands)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Run setup script
         run: |
