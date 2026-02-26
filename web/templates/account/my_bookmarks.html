@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}My Bookmarks{% endblock %}
+{% block content %}
+<main class="flex-1 w-full max-w-[90rem] mx-auto mt-6 px-4 md:px-6">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+      <svg class="inline h-6 w-6 text-red-500 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>My Bookmarks
+    </h1>
+    <span class="text-gray-600 dark:text-gray-300" id="bookmark-count">{{ courses|length }} saved course{{ courses|length|pluralize }}</span>
+  </div>
+
+  {% if courses %}
+    <div class="md:w-3/4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {% for course in courses %}
+          <div class="rounded-lg p-4 border border-gray-200 dark:border-gray-700" id="bookmark-card-{{ course.slug }}">
+            <div class="aspect-square w-full relative overflow-hidden rounded-lg mb-3">
+              {% if course.image %}
+                <a href="{% url 'course_detail' course.slug %}">
+                  <img src="{{ course.image.url }}" alt="{{ course.title }}" class="w-full h-full object-cover" width="300" height="300" />
+                </a>
+              {% else %}
+                <a href="{% url 'course_detail' course.slug %}">
+                  <img src="{% static 'images/default-course.jpg' %}" alt="{{ course.title }}" class="w-full h-full object-cover" width="300" height="300" />
+                </a>
+              {% endif %}
+              <button data-slug="{{ course.slug }}"
+                      onclick="removeBookmark(this)"
+                      class="absolute top-2 right-2 p-2 rounded-full transition duration-200 bg-red-100 dark:bg-red-900 text-red-500 shadow-md"
+                      aria-label="Remove bookmark">
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+            </div>
+            <div class="mb-3">
+              <h3 class="text-lg font-semibold h-14 flex items-start">
+                <a href="{% url 'course_detail' course.slug %}" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">{{ course.title }}</a>
+              </h3>
+              <div class="flex items-center justify-between text-sm">
+                <span class="font-medium text-teal-600 dark:text-teal-400">{{ course.subject }}</span>
+                <span class="text-orange-600 dark:text-orange-500">
+                  {% if course.price == 0 %}Free{% else %}${{ course.price }}{% endif %}
+                </span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
+              <div class="flex items-center text-gray-600 dark:text-gray-300">
+                <i class="fas fa-eye mr-2"></i>
+                <span>{{ course.web_requests.count|default:"0" }} views</span>
+              </div>
+              <div class="flex items-center text-gray-600 dark:text-gray-300">
+                <i class="fas fa-users mr-2"></i>
+                <span>{{ course.enrollments.count }}/{{ course.max_students }}</span>
+              </div>
+              <div class="flex items-center text-gray-600 dark:text-gray-300">
+                <i class="fas fa-calendar-alt mr-2"></i>
+                <span>{{ course.sessions.count }} sessions</span>
+              </div>
+              <div class="flex items-center text-gray-600 dark:text-gray-300">
+                <i class="fas fa-star text-yellow-400 mr-2"></i>
+                <span>{{ course.average_rating|floatformat:1|default:"N/A" }}</span>
+              </div>
+            </div>
+            <div class="mb-3 text-sm text-gray-600 dark:text-gray-300 min-h-[4rem]">
+              {% with first_session=course.sessions.first last_session=course.sessions.last %}
+                {% if first_session and last_session %}
+                  <div class="flex items-center mb-1">
+                    <i class="fas fa-calendar-day mr-2"></i>
+                    <span>Starts: {{ first_session.start_time|date:"M j, Y g:i A e" }}</span>
+                  </div>
+                  <div class="flex items-center">
+                    <i class="fas fa-calendar-check mr-2"></i>
+                    <span>Ends: {{ last_session.end_time|date:"M j, Y g:i A e" }}</span>
+                  </div>
+                {% else %}
+                  <div class="flex items-center mb-1">
+                    <i class="fas fa-calendar-day mr-2"></i>
+                    <span>No sessions scheduled</span>
+                  </div>
+                {% endif %}
+              {% endwith %}
+            </div>
+            <div class="flex items-center mb-3">
+              {% if course.teacher.profile.avatar %}
+                <img src="{{ course.teacher.profile.avatar.url }}" alt="{{ course.teacher.username }}" class="h-12 w-12 rounded-full mr-3" width="48" height="48" />
+              {% else %}
+                <img src="{% static 'images/default_teacher.png' %}" alt="{{ course.teacher.username }}" class="h-12 w-12 rounded-full mr-3" width="48" height="48" />
+              {% endif %}
+              <div>
+                <span class="text-sm font-medium">{{ course.teacher.username }}</span>
+                {% if course.teacher.profile.expertise %}
+                  <p class="text-xs text-gray-600 dark:text-gray-400">{{ course.teacher.profile.expertise }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <a href="{% url 'course_detail' course.slug %}" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
+              View Course
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 text-center">
+      <svg class="mx-auto h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+      <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-2">No bookmarks yet</h2>
+      <p class="text-gray-600 dark:text-gray-300 mb-4">Browse courses and click the heart icon to save them here.</p>
+      <a href="{% url 'course_search' %}" class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
+        Browse Courses
+      </a>
+    </div>
+  {% endif %}
+</main>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+function removeBookmark(btn) {
+    var slug = btn.getAttribute('data-slug');
+    fetch("{% url 'toggle_bookmark' 'PLACEHOLDER' %}".replace('PLACEHOLDER', slug), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (!data.bookmarked) {
+            var card = document.getElementById('bookmark-card-' + slug);
+            if (card) card.remove();
+            var remaining = document.querySelectorAll('[id^="bookmark-card-"]').length;
+            var countEl = document.getElementById('bookmark-count');
+            if (countEl) {
+                countEl.textContent = remaining + ' saved course' + (remaining !== 1 ? 's' : '');
+            }
+            if (remaining === 0) {
+                location.reload();
+            }
+        }
+    });
+}
+</script>
+{% endblock extra_js %}
