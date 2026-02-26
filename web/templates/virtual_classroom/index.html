@@ -14,9 +14,9 @@
     <meta name="classroom-id" content="{{ classroom.id }}" />
     <meta name="current-user" content="{{ request.user.username }}" />
     <title>Virtual Classroom</title>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.263.1"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js"></script>
   </head>
   <body class="min-h-screen bg-gray-100" x-data="classroomApp()">
     <header class="bg-white shadow-md p-4">
@@ -72,7 +72,7 @@
                 </div>
                 <div x-show="!participant.avatar_url"
                      class="w-8 h-8 rounded-full bg-teal-300 flex items-center justify-center text-white text-xs font-bold">
-                  <span x-text="participant.full_name.charAt(0).toUpperCase()"></span>
+                  <span x-text="(participant.full_name || participant.username || '?').charAt(0).toUpperCase()"></span>
                 </div>
                 <div>
                   <p class="font-medium text-sm text-gray-800"
@@ -244,14 +244,24 @@
         // Alpine.js classroom app
         function classroomApp() {
             return {
+                debug: false,
                 participants: {},
                 classroomId: document.querySelector('meta[name="classroom-id"]').content,
                 websocket: null,
+                reconnectAttempts: 0,
+                maxReconnectAttempts: 10,
+                baseReconnectDelay: 1000,
+
+                log(...args) {
+                    if (this.debug) {
+                        console.log(...args);
+                    }
+                },
 
                 init() {
-                    console.log('Initializing Alpine.js classroom app');
-                    console.log('Classroom ID:', this.classroomId);
-                    console.log('Current participants:', this.participants);
+                    this.log('Initializing Alpine.js classroom app');
+                    this.log('Classroom ID:', this.classroomId);
+                    this.log('Current participants:', this.participants);
                     this.initWebSocket();
                 },
 
@@ -259,26 +269,35 @@
                     const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     const wsPath = `${wsScheme}//${window.location.host}/ws/classroom/${this.classroomId}/`;
 
-                    console.log('Connecting to WebSocket:', wsPath);
+                    this.log('Connecting to WebSocket:', wsPath);
                     this.websocket = new WebSocket(wsPath);
 
                     this.websocket.onopen = (event) => {
-                        console.log('WebSocket connected successfully');
+                        this.log('WebSocket connected successfully');
+                        this.reconnectAttempts = 0;
                     };
 
                     this.websocket.onmessage = (event) => {
                         const data = JSON.parse(event.data);
-                        console.log('WebSocket message received:', data);
+                        this.log('WebSocket message received:', data);
                         this.handleWebSocketMessage(data);
                     };
 
                     this.websocket.onclose = (event) => {
-                        console.log('WebSocket disconnected, attempting to reconnect in 3 seconds');
+                        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                            console.error('Max reconnection attempts reached');
+                            return;
+                        }
+                        const delay = Math.min(this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts), 30000);
+                        this.log(
+                            `WebSocket disconnected, reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1})`
+                        );
+                        this.reconnectAttempts++;
                         setTimeout(() => {
                             if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
                                 this.initWebSocket();
                             }
-                        }, 3000);
+                        }, delay);
                     };
 
                     this.websocket.onerror = (error) => {
@@ -287,48 +306,52 @@
                 },
 
                 handleWebSocketMessage(data) {
-                    console.log('=== WebSocket Message Handler Called ===');
-                    console.log('Message type:', data.type);
-                    console.log('Full message data:', data);
+                    this.log('=== WebSocket Message Handler Called ===');
+                    this.log('Message type:', data.type);
+                    this.log('Full message data:', data);
 
                     switch (data.type) {
                         case 'classroom_presence_update':
-                            console.log('=== CLASSROOM PRESENCE UPDATE ===');
-                            console.log('Current participants before update:', this.participants);
-                            console.log('New presence data:', data.presence);
+                            this.log('=== CLASSROOM PRESENCE UPDATE ===');
+                            this.log('Current participants before update:', this.participants);
+                            this.log('New presence data:', data.presence);
                             this.participants = data.presence || {};
-                            console.log('Participants after update:', this.participants);
-                            console.log('Number of participants:', Object.keys(this.participants).length);
+                            this.log('Participants after update:', this.participants);
+                            this.log('Number of participants:', Object.keys(this.participants).length);
                             this.$nextTick(() => {
-                                console.log('Calling renderAvatarsOnDesks after presence update');
+                                this.log('Calling renderAvatarsOnDesks after presence update');
                                 this.renderAvatarsOnDesks();
                             });
                             break;
                         case 'participant_joined':
-                            console.log('=== PARTICIPANT JOINED ===');
-                            console.log('Participant joined:', data.user.username, 'at seat:', data.seat_id);
+                            this.log('=== PARTICIPANT JOINED ===');
+                            this.log('Participant joined:', data.user.username, 'at seat:', data.seat_id);
                             break;
                         case 'participant_left':
-                            console.log('=== PARTICIPANT LEFT ===');
-                            console.log('Participant left:', data.user.username);
+                            this.log('=== PARTICIPANT LEFT ===');
+                            this.log('Participant left:', data.user.username);
                             break;
                         case 'seat_updated':
-                            console.log('=== SEAT UPDATED ===');
-                            console.log('Seat updated:', data.user.username, 'to seat', data.seat_id);
+                            this.log('=== SEAT UPDATED ===');
+                            this.log('Seat updated:', data.user.username, 'to seat', data.seat_id);
                             this.updateParticipantSeat(data.user.username, data.seat_id);
                             break;
                         case 'seat_left':
-                            console.log('=== SEAT LEFT ===');
-                            console.log('Seat left:', data.user.username, 'from seat', data.seat_id);
+                            this.log('=== SEAT LEFT ===');
+                            this.log('Seat left:', data.user.username, 'from seat', data.seat_id);
                             this.updateParticipantSeat(data.user.username, null);
                             break;
                         default:
-                            console.log('Unknown message type:', data.type);
+                            this.log('Unknown message type:', data.type);
                     }
                 },
 
                 updateParticipantSeat(username, seatId) {
-                    if (this.participants[username]) {
+                    if (username === '__proto__' || username === 'constructor' || username === 'prototype') {
+                        console.warn('Attempted prototype pollution with username:', username);
+                        return;
+                    }
+                    if (Object.prototype.hasOwnProperty.call(this.participants, username)) {
                         this.participants[username].seat_id = seatId;
                         this.$nextTick(() => {
                             this.renderAvatarsOnDesks();
@@ -337,93 +360,106 @@
                 },
 
                 renderAvatarsOnDesks() {
-                    console.log('=== RENDER AVATARS ON DESKS ===');
-                    console.log('Current participants to render:', this.participants);
-                    console.log('Number of participants:', Object.keys(this.participants).length);
+                    this.log('=== RENDER AVATARS ON DESKS ===');
+                    this.log('Current participants to render:', this.participants);
+                    this.log('Number of participants:', Object.keys(this.participants).length);
 
                     // Remove existing avatars
                     const existingAvatars = document.querySelectorAll('.desk-avatar');
-                    console.log('Removing', existingAvatars.length, 'existing avatars');
+                    this.log('Removing', existingAvatars.length, 'existing avatars');
                     existingAvatars.forEach(el => el.remove());
 
                     // Add avatars for seated participants
                     let rendered = 0;
                     Object.entries(this.participants).forEach(([username, participant]) => {
-                        console.log('Processing participant:', username, participant);
+                        this.log('Processing participant:', username, participant);
                         if (participant.seat_id) {
-                            console.log('Rendering avatar for', username, 'at seat', participant.seat_id);
+                            this.log('Rendering avatar for', username, 'at seat', participant.seat_id);
                             this.renderAvatarAtDesk(participant);
                             rendered++;
                         } else {
-                            console.log('Participant', username, 'has no seat_id');
+                            this.log('Participant', username, 'has no seat_id');
                         }
                     });
-                    console.log('Total avatars rendered:', rendered);
+                    this.log('Total avatars rendered:', rendered);
                 },
 
                 renderAvatarAtDesk(participant) {
-                    console.log('=== RENDER AVATAR AT DESK ===');
-                    console.log('Participant data:', participant);
+                    this.log('=== RENDER AVATAR AT DESK ===');
+                    this.log('Participant data:', participant);
 
                     const seatId = participant.seat_id;
-                    console.log('Seat ID:', seatId);
+                    this.log('Seat ID:', seatId);
 
                     if (!seatId) {
-                        console.log('No seat ID found for participant');
+                        this.log('No seat ID found for participant');
                         return;
                     }
 
                     // Extract seat number from seat-X format
-                    const seatNumber = parseInt(seatId.replace('seat-', ''));
-                    console.log('Seat number:', seatNumber);
+                    const seatNumber = parseInt(seatId.replace('seat-', ''), 10);
+                    this.log('Seat number:', seatNumber);
 
                     // Map seat number to desk row/col
-                    // Assuming 6 desks per row (default)
-                    const desksPerRow = 6;
+                    const desksPerRowInput = document.getElementById('desksPerRow');
+                    const desksPerRow = desksPerRowInput ? parseInt(desksPerRowInput.value, 10) : 6;
                     const row = Math.ceil(seatNumber / desksPerRow);
                     const col = ((seatNumber - 1) % desksPerRow) + 1;
 
-                    console.log('Mapped to desk row:', row, 'col:', col);
+                    this.log('Mapped to desk row:', row, 'col:', col);
 
                     const deskElementId = `desk-chair-${row}-${col}`;
-                    console.log('Looking for desk element with ID:', deskElementId);
+                    this.log('Looking for desk element with ID:', deskElementId);
 
                     const deskElement = document.getElementById(deskElementId);
-                    console.log('Found desk element:', deskElement);
+                    this.log('Found desk element:', deskElement);
 
                     if (deskElement) {
                         // Remove any existing avatar on this desk
                         const existingAvatar = deskElement.querySelector('.desk-avatar');
                         if (existingAvatar) {
-                            console.log('Removing existing avatar from desk');
+                            this.log('Removing existing avatar from desk');
                             existingAvatar.remove();
                         }
 
-                        // Create avatar element
+                        const displayName = participant.full_name || participant.username || 'User';
+
+                        // Create avatar element safely
                         const avatar = document.createElement('div');
                         avatar.className = 'desk-avatar absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 z-50';
-                        avatar.innerHTML = `
-                            <div class="relative flex flex-col items-center">
-                                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-teal-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-lg">
-                                    ${participant.avatar_url ?
-                                        `<img src="${participant.avatar_url}" alt="${participant.full_name}" class="w-full h-full rounded-full object-cover" />` :
-                                        participant.full_name.charAt(0).toUpperCase()
-                                    }
-                                </div>
-                                <div class="text-xs text-white bg-gray-800 bg-opacity-90 px-2 py-1 rounded mt-1 whitespace-nowrap shadow-md">
-                                    ${participant.full_name}
-                                </div>
-                            </div>
-                        `;
 
-                        console.log('Created avatar element:', avatar);
+                        const container = document.createElement('div');
+                        container.className = 'relative flex flex-col items-center';
+
+                        const avatarCircle = document.createElement('div');
+                        avatarCircle.className = 'w-8 h-8 rounded-full bg-gradient-to-r from-teal-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-lg';
+
+                        if (participant.avatar_url) {
+                            const img = document.createElement('img');
+                            img.src = participant.avatar_url;
+                            img.alt = displayName;
+                            img.className = 'w-full h-full rounded-full object-cover';
+                            avatarCircle.appendChild(img);
+                        } else {
+                            avatarCircle.textContent = displayName.charAt(0).toUpperCase();
+                        }
+
+                        const nameLabel = document.createElement('div');
+                        nameLabel.className = 'text-xs text-white bg-gray-800 bg-opacity-90 px-2 py-1 rounded mt-1 whitespace-nowrap shadow-md';
+                        nameLabel.textContent = displayName;
+
+                        container.appendChild(avatarCircle);
+                        container.appendChild(nameLabel);
+                        avatar.appendChild(container);
+
+                        this.log('Created avatar element:', avatar);
                         deskElement.appendChild(avatar);
-                        console.log('Avatar added to desk element');
+                        this.log('Avatar added to desk element');
                     } else {
                         console.error('Desk element not found with ID:', deskElementId);
                         // Try to list all available desk elements for debugging
                         const allDesks = document.querySelectorAll('[id^="desk-chair-"]');
-                        console.log('Available desk elements:', Array.from(allDesks).map(d => d.id));
+                        this.log('Available desk elements:', Array.from(allDesks).map(d => d.id));
                     }
                 }
             }

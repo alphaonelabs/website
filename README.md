@@ -132,7 +132,7 @@ Alpha One Labs is an education platform designed to facilitate both learning and
 8. Run the development server with ASGI support (required for WebSockets):
 
    ```bash
-   poetry run daphne -b 127.0.0.1 -p 8000 web.asgi:application
+   poetry run uvicorn web.asgi:application --host 127.0.0.1 --port 8000 --reload
    ```
 
    **Note:** WebSocket features (Live Avatars, Real-time Chat) require ASGI. Django's `runserver` command uses WSGI and will not support WebSockets.

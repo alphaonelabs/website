@@ -46,5 +46,9 @@ RUN echo "Your Project is now live on http://localhost:8000"
 # Expose port
 EXPOSE 8000
 
+# Healthcheck for ASGI liveness
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/ || exit 1
+
 # Start the ASGI server (uvicorn) for WebSocket support
 CMD ["uvicorn", "web.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

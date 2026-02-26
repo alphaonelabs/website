@@ -342,14 +342,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Caching configuration: fast in-memory cache by default; can be
-# overridden via environment (e.g., django-redis) without code changes.
+# Caching configuration: shared Redis backend for multi-worker consistency.
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "alphaonelabs-local",
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
         "TIMEOUT": 300,
-        "OPTIONS": {"MAX_ENTRIES": 10000},
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     }
 }
 

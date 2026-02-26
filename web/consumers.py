@@ -8,12 +8,22 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from .models import VirtualClassroom, VirtualClassroomParticipant, VirtualClassroomWhiteboard
+from .utils import can_access_classroom
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
 class VirtualClassroomConsumer(AsyncWebsocketConsumer):
+    def _get_avatar_url_sync(self) -> str | None:
+        profile = getattr(self.user, "profile", None)
+        avatar = getattr(profile, "avatar", None)
+        return avatar.url if avatar else None
+
+    @database_sync_to_async
+    def get_avatar_url(self) -> str | None:
+        return self._get_avatar_url_sync()
+
     async def connect(self):
         self.classroom_id = self.scope["url_route"]["kwargs"]["classroom_id"]
         self.room_group_name = f"classroom_{self.classroom_id}"
@@ -44,6 +54,8 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 # Store in cache for real-time access
                 await self.cache_participant_presence()
 
+                avatar_url = await self.get_avatar_url()
+
                 # Broadcast to others that user has joined
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -52,11 +64,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                         "user": {
                             "username": self.user.username,
                             "full_name": self.user.get_full_name() or self.user.username,
-                            "avatar_url": (
-                                self.user.profile.avatar.url
-                                if hasattr(self.user, "profile") and self.user.profile.avatar
-                                else None
-                            ),
+                            "avatar_url": avatar_url,
                         },
                         "seat_id": participant.seat_id,
                     },
@@ -81,8 +89,8 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                     }
                 )
             )
-        except Exception as e:
-            logger.error(f"Error in connect: {str(e)}")
+        except Exception:
+            logger.exception("Error in connect")
             await self.close()
 
     async def disconnect(self, close_code):
@@ -153,6 +161,8 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                     # Update participant's seat and last_active timestamp
                     participant = await self.update_participant_seat(seat_id)
                     if participant:
+                        await self.update_seat_assignment_cache(seat_id)
+                        await self.broadcast_classroom_presence()
                         # Broadcast seat update to all users
                         await self.channel_layer.group_send(
                             self.room_group_name,
@@ -173,6 +183,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 # Clear participant's seat
                 participant = await self.clear_participant_seat()
                 if participant:
+                    avatar_url = await self.get_avatar_url()
                     # Update cache with None to clear seat
                     await self.update_seat_assignment_cache(None)
 
@@ -184,11 +195,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                             "user": {
                                 "username": self.user.username,
                                 "full_name": self.user.get_full_name() or self.user.username,
-                                "avatar_url": (
-                                    self.user.profile.avatar.url
-                                    if hasattr(self.user, "profile") and self.user.profile.avatar
-                                    else None
-                                ),
+                                "avatar_url": avatar_url,
                             },
                             "seat_id": seat_id,
                         },
@@ -226,8 +233,8 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 )
         except json.JSONDecodeError:
             logger.error("Invalid JSON received")
-        except Exception as e:
-            logger.error(f"Error in receive: {str(e)}")
+        except Exception:
+            logger.exception("Error in receive")
 
     async def participant_joined(self, event):
         """Handle when a new participant joins"""
@@ -257,24 +264,15 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({"type": "participants_list", "participants": event["participants"]}))
 
     @database_sync_to_async
-    def verify_classroom_access(self):
+    def verify_classroom_access(self) -> bool:
         """Verify user has access to this classroom"""
         try:
             classroom = VirtualClassroom.objects.get(id=self.classroom_id)
-            is_teacher = self.user == classroom.teacher
-
-            if classroom.course:
-                is_enrolled = classroom.course.enrollments.filter(student=self.user, status="approved").exists()
-                access_granted = is_teacher or is_enrolled
-            else:
-                # For standalone classrooms, anyone can access
-                access_granted = True
-
-            return access_granted
+            return can_access_classroom(self.user, classroom)
         except VirtualClassroom.DoesNotExist:
             return False
-        except Exception as e:
-            logger.error(f"Error verifying classroom access: {str(e)}")
+        except Exception:
+            logger.exception("Error verifying classroom access")
             return False
 
     @database_sync_to_async
@@ -383,7 +381,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             logger.error(f"Error sending participants list: {str(e)}")
 
     @database_sync_to_async
-    def cache_participant_presence(self):
+    def cache_participant_presence(self) -> None:
         """Cache participant presence for real-time access (users start unseated)"""
         try:
             cache_key = f"classroom_{self.classroom_id}_presence"
@@ -396,30 +394,35 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             current_presence[self.user.username] = {
                 "user_id": self.user.id,
                 "full_name": self.user.get_full_name() or self.user.username,
-                "avatar_url": (
-                    self.user.profile.avatar.url if hasattr(self.user, "profile") and self.user.profile.avatar else None
-                ),
+                "avatar_url": self._get_avatar_url_sync(),
                 "joined_at": timezone.now().isoformat(),
                 "seat_id": assigned_seat,
             }
 
             # Cache for 1 hour, will be refreshed on activity
             cache.set(cache_key, current_presence, 3600)
-        except Exception as e:
-            logger.error(f"Error caching participant presence: {str(e)}")
+        except Exception:
+            logger.exception("Error caching participant presence")
 
     @database_sync_to_async
-    def cleanup_stale_cache_entries(self):
+    def cleanup_stale_cache_entries(self) -> None:
         """Remove stale cache entries and sync with active WebSocket connections"""
         try:
             cache_key = f"classroom_{self.classroom_id}_presence"
-            # Clear the entire cache for this classroom to start fresh
-            cache.delete(cache_key)
-        except Exception as e:
-            logger.error(f"Error cleaning up stale cache entries: {str(e)}")
+            current_presence = cache.get(cache_key, {})
+            five_minutes_ago = timezone.now() - timezone.timedelta(minutes=5)
+            active_usernames = set(
+                VirtualClassroomParticipant.objects.filter(
+                    classroom_id=self.classroom_id, last_active__gte=five_minutes_ago
+                ).values_list("user__username", flat=True)
+            )
+            cleaned_presence = {u: v for u, v in current_presence.items() if u in active_usernames}
+            cache.set(cache_key, cleaned_presence, 3600)
+        except Exception:
+            logger.exception("Error cleaning up stale cache entries")
 
     @database_sync_to_async
-    def remove_participant_presence(self):
+    def remove_participant_presence(self) -> None:
         """Remove participant from cache"""
         try:
             cache_key = f"classroom_{self.classroom_id}_presence"
@@ -428,11 +431,11 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             if self.user.username in current_presence:
                 del current_presence[self.user.username]
                 cache.set(cache_key, current_presence, 3600)
-        except Exception as e:
-            logger.error(f"Error removing participant presence: {str(e)}")
+        except Exception:
+            logger.exception("Error removing participant presence")
 
     @database_sync_to_async
-    def update_seat_assignment_cache(self, seat_id):
+    def update_seat_assignment_cache(self, seat_id: str | None) -> None:
         """Update seat assignment in cache"""
         try:
             cache_key = f"classroom_{self.classroom_id}_presence"
@@ -441,10 +444,10 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             if self.user.username in current_presence:
                 current_presence[self.user.username]["seat_id"] = seat_id
                 cache.set(cache_key, current_presence, 3600)
-        except Exception as e:
-            logger.error(f"Error updating seat assignment cache: {str(e)}")
+        except Exception:
+            logger.exception("Error updating seat assignment cache")
 
-    async def broadcast_classroom_presence(self):
+    async def broadcast_classroom_presence(self) -> None:
         """Broadcast current classroom presence to all participants"""
         try:
             cache_key = f"classroom_{self.classroom_id}_presence"
@@ -457,10 +460,10 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                     "presence": current_presence,
                 },
             )
-        except Exception as e:
-            logger.error(f"Error broadcasting classroom presence: {str(e)}")
+        except Exception:
+            logger.exception("Error broadcasting classroom presence")
 
-    async def classroom_presence_update(self, event):
+    async def classroom_presence_update(self, event) -> None:
         """Handle classroom presence updates"""
         await self.send(text_data=json.dumps({"type": "classroom_presence_update", "presence": event["presence"]}))
 
