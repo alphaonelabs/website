@@ -1,0 +1,72 @@
+name: 🛠️ Refactor Request
+description: Suggest a code refactor for maintainability, readability, or performance
+labels: ["refactor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the codebase! Please describe the refactor you'd like to suggest.
+  - type: dropdown
+    id: goal
+    attributes:
+      label: Refactor Goal
+      options:
+        - Maintainability
+        - Readability
+        - Performance
+        - Multiple (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Code Location
+      placeholder: File path(s), module(s), or area of the codebase that should be refactored.
+    validations:
+      required: true
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current State
+      placeholder: Describe how the code currently works and why it needs refactoring.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-change
+    attributes:
+      label: Proposed Change
+      placeholder: Describe the refactor you have in mind and why it would be an improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Expected Benefits
+      placeholder: What improvements will this refactor bring? (e.g., reduced complexity, faster execution, easier testing)
+  - type: textarea
+    id: risks
+    attributes:
+      label: Potential Risks or Trade-offs
+      placeholder: Are there any risks, breaking changes, or trade-offs to consider?
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      placeholder: Add any other context, code snippets, or references here.
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing Issues
+      options:
+        - label: I have looked for similar issues and couldn't find any.
+          required: true
+  - type: dropdown
+    id: assign
+    attributes:
+      label: "Would you like to work on this refactor?"
+      options:
+        - "Yes"
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your suggestion! We will review it as soon as possible.

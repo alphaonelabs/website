@@ -1,0 +1,59 @@
+name: 📝 Documentation Update or Fix
+description: Report outdated, incorrect, or missing documentation
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us keep our documentation accurate and up to date! Please fill out the sections below.
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type of Documentation Change
+      options:
+        - Fix (incorrect or outdated information)
+        - Update (existing docs need refreshing)
+        - Addition (missing documentation)
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Documentation Location
+      placeholder: Link to the page or file, or describe where the documentation is located.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Issue or Improvement
+      placeholder: What is wrong, outdated, or missing? Be as specific as possible.
+    validations:
+      required: true
+  - type: textarea
+    id: suggested-change
+    attributes:
+      label: Suggested Change
+      placeholder: Describe or paste the corrected/updated content you'd like to see.
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      placeholder: Add any other context, references, or screenshots here.
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing Issues
+      options:
+        - label: I have looked for similar issues and couldn't find any.
+          required: true
+  - type: dropdown
+    id: assign
+    attributes:
+      label: "Would you like to work on this issue?"
+      options:
+        - "Yes"
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! We will review your suggestion as soon as possible.
