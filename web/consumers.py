@@ -16,12 +16,14 @@ User = get_user_model()
 
 class VirtualClassroomConsumer(AsyncWebsocketConsumer):
     def _get_avatar_url_sync(self) -> str | None:
+        """Return the current user's avatar URL, if available."""
         profile = getattr(self.user, "profile", None)
         avatar = getattr(profile, "avatar", None)
         return avatar.url if avatar else None
 
     @database_sync_to_async
     def get_avatar_url(self) -> str | None:
+        """Fetch avatar URL via a sync wrapper safe for async consumers."""
         return self._get_avatar_url_sync()
 
     async def connect(self):
@@ -162,6 +164,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                     participant = await self.update_participant_seat(seat_id)
                     if participant:
                         await self.update_seat_assignment_cache(seat_id)
+                        await self.touch_participant_activity()
                         await self.broadcast_classroom_presence()
                         # Broadcast seat update to all users
                         await self.channel_layer.group_send(
@@ -184,8 +187,10 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 participant = await self.clear_participant_seat()
                 if participant:
                     avatar_url = await self.get_avatar_url()
-                    # Update cache with None to clear seat
-                    await self.update_seat_assignment_cache(None)
+                    # Update cache with empty string to clear seat
+                    await self.update_seat_assignment_cache("")
+                    # Update last_active timestamp
+                    await self.touch_participant_activity()
 
                     # Broadcast seat leave
                     await self.channel_layer.group_send(
@@ -206,6 +211,8 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                     # Send updated participants list
                     await self.send_participants_list()
             elif message_type == "position_update":
+                # Update last_active timestamp
+                await self.touch_participant_activity()
                 # Broadcast position update to all other users
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -314,6 +321,13 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
         return None
 
     @database_sync_to_async
+    def touch_participant_activity(self) -> None:
+        """Update last_active timestamp for current participant"""
+        VirtualClassroomParticipant.objects.filter(classroom_id=self.classroom_id, user=self.user).update(
+            last_active=timezone.now()
+        )
+
+    @database_sync_to_async
     def is_seat_occupied(self, seat_id):
         """Check if a seat is already occupied by another user"""
         try:
@@ -339,7 +353,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 classroom_id=self.classroom_id, user=self.user
             ).first()
             if participant:
-                participant.seat_id = None
+                participant.seat_id = ""
                 participant.save()  # This will update last_active due to auto_now=True
                 return participant
         except Exception as e:
@@ -435,7 +449,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             logger.exception("Error removing participant presence")
 
     @database_sync_to_async
-    def update_seat_assignment_cache(self, seat_id: str | None) -> None:
+    def update_seat_assignment_cache(self, seat_id: str) -> None:
         """Update seat assignment in cache"""
         try:
             cache_key = f"classroom_{self.classroom_id}_presence"
@@ -463,7 +477,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
         except Exception:
             logger.exception("Error broadcasting classroom presence")
 
-    async def classroom_presence_update(self, event) -> None:
+    async def classroom_presence_update(self, event: dict) -> None:
         """Handle classroom presence updates"""
         await self.send(text_data=json.dumps({"type": "classroom_presence_update", "presence": event["presence"]}))
 

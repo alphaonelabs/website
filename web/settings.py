@@ -343,14 +343,37 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Caching configuration: shared Redis backend for multi-worker consistency.
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "TIMEOUT": 300,
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+# Falls back to LocMemCache during tests or when Redis is unavailable.
+if TESTING:
+    # Always use LocMemCache during tests
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
     }
-}
+else:
+    try:
+        import redis
+
+        redis_client = redis.from_url(REDIS_URL, socket_connect_timeout=1)
+        redis_client.ping()
+        CACHES = {
+            "default": {
+                "BACKEND": "django_redis.cache.RedisCache",
+                "LOCATION": REDIS_URL,
+                "TIMEOUT": 300,
+                "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+            }
+        }
+    except (redis.ConnectionError, redis.TimeoutError, Exception):
+        # Fallback to in-memory cache when Redis unavailable (e.g., Docker build)
+        CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "unique-snowflake",
+            }
+        }
 
 # Cache middleware settings (usable when wrapping views or enabling site-wide cache)
 CACHE_MIDDLEWARE_ALIAS = "default"
