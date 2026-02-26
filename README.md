@@ -129,11 +129,13 @@ Alpha One Labs is an education platform designed to facilitate both learning and
    python manage.py create_test_data
    ```
 
-8. Run the development server:
+8. Run the development server with ASGI support (required for WebSockets):
 
    ```bash
-   python manage.py runserver
+   poetry run daphne -b 127.0.0.1 -p 8000 web.asgi:application
    ```
+
+   **Note:** WebSocket features (Live Avatars, Real-time Chat) require ASGI. Django's `runserver` command uses WSGI and will not support WebSockets.
 
 9. Visit [http://localhost:8000](http://localhost:8000) in your browser.
 

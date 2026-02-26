@@ -48,10 +48,12 @@ def classroom_whiteboard(request, classroom_id):
 
     if course:
         is_enrolled = course.enrollments.filter(student=request.user, status="approved").exists()
-
-    if not (is_teacher or is_enrolled):
-        messages.error(request, "You don't have access to this classroom.")
-        return redirect("virtual_classroom_list")
+        if not (is_teacher or is_enrolled):
+            messages.error(request, "You don't have access to this classroom.")
+            return redirect("virtual_classroom_list")
+    else:
+        # For standalone classrooms, anyone can access
+        is_enrolled = True
 
     # Get or create whiteboard for this classroom
     whiteboard, created = VirtualClassroomWhiteboard.objects.get_or_create(
