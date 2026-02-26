@@ -7004,6 +7004,7 @@ def notification_center(request: HttpRequest) -> HttpResponse:
         "total_count": total_count,
         "is_paginated": paginator.num_pages > 1,
         "page_obj": page_obj,
+        "elided_page_range": paginator.get_elided_page_range(page_obj.number, on_each_side=1, on_ends=1),
     }
     return render(request, "account/notification_center.html", context)
 

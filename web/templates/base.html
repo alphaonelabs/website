@@ -777,6 +777,18 @@
                     </span>
                   {% endif %}
                 </a>
+                <a href="{% url 'notification_center' %}"
+                   class="flex items-center justify-between py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <div class="flex items-center">
+                    <i class="fas fa-bell mr-2 text-teal-500"></i>
+                    <span>Notifications</span>
+                  </div>
+                  {% if unread_notifications_count %}
+                    <span class="bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {{ unread_notifications_count }}
+                    </span>
+                  {% endif %}
+                </a>
                 <!-- User Account Section -->
                 {% if user.is_authenticated %}
                   <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">

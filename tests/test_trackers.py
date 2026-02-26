@@ -150,3 +150,31 @@ class NotificationCenterTests(TestCase):
     def test_unread_count_in_view_context(self):
         response = self.client.get(reverse("notification_center"))
         self.assertEqual(response.context["unread_count"], 1)
+
+    def test_mark_nonexistent_notification_returns_404(self):
+        response = self.client.post(reverse("mark_notification_read", args=[99999]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_invalid_filter_falls_back_to_all(self):
+        Notification.objects.create(
+            user=self.user,
+            title="Read One",
+            message="Already read.",
+            notification_type="success",
+            read=True,
+        )
+        response = self.client.get(reverse("notification_center") + "?filter=invalid")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test Notification")
+        self.assertContains(response, "Read One")
+        self.assertEqual(response.context["unread_count"], 1)
+
+    def test_mark_read_ajax_returns_json(self):
+        response = self.client.post(
+            reverse("mark_notification_read", args=[self.notification.id]),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("success", data)
+        self.assertTrue(data["success"])

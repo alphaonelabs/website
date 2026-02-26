@@ -6,7 +6,6 @@
 
 {% block content %}
   <div class="container mx-auto px-4 py-8">
-    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Notifications</h1>
@@ -37,7 +36,6 @@
       </div>
     </div>
 
-    <!-- Filter Tabs -->
     <div class="flex gap-2 mb-6" role="tablist" aria-label="Notification filters">
       <a href="{% url 'notification_center' %}"
          role="tab"
@@ -59,12 +57,10 @@
       </a>
     </div>
 
-    <!-- Notifications List -->
     <div class="space-y-3">
       {% for notification in notifications %}
         <div id="notification-{{ notification.id }}"
-             class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-5 flex items-start gap-4 transition duration-200 {% if not notification.read %}border-l-4 {% if notification.notification_type == 'success' %}border-green-600{% elif notification.notification_type == 'warning' %}border-yellow-600{% elif notification.notification_type == 'error' %}border-red-600{% else %}border-teal-300{% endif %}{% endif %}">
-          <!-- Icon -->
+             class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-5 flex items-start gap-4 opacity-100 translate-x-0 transition-all duration-300 {% if not notification.read %}border-l-4 {% if notification.notification_type == 'success' %}border-green-600{% elif notification.notification_type == 'warning' %}border-yellow-600{% elif notification.notification_type == 'error' %}border-red-600{% else %}border-teal-300{% endif %}{% endif %}">
           <div class="flex-shrink-0 mt-1">
             {% if notification.notification_type == "success" %}
               <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
@@ -85,10 +81,9 @@
             {% endif %}
           </div>
 
-          <!-- Content -->
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-2">
-              <h3 class="text-base font-semibold text-gray-900 dark:text-white {% if not notification.read %}font-bold{% endif %}">
+              <h3 class="text-base text-gray-900 dark:text-white {% if not notification.read %}font-bold{% else %}font-normal{% endif %}">
                 {{ notification.title }}
               </h3>
               {% if not notification.read %}
@@ -119,7 +114,6 @@
           </div>
         </div>
       {% empty %}
-        <!-- Empty State -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 text-center">
           <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
             <i class="fas fa-bell-slash text-3xl text-gray-400 dark:text-gray-500"></i>
@@ -146,7 +140,6 @@
       {% endfor %}
     </div>
 
-    <!-- Pagination -->
     {% if is_paginated %}
       <nav class="flex justify-center mt-8" aria-label="Notification pagination">
         <ul class="flex items-center gap-1">
@@ -159,9 +152,11 @@
               </a>
             </li>
           {% endif %}
-          {% for num in page_obj.paginator.page_range %}
+          {% for num in elided_page_range %}
             <li>
-              {% if num == page_obj.number %}
+              {% if num == page_obj.paginator.ELLIPSIS %}
+                <span class="px-3 py-2 text-gray-500 dark:text-gray-400">&hellip;</span>
+              {% elif num == page_obj.number %}
                 <span class="px-3 py-2 rounded-lg bg-teal-300 text-white font-medium" aria-current="page">{{ num }}</span>
               {% else %}
                 <a href="?{% if filter_type != 'all' %}filter={{ filter_type }}&{% endif %}page={{ num }}"
@@ -209,7 +204,12 @@
           'Content-Type': 'application/json',
         },
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.success) {
           const el = document.getElementById(`notification-${notificationId}`);
@@ -230,6 +230,10 @@
             }
           }
         }
+      })
+      .catch(error => {
+        console.error('Failed to mark notification as read:', error);
+        alert('Could not mark notification as read. Please try again.');
       });
     }
 
@@ -241,17 +245,25 @@
           'Content-Type': 'application/json',
         },
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.success) {
           const el = document.getElementById(`notification-${notificationId}`);
           if (el) {
-            el.style.transition = 'opacity 0.3s, transform 0.3s';
-            el.style.opacity = '0';
-            el.style.transform = 'translateX(20px)';
+            el.classList.remove('opacity-100', 'translate-x-0');
+            el.classList.add('opacity-0', 'translate-x-5');
             setTimeout(() => el.remove(), 300);
           }
         }
+      })
+      .catch(error => {
+        console.error('Failed to delete notification:', error);
+        alert('Could not delete notification. Please try again.');
       });
     }
   </script>
