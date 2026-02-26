@@ -280,7 +280,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
         """Add user to active participants (without auto-assigning seat)"""
         try:
             classroom = VirtualClassroom.objects.get(id=self.classroom_id)
-            participant, created = VirtualClassroomParticipant.objects.get_or_create(
+            participant, _created = VirtualClassroomParticipant.objects.get_or_create(
                 classroom=classroom,
                 user=self.user,
                 defaults={"seat_id": ""},  # Start unseated (empty string) so users can move freely
