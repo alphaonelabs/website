@@ -145,6 +145,44 @@
         </div>
       {% endfor %}
     </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+      <nav class="flex justify-center mt-8" aria-label="Notification pagination">
+        <ul class="flex items-center gap-1">
+          {% if page_obj.has_previous %}
+            <li>
+              <a href="?{% if filter_type != 'all' %}filter={{ filter_type }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                 class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition duration-200"
+                 aria-label="Previous page">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            </li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            <li>
+              {% if num == page_obj.number %}
+                <span class="px-3 py-2 rounded-lg bg-teal-300 text-white font-medium" aria-current="page">{{ num }}</span>
+              {% else %}
+                <a href="?{% if filter_type != 'all' %}filter={{ filter_type }}&{% endif %}page={{ num }}"
+                   class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition duration-200">
+                  {{ num }}
+                </a>
+              {% endif %}
+            </li>
+          {% endfor %}
+          {% if page_obj.has_next %}
+            <li>
+              <a href="?{% if filter_type != 'all' %}filter={{ filter_type }}&{% endif %}page={{ page_obj.next_page_number }}"
+                 class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition duration-200"
+                 aria-label="Next page">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
   </div>
 
   <script>
@@ -164,7 +202,7 @@
     }
 
     function markAsRead(notificationId) {
-      fetch(`/en/account/notifications/${notificationId}/read/`, {
+      fetch(`{% url 'mark_notification_read' 0 %}`.replace('0', notificationId), {
         method: 'POST',
         headers: {
           'X-CSRFToken': getCookie('csrftoken'),
@@ -196,7 +234,7 @@
     }
 
     function deleteNotification(notificationId) {
-      fetch(`/en/account/notifications/${notificationId}/delete/`, {
+      fetch(`{% url 'delete_notification' 0 %}`.replace('0', notificationId), {
         method: 'POST',
         headers: {
           'X-CSRFToken': getCookie('csrftoken'),

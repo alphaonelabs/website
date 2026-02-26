@@ -24,6 +24,7 @@ def invitation_notifications(request):
 
 
 def unread_notifications(request):
+    """Add unread notification count to the global template context."""
     if request.user.is_authenticated:
         from web.models import Notification
 

@@ -6978,8 +6978,8 @@ def notification_preferences(request):
 
 
 @login_required
-def notification_center(request):
-    """Display all notifications for the logged-in user with filtering."""
+def notification_center(request: HttpRequest) -> HttpResponse:
+    """Display all notifications for the logged-in user with filtering and pagination."""
     filter_type = request.GET.get("filter", "all")
     notifications = Notification.objects.filter(user=request.user)
 
@@ -6990,21 +6990,27 @@ def notification_center(request):
 
     notifications = notifications.order_by("-created_at")
 
+    paginator = Paginator(notifications, 20)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
     unread_count = Notification.objects.filter(user=request.user, read=False).count()
     total_count = Notification.objects.filter(user=request.user).count()
 
     context = {
-        "notifications": notifications,
+        "notifications": page_obj,
         "filter_type": filter_type,
         "unread_count": unread_count,
         "total_count": total_count,
+        "is_paginated": paginator.num_pages > 1,
+        "page_obj": page_obj,
     }
     return render(request, "account/notification_center.html", context)
 
 
 @login_required
 @require_POST
-def mark_notification_read(request, notification_id):
+def mark_notification_read(request: HttpRequest, notification_id: int) -> JsonResponse:
     """Mark a single notification as read."""
     notification = get_object_or_404(Notification, id=notification_id, user=request.user)
     notification.read = True
@@ -7014,7 +7020,7 @@ def mark_notification_read(request, notification_id):
 
 @login_required
 @require_POST
-def mark_all_notifications_read(request):
+def mark_all_notifications_read(request: HttpRequest) -> HttpResponse:
     """Mark all notifications as read for the logged-in user."""
     Notification.objects.filter(user=request.user, read=False).update(read=True)
     messages.success(request, "All notifications marked as read.")
@@ -7023,7 +7029,7 @@ def mark_all_notifications_read(request):
 
 @login_required
 @require_POST
-def delete_notification(request, notification_id):
+def delete_notification(request: HttpRequest, notification_id: int) -> JsonResponse:
     """Delete a single notification."""
     notification = get_object_or_404(Notification, id=notification_id, user=request.user)
     notification.delete()
