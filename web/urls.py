@@ -91,6 +91,18 @@ urlpatterns += i18n_patterns(
     path("accounts/signup/", views.signup_view, name="account_signup"),  # Our custom signup view
     path("accounts/", include("allauth.urls")),
     path("account/notification-preferences/", notification_preferences, name="notification_preferences"),
+    path("account/notifications/", views.notification_center, name="notification_center"),
+    path(
+        "account/notifications/<int:notification_id>/read/",
+        views.mark_notification_read,
+        name="mark_notification_read",
+    ),
+    path("account/notifications/mark-all-read/", views.mark_all_notifications_read, name="mark_all_notifications_read"),
+    path(
+        "account/notifications/<int:notification_id>/delete/",
+        views.delete_notification,
+        name="delete_notification",
+    ),
     path("profile/", views.profile, name="profile"),
     path("accounts/profile/", views.profile, name="accounts_profile"),
     path("accounts/delete/", views.delete_account, name="delete_account"),

@@ -21,3 +21,12 @@ def invitation_notifications(request):
         pending_invites = request.user.received_group_invites.filter(status="pending").count()
         return {"pending_invites_count": pending_invites}
     return {}
+
+
+def unread_notifications(request):
+    if request.user.is_authenticated:
+        from web.models import Notification
+
+        count = Notification.objects.filter(user=request.user, read=False).count()
+        return {"unread_notifications_count": count}
+    return {"unread_notifications_count": 0}
