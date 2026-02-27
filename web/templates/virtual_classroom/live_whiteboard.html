@@ -473,6 +473,11 @@
               console.log('WebSocket connection closed');
               updateConnectionStatus(false);
 
+              if (e.code === 4001 || e.code === 4003 || e.code === 4004) {
+                  console.error('WebSocket closed permanently (code ' + e.code + '). Not reconnecting.');
+                  return;
+              }
+
               // Attempt to reconnect
               if (reconnectAttempts < maxReconnectAttempts) {
                   setTimeout(() => {

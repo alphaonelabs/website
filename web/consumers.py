@@ -33,13 +33,15 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
 
         # Check if user is authenticated - reject if not
         if not self.user.is_authenticated:
-            await self.close()
+            await self.accept()
+            await self.close(code=4001)
             return
 
         try:
             # Verify user has access to this classroom
             if not await self.verify_classroom_access():
-                await self.close()
+                await self.accept()
+                await self.close(code=4003)
                 return
 
             # Join room group
@@ -492,18 +494,21 @@ class WhiteboardConsumer(AsyncWebsocketConsumer):
         try:
             self.classroom_id = int(self.room_name.split("_")[1])
         except (IndexError, ValueError):
-            await self.close()
+            await self.accept()
+            await self.close(code=4004)
             return
 
         # Check if user is authenticated
         if not self.user.is_authenticated:
-            await self.close()
+            await self.accept()
+            await self.close(code=4001)
             return
 
         try:
             # Verify user has access to this classroom
             if not await self.verify_whiteboard_access():
-                await self.close()
+                await self.accept()
+                await self.close(code=4003)
                 return
 
             # Join room group

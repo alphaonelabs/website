@@ -284,6 +284,10 @@
                     };
 
                     this.websocket.onclose = (event) => {
+                        if (event.code === 4001 || event.code === 4003) {
+                            console.error('WebSocket closed permanently (code ' + event.code + '). Not reconnecting.');
+                            return;
+                        }
                         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
                             console.error('Max reconnection attempts reached');
                             return;

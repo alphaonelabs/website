@@ -417,6 +417,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.onclose = function (e) {
             console.log('WebSocket disconnected');
+            if (e.code === 4001 || e.code === 4003) {
+                console.error('WebSocket closed permanently (code ' + e.code + '). Not reconnecting.');
+                return;
+            }
             if (reconnectAttempts < maxReconnectAttempts) {
                 setTimeout(() => {
                     console.log('Attempting to reconnect...');
