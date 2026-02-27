@@ -16,17 +16,21 @@
           <a href="{% url 'virtual_lab:virtual_lab_home' %}"
              class="hover:text-indigo-600 dark:hover:text-indigo-400 transition">{% trans "Home" %}</a>
           <!-- Physics Dropdown -->
-          <div class="relative group inline-block">
+          <div class="relative z-50 group inline-block">
             <button class="hover:text-indigo-600 dark:hover:text-indigo-400 transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
               {% trans "Physics" %}
             </button>
-            <div class="absolute left-0 mt-2 w-40 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto">
+            <div class="absolute left-0 mt-2 w-40 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-[opacity,visibility] pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto z-50">
               <a href="{% url 'virtual_lab:physics_pendulum' %}"
                  class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900 transition">{% trans "Pendulum" %}</a>
               <a href="{% url 'virtual_lab:physics_projectile' %}"
                  class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900 transition">{% trans "Projectile" %}</a>
               <a href="{% url 'virtual_lab:physics_inclined' %}"
                  class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-yellow-50 dark:hover:bg-yellow-900 transition">{% trans "Inclined Plane" %}</a>
+              <a href="{% url 'virtual_lab:physics_mass_spring' %}"
+                 class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900 transition">{% trans "Mass–Spring" %}</a>
+              <a href="{% url 'virtual_lab:physics_electrical_circuit' %}"
+                 class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900 transition">{% trans "Circuit" %}</a>
             </div>
           </div>
           <a href="{% url 'virtual_lab:chemistry_home' %}"
