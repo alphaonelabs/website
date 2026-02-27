@@ -24,7 +24,17 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-prootpassword"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-u",
+          "root",
+          "-prootpassword",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -55,7 +65,7 @@ services:
     command: >
       bash -c "
         echo 'Waiting for MySQL...' &&
-        while ! mysqladmin ping -h db -u root -prootpassword --silent 2>/dev/null; do
+        while ! mysqladmin ping -h db -u django -pdjango_password --silent 2>/dev/null; do
           sleep 1
         done &&
         echo 'MySQL is ready!' &&
@@ -75,7 +85,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=mysql://root:rootpassword@db:3306/education_website
+      - DATABASE_URL=mysql://django:django_password@db:3306/education_website
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
       - DEBUG=True

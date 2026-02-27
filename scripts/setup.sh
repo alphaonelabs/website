@@ -63,8 +63,8 @@ POETRY_CMD=""
 if command -v poetry &>/dev/null; then
     POETRY_CMD="poetry"
 else
-    warn "Poetry not found — installing Poetry 1.8.3..."
-    python3 -m pip install --quiet poetry==1.8.3 2>&1 || true
+    warn "Poetry not found — installing Poetry 2.3.2..."
+    python3 -m pip install --quiet poetry==2.3.2 2>&1 || true
 
     # pip may install the binary to a user-local scripts dir not on PATH.
     # Common locations: ~/.local/bin (Linux), ~/Library/Python/X.Y/bin (macOS)
@@ -95,11 +95,15 @@ fi
 
 if [ -z "${POETRY_CMD}" ]; then
     die "Could not find or install Poetry." \
-        "Install manually: pip install poetry==1.8.3  and ensure it's on your PATH"
+        "Install manually: pip install poetry==2.3.2  and ensure it's on your PATH"
 fi
 
 POETRY_VERSION=$(${POETRY_CMD} --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
 ok "Poetry ${POETRY_VERSION}"
+
+if [ "$(echo "${POETRY_VERSION}" | cut -d. -f1)" -ge 2 ]; then
+    "${POETRY_CMD}" self add poetry-plugin-export 2>/dev/null || true
+fi
 
 # Optional: Docker
 if command -v docker &>/dev/null; then
@@ -122,7 +126,7 @@ step 2 "Installing packages..."
 
 # Ensure Poetry creates a virtualenv (override the repo's poetry.toml which
 # sets create=false — that setting is intended for Docker/CI, not local dev).
-poetry config virtualenvs.in-project true --local 2>/dev/null || true
+"${POETRY_CMD}" config virtualenvs.in-project true --local 2>/dev/null || true
 
 # mysqlclient requires MySQL C headers (mysql_config) to compile.
 # On macOS, these come from `brew install mysql-client`.
@@ -145,7 +149,7 @@ fi
 
 # Try poetry install; if it fails (usually due to mysqlclient), fall back to
 # installing everything except mysqlclient via pip.
-if poetry install --no-interaction --no-ansi 2>&1 | tail -5; then
+if "${POETRY_CMD}" install --no-interaction --no-ansi 2>&1 | tail -5; then
     ok "Python dependencies installed"
 else
     warn "poetry install failed (likely mysqlclient). Falling back to pip install..."
@@ -157,14 +161,14 @@ else
     PIP="${PROJECT_ROOT}/.venv/bin/pip"
 
     # Export requirements from poetry, remove mysqlclient, install the rest
-    poetry export --without-hashes --no-interaction 2>/dev/null \
+    "${POETRY_CMD}" export --without-hashes --no-interaction 2>/dev/null \
         | grep -v '^mysqlclient' \
         > "${PROJECT_ROOT}/.tmp-requirements.txt"
     "${PIP}" install --quiet -r "${PROJECT_ROOT}/.tmp-requirements.txt"
     rm -f "${PROJECT_ROOT}/.tmp-requirements.txt"
 
     # Also install dev dependencies
-    poetry export --with dev --without-hashes --no-interaction 2>/dev/null \
+    "${POETRY_CMD}" export --with dev --without-hashes --no-interaction 2>/dev/null \
         | grep -v '^mysqlclient' \
         > "${PROJECT_ROOT}/.tmp-dev-requirements.txt"
     "${PIP}" install --quiet -r "${PROJECT_ROOT}/.tmp-dev-requirements.txt"
@@ -178,7 +182,7 @@ if [ -d "${PROJECT_ROOT}/.venv" ]; then
     PYTHON="${PROJECT_ROOT}/.venv/bin/python"
 else
     # Fallback: let poetry figure it out
-    PYTHON="$(poetry env info -e 2>/dev/null || echo python3)"
+    PYTHON="$("${POETRY_CMD}" env info -e 2>/dev/null || echo python3)"
 fi
 ok "Using Python: ${PYTHON}"
 
@@ -221,7 +225,7 @@ chars = string.ascii_letters + string.digits + '!@#\$%^&*(-_=+)'
 print(''.join(secrets.choice(chars) for _ in range(50)))
 ")
     # Escape special characters (&, \, and |) for the sed replacement string
-    ESCAPED_SECRET=$(printf '%s\n' "$NEW_SECRET" | sed -e 's/[\/&]/\\&/g')
+    ESCAPED_SECRET=$(printf '%s\n' "$NEW_SECRET" | sed -e 's/[\\&|]/\\&/g')
     
     # Use a delimiter that won't conflict with the secret value
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -240,7 +244,7 @@ SAMPLE_KEY="5ezrkqK2lhifqBRt9f8_dZhFQF_f5ipSQDV8Vzv9Dek="
 if [ "${CURRENT_ENCRYPTION_KEY}" = "${SAMPLE_KEY}" ] || [ -z "${CURRENT_ENCRYPTION_KEY}" ]; then
     NEW_ENCRYPTION_KEY=$("${PYTHON}" -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
     # Escape the encryption key in case it contains sed-special characters (though base64 usually doesn't, it's safer)
-    ESCAPED_ENCRYPTION_KEY=$(printf '%s\n' "$NEW_ENCRYPTION_KEY" | sed -e 's/[\/&]/\\&/g')
+    ESCAPED_ENCRYPTION_KEY=$(printf '%s\n' "$NEW_ENCRYPTION_KEY" | sed -e 's/[\\&|]/\\&/g')
     
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|^MESSAGE_ENCRYPTION_KEY=.*|MESSAGE_ENCRYPTION_KEY=${ESCAPED_ENCRYPTION_KEY}|" "${PROJECT_ROOT}/.env"

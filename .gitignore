@@ -13,4 +13,3 @@ education-website-*.json
 *.sql
 node_modules/
 .venv/
-poetry.toml

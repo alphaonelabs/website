@@ -22,7 +22,7 @@ PASS=0; WARN=0; FAIL=0
 # -- Resolve project root -----------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-cd "${PROJECT_ROOT}"
+cd "${PROJECT_ROOT}" || { echo "Failed to cd into ${PROJECT_ROOT}"; exit 1; }
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════════╗${NC}"
@@ -39,7 +39,7 @@ if command -v python3 &>/dev/null; then
     PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")')
     PY_MAJOR=$(python3 -c 'import sys; print(sys.version_info.major)')
     PY_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
-    if [ "${PY_MAJOR}" -ge 3 ] && [ "${PY_MINOR}" -ge 10 ]; then
+    if [ "${PY_MAJOR}" -gt 3 ] || { [ "${PY_MAJOR}" -eq 3 ] && [ "${PY_MINOR}" -ge 10 ]; }; then
         ok "Python ${PY_VER} (≥ 3.10 required)"
     else
         fail "Python ${PY_VER} found — 3.10+ is required"

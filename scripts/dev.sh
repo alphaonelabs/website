@@ -57,7 +57,8 @@ if [ -n "${REDIS_URL}" ] && [ "${REDIS_URL}" != "redis://127.0.0.1:6379/0" ]; th
     # Custom Redis URL configured — warn if it's unreachable
     if command -v redis-cli &>/dev/null; then
         if ! redis-cli -u "${REDIS_URL}" ping &>/dev/null 2>&1; then
-            warn "Redis at ${REDIS_URL} is not reachable."
+            REDACTED_URL=$(echo "${REDIS_URL}" | sed -E 's|://[^@]+@|://REDACTED@|')
+            warn "Redis at ${REDACTED_URL} is not reachable."
             warn "WebSocket features (chat, whiteboard) won't work without Redis."
         else
             ok "Redis is reachable"
@@ -77,8 +78,12 @@ fi
 
 # -- Collect static files (quick, idempotent) ---------------------------------
 info "Collecting static files..."
-"${PYTHON}" manage.py collectstatic --noinput --verbosity=0 2>&1 || true
-ok "Static files ready"
+if "${PYTHON}" manage.py collectstatic --noinput --verbosity=0 2>&1; then
+    ok "Static files ready"
+else
+    fail "collectstatic failed. See output above."
+    exit 1
+fi
 
 # -- Trap Ctrl+C for clean shutdown -------------------------------------------
 cleanup() {
