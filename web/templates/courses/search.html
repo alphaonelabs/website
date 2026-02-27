@@ -36,7 +36,8 @@
                           data-course-id="{{ course.id }}"
                           onclick="toggleCardBookmark(this)"
                           class="absolute top-2 right-2 p-2 rounded-full transition duration-200 {% if course.id in bookmarked_course_ids %}bg-red-100 dark:bg-red-900 text-red-500{% else %}bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-red-500{% endif %} shadow-md"
-                          aria-label="{% if course.id in bookmarked_course_ids %}Remove bookmark{% else %}Bookmark this course{% endif %}">
+                          aria-label="{% if course.id in bookmarked_course_ids %}Remove bookmark{% else %}Bookmark this course{% endif %}"
+                          aria-pressed="{% if course.id in bookmarked_course_ids %}true{% else %}false{% endif %}">
                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                          fill="{% if course.id in bookmarked_course_ids %}currentColor{% else %}none{% endif %}"
                          stroke="currentColor" stroke-width="2">
@@ -335,15 +336,22 @@ function toggleCardBookmark(btn) {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) throw new Error('Request failed: ' + r.status);
+        return r.json();
+    })
     .then(data => {
         const svg = btn.querySelector('svg');
         if (data.bookmarked) {
             btn.className = btn.className.replace(/bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-red-500/g, 'bg-red-100 dark:bg-red-900 text-red-500');
             svg.setAttribute('fill', 'currentColor');
+            btn.setAttribute('aria-label', 'Remove bookmark');
+            btn.setAttribute('aria-pressed', 'true');
         } else {
             btn.className = btn.className.replace(/bg-red-100 dark:bg-red-900 text-red-500/g, 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-red-500');
             svg.setAttribute('fill', 'none');
+            btn.setAttribute('aria-label', 'Bookmark this course');
+            btn.setAttribute('aria-pressed', 'false');
         }
     })
     .catch(err => console.error('Bookmark error:', err));

@@ -20,7 +20,6 @@ import requests
 import stripe
 import tweepy
 from allauth.account.models import EmailAddress
-from allauth.account.internal.flows.email_verification import send_verification_email_for_user as send_email_confirmation
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import NestedObjects
@@ -1339,7 +1338,8 @@ def teach(request):
                         )
                     else:
                         # Email not verified, resend verification email
-                        send_email_confirmation(request, user)
+                        email_addr = EmailAddress.objects.get_for_user(user, user.email)
+                        email_addr.send_confirmation(request)
                         messages.info(
                             request,
                             "An account with this email exists. Please verify your email to continue.",
@@ -1366,10 +1366,10 @@ def teach(request):
                         profile.save()
 
                         # Add email address for allauth verification
-                        EmailAddress.objects.create(user=user, email=email, primary=True, verified=False)
+                        email_addr = EmailAddress.objects.create(user=user, email=email, primary=True, verified=False)
 
                         # Send verification email via allauth
-                        send_email_confirmation(request, user)
+                        email_addr.send_confirmation(request)
                         # Send welcome email with username, email, and temp password
                         try:
                             send_welcome_teach_course_email(request, user, temp_password)
@@ -8860,7 +8860,7 @@ def leave_session_waiting_room(request, course_slug):
 
 @login_required
 @require_POST
-def toggle_bookmark(request, slug):
+def toggle_bookmark(request: HttpRequest, slug: str) -> JsonResponse:
     """Toggle bookmark status for a course (AJAX)."""
     course = get_object_or_404(Course, slug=slug)
     bookmark, created = CourseBookmark.objects.get_or_create(user=request.user, course=course)
@@ -8873,14 +8873,14 @@ def toggle_bookmark(request, slug):
 
 
 @login_required
-def my_bookmarks(request):
+def my_bookmarks(request: HttpRequest) -> HttpResponse:
     """Display user's bookmarked courses."""
     bookmark_qs = CourseBookmark.objects.filter(user=request.user).select_related(
         "course", "course__teacher", "course__subject", "course__teacher__profile"
-    ).prefetch_related("course__sessions", "course__enrollments", "course__web_requests")
+    ).prefetch_related("course__sessions", "course__enrollments")
     courses = [b.course for b in bookmark_qs]
     enrollments = Enrollment.objects.filter(student=request.user).select_related("course")
-    user_courses = {e.course.title for e in enrollments}
+    user_courses = {e.course.id for e in enrollments}
     return render(request, "account/my_bookmarks.html", {
         "courses": courses,
         "user_courses": user_courses,

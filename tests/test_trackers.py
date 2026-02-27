@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from web.models import ProgressTracker
+from web.models import Course, CourseBookmark, Notification, ProgressTracker, Subject
 
 
 class ProgressTrackerTests(TestCase):
@@ -26,14 +26,15 @@ class ProgressTrackerTests(TestCase):
         self.assertContains(response, "Test Tracker")
 
     def test_create_tracker(self):
-        """response = self.client.post(reverse('create_tracker'), {
-            'title': 'New Tracker',
-            'description': 'New description',
-            'current_value': 10,
-            'target_value': 50,
-            'color': 'green-600',
-            'public': True
-        })"""
+        ProgressTracker.objects.create(
+            user=self.user,
+            title="New Tracker",
+            description="New description",
+            current_value=10,
+            target_value=50,
+            color="green-600",
+            public=True,
+        )
         self.assertEqual(ProgressTracker.objects.count(), 2)
         new_tracker = ProgressTracker.objects.get(title="New Tracker")
         self.assertEqual(new_tracker.current_value, 10)
@@ -55,9 +56,6 @@ class ProgressTrackerTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Test Tracker")
         self.assertContains(response, "25%")
-
-
-from web.models import Course, CourseBookmark, Subject
 
 
 class CourseBookmarkTests(TestCase):
