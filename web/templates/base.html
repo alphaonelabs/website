@@ -1128,7 +1128,50 @@
                 }
             });
         }
+
+        // Back to Top Button functionality
+        document.addEventListener('DOMContentLoaded', function () {
+
+    const backToTopBtn = document.getElementById('back-to-top-btn');
+    if (!backToTopBtn) return;
+
+    window.addEventListener('scroll', function () {
+        if (window.scrollY > 300) {
+            backToTopBtn.classList.remove(
+                'opacity-0',
+                'invisible',
+                'pointer-events-none'
+            );
+            backToTopBtn.classList.add('opacity-100', 'visible');
+        } else {
+            backToTopBtn.classList.add(
+                'opacity-0',
+                'invisible',
+                'pointer-events-none'
+            );
+            backToTopBtn.classList.remove('opacity-100', 'visible');
+        }
+    });
+
+    backToTopBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+
+});
+
+        
+        
     </script>
+    <!-- Back to Top Button -->
+    <button id="back-to-top-btn"
+            aria-label="Scroll to top"
+            class="fixed bottom-6 right-6 z-[9999] flex items-center justify-center w-12 h-12 rounded-full bg-teal-500 hover:bg-teal-600 dark:bg-teal-600 dark:hover:bg-teal-700 text-white shadow-lg transition-all duration-300 opacity-0 invisible pointer-events-none">
+      <i class="fas fa-arrow-up text-lg"></i>
+    </button>
     {% block extra_js %}
     {% endblock extra_js %}
   </body>
