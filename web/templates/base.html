@@ -1130,12 +1130,13 @@
         }
 
         // Back to Top Button functionality
-        document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
 
     const backToTopBtn = document.getElementById('back-to-top-btn');
     if (!backToTopBtn) return;
 
-    window.addEventListener('scroll', function () {
+    // Extracted visibility toggle
+    function updateBackToTopVisibility() {
         if (window.scrollY > 300) {
             backToTopBtn.classList.remove(
                 'opacity-0',
@@ -1151,8 +1152,17 @@
             );
             backToTopBtn.classList.remove('opacity-100', 'visible');
         }
+    }
+
+    // Initialize correctly on page load
+    updateBackToTopVisibility();
+
+    // Reuse same logic on scroll
+    window.addEventListener('scroll', updateBackToTopVisibility, {
+        passive: true
     });
 
+    // Scroll action
     backToTopBtn.addEventListener('click', function (e) {
         e.preventDefault();
         window.scrollTo({
@@ -1163,13 +1173,19 @@
 
 });
 
-        
-        
     </script>
     <!-- Back to Top Button -->
     <button id="back-to-top-btn"
-            aria-label="Scroll to top"
-            class="fixed bottom-6 right-6 z-[9999] flex items-center justify-center w-12 h-12 rounded-full bg-teal-500 hover:bg-teal-600 dark:bg-teal-600 dark:hover:bg-teal-700 text-white shadow-lg transition-all duration-300 opacity-0 invisible pointer-events-none">
+        aria-label="Scroll to top"
+        class="fixed bottom-8 right-8 z-[9999]
+        flex items-center justify-center
+        w-14 h-14 md:w-16 md:h-16
+        rounded-full
+        bg-teal-300 hover:bg-teal-400
+        dark:bg-teal-400 dark:hover:bg-teal-500
+        text-white shadow-lg
+        transition-all duration-300
+        opacity-0 invisible pointer-events-none">
       <i class="fas fa-arrow-up text-lg"></i>
     </button>
     {% block extra_js %}
