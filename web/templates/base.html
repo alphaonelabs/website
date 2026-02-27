@@ -1176,16 +1176,23 @@ document.addEventListener('DOMContentLoaded', function () {
     </script>
     <!-- Back to Top Button -->
     <button id="back-to-top-btn"
-        aria-label="Scroll to top"
-        class="fixed bottom-8 right-8 z-[9999]
-        flex items-center justify-center
-        w-14 h-14 md:w-16 md:h-16
-        rounded-full
-        bg-teal-300 hover:bg-teal-400
-        dark:bg-teal-400 dark:hover:bg-teal-500
-        text-white shadow-lg
-        transition-all duration-300
-        opacity-0 invisible pointer-events-none">
+    aria-label="Scroll to top"
+    class="fixed bottom-8 right-8 z-[9999]
+    flex items-center justify-center
+    w-14 h-14 md:w-16 md:h-16
+    rounded-full
+    bg-teal-300 hover:bg-teal-400
+    dark:bg-teal-400 dark:hover:bg-teal-500
+    text-white shadow-lg
+    transition-all duration-300
+
+    focus:outline-none
+    focus-visible:ring-4
+    focus-visible:ring-teal-500/50
+    focus-visible:ring-offset-2
+    dark:focus-visible:ring-offset-gray-900
+
+    opacity-0 invisible pointer-events-none">
       <i class="fas fa-arrow-up text-lg"></i>
     </button>
     {% block extra_js %}
