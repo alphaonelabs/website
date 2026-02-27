@@ -5,12 +5,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+          content="Real-time virtual classroom for interactive learning and collaboration." />
+    <!-- djlint:off H026 -->
+    <meta name="keywords"
+          content="virtual classroom, online learning, live class, collaboration" />
+    <!-- djlint:on H026 -->
     <meta name="classroom-id" content="{{ classroom.id }}" />
+    <meta name="current-user" content="{{ request.user.username }}" />
     <title>Virtual Classroom</title>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.263.1"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js"></script>
   </head>
-  <body class="min-h-screen bg-gray-100">
+  <body class="min-h-screen bg-gray-100" x-data="classroomApp()">
     <header class="bg-white shadow-md p-4">
       <div class="max-w-7xl mx-auto flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800">{{ classroom.name }}</h1>
@@ -27,7 +35,7 @@
           <button id="toggleStudentList"
                   class="px-4 py-2 bg-teal-300 text-white rounded-md hover:bg-teal-400 transition-colors flex items-center gap-2">
             <i data-lucide="users"></i>
-            <span>Students</span>
+            <span x-text="`Students (${Object.keys(participants).length})`">Students</span>
           </button>
           <button id="toggleControls"
                   class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2">
@@ -50,37 +58,41 @@
       </div>
       <div class="p-4">
         <div id="studentsList" class="space-y-3">
-          <!-- Display participants -->
-          {% for participant in participants %}
+          <!-- Display participants dynamically with Alpine.js -->
+          <template x-for="[username, participant] in Object.entries(participants)"
+                    :key="username">
             <div class="flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
               <div class="flex items-center space-x-3">
-                {% if participant.user.profile.avatar %}
-                  <img src="{{ participant.user.profile.avatar.url }}"
-                       alt="{{ participant.user.username }}"
+                <div x-show="participant.avatar_url">
+                  <img :src="participant.avatar_url"
+                       :alt="participant.full_name"
+                       width="32"
+                       height="32"
                        class="w-8 h-8 rounded-full" />
-                {% else %}
-                  <div class="w-8 h-8 rounded-full bg-teal-300 flex items-center justify-center text-white text-xs font-bold">
-                    {{ participant.user.username|first|upper }}
-                  </div>
-                {% endif %}
+                </div>
+                <div x-show="!participant.avatar_url"
+                     class="w-8 h-8 rounded-full bg-teal-300 flex items-center justify-center text-white text-xs font-bold">
+                  <span x-text="(participant.full_name || participant.username || '?').charAt(0).toUpperCase()"></span>
+                </div>
                 <div>
-                  <p class="font-medium text-sm text-gray-800">{{ participant.user.username }}</p>
-                  <p class="text-xs text-gray-600">Joined {{ participant.joined_at|date:"M d, Y H:i" }}</p>
+                  <p class="font-medium text-sm text-gray-800"
+                     x-text="participant.full_name"></p>
+                  <p class="text-xs text-gray-600"
+                     x-text="`Joined ${new Date(participant.joined_at).toLocaleString()}`"></p>
                 </div>
               </div>
               <div class="flex items-center space-x-2">
-                {% if participant.seat_id %}
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Seat {{ participant.seat_id }}
-                  </span>
-                {% else %}
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">Idle</span>
-                {% endif %}
+                <span x-show="participant.seat_id"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                      x-text="`Seat ${participant.seat_id}`"></span>
+                <span x-show="!participant.seat_id"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">Idle</span>
               </div>
             </div>
-          {% empty %}
-            <p class="text-gray-500 text-center py-8">No other students in the classroom yet.</p>
-          {% endfor %}
+          </template>
+          <!-- Empty state -->
+          <div x-show="Object.keys(participants).length === 0"
+               class="text-gray-500 text-center py-8">No other students in the classroom yet.</div>
         </div>
       </div>
     </div>
@@ -229,6 +241,230 @@
       </div>
     </div>
     <script>
+        // Alpine.js classroom app
+        function classroomApp() {
+            return {
+                debug: false,
+                participants: {},
+                classroomId: document.querySelector('meta[name="classroom-id"]').content,
+                websocket: null,
+                reconnectAttempts: 0,
+                maxReconnectAttempts: 10,
+                baseReconnectDelay: 1000,
+
+                log(...args) {
+                    if (this.debug) {
+                        console.log(...args);
+                    }
+                },
+
+                init() {
+                    this.log('Initializing Alpine.js classroom app');
+                    this.log('Classroom ID:', this.classroomId);
+                    this.log('Current participants:', this.participants);
+                    this.initWebSocket();
+                },
+
+                initWebSocket() {
+                    const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsPath = `${wsScheme}//${window.location.host}/ws/classroom/${this.classroomId}/`;
+
+                    this.log('Connecting to WebSocket:', wsPath);
+                    this.websocket = new WebSocket(wsPath);
+
+                    this.websocket.onopen = (event) => {
+                        this.log('WebSocket connected successfully');
+                        this.reconnectAttempts = 0;
+                    };
+
+                    this.websocket.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.log('WebSocket message received:', data);
+                        this.handleWebSocketMessage(data);
+                    };
+
+                    this.websocket.onclose = (event) => {
+                        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                            console.error('Max reconnection attempts reached');
+                            return;
+                        }
+                        const delay = Math.min(this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts), 30000);
+                        this.log(
+                            `WebSocket disconnected, reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1})`
+                        );
+                        this.reconnectAttempts++;
+                        setTimeout(() => {
+                            if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
+                                this.initWebSocket();
+                            }
+                        }, delay);
+                    };
+
+                    this.websocket.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                    };
+                },
+
+                handleWebSocketMessage(data) {
+                    this.log('=== WebSocket Message Handler Called ===');
+                    this.log('Message type:', data.type);
+                    this.log('Full message data:', data);
+
+                    switch (data.type) {
+                        case 'classroom_presence_update':
+                            this.log('=== CLASSROOM PRESENCE UPDATE ===');
+                            this.log('Current participants before update:', this.participants);
+                            this.log('New presence data:', data.presence);
+                            this.participants = data.presence || {};
+                            this.log('Participants after update:', this.participants);
+                            this.log('Number of participants:', Object.keys(this.participants).length);
+                            this.$nextTick(() => {
+                                this.log('Calling renderAvatarsOnDesks after presence update');
+                                this.renderAvatarsOnDesks();
+                            });
+                            break;
+                        case 'participant_joined':
+                            this.log('=== PARTICIPANT JOINED ===');
+                            this.log('Participant joined:', data.user.username, 'at seat:', data.seat_id);
+                            break;
+                        case 'participant_left':
+                            this.log('=== PARTICIPANT LEFT ===');
+                            this.log('Participant left:', data.user.username);
+                            break;
+                        case 'seat_updated':
+                            this.log('=== SEAT UPDATED ===');
+                            this.log('Seat updated:', data.user.username, 'to seat', data.seat_id);
+                            this.updateParticipantSeat(data.user.username, data.seat_id);
+                            break;
+                        case 'seat_left':
+                            this.log('=== SEAT LEFT ===');
+                            this.log('Seat left:', data.user.username, 'from seat', data.seat_id);
+                            this.updateParticipantSeat(data.user.username, null);
+                            break;
+                        default:
+                            this.log('Unknown message type:', data.type);
+                    }
+                },
+
+                updateParticipantSeat(username, seatId) {
+                    if (username === '__proto__' || username === 'constructor' || username === 'prototype') {
+                        console.warn('Attempted prototype pollution with username:', username);
+                        return;
+                    }
+                    if (Object.prototype.hasOwnProperty.call(this.participants, username)) {
+                        this.participants[username].seat_id = seatId;
+                        this.$nextTick(() => {
+                            this.renderAvatarsOnDesks();
+                        });
+                    }
+                },
+
+                renderAvatarsOnDesks() {
+                    this.log('=== RENDER AVATARS ON DESKS ===');
+                    this.log('Current participants to render:', this.participants);
+                    this.log('Number of participants:', Object.keys(this.participants).length);
+
+                    // Remove existing avatars
+                    const existingAvatars = document.querySelectorAll('.desk-avatar');
+                    this.log('Removing', existingAvatars.length, 'existing avatars');
+                    existingAvatars.forEach(el => el.remove());
+
+                    // Add avatars for seated participants
+                    let rendered = 0;
+                    Object.entries(this.participants).forEach(([username, participant]) => {
+                        this.log('Processing participant:', username, participant);
+                        if (participant.seat_id) {
+                            this.log('Rendering avatar for', username, 'at seat', participant.seat_id);
+                            this.renderAvatarAtDesk(participant);
+                            rendered++;
+                        } else {
+                            this.log('Participant', username, 'has no seat_id');
+                        }
+                    });
+                    this.log('Total avatars rendered:', rendered);
+                },
+
+                renderAvatarAtDesk(participant) {
+                    this.log('=== RENDER AVATAR AT DESK ===');
+                    this.log('Participant data:', participant);
+
+                    const seatId = participant.seat_id;
+                    this.log('Seat ID:', seatId);
+
+                    if (!seatId) {
+                        this.log('No seat ID found for participant');
+                        return;
+                    }
+
+                    // Extract seat number from seat-X format
+                    const seatNumber = parseInt(seatId.replace('seat-', ''), 10);
+                    this.log('Seat number:', seatNumber);
+
+                    // Map seat number to desk row/col
+                    const desksPerRowInput = document.getElementById('desksPerRow');
+                    const desksPerRow = desksPerRowInput ? parseInt(desksPerRowInput.value, 10) : 6;
+                    const row = Math.ceil(seatNumber / desksPerRow);
+                    const col = ((seatNumber - 1) % desksPerRow) + 1;
+
+                    this.log('Mapped to desk row:', row, 'col:', col);
+
+                    const deskElementId = `desk-chair-${row}-${col}`;
+                    this.log('Looking for desk element with ID:', deskElementId);
+
+                    const deskElement = document.getElementById(deskElementId);
+                    this.log('Found desk element:', deskElement);
+
+                    if (deskElement) {
+                        // Remove any existing avatar on this desk
+                        const existingAvatar = deskElement.querySelector('.desk-avatar');
+                        if (existingAvatar) {
+                            this.log('Removing existing avatar from desk');
+                            existingAvatar.remove();
+                        }
+
+                        const displayName = participant.full_name || participant.username || 'User';
+
+                        // Create avatar element safely
+                        const avatar = document.createElement('div');
+                        avatar.className = 'desk-avatar absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8 z-50';
+
+                        const container = document.createElement('div');
+                        container.className = 'relative flex flex-col items-center';
+
+                        const avatarCircle = document.createElement('div');
+                        avatarCircle.className = 'w-8 h-8 rounded-full bg-gradient-to-r from-teal-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-lg';
+
+                        if (participant.avatar_url) {
+                            const img = document.createElement('img');
+                            img.src = participant.avatar_url;
+                            img.alt = displayName;
+                            img.className = 'w-full h-full rounded-full object-cover';
+                            avatarCircle.appendChild(img);
+                        } else {
+                            avatarCircle.textContent = displayName.charAt(0).toUpperCase();
+                        }
+
+                        const nameLabel = document.createElement('div');
+                        nameLabel.className = 'text-xs text-white bg-gray-800 bg-opacity-90 px-2 py-1 rounded mt-1 whitespace-nowrap shadow-md';
+                        nameLabel.textContent = displayName;
+
+                        container.appendChild(avatarCircle);
+                        container.appendChild(nameLabel);
+                        avatar.appendChild(container);
+
+                        this.log('Created avatar element:', avatar);
+                        deskElement.appendChild(avatar);
+                        this.log('Avatar added to desk element');
+                    } else {
+                        console.error('Desk element not found with ID:', deskElementId);
+                        // Try to list all available desk elements for debugging
+                        const allDesks = document.querySelectorAll('[id^="desk-chair-"]');
+                        this.log('Available desk elements:', Array.from(allDesks).map(d => d.id));
+                    }
+                }
+            }
+        }
+
         // Student list functionality
         const studentList = document.getElementById('studentList');
         const toggleStudentList = document.getElementById('toggleStudentList');

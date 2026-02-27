@@ -1,0 +1,49 @@
+name: Close Issues from Non-Maintainers
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  close-non-maintainer-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issue if not opened by a maintainer
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const authorAssociation = context.payload.issue.author_association;
+            const issueNumber = context.payload.issue.number;
+            const issueCreator = context.payload.issue.user.login;
+
+            // Allow maintainers, owners, members, and collaborators to open issues
+            const allowedAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+
+            if (allowedAssociations.includes(authorAssociation)) {
+              console.log(`Issue #${issueNumber} opened by ${issueCreator} (${authorAssociation}) — allowed.`);
+              return;
+            }
+
+            console.log(`Issue #${issueNumber} opened by ${issueCreator} (${authorAssociation}) — closing.`);
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `👋 Hi @${issueCreator}, thank you for your interest in contributing!\n\n` +
+                `We do not accept issues from external contributors. Instead, please **open a Pull Request directly** with your proposed changes.\n\n` +
+                `If you have a bug fix, new feature, or improvement in mind, feel free to fork the repository and submit a PR — we'd love to review it! 🚀`
+            });
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              state: 'closed'
+            });
+
+            console.log(`Closed issue #${issueNumber} and left a comment for ${issueCreator}.`);
