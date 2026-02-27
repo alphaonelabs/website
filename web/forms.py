@@ -300,7 +300,10 @@ class UserRegistrationForm(SignupForm):
         # Ensure email verification is sent
         from allauth.account.models import EmailAddress
 
-        email_address = EmailAddress.objects.get_for_user(user, user.email)
+        email_address, _created = EmailAddress.objects.get_or_create(
+            user=user, email=user.email,
+            defaults={"primary": True, "verified": False},
+        )
         if not email_address.verified:
             email_address.send_confirmation(request)
 

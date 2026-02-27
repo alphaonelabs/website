@@ -1338,7 +1338,10 @@ def teach(request):
                         )
                     else:
                         # Email not verified, resend verification email
-                        email_addr = EmailAddress.objects.get_for_user(user, user.email)
+                        email_addr, _created = EmailAddress.objects.get_or_create(
+                            user=user, email=user.email,
+                            defaults={"primary": True, "verified": False},
+                        )
                         email_addr.send_confirmation(request)
                         messages.info(
                             request,
