@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alpha One Labs - Google Summer of Code 2026</title>
   <meta name="description" content="Join Alpha One Labs for Google Summer of Code 2026. Contribute to open-source education projects and grow your skills.">
+  <meta name="keywords" content="GSoC 2026, Alpha One Labs, open source, contributors, leaderboard, merged pull requests">
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -86,6 +87,28 @@
         <p class="mt-3 text-lg text-gray-600 dark:text-gray-300">
           Recognizing our most active contributors based on merged pull requests
         </p>
+        <div class="mt-5 inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" role="tablist" aria-label="Leaderboard seasons">
+          <button
+            id="leaderboard-tab-2026"
+            type="button"
+            data-season="2026"
+            role="tab"
+            aria-selected="true"
+            class="leaderboard-tab px-4 py-2 text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+          >
+            2026
+          </button>
+          <button
+            id="leaderboard-tab-2025"
+            type="button"
+            data-season="2025"
+            role="tab"
+            aria-selected="false"
+            class="leaderboard-tab px-4 py-2 text-sm font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-l border-gray-200 dark:border-gray-700"
+          >
+            2025
+          </button>
+        </div>
       </div>
       
       <div class="mx-auto max-w-4xl overflow-hidden bg-white dark:bg-gray-800 shadow-lg rounded-lg">
@@ -98,33 +121,7 @@
                 <th class="px-6 py-3 text-left text-sm font-medium tracking-wider">Merged PRs</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr class="bg-white dark:bg-gray-800">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-2xl">🥇</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0 h-10 w-10">
-                      <img class="h-10 w-10 rounded-full"
-                           src="https://avatars.githubusercontent.com/u/1?v=4"
-                           alt="Placeholder avatar for top contributor"
-                           height="40"
-                           width="40" />
-                    </div>
-                    <div class="ml-4">
-                      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/pulls?q=is%3Apr+is%3Amerged"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         title="View pull requests"
-                         class="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                        Start Contributing!
-                      </a>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">-</td>
-              </tr>
+            <tbody id="top-contributors-section" class="divide-y divide-gray-200 dark:divide-gray-700">
             </tbody>
           </table>
         </div>
@@ -622,6 +619,211 @@
       </p>
     </div>
   </footer>
+
+  <script>
+    const LEADERBOARD_FILES = {
+      '2026': './data/leaderboard.json',
+      '2025': './data/leaderboard-2025.json'
+    };
+
+    let activeSeason = '2026';
+
+    function toSafeNumber(value) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function toSafeHttpUrl(value) {
+      try {
+        const parsed = new URL(String(value || ''), window.location.origin);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          return parsed.href;
+        }
+      } catch (urlError) {
+        return '';
+      }
+      return '';
+    }
+
+    function renderSimpleRow(tableBody, icon, message, trailingValue) {
+      const row = document.createElement('tr');
+      row.className = 'bg-white dark:bg-gray-800';
+
+      const iconCell = document.createElement('td');
+      iconCell.className = 'px-6 py-4 whitespace-nowrap';
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'text-2xl';
+      iconSpan.textContent = icon;
+      iconCell.appendChild(iconSpan);
+
+      const messageCell = document.createElement('td');
+      messageCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300';
+      messageCell.textContent = message;
+
+      const trailingCell = document.createElement('td');
+      trailingCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300';
+      trailingCell.textContent = trailingValue;
+
+      row.appendChild(iconCell);
+      row.appendChild(messageCell);
+      row.appendChild(trailingCell);
+
+      tableBody.replaceChildren(row);
+    }
+
+    function setActiveLeaderboardTab(season) {
+      const tabs = document.querySelectorAll('.leaderboard-tab');
+      tabs.forEach((tab) => {
+        const isActive = tab.dataset.season === season;
+        tab.setAttribute('aria-selected', String(isActive));
+
+        if (isActive) {
+          tab.classList.remove('bg-white', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
+          tab.classList.add('bg-teal-600', 'text-white', 'hover:bg-teal-700');
+        } else {
+          tab.classList.remove('bg-teal-600', 'text-white', 'hover:bg-teal-700');
+          tab.classList.add('bg-white', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
+        }
+      });
+    }
+
+    async function fetchLeaderboard(season) {
+      const tableBody = document.getElementById('top-contributors-section');
+      if (!tableBody) {
+        return;
+      }
+
+      try {
+        const filePath = LEADERBOARD_FILES[season] || LEADERBOARD_FILES['2026'];
+        const response = await fetch(filePath, { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`Failed to load leaderboard data: ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const contributors = (Array.isArray(payload?.contributors) ? payload.contributors : [])
+          .sort((a, b) => {
+            const scoreA = toSafeNumber(a?.smart_score);
+            const scoreB = toSafeNumber(b?.smart_score);
+            if (scoreB !== scoreA) {
+              return scoreB - scoreA;
+            }
+            return toSafeNumber(b?.merged_pr_count) - toSafeNumber(a?.merged_pr_count);
+          });
+
+        if (contributors.length === 0) {
+          renderSimpleRow(tableBody, '⏳', 'No contributors found.', '-');
+          return;
+        }
+
+        const rankSymbols = ['🥇', '🥈', '🥉'];
+        const rows = contributors.map((contributor, index) => {
+          const rankSymbol = rankSymbols[index] || '';
+
+          const row = document.createElement('tr');
+          row.className = 'bg-white dark:bg-gray-800';
+
+          const rankCell = document.createElement('td');
+          rankCell.className = 'px-6 py-4 whitespace-nowrap';
+          const rankBadge = document.createElement('span');
+          rankBadge.className = 'inline-flex h-8 w-8 items-center justify-center';
+          if (rankSymbol) {
+            const rankSpan = document.createElement('span');
+            rankSpan.className = 'text-xl leading-none';
+            rankSpan.textContent = rankSymbol;
+            rankBadge.appendChild(rankSpan);
+          } else {
+            const rankCircle = document.createElement('span');
+            rankCircle.className = 'inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-[10px] font-semibold text-white';
+            rankCircle.textContent = String(index + 1);
+            rankBadge.appendChild(rankCircle);
+          }
+          rankCell.appendChild(rankBadge);
+
+          const contributorCell = document.createElement('td');
+          contributorCell.className = 'px-6 py-4 whitespace-nowrap';
+          const contributorWrap = document.createElement('div');
+          contributorWrap.className = 'flex items-center';
+
+          const avatarWrap = document.createElement('div');
+          avatarWrap.className = 'flex-shrink-0 h-10 w-10';
+          const avatar = document.createElement('img');
+          avatar.className = 'h-10 w-10 rounded-full';
+          avatar.setAttribute('height', '40');
+          avatar.setAttribute('width', '40');
+          avatar.setAttribute('alt', String(contributor?.username || 'Contributor'));
+          const safeAvatarUrl = toSafeHttpUrl(contributor?.avatar_url);
+          if (safeAvatarUrl) {
+            avatar.setAttribute('src', safeAvatarUrl);
+          }
+          avatarWrap.appendChild(avatar);
+
+          const profileWrap = document.createElement('div');
+          profileWrap.className = 'ml-4';
+          const profileLink = document.createElement('a');
+          profileLink.className = 'text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300';
+          profileLink.setAttribute('target', '_blank');
+          profileLink.setAttribute('rel', 'noopener noreferrer');
+          profileLink.textContent = String(contributor?.username || 'Unknown');
+          const safeProfileUrl = toSafeHttpUrl(contributor?.profile_url);
+          profileLink.setAttribute('href', safeProfileUrl || '#');
+          profileWrap.appendChild(profileLink);
+
+          contributorWrap.appendChild(avatarWrap);
+          contributorWrap.appendChild(profileWrap);
+          contributorCell.appendChild(contributorWrap);
+
+          const mergedCell = document.createElement('td');
+          mergedCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300';
+          mergedCell.textContent = String(toSafeNumber(contributor?.merged_pr_count));
+
+          row.appendChild(rankCell);
+          row.appendChild(contributorCell);
+          row.appendChild(mergedCell);
+
+          return row;
+        });
+
+        tableBody.replaceChildren(...rows);
+      } catch (error) {
+        const isFileProtocol = window.location.protocol === 'file:';
+        const defaultMessage = isFileProtocol
+          ? 'Local file mode blocks JSON fetch. Run a local server (for example: python -m http.server 5500) and open http://localhost:5500/'
+          : 'Failed to load contributors.';
+        const errorMessage = error instanceof Error
+          ? (error.message === 'Failed to fetch' && isFileProtocol ? defaultMessage : error.message)
+          : defaultMessage;
+        renderSimpleRow(tableBody, '⚠️', errorMessage, '-');
+        console.error('Leaderboard error:', error);
+      }
+    }
+
+    function setupLeaderboardTabs() {
+      const tabs = document.querySelectorAll('.leaderboard-tab');
+      if (tabs.length === 0) {
+        fetchLeaderboard(activeSeason);
+        return;
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+          const season = tab.dataset.season;
+          if (!season || season === activeSeason) {
+            return;
+          }
+
+          activeSeason = season;
+          setActiveLeaderboardTab(activeSeason);
+          fetchLeaderboard(activeSeason);
+        });
+      });
+
+      setActiveLeaderboardTab(activeSeason);
+      fetchLeaderboard(activeSeason);
+    }
+
+    setupLeaderboardTabs();
+  </script>
 
 </body>
 </html>
