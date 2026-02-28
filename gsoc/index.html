@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alpha One Labs - Google Summer of Code 2026</title>
   <meta name="description" content="Join Alpha One Labs for Google Summer of Code 2026. Contribute to open-source education projects and grow your skills.">
+  <meta name="keywords" content="GSoC 2026, Alpha One Labs, open source, contributors, leaderboard, merged pull requests">
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -98,32 +99,13 @@
                 <th class="px-6 py-3 text-left text-sm font-medium tracking-wider">Merged PRs</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody id="top-contributors-section" class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr class="bg-white dark:bg-gray-800">
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="text-2xl">🥇</span>
+                  <span class="text-2xl">⏳</span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0 h-10 w-10">
-                      <img class="h-10 w-10 rounded-full"
-                           src="https://avatars.githubusercontent.com/u/1?v=4"
-                           alt="Placeholder avatar for top contributor"
-                           height="40"
-                           width="40" />
-                    </div>
-                    <div class="ml-4">
-                      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/pulls?q=is%3Apr+is%3Amerged"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         title="View pull requests"
-                         class="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                        Start Contributing!
-                      </a>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">-</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">Loading contributors...</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">...</td>
               </tr>
             </tbody>
           </table>
@@ -622,6 +604,162 @@
       </p>
     </div>
   </footer>
+
+  <script>
+    async function fetchLeaderboard() {
+      const tableBody = document.getElementById('top-contributors-section');
+      if (!tableBody) {
+        return;
+      }
+
+      tableBody.innerHTML = `
+        <tr class="bg-white dark:bg-gray-800">
+          <td class="px-6 py-4 whitespace-nowrap"><span class="text-2xl">⏳</span></td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">Loading contributors...</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">...</td>
+        </tr>
+      `;
+
+      function toSafeNumber(value) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function toSafeHttpUrl(value) {
+        try {
+          const parsed = new URL(String(value || ''), window.location.origin);
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.href;
+          }
+        } catch (urlError) {
+          return '';
+        }
+        return '';
+      }
+
+      function renderSimpleRow(icon, message, trailingValue) {
+        const row = document.createElement('tr');
+        row.className = 'bg-white dark:bg-gray-800';
+
+        const iconCell = document.createElement('td');
+        iconCell.className = 'px-6 py-4 whitespace-nowrap';
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'text-2xl';
+        iconSpan.textContent = icon;
+        iconCell.appendChild(iconSpan);
+
+        const messageCell = document.createElement('td');
+        messageCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300';
+        messageCell.textContent = message;
+
+        const trailingCell = document.createElement('td');
+        trailingCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300';
+        trailingCell.textContent = trailingValue;
+
+        row.appendChild(iconCell);
+        row.appendChild(messageCell);
+        row.appendChild(trailingCell);
+
+        tableBody.replaceChildren(row);
+      }
+
+      try {
+        const response = await fetch('./data/leaderboard.json', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`Failed to load leaderboard data: ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const contributors = (Array.isArray(payload?.contributors) ? payload.contributors : [])
+          .sort((a, b) => {
+            const scoreA = toSafeNumber(a?.smart_score);
+            const scoreB = toSafeNumber(b?.smart_score);
+            if (scoreB !== scoreA) {
+              return scoreB - scoreA;
+            }
+            return toSafeNumber(b?.merged_pr_count) - toSafeNumber(a?.merged_pr_count);
+          })
+          .slice(0, 5);
+
+        if (contributors.length === 0) {
+          renderSimpleRow('⏳', 'No contributors found.', '-');
+          return;
+        }
+
+        const rankSymbols = ['🥇', '🥈', '🥉'];
+        const rows = contributors.map((contributor, index) => {
+          const rank = rankSymbols[index] || `#${index + 1}`;
+
+          const row = document.createElement('tr');
+          row.className = 'bg-white dark:bg-gray-800';
+
+          const rankCell = document.createElement('td');
+          rankCell.className = 'px-6 py-4 whitespace-nowrap';
+          const rankSpan = document.createElement('span');
+          rankSpan.className = 'text-2xl';
+          rankSpan.textContent = rank;
+          rankCell.appendChild(rankSpan);
+
+          const contributorCell = document.createElement('td');
+          contributorCell.className = 'px-6 py-4 whitespace-nowrap';
+          const contributorWrap = document.createElement('div');
+          contributorWrap.className = 'flex items-center';
+
+          const avatarWrap = document.createElement('div');
+          avatarWrap.className = 'flex-shrink-0 h-10 w-10';
+          const avatar = document.createElement('img');
+          avatar.className = 'h-10 w-10 rounded-full';
+          avatar.setAttribute('height', '40');
+          avatar.setAttribute('width', '40');
+          avatar.setAttribute('alt', String(contributor?.username || 'Contributor'));
+          const safeAvatarUrl = toSafeHttpUrl(contributor?.avatar_url);
+          if (safeAvatarUrl) {
+            avatar.setAttribute('src', safeAvatarUrl);
+          }
+          avatarWrap.appendChild(avatar);
+
+          const profileWrap = document.createElement('div');
+          profileWrap.className = 'ml-4';
+          const profileLink = document.createElement('a');
+          profileLink.className = 'text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300';
+          profileLink.setAttribute('target', '_blank');
+          profileLink.setAttribute('rel', 'noopener noreferrer');
+          profileLink.textContent = String(contributor?.username || 'Unknown');
+          const safeProfileUrl = toSafeHttpUrl(contributor?.profile_url);
+          profileLink.setAttribute('href', safeProfileUrl || '#');
+          profileWrap.appendChild(profileLink);
+
+          contributorWrap.appendChild(avatarWrap);
+          contributorWrap.appendChild(profileWrap);
+          contributorCell.appendChild(contributorWrap);
+
+          const mergedCell = document.createElement('td');
+          mergedCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300';
+          mergedCell.textContent = String(toSafeNumber(contributor?.merged_pr_count));
+
+          row.appendChild(rankCell);
+          row.appendChild(contributorCell);
+          row.appendChild(mergedCell);
+
+          return row;
+        });
+
+        tableBody.replaceChildren(...rows);
+      } catch (error) {
+        const isFileProtocol = window.location.protocol === 'file:';
+        const defaultMessage = isFileProtocol
+          ? 'Local file mode blocks JSON fetch. Run a local server (for example: python -m http.server 5500) and open http://localhost:5500/'
+          : 'Failed to load contributors.';
+        const errorMessage = error instanceof Error
+          ? (error.message === 'Failed to fetch' && isFileProtocol ? defaultMessage : error.message)
+          : defaultMessage;
+        renderSimpleRow('⚠️', errorMessage, '-');
+        console.error('Leaderboard error:', error);
+      }
+    }
+
+    fetchLeaderboard();
+  </script>
 
 </body>
 </html>
