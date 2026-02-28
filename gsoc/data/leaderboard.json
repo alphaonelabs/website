@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-28T12:25:44Z",
+  "generated_at": "2026-02-28T18:19:35Z",
   "start_date": "2025-09-01T00:00:00Z",
   "contributors": [
     {
@@ -91,16 +91,6 @@
       "open_pr_count": 3,
       "total_pr_count": 6,
       "smart_score": 5.0
-    },
-    {
-      "username": "Flashl3opard",
-      "avatar_url": "https://avatars.githubusercontent.com/u/69573060?v=4",
-      "profile_url": "https://github.com/Flashl3opard",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 1,
-      "total_pr_count": 1,
-      "smart_score": -1
     },
     {
       "username": "hk2166",
@@ -371,6 +361,16 @@
       "open_pr_count": 0,
       "total_pr_count": 1,
       "smart_score": -2.0
+    },
+    {
+      "username": "Flashl3opard",
+      "avatar_url": "https://avatars.githubusercontent.com/u/69573060?v=4",
+      "profile_url": "https://github.com/Flashl3opard",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 2,
+      "total_pr_count": 2,
+      "smart_score": -2
     },
     {
       "username": "Premkumar-2004",
