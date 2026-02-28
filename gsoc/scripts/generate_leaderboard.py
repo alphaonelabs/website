@@ -1,12 +1,19 @@
+import argparse
 import json
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
 
 
-START_DATE = datetime(2026, 1, 1, tzinfo=timezone.utc)
+DEFAULT_START_DATE = datetime(2026, 1, 1, tzinfo=timezone.utc)
+DEFAULT_OUTPUT_PATH = "data/leaderboard.json"
+# One-time 2025 generation command:
+# python scripts/generate_leaderboard.py --start-date 2024-09-01 \
+# --end-date 2025-06-01 --output data/leaderboard-2025.json
 REPO_CANDIDATES = [
     ("alphaonelabs", "alphaonelabs-education-website"),
     ("AlphaOneLabs", "education-website"),
@@ -15,6 +22,45 @@ MAX_CLOSED_PAGES = 10
 MAX_OPEN_PAGES = 5
 PER_PAGE = 100
 DELAY_SECONDS = 0.35
+
+
+def parse_cli_date(value: str):
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"Invalid date '{value}'. Use YYYY-MM-DD format."
+        ) from error
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Generate contributor leaderboard data from GitHub PRs."
+    )
+    parser.add_argument(
+        "--start-date",
+        type=parse_cli_date,
+        default=DEFAULT_START_DATE,
+        help="Inclusive UTC date in YYYY-MM-DD format.",
+    )
+    parser.add_argument(
+        "--end-date",
+        type=parse_cli_date,
+        default=None,
+        help="Exclusive UTC date in YYYY-MM-DD format.",
+    )
+    parser.add_argument(
+        "--output",
+        default=DEFAULT_OUTPUT_PATH,
+        help="Output JSON file path.",
+    )
+
+    args = parser.parse_args()
+    if args.end_date and args.end_date <= args.start_date:
+        parser.error("--end-date must be greater than --start-date")
+    return args
 
 
 def should_exclude(username: str) -> bool:
@@ -116,7 +162,17 @@ def ensure_contributor(stats: dict, user: dict):
         }
 
 
-def build_leaderboard():
+def is_within_date_range(
+    value: datetime, start_date: datetime, end_date: Optional[datetime]
+):
+    if not value or value < start_date:
+        return False
+    if end_date and value >= end_date:
+        return False
+    return True
+
+
+def build_leaderboard(start_date: datetime, end_date: datetime):
     contributor_stats = {}
 
     closed_prs = []
@@ -139,7 +195,7 @@ def build_leaderboard():
         merged_at = parse_github_date(pr.get("merged_at"))
         closed_at = parse_github_date(pr.get("closed_at"))
         relevant_date = merged_at or closed_at
-        if not relevant_date or relevant_date < START_DATE:
+        if not is_within_date_range(relevant_date, start_date, end_date):
             continue
 
         ensure_contributor(contributor_stats, user)
@@ -166,7 +222,7 @@ def build_leaderboard():
             continue
 
         created_at = parse_github_date(pr.get("created_at"))
-        if not created_at or created_at < START_DATE:
+        if not is_within_date_range(created_at, start_date, end_date):
             continue
 
         ensure_contributor(contributor_stats, user)
@@ -174,9 +230,6 @@ def build_leaderboard():
 
     contributors = []
     for item in contributor_stats.values():
-        if item["merged_pr_count"] <= 0:
-            continue
-
         total_pr_count = (
             item["merged_pr_count"]
             + item["closed_pr_count"]
@@ -190,20 +243,27 @@ def build_leaderboard():
         key=lambda item: (item["smart_score"], item["merged_pr_count"]),
         reverse=True,
     )
-    return contributors[:5]
+    return contributors
 
 
 def main():
-    contributors = build_leaderboard()
+    args = parse_args()
+    contributors = build_leaderboard(args.start_date, args.end_date)
     payload = {
         "generated_at": datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         ),
-        "start_date": START_DATE.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "start_date": args.start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "contributors": contributors,
     }
 
-    with open("data/leaderboard.json", "w", encoding="utf-8") as file:
+    if args.end_date:
+        payload["end_date"] = args.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, "w", encoding="utf-8") as file:
         json.dump(payload, file, indent=2)
         file.write("\n")
 
