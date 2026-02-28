@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-02-28T05:46:59Z",
-  "start_date": "2026-01-01T00:00:00Z",
+  "generated_at": "2026-02-28T06:06:50Z",
+  "start_date": "2025-09-01T00:00:00Z",
   "contributors": [
     {
       "username": "Ananya44444",
@@ -43,14 +43,44 @@
       "smart_score": 19
     },
     {
-      "username": "omsherikar",
-      "avatar_url": "https://avatars.githubusercontent.com/u/180152315?v=4",
-      "profile_url": "https://github.com/omsherikar",
+      "username": "Ankushkr14",
+      "avatar_url": "https://avatars.githubusercontent.com/u/91725844?v=4",
+      "profile_url": "https://github.com/Ankushkr14",
       "merged_pr_count": 1,
       "closed_pr_count": 0,
       "open_pr_count": 0,
       "total_pr_count": 1,
       "smart_score": 10
+    },
+    {
+      "username": "SfarOussama9",
+      "avatar_url": "https://avatars.githubusercontent.com/u/192275775?v=4",
+      "profile_url": "https://github.com/SfarOussama9",
+      "merged_pr_count": 1,
+      "closed_pr_count": 0,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": 10
+    },
+    {
+      "username": "HarishKarthickS",
+      "avatar_url": "https://avatars.githubusercontent.com/u/141898754?v=4",
+      "profile_url": "https://github.com/HarishKarthickS",
+      "merged_pr_count": 1,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 2,
+      "smart_score": 9.0
+    },
+    {
+      "username": "Aaqilyousuf",
+      "avatar_url": "https://avatars.githubusercontent.com/u/118057216?v=4",
+      "profile_url": "https://github.com/Aaqilyousuf",
+      "merged_pr_count": 1,
+      "closed_pr_count": 2,
+      "open_pr_count": 1,
+      "total_pr_count": 4,
+      "smart_score": 7.0
     },
     {
       "username": "Dhairya1890",
@@ -173,16 +203,6 @@
       "smart_score": -1
     },
     {
-      "username": "ghanshyam2005singh",
-      "avatar_url": "https://avatars.githubusercontent.com/u/56252619?v=4",
-      "profile_url": "https://github.com/ghanshyam2005singh",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 1,
-      "total_pr_count": 1,
-      "smart_score": -1
-    },
-    {
       "username": "Tanush576",
       "avatar_url": "https://avatars.githubusercontent.com/u/228245651?v=4",
       "profile_url": "https://github.com/Tanush576",
@@ -221,6 +241,36 @@
       "open_pr_count": 1,
       "total_pr_count": 1,
       "smart_score": -1
+    },
+    {
+      "username": "KhushamBansal",
+      "avatar_url": "https://avatars.githubusercontent.com/u/142911972?v=4",
+      "profile_url": "https://github.com/KhushamBansal",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 1,
+      "total_pr_count": 1,
+      "smart_score": -1
+    },
+    {
+      "username": "Pankaj52141",
+      "avatar_url": "https://avatars.githubusercontent.com/u/156892196?v=4",
+      "profile_url": "https://github.com/Pankaj52141",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 1,
+      "total_pr_count": 1,
+      "smart_score": -1
+    },
+    {
+      "username": "ishaan-arora-1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/178517080?v=4",
+      "profile_url": "https://github.com/ishaan-arora-1",
+      "merged_pr_count": 1,
+      "closed_pr_count": 4,
+      "open_pr_count": 6,
+      "total_pr_count": 11,
+      "smart_score": -2.0
     },
     {
       "username": "dipankarchettri",
@@ -263,6 +313,66 @@
       "smart_score": -2.0
     },
     {
+      "username": "varruunnn",
+      "avatar_url": "https://avatars.githubusercontent.com/u/143994029?v=4",
+      "profile_url": "https://github.com/varruunnn",
+      "merged_pr_count": 0,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": -2.0
+    },
+    {
+      "username": "rubik26",
+      "avatar_url": "https://avatars.githubusercontent.com/u/80164820?v=4",
+      "profile_url": "https://github.com/rubik26",
+      "merged_pr_count": 0,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": -2.0
+    },
+    {
+      "username": "Harsh-jadoun",
+      "avatar_url": "https://avatars.githubusercontent.com/u/176691995?v=4",
+      "profile_url": "https://github.com/Harsh-jadoun",
+      "merged_pr_count": 0,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": -2.0
+    },
+    {
+      "username": "MishtiGarg250",
+      "avatar_url": "https://avatars.githubusercontent.com/u/191820779?v=4",
+      "profile_url": "https://github.com/MishtiGarg250",
+      "merged_pr_count": 0,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": -2.0
+    },
+    {
+      "username": "abdelrahman390",
+      "avatar_url": "https://avatars.githubusercontent.com/u/88147091?v=4",
+      "profile_url": "https://github.com/abdelrahman390",
+      "merged_pr_count": 0,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": -2.0
+    },
+    {
+      "username": "IITI-tushar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/165766280?v=4",
+      "profile_url": "https://github.com/IITI-tushar",
+      "merged_pr_count": 0,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": -2.0
+    },
+    {
       "username": "Premkumar-2004",
       "avatar_url": "https://avatars.githubusercontent.com/u/116860762?v=4",
       "profile_url": "https://github.com/Premkumar-2004",
@@ -276,6 +386,16 @@
       "username": "gopikrishna-20",
       "avatar_url": "https://avatars.githubusercontent.com/u/173124505?v=4",
       "profile_url": "https://github.com/gopikrishna-20",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 2,
+      "total_pr_count": 2,
+      "smart_score": -2
+    },
+    {
+      "username": "ghanshyam2005singh",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56252619?v=4",
+      "profile_url": "https://github.com/ghanshyam2005singh",
       "merged_pr_count": 0,
       "closed_pr_count": 0,
       "open_pr_count": 2,
@@ -361,6 +481,16 @@
       "open_pr_count": 0,
       "total_pr_count": 3,
       "smart_score": -6.0
+    },
+    {
+      "username": "omsherikar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/180152315?v=4",
+      "profile_url": "https://github.com/omsherikar",
+      "merged_pr_count": 1,
+      "closed_pr_count": 9,
+      "open_pr_count": 2,
+      "total_pr_count": 12,
+      "smart_score": -8.0
     },
     {
       "username": "Shubhashish-Chakraborty",

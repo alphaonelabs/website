@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 
-DEFAULT_START_DATE = datetime(2026, 1, 1, tzinfo=timezone.utc)
+DEFAULT_START_DATE = datetime(2025, 9, 1, tzinfo=timezone.utc)
 DEFAULT_OUTPUT_PATH = "data/leaderboard.json"
 # One-time 2025 generation command:
 # python scripts/generate_leaderboard.py --start-date 2024-09-01 \
