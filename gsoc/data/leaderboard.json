@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-03-01T01:20:20Z",
+  "generated_at": "2026-03-01T12:27:41Z",
   "start_date": "2025-09-01T00:00:00Z",
   "contributors": [
     {
       "username": "Ananya44444",
       "avatar_url": "https://avatars.githubusercontent.com/u/190529985?v=4",
       "profile_url": "https://github.com/Ananya44444",
-      "merged_pr_count": 12,
+      "merged_pr_count": 13,
       "closed_pr_count": 2,
       "open_pr_count": 5,
-      "total_pr_count": 19,
-      "smart_score": 120
+      "total_pr_count": 20,
+      "smart_score": 130
     },
     {
       "username": "chinnu8055",
@@ -26,11 +26,11 @@
       "username": "Shrey1006",
       "avatar_url": "https://avatars.githubusercontent.com/u/199482705?v=4",
       "profile_url": "https://github.com/Shrey1006",
-      "merged_pr_count": 2,
+      "merged_pr_count": 3,
       "closed_pr_count": 1,
-      "open_pr_count": 3,
+      "open_pr_count": 2,
       "total_pr_count": 6,
-      "smart_score": 19
+      "smart_score": 30
     },
     {
       "username": "abdulateeb",
@@ -41,6 +41,16 @@
       "open_pr_count": 3,
       "total_pr_count": 5,
       "smart_score": 19
+    },
+    {
+      "username": "PranavGadge01",
+      "avatar_url": "https://avatars.githubusercontent.com/u/201698988?v=4",
+      "profile_url": "https://github.com/PranavGadge01",
+      "merged_pr_count": 1,
+      "closed_pr_count": 0,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": 10
     },
     {
       "username": "Ankushkr14",
@@ -87,10 +97,20 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/196768311?v=4",
       "profile_url": "https://github.com/Dhairya1890",
       "merged_pr_count": 1,
-      "closed_pr_count": 2,
-      "open_pr_count": 3,
+      "closed_pr_count": 3,
+      "open_pr_count": 2,
       "total_pr_count": 6,
-      "smart_score": 5.0
+      "smart_score": 4.0
+    },
+    {
+      "username": "Shubhashish-Chakraborty",
+      "avatar_url": "https://avatars.githubusercontent.com/u/164302071?v=4",
+      "profile_url": "https://github.com/Shubhashish-Chakraborty",
+      "merged_pr_count": 1,
+      "closed_pr_count": 2,
+      "open_pr_count": 5,
+      "total_pr_count": 8,
+      "smart_score": 3.0
     },
     {
       "username": "hk2166",
@@ -136,16 +156,6 @@
       "username": "ChiragTrivedi06",
       "avatar_url": "https://avatars.githubusercontent.com/u/121475341?v=4",
       "profile_url": "https://github.com/ChiragTrivedi06",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 1,
-      "total_pr_count": 1,
-      "smart_score": -1
-    },
-    {
-      "username": "PranavGadge01",
-      "avatar_url": "https://avatars.githubusercontent.com/u/201698988?v=4",
-      "profile_url": "https://github.com/PranavGadge01",
       "merged_pr_count": 0,
       "closed_pr_count": 0,
       "open_pr_count": 1,
@@ -363,16 +373,6 @@
       "smart_score": -2.0
     },
     {
-      "username": "Flashl3opard",
-      "avatar_url": "https://avatars.githubusercontent.com/u/69573060?v=4",
-      "profile_url": "https://github.com/Flashl3opard",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 2,
-      "total_pr_count": 2,
-      "smart_score": -2
-    },
-    {
       "username": "Premkumar-2004",
       "avatar_url": "https://avatars.githubusercontent.com/u/116860762?v=4",
       "profile_url": "https://github.com/Premkumar-2004",
@@ -443,6 +443,16 @@
       "smart_score": -3
     },
     {
+      "username": "Flashl3opard",
+      "avatar_url": "https://avatars.githubusercontent.com/u/69573060?v=4",
+      "profile_url": "https://github.com/Flashl3opard",
+      "merged_pr_count": 0,
+      "closed_pr_count": 2,
+      "open_pr_count": 0,
+      "total_pr_count": 2,
+      "smart_score": -4.0
+    },
+    {
       "username": "Lakshya-2440",
       "avatar_url": "https://avatars.githubusercontent.com/u/98229279?v=4",
       "profile_url": "https://github.com/Lakshya-2440",
@@ -491,16 +501,6 @@
       "open_pr_count": 2,
       "total_pr_count": 12,
       "smart_score": -8.0
-    },
-    {
-      "username": "Shubhashish-Chakraborty",
-      "avatar_url": "https://avatars.githubusercontent.com/u/164302071?v=4",
-      "profile_url": "https://github.com/Shubhashish-Chakraborty",
-      "merged_pr_count": 0,
-      "closed_pr_count": 2,
-      "open_pr_count": 6,
-      "total_pr_count": 8,
-      "smart_score": -10.0
     }
   ]
 }
