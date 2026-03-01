@@ -65,6 +65,17 @@ jobs:
               c => c.user.login === botLogin && c.body.includes(markerText)
             );
 
+            // Fetch existing bot reviews
+            const { data: allReviews } = await github.rest.pulls.listReviews({
+              owner: repo.owner,
+              repo: repo.repo,
+              pull_number: parseInt(prNumber),
+            });
+
+            const botChangesRequestedReviews = allReviews.filter(
+              r => r.user.login === botLogin && r.state === 'CHANGES_REQUESTED'
+            );
+
             if (unresolvedCount > 0) {
               const conversationWord = unresolvedCount === 1 ? 'conversation' : 'conversations';
               const message = `${markerText}
@@ -108,6 +119,18 @@ jobs:
                 });
                 console.log(`Posted unresolved conversations comment on PR #${prNumber}`);
               }
+
+              // Submit a REQUEST_CHANGES review if one is not already pending
+              if (botChangesRequestedReviews.length === 0) {
+                await github.rest.pulls.createReview({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  pull_number: parseInt(prNumber),
+                  event: 'REQUEST_CHANGES',
+                  body: `This PR has ${unresolvedCount} unresolved review ${conversationWord}. Please resolve them before this PR can be merged.`,
+                });
+                console.log(`Submitted REQUEST_CHANGES review on PR #${prNumber}`);
+              }
             } else {
               // All conversations resolved — remove the warning comment if it exists
               if (existingComment) {
@@ -119,5 +142,17 @@ jobs:
                 console.log(`Deleted resolved conversations comment on PR #${prNumber}`);
               } else {
                 console.log(`No unresolved conversations on PR #${prNumber}. Nothing to do.`);
+              }
+
+              // Dismiss any pending REQUEST_CHANGES reviews by the bot
+              for (const review of botChangesRequestedReviews) {
+                await github.rest.pulls.dismissReview({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  pull_number: parseInt(prNumber),
+                  review_id: review.id,
+                  message: 'All review conversations have been resolved.',
+                });
+                console.log(`Dismissed REQUEST_CHANGES review ${review.id} on PR #${prNumber}`);
               }
             }
