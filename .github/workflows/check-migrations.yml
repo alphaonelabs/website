@@ -5,6 +5,9 @@ on:
     paths:
       - 'web/migrations/**'
 
+permissions:
+  pull-requests: write
+
 jobs:
   check_migrations:
     name: Check for multiple migration files fix
@@ -17,6 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for multiple migration files
+        id: migration_check
         run: |
           # Get the base branch of the PR
           BASE_SHA=$(git merge-base ${{ github.event.pull_request.base.sha }} HEAD)
@@ -24,20 +28,108 @@ jobs:
           # Find migration files added in this PR
           MIGRATION_FILES=$(git diff --name-only --diff-filter=A $BASE_SHA HEAD | grep -E "web/migrations/[0-9]+_.*\.py$" || true)
 
+          if [ -z "$MIGRATION_FILES" ]; then
+            echo "No new migration files detected in this PR."
+            echo "status=ok" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # Count migration files
-          MIGRATION_COUNT=$(echo "$MIGRATION_FILES" | grep -c "^" || echo 0)
+          MIGRATION_COUNT=$(echo "$MIGRATION_FILES" | wc -l)
 
           echo "Found $MIGRATION_COUNT new migration file(s):"
           echo "$MIGRATION_FILES"
 
+          # Store files for later steps
+          echo "migration_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$MIGRATION_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "migration_count=$MIGRATION_COUNT" >> $GITHUB_OUTPUT
+
           # Fail if more than one migration file
           if [ "$MIGRATION_COUNT" -gt 1 ]; then
+            echo "status=multiple" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Check for out-of-sequence migration
+          HIGHEST_EXISTING=$(git ls-tree -r "$BASE_SHA" --name-only \
+            | grep -E "web/migrations/[0-9]+_.*\.py$" \
+            | sed 's|.*/\([0-9]\+\)_.*|\1|' \
+            | sort -n | tail -1)
+
+          NEW_NUM=$(echo "$MIGRATION_FILES" | head -1 | sed 's|.*/\([0-9]\+\)_.*|\1|')
+
+          if [ -n "$HIGHEST_EXISTING" ] && [ -n "$NEW_NUM" ]; then
+            EXPECTED=$(printf "%04d" $((10#$HIGHEST_EXISTING + 1)))
+            if [ "$NEW_NUM" != "$EXPECTED" ]; then
+              echo "status=out_of_sequence" >> $GITHUB_OUTPUT
+              echo "expected_num=$EXPECTED" >> $GITHUB_OUTPUT
+              echo "actual_num=$NEW_NUM" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          echo "✅ Only one migration file detected and it is in sequence. Good job!"
+          echo "status=ok" >> $GITHUB_OUTPUT
+
+      - name: Post PR comment on migration issue
+        if: steps.migration_check.outputs.status == 'multiple' || steps.migration_check.outputs.status == 'out_of_sequence'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const status = '${{ steps.migration_check.outputs.status }}';
+            const migrationFiles = `${{ steps.migration_check.outputs.migration_files }}`;
+            const count = '${{ steps.migration_check.outputs.migration_count }}';
+            const COMMENT_MARKER = '<!-- migration-check-comment -->';
+
+            let message = '';
+            if (status === 'multiple') {
+              const fileList = migrationFiles.split('\n').filter(f => f.trim()).map(f => `- \`${f}\``).join('\n');
+              message = `${COMMENT_MARKER}\n## ⚠️ Multiple Migration Files Detected\n\nThis PR contains **${count} migration files**. Please limit to one migration file per PR.\n\nFiles found:\n${fileList}\n\nPlease consolidate your migrations into a single file.`;
+            } else if (status === 'out_of_sequence') {
+              const expected = '${{ steps.migration_check.outputs.expected_num }}';
+              const actual = '${{ steps.migration_check.outputs.actual_num }}';
+              message = `${COMMENT_MARKER}\n## ⚠️ Migration Out of Sequence\n\nThis PR contains a migration that is out of sequence.\n\n- Expected migration number: \`${expected}\`\n- Found migration number: \`${actual}\`\n\nFile: \`${migrationFiles.trim()}\`\n\nPlease regenerate the migration to ensure it follows the correct sequence.`;
+            }
+
+            if (!message) return;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.find(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.includes(COMMENT_MARKER)
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: message,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: message,
+              });
+            }
+
+      - name: Fail on migration issues
+        if: steps.migration_check.outputs.status == 'multiple' || steps.migration_check.outputs.status == 'out_of_sequence'
+        run: |
+          if [ "${{ steps.migration_check.outputs.status }}" = "multiple" ]; then
             echo "::error::Multiple migration files detected in this PR. Please limit to one migration file per PR."
-            echo "Files found:"
-            echo "$MIGRATION_FILES"
             exit 1
-          elif [ "$MIGRATION_COUNT" -eq 1 ]; then
-            echo "✅ Only one migration file detected. Good job!"
-          else
-            echo "No new migration files detected in this PR."
+          elif [ "${{ steps.migration_check.outputs.status }}" = "out_of_sequence" ]; then
+            echo "::error::Migration is out of sequence. Expected ${{ steps.migration_check.outputs.expected_num }} but got ${{ steps.migration_check.outputs.actual_num }}."
+            exit 1
           fi

@@ -14,6 +14,17 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def can_access_classroom(user: User, classroom) -> bool:
+    """Return True if the user can access the classroom."""
+    if not user or not user.is_authenticated:
+        return False
+    if user == classroom.teacher:
+        return True
+    if classroom.course_id:
+        return classroom.course.enrollments.filter(student=user, status="approved").exists()
+    return True
+
+
 def send_slack_message(message):
     """Send message to Slack webhook"""
     webhook_url = settings.SLACK_WEBHOOK_URL

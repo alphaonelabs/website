@@ -114,6 +114,41 @@ The workflow has `contents: write` permission to:
 **Issue:** Permission denied when creating release
 - **Solution:** Ensure the workflow has `contents: write` permission
 
+## Close Issues from Non-Maintainers Workflow
+
+**File:** `.github/workflows/close-non-maintainer-issues.yml`
+
+**Trigger:** When a new issue is opened (`issues: opened`)
+
+### Purpose
+
+This project follows a **PR-first** contribution model. Maintainers manage the issue tracker internally; external contributors are encouraged to submit changes directly as Pull Requests. This workflow enforces that policy by automatically closing issues opened by users who are not repository maintainers (owners, org members, or collaborators) and leaving a comment directing them to open a Pull Request instead.
+
+**What to contribute via PR:**
+- Bug fixes
+- New features or improvements
+- Documentation updates
+- Any other code or content changes
+
+### How it works
+
+1. Checks the `author_association` of the issue creator from the GitHub event payload (no extra API calls needed).
+2. Allows issues from users with `OWNER`, `MEMBER`, or `COLLABORATOR` association.
+3. For all other users, it:
+   - Leaves a friendly comment explaining that issues are not accepted from external contributors and asking them to open a PR directly.
+   - Closes the issue automatically.
+
+### Allowed roles
+
+| `author_association` | Description | Allowed to open issues |
+|---|---|---|
+| `OWNER` | Repository owner | ✅ Yes |
+| `MEMBER` | Organization member | ✅ Yes |
+| `COLLABORATOR` | Outside collaborator with write access | ✅ Yes |
+| `CONTRIBUTOR` / `FIRST_TIME_CONTRIBUTOR` / `NONE` | External user | ❌ No — asked to open a PR directly |
+
+---
+
 ## Other Workflows
 
 ### Label Issues by Creation Date Workflow

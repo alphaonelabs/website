@@ -1,11 +1,11 @@
 # Python base image
-FROM python:3.10-slim@sha256:f9fd9a142c9e3bc54d906053b756eb7e7e386ee1cf784d82c251cf640c502512
+FROM python:3.12-slim-bookworm
 
 # Set working directory
 WORKDIR /app
 
 # Install dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -46,5 +46,9 @@ RUN echo "Your Project is now live on http://localhost:8000"
 # Expose port
 EXPOSE 8000
 
-# Start the server
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Healthcheck for ASGI liveness
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/ || exit 1
+
+# Start the ASGI server (uvicorn) for WebSocket support
+CMD ["uvicorn", "web.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
