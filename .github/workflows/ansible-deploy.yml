@@ -1,0 +1,70 @@
+---
+name: Ansible Playbook Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ansible-deploy:
+    name: Run Ansible Playbook on Production Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install Ansible and sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass python3-pip
+          pip install ansible
+
+      - name: Create Ansible inventory
+        env:
+          SERVER_IP: ${{ secrets.PRODUCTION_SERVER_IP }}
+          SERVER_USER: ${{ secrets.PRODUCTION_SERVER_USER }}
+        run: |
+          cat > ansible/inventory.yml <<EOF
+          all:
+            hosts:
+              production:
+                ansible_host: ${SERVER_IP}
+                ansible_user: ${SERVER_USER}
+          EOF
+
+      - name: Create .env.production file
+        env:
+          ENV_PRODUCTION: ${{ secrets.ENV_PRODUCTION }}
+        run: |
+          echo "${ENV_PRODUCTION}" > .env.production
+          chmod 600 .env.production
+
+      - name: Create Google service account JSON
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "${GOOGLE_SERVICE_ACCOUNT_JSON}" > service_account.json
+          chmod 600 service_account.json
+
+      - name: Add SSH host key to known_hosts
+        env:
+          SERVER_IP: ${{ secrets.PRODUCTION_SERVER_IP }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "${SERVER_IP}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Run Ansible playbook
+        env:
+          SERVER_IP: ${{ secrets.PRODUCTION_SERVER_IP }}
+          SERVER_USER: ${{ secrets.PRODUCTION_SERVER_USER }}
+          SERVER_PASSWORD: ${{ secrets.PRODUCTION_SERVER_PASSWORD }}
+        run: |
+          cd ansible
+          ansible-playbook -i inventory.yml playbook.yml \
+            --extra-vars "ansible_password=${SERVER_PASSWORD} ansible_become_password=${SERVER_PASSWORD}"
