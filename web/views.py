@@ -1120,22 +1120,30 @@ def github_update(request):
     import shutil
 
     if platform.system() == "Linux":
-        systemctl_path = shutil.which("systemctl") or "/usr/bin/systemctl"
-        try:
-            proc = subprocess.run(
-                [systemctl_path, "restart", "education-website"],
-                capture_output=True,
-                check=False,
-                timeout=30,
-                text=True,
-            )
-            log_lines.append(f"systemctl restart rc={proc.returncode}")
-            if proc.returncode != 0:
-                log_lines.append(f"Service restart failed: {proc.stderr[:200] if proc.stderr else 'non-zero exit'}")
-                ok = False
-        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-            log_lines.append(f"Service restart failed: {e}")
+        trusted_systemctl_paths = ("/bin/systemctl", "/usr/bin/systemctl")
+        systemctl_path = next(
+            (p for p in trusted_systemctl_paths if os.path.isfile(p) and os.access(p, os.X_OK)),
+            None,
+        )
+        if not systemctl_path:
+            log_lines.append("Service restart failed: systemctl not found in trusted paths")
             ok = False
+        else:
+            try:
+                proc = subprocess.run(
+                    [systemctl_path, "restart", "education-website"],
+                    capture_output=True,
+                    check=False,
+                    timeout=30,
+                    text=True,
+                )
+                log_lines.append(f"systemctl restart rc={proc.returncode}")
+                if proc.returncode != 0:
+                    log_lines.append(f"Service restart failed: {proc.stderr[:200] if proc.stderr else 'non-zero exit'}")
+                    ok = False
+            except (OSError, subprocess.TimeoutExpired) as e:
+                log_lines.append(f"Service restart failed: {e}")
+                ok = False
     else:
         log_lines.append("Skipped service restart (not on Linux system)")
 
@@ -3519,7 +3527,7 @@ def system_status(request):
             status["sendgrid"]["message"] = f"API Error: {str(e)}"
     else:
         status["sendgrid"]["status"] = "error"
-        
+
         if settings.DEBUG:
             status["sendgrid"]["message"] = "SendGrid API key not configured"
         else:
