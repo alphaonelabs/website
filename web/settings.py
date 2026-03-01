@@ -272,7 +272,9 @@ ACCOUNT_SESSION_REMEMBER = None  # Let user decide via checkbox
 ACCOUNT_REMEMBER_ME_FIELD = "remember"  # Match test field name
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = False
-ACCOUNT_LOGOUT_ON_GET = True
+# SECURITY: Must be False. Setting True allows any page to log out users
+# via a GET request (e.g. <img src="/accounts/logout/">), a CSRF attack vector.
+ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = False
 ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = False
 ACCOUNT_OLD_PASSWORD_FIELD_ENABLED = True
