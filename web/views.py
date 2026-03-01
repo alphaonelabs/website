@@ -3497,7 +3497,11 @@ def system_status(request):
             status["sendgrid"]["message"] = f"API Error: {str(e)}"
     else:
         status["sendgrid"]["status"] = "error"
-        status["sendgrid"]["message"] = "SendGrid API key not configured"
+        
+        if settings.DEBUG:
+            status["sendgrid"]["message"] = "SendGrid API key not configured"
+        else:
+            status["sendgrid"]["message"] = "Email service unavailable"
 
     # Check disk space
     try:
