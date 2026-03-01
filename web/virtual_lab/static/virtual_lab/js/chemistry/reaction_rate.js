@@ -25,14 +25,22 @@ function drawTestTube(c) {
 // Provides textual hints based on current conc
 function updateHint(c) {
   const hint = document.getElementById('hint');
-  if (c <= 0)                  hint.innerText = '{% trans "Reaction has completed!" %}';
-  else if (c <= initialConc/2) hint.innerText = '{% trans "Half-life reached." %}';
-  else                         hint.innerText = '{% trans "Reaction proceeding..." %}';
+  if (!hint) return; // Defensive check
+
+  const translations = window.translations || {}; // More robust null handling
+
+  if (c <= 0)                  hint.innerText = translations.reaction_has_completed || 'Reaction has completed!';
+  else if (c <= initialConc/2) hint.innerText = translations.half_life_reached || 'Half-life reached.';
+  else                         hint.innerText = translations.reaction_proceeding || 'Reaction proceeding...';
 }
 
-// Displays final “Reaction Complete” message
+// Displays final "Reaction Complete" message
 function displayProperty() {
-  document.getElementById('property').innerText = '{% trans "Reaction Complete" %}';
+  const propEl = document.getElementById('property');
+  if (!propEl) return; // Defensive check
+
+  const translations = window.translations || {}; // More robust null handling
+  propEl.innerText = translations.reaction_complete || 'Reaction Complete';
 }
 
 // Advances the reaction in small time steps

@@ -54,5 +54,24 @@
   </div>
 {% endblock %}
 {% block extra_scripts %}
+  {% translate "Acidic" as acidic_label %}
+  {% translate "Neutral" as neutral_label %}
+  {% translate "Basic" as basic_label %}
+  {% translate "Solution is" as solution_is_label %}
+  {% translate "Please enter a valid pH between 0 and 14." as please_enter_valid_ph_label %}
+  {% translate "Enter a pH value (0–14) and click Update to see the color change." as enter_ph_instruction_label %}
+  {% translate "Indicator shows" as indicator_shows_label %}
+  <script>
+      // Pass translated strings to JavaScript (addressing CodeRabbit and Copilot security concerns)
+      window.translations = {
+          'acidic': '{{ acidic_label|escapejs }}',
+          'neutral': '{{ neutral_label|escapejs }}',
+          'basic': '{{ basic_label|escapejs }}',
+          'solution_is': '{{ solution_is_label|escapejs }}',
+          'please_enter_valid_ph': '{{ please_enter_valid_ph_label|escapejs }}',
+          'enter_ph_instruction': '{{ enter_ph_instruction_label|escapejs }}',
+          'indicator_shows': '{{ indicator_shows_label|escapejs }}'
+      };
+  </script>
   <script src="{% static 'virtual_lab/js/chemistry/ph_indicator.js' %}"></script>
 {% endblock %}
