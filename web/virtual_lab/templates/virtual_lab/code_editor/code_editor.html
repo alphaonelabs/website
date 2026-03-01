@@ -1,5 +1,5 @@
 {# templates/virtual_lab/code_editor/code_editor.html #}
-{% extends 'virtual_lab/layout.html' %}
+{% extends "virtual_lab/layout.html" %}
 
 {% load static %}
 
@@ -38,7 +38,7 @@
   <div class="max-w-4xl mx-auto py-8">
     <h1 class="text-2xl font-bold mb-4 dark:text-gray-100">Interactive Code Editor</h1>
     <!-- Editor -->
-    <div id="editor">print("Hello, world!")</div>
+    <div id="editor"></div>
     <!-- Language selector -->
     <div class="mt-4 mb-2">
       <label for="language-select" class="dark:text-gray-300">Language:</label>
