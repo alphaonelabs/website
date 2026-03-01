@@ -3497,7 +3497,7 @@ def system_status(request):
             status["sendgrid"]["message"] = f"API Error: {str(e)}"
     else:
         status["sendgrid"]["status"] = "error"
-        
+
         if settings.DEBUG:
             status["sendgrid"]["message"] = "SendGrid API key not configured"
         else:
