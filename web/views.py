@@ -286,14 +286,30 @@ def index(request):
         :10
     ]  # Get more and then sort by clicks
 
-    # Add click counts manually since WebRequest.user is a CharField, not a ForeignKey
-    for referrer in top_referrers:
-        # Look for both new format /ref/CODE/ and old format ?ref=CODE
-        ref_code = referrer.referral_code
-        clicks = WebRequest.objects.filter(
-            models.Q(path__contains=f"/ref/{ref_code}/") | models.Q(path__contains=f"?ref={ref_code}")
-        ).count()
-        referrer.total_clicks = clicks
+    # PERF FIX: Batch-fetch all click counts in a single query instead of N separate
+    # queries (one per referrer). This avoids an N+1 query problem that runs
+    # unindexed LIKE scans against a potentially huge WebRequest table on every
+    # homepage load.
+    if top_referrers:
+        all_codes = [r.referral_code for r in top_referrers]
+        # Build a single combined Q expression for all codes at once
+        combined_q = models.Q()
+        for code in all_codes:
+            combined_q |= models.Q(path__contains=f"/ref/{code}/") | models.Q(path__contains=f"?ref={code}")
+
+        # Fetch matching paths in one go
+        matching_paths = WebRequest.objects.filter(combined_q).values_list("path", flat=True)
+
+        # Map each referral code to its click count in-memory
+        click_counts = {code: 0 for code in all_codes}
+        for path in matching_paths:
+            for code in all_codes:
+                if f"/ref/{code}/" in path or f"?ref={code}" in path:
+                    click_counts[code] += 1
+                    break  # Each path belongs to one referrer
+
+        for referrer in top_referrers:
+            referrer.total_clicks = click_counts.get(referrer.referral_code, 0)
 
     # Re-sort to include click count in ranking
     top_referrers = sorted(
