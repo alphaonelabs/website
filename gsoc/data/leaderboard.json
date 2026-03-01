@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-01T12:27:41Z",
+  "generated_at": "2026-03-01T18:20:54Z",
   "start_date": "2025-09-01T00:00:00Z",
   "contributors": [
     {
@@ -18,8 +18,8 @@
       "profile_url": "https://github.com/chinnu8055",
       "merged_pr_count": 8,
       "closed_pr_count": 2,
-      "open_pr_count": 1,
-      "total_pr_count": 11,
+      "open_pr_count": 2,
+      "total_pr_count": 12,
       "smart_score": 80
     },
     {
@@ -371,6 +371,16 @@
       "open_pr_count": 0,
       "total_pr_count": 1,
       "smart_score": -2.0
+    },
+    {
+      "username": "ankushchk",
+      "avatar_url": "https://avatars.githubusercontent.com/u/67872399?v=4",
+      "profile_url": "https://github.com/ankushchk",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 2,
+      "total_pr_count": 2,
+      "smart_score": -2
     },
     {
       "username": "Premkumar-2004",
