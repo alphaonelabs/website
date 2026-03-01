@@ -22,10 +22,11 @@ http {
 
     gzip on;
 
+    # HTTP to HTTPS redirect
     server {
         listen 80 default_server;
         {% if domain_name %}
-        server_name {{ domain_name }}{% if domain_name and not domain_name.startswith('www.') %} www.{{ domain_name }}{% endif %};
+        server_name {{ domain_name }}{% if domain_name.count('.') == 1 and not domain_name.startswith('www.') %} www.{{ domain_name }}{% endif %};
         {% else %}
         server_name _;
         {% endif %}
@@ -33,6 +34,32 @@ http {
         location /.well-known/acme-challenge/ {
             root /var/www/html;
         }
+
+        location / {
+            return 308 https://{{ domain_name }}$request_uri;
+        }
+    }
+
+    # HTTPS server with WebSocket support
+    server {
+        listen 443 ssl http2 default_server;
+        {% if domain_name %}
+        server_name {{ domain_name }}{% if domain_name.count('.') == 1 and not domain_name.startswith('www.') %} www.{{ domain_name }}{% endif %};
+        {% else %}
+        server_name _;
+        {% endif %}
+
+        # SSL certificates
+        {% if domain_name %}
+        ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
+        {% else %}
+        ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+        ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+        {% endif %}
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
 
         location /static/ {
             alias /home/{{ vps_user }}/{{ project_name }}/staticfiles/;
