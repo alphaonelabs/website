@@ -20,7 +20,9 @@ import requests
 import stripe
 import tweepy
 from allauth.account.models import EmailAddress
-from allauth.account.utils import send_email_confirmation
+from allauth.account.internal.flows.email_verification import (
+    send_verification_email_for_user as send_email_confirmation,
+)
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import NestedObjects
@@ -1333,7 +1335,7 @@ def teach(request):
                         )
                     else:
                         # Email not verified, resend verification email
-                        send_email_confirmation(request, user, signup=False)
+                        send_email_confirmation(request, user)
                         messages.info(
                             request,
                             "An account with this email exists. Please verify your email to continue.",
@@ -1363,7 +1365,7 @@ def teach(request):
                         EmailAddress.objects.create(user=user, email=email, primary=True, verified=False)
 
                         # Send verification email via allauth
-                        send_email_confirmation(request, user, signup=True)
+                        send_email_confirmation(request, user)
                         # Send welcome email with username, email, and temp password
                         try:
                             send_welcome_teach_course_email(request, user, temp_password)
@@ -6968,6 +6970,66 @@ def notification_preferences(request):
         form = NotificationPreferencesForm(instance=preference)
 
     return render(request, "account/notification_preferences.html", {"form": form})
+
+
+@login_required
+def notification_center(request: HttpRequest) -> HttpResponse:
+    """Display all notifications for the logged-in user with filtering and pagination."""
+    filter_type = request.GET.get("filter", "all")
+    notifications = Notification.objects.filter(user=request.user)
+
+    if filter_type == "unread":
+        notifications = notifications.filter(read=False)
+    elif filter_type == "read":
+        notifications = notifications.filter(read=True)
+
+    notifications = notifications.order_by("-created_at")
+
+    paginator = Paginator(notifications, 20)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    unread_count = Notification.objects.filter(user=request.user, read=False).count()
+    total_count = Notification.objects.filter(user=request.user).count()
+
+    context = {
+        "notifications": page_obj,
+        "filter_type": filter_type,
+        "unread_count": unread_count,
+        "total_count": total_count,
+        "is_paginated": paginator.num_pages > 1,
+        "page_obj": page_obj,
+        "elided_page_range": paginator.get_elided_page_range(page_obj.number, on_each_side=1, on_ends=1),
+    }
+    return render(request, "account/notification_center.html", context)
+
+
+@login_required
+@require_POST
+def mark_notification_read(request: HttpRequest, notification_id: int) -> JsonResponse:
+    """Mark a single notification as read."""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notification.read = True
+    notification.save()
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def mark_all_notifications_read(request: HttpRequest) -> HttpResponse:
+    """Mark all notifications as read for the logged-in user."""
+    Notification.objects.filter(user=request.user, read=False).update(read=True)
+    messages.success(request, "All notifications marked as read.")
+    return redirect("notification_center")
+
+
+@login_required
+@require_POST
+def delete_notification(request: HttpRequest, notification_id: int) -> JsonResponse:
+    """Delete a single notification."""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notification.delete()
+    return JsonResponse({"success": True})
 
 
 @login_required

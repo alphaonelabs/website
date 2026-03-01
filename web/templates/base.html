@@ -376,10 +376,16 @@
               {% endif %}
             </a>
             <!-- New Notification Button for Invitations -->
-            <a href="{% url 'user_invitations' %}"
-               class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
+            <a href="{% url 'notification_center' %}"
+               class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg"
+               aria-label="Notifications">
               <i class="fas fa-bell"></i>
-              {% if pending_invites_count %}
+              {% if unread_notifications_count %}
+                <span id="notification-badge"
+                      class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-600 flex items-center justify-center text-white text-xs">
+                  {{ unread_notifications_count }}
+                </span>
+              {% elif pending_invites_count %}
                 <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-600 flex items-center justify-center text-white text-xs">
                   {{ pending_invites_count }}
                 </span>
@@ -488,10 +494,13 @@
                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <i class="fas fa-comments mr-2 text-xl"></i>Messages
                 </a>
-                <!-- Add the Notification Preferences link here -->
+                <a href="{% url 'notification_center' %}"
+                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <i class="fas fa-bell mr-2"></i> Notifications
+                </a>
                 <a href="{% url 'notification_preferences' %}"
                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-bell mr-2"></i> Notification Preferences
+                  <i class="fas fa-cog mr-2"></i> Notification Preferences
                 </a>
                 <a href="{% url 'teacher_dashboard' %}"
                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -765,6 +774,18 @@
                       {% else %}
                         {{ request.session.session_key|get_cart_item_count }}
                       {% endif %}
+                    </span>
+                  {% endif %}
+                </a>
+                <a href="{% url 'notification_center' %}"
+                   class="flex items-center justify-between py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <div class="flex items-center">
+                    <i class="fas fa-bell mr-2 text-teal-500"></i>
+                    <span>Notifications</span>
+                  </div>
+                  {% if unread_notifications_count %}
+                    <span class="bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {{ unread_notifications_count }}
                     </span>
                   {% endif %}
                 </a>
