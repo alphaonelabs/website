@@ -291,25 +291,46 @@ def index(request):
     # unindexed LIKE scans against a potentially huge WebRequest table on every
     # homepage load.
     if top_referrers:
-        all_codes = [r.referral_code for r in top_referrers]
-        # Build a single combined Q expression for all codes at once
-        combined_q = models.Q()
-        for code in all_codes:
-            combined_q |= models.Q(path__contains=f"/ref/{code}/") | models.Q(path__contains=f"?ref={code}")
-
-        # Fetch matching paths in one go
-        matching_paths = WebRequest.objects.filter(combined_q).values_list("path", flat=True)
-
-        # Map each referral code to its click count in-memory
-        click_counts = {code: 0 for code in all_codes}
-        for path in matching_paths:
+        all_codes = sorted([r.referral_code for r in top_referrers if r.referral_code], key=len, reverse=True)
+        
+        if all_codes:
+            # Build a single combined Q expression for all codes at once
+            combined_q = models.Q()
             for code in all_codes:
-                if f"/ref/{code}/" in path or f"?ref={code}" in path:
-                    click_counts[code] += 1
-                    break  # Each path belongs to one referrer
+                combined_q |= models.Q(path__contains=f"/ref/{code}/") | models.Q(path__contains=f"ref={code}")
 
-        for referrer in top_referrers:
-            referrer.total_clicks = click_counts.get(referrer.referral_code, 0)
+            # Fetch matching paths in one go
+            matching_paths = WebRequest.objects.filter(combined_q).values_list("path", flat=True)
+
+            from urllib.parse import parse_qs, urlparse
+
+            # Map each referral code to its click count in-memory
+            click_counts = {code: 0 for code in all_codes}
+            for path in matching_paths:
+                extracted_code = None
+                
+                # Try new format /en/ref/CODE/
+                if "/ref/" in path:
+                    # Use regex or controlled split for exact segment matching
+                    # Regex: look for /ref/ followed by non-slashes, then a trailing slash
+                    m = re.search(r"/ref/([^/?#]+)/", path)
+                    if m:
+                        extracted_code = m.group(1)
+                
+                # Try query param format ?ref=CODE
+                if not extracted_code and "ref=" in path:
+                    # urlparse requires the path to start with / or be a full URL
+                    # so we just parse the query part if needed
+                    parsed_url = urlparse(path)
+                    params = parse_qs(parsed_url.query)
+                    if "ref" in params:
+                        extracted_code = params["ref"][0]
+                
+                if extracted_code and extracted_code in click_counts:
+                    click_counts[extracted_code] += 1
+            
+            for referrer in top_referrers:
+                referrer.total_clicks = click_counts.get(referrer.referral_code, 0)
 
     # Re-sort to include click count in ranking
     top_referrers = sorted(
