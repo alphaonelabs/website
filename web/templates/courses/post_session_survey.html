@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Post-Session Survey - {{ session.title }}
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Session Survey</h1>
+        <p class="text-gray-600 dark:text-gray-300">
+          Your responses help us improve future sessions. Thank you for your feedback!
+        </p>
+      </div>
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+        <div class="mb-4">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ session.title }}</h2>
+          <p class="text-gray-600 dark:text-gray-400">{{ session.course.title }}</p>
+        </div>
+        <form method="post" class="max-w-lg">
+          {% csrf_token %}
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ form.content_rating.label }}</label>
+            <div class="flex flex-col space-y-2">
+              {{ form.content_rating }}
+              {% if form.content_rating.errors %}<p class="text-red-600 text-sm">{{ form.content_rating.errors.0 }}</p>{% endif %}
+              <p class="text-sm text-gray-500 dark:text-gray-400">How beneficial was the session content?</p>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ form.teaching_rating.label }}</label>
+            <div class="flex flex-col space-y-2">
+              {{ form.teaching_rating }}
+              {% if form.teaching_rating.errors %}<p class="text-red-600 text-sm">{{ form.teaching_rating.errors.0 }}</p>{% endif %}
+              <p class="text-sm text-gray-500 dark:text-gray-400">How effective was the teaching/presentation?</p>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ form.pace_rating.label }}</label>
+            <div class="flex flex-col space-y-2">
+              {{ form.pace_rating }}
+              {% if form.pace_rating.errors %}<p class="text-red-600 text-sm">{{ form.pace_rating.errors.0 }}</p>{% endif %}
+              <p class="text-sm text-gray-500 dark:text-gray-400">Was the pace of the session appropriate?</p>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ form.materials_rating.label }}
+            </label>
+            <div class="flex flex-col space-y-2">
+              {{ form.materials_rating }}
+              {% if form.materials_rating.errors %}
+                <p class="text-red-600 text-sm">{{ form.materials_rating.errors.0 }}</p>
+              {% endif %}
+              <p class="text-sm text-gray-500 dark:text-gray-400">How useful were the session materials?</p>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ form.comments.label }}</label>
+            <div>
+              {{ form.comments }}
+              {% if form.comments.errors %}<p class="text-red-600 text-sm">{{ form.comments.errors.0 }}</p>{% endif %}
+              <p class="text-sm text-gray-500 dark:text-gray-400">Any additional thoughts or suggestions?</p>
+            </div>
+          </div>
+          <div class="flex justify-between mt-8">
+            <a href="{% url 'course_detail' slug=session.course.slug %}"
+               class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg transition duration-200">
+              Return to Course
+            </a>
+            <button type="submit"
+                    name="submit_survey"
+                    class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
+              Submit Survey
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

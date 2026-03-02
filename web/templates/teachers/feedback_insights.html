@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% load feedback_extras %}
+
+{% block title %}
+  Feedback Insights - {{ course.title }}
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">Feedback Insights: {{ course.title }}</h1>
+      <p class="text-gray-600 dark:text-gray-300 mb-4">Review student feedback and learning progress for your course.</p>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Total Feedback</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ total_feedback }}</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Avg. Confidence</p>
+          <p class="text-3xl font-bold text-teal-300">{{ overall_confidence }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Out of 5</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Avg. Clarity</p>
+          <p class="text-3xl font-bold text-blue-500">{{ overall_clarity }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Out of 5</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Avg. Growth</p>
+          <p class="text-3xl font-bold text-green-600">{{ overall_growth }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Confidence Increase</p>
+        </div>
+      </div>
+    </div>
+    <!-- Feedback Distribution -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Feedback Highlights</h2>
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Positive Feedback (Roses)</h3>
+            <p class="text-gray-600 dark:text-gray-300 text-sm">Top themes from positive feedback</p>
+            <div class="mt-2 space-y-1">
+              {% for theme in rose_themes|slice:":5" %}
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-green-600">{{ theme.theme }}</span>
+                  <span class="text-gray-500 dark:text-gray-400 text-sm">{{ theme.count }} mentions</span>
+                </div>
+              {% empty %}
+                <p class="text-gray-500 dark:text-gray-400 text-sm italic">No data available</p>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Growth Areas (Buds)</h3>
+            <p class="text-gray-600 dark:text-gray-300 text-sm">Top themes from potential growth feedback</p>
+            <div class="mt-2 space-y-1">
+              {% for theme in bud_themes|slice:":5" %}
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-blue-500">{{ theme.theme }}</span>
+                  <span class="text-gray-500 dark:text-gray-400 text-sm">{{ theme.count }} mentions</span>
+                </div>
+              {% empty %}
+                <p class="text-gray-500 dark:text-gray-400 text-sm italic">No data available</p>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Challenges (Thorns)</h3>
+            <p class="text-gray-600 dark:text-gray-300 text-sm">Top themes from challenge feedback</p>
+            <div class="mt-2 space-y-1">
+              {% for theme in thorn_themes|slice:":5" %}
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-red-600">{{ theme.theme }}</span>
+                  <span class="text-gray-500 dark:text-gray-400 text-sm">{{ theme.count }} mentions</span>
+                </div>
+              {% empty %}
+                <p class="text-gray-500 dark:text-gray-400 text-sm italic">No data available</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Student Growth -->
+      <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Student Growth</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Top Growth Students -->
+          <div>
+            <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3">Most Improved Students</h3>
+            <div class="space-y-3">
+              {% for student_data in top_growth_students %}
+                <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                      <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold">
+                        {{ student_data.student.first_name|slice:":1" }}{{ student_data.student.last_name|slice:":1" }}
+                      </div>
+                      <div class="ml-3">
+                        <p class="font-medium text-gray-800 dark:text-gray-200">{{ student_data.student.get_full_name }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ student_data.checkin_count }} check-ins</p>
+                      </div>
+                    </div>
+                    <div class="text-green-600 font-bold">+{{ student_data.avg_growth }}</div>
+                  </div>
+                </div>
+              {% empty %}
+                <p class="text-gray-500 dark:text-gray-400 text-sm italic">No data available</p>
+              {% endfor %}
+            </div>
+          </div>
+          <!-- Students Needing Attention -->
+          <div>
+            <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3">Students Needing Support</h3>
+            <div class="space-y-3">
+              {% for student_data in students_needing_attention %}
+                <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                      <div class="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold">
+                        {{ student_data.student.first_name|slice:":1" }}{{ student_data.student.last_name|slice:":1" }}
+                      </div>
+                      <div class="ml-3">
+                        <p class="font-medium text-gray-800 dark:text-gray-200">{{ student_data.student.get_full_name }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ student_data.count }} surveys</p>
+                      </div>
+                    </div>
+                    <div>{{ student_data.avg_confidence|confidence_badge }}</div>
+                  </div>
+                </div>
+              {% empty %}
+                <p class="text-gray-500 dark:text-gray-400 text-sm italic">No data available</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Session Details -->
+    <div class="mt-8">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Session Insights</h2>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-gray-50 dark:bg-gray-700">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Session
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Clarity
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Confidence
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Growth
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Roses
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Buds
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Thorns
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {% for data in session_data %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ data.session.title }}</div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ data.feedback_count }} feedback, {{ data.survey_count }} surveys
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ data.session.start_time|date:"M d, Y" }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
+                    {{ data.avg_clarity }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
+                    {{ data.avg_confidence }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center">{{ data.avg_growth|growth_indicator }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-green-600">{{ data.roses }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-500">{{ data.buds }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-red-600">{{ data.thorns }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="8"
+                      class="px-6 py-4 text-center text-gray-500 dark:text-gray-400 italic">
+                    No session data available
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- Action Items -->
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Suggested Actions</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% if thorn_themes %}
+          <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+            <h3 class="font-medium text-red-800 dark:text-red-300 mb-2">Address Common Challenges</h3>
+            <p class="text-red-700 dark:text-red-400 text-sm mb-3">
+              Students mentioned challenges with:
+              <span class="font-medium">{{ thorn_themes.0.theme }}, {{ thorn_themes.1.theme }}</span>
+            </p>
+            <p class="text-red-600 dark:text-red-300 text-sm">Consider addressing these topics in upcoming sessions.</p>
+          </div>
+        {% endif %}
+        {% if students_needing_attention %}
+          <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+            <h3 class="font-medium text-yellow-800 dark:text-yellow-300 mb-2">Reach Out to Students</h3>
+            <p class="text-yellow-700 dark:text-yellow-400 text-sm mb-3">
+              Consider checking in with
+              <span class="font-medium">{{ students_needing_attention.0.student.first_name }}</span>
+              and
+              <span class="font-medium">{{ students_needing_attention.1.student.first_name }}</span>
+              who reported lower confidence.
+            </p>
+            <p class="text-yellow-600 dark:text-yellow-300 text-sm">A quick check-in might help identify areas for support.</p>
+          </div>
+        {% endif %}
+        {% if bud_themes %}
+          <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <h3 class="font-medium text-blue-800 dark:text-blue-300 mb-2">Growth Opportunities</h3>
+            <p class="text-blue-700 dark:text-blue-400 text-sm mb-3">
+              Students are interested in learning more about:
+              <span class="font-medium">{{ bud_themes.0.theme }}, {{ bud_themes.1.theme }}</span>
+            </p>
+            <p class="text-blue-600 dark:text-blue-300 text-sm">Consider incorporating these topics into future lessons.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock content %}

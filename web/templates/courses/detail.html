@@ -254,8 +254,8 @@
               <div class="p-4">
                 <div class="flex justify-between items-center mb-4">
                   <h2 class="text-lg font-bold">Course Sessions</h2>
-                  {% if user == course.teacher %}
-                    <div class="flex space-x-2">
+                  <div class="flex space-x-2">
+                    {% if user == course.teacher %}
                       <a href="{% url 'add_session' course.slug %}"
                          class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-plus mr-1"></i>
@@ -270,8 +270,16 @@
                           </a>
                         {% endif %}
                       {% endwith %}
-                    </div>
-                  {% endif %}
+                    {% elif user.is_authenticated and is_enrolled %}
+                      {% if user != course.teacher %}
+                        <a href="{% url 'register_upcoming_sessions' course.slug %}"
+                           class="bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition duration-200">
+                          <i class="fas fa-calendar-check mr-1"></i>
+                          Register for Sessions
+                        </a>
+                      {% endif %}
+                    {% endif %}
+                  </div>
                 </div>
                 {% if course.allow_individual_sessions %}
                   <div class="mb-4 text-sm text-gray-600 dark:text-gray-400 flex items-center">
@@ -573,7 +581,7 @@
               </div>
               <!-- Teacher Action Buttons -->
               {% if user == course.teacher %}
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
                   <a href="{% url 'update_course' course.slug %}"
                      class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition duration-200">
                     <i class="fas fa-edit mr-2"></i>
@@ -593,6 +601,11 @@
                      class="inline-flex items-center justify-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition duration-200">
                     <i class="fas fa-chart-line mr-2"></i>
                     Progress
+                  </a>
+                  <a href="{% url 'teacher_feedback_insights' course_slug=course.slug %}"
+                     class="inline-flex items-center justify-center px-4 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200">
+                    <i class="fas fa-chart-pie mr-2"></i>
+                    Feedback Insights
                   </a>
                   <a href="{% url 'message_students' course.slug %}"
                      class="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition duration-200">
@@ -1138,14 +1151,15 @@
                         <div class="relative mb-4">
                           <div class="flex justify-between items-center mb-2">
                             <h3 class="font-semibold text-lg">Your Progress</h3>
-                            <div class="text-2xl font-bold text-green-600 dark:text-green-400"
-                                 style="width: 50%">{{ enrollment.progress.completion_percentage }}</div>
+                            <div class="text-2xl font-bold text-green-600 dark:text-green-400 w-1/2">
+                              {{ enrollment.progress.completion_percentage }}
+                            </div>
                           </div>
                           <!-- Green Gradient Progress Bar -->
                           <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div data-progress="{{ enrollment.progress.completion_percentage }}"
-                                 class="h-full bg-teal-500 dark:bg-teal-400"
-                                 style="width: {{ enrollment.progress.completion_percentage }}%"></div>
+                                 class="h-full bg-teal-500 dark:bg-teal-400 progress-bar"
+                                 data-width="{{ enrollment.progress.completion_percentage }}"></div>
                           </div>
                         </div>
                         <!-- Stats -->
@@ -1257,7 +1271,7 @@
                               <div class="h-full bg-yellow-400 rating-distribution-bar"
                                    data-rating="{{ rating_distribution|get_item:i }}"></div>
                             {% else %}
-                              <div class="h-full bg-yellow-400" style="width: 0%"></div>
+                              <div class="h-full bg-yellow-400 w-0"></div>
                             {% endif %}
                           </div>
                           <div class="w-12 text-sm">{{ rating_distribution|get_item:i }}</div>
@@ -1669,7 +1683,7 @@
 
               // Set width for progress bars based on data-progress attribute
               document.querySelectorAll('.progress-bar').forEach(function(bar) {
-                  const progress = bar.getAttribute('data-progress');
+                  const progress = bar.getAttribute('data-progress') || bar.getAttribute('data-width');
                   if (progress) {
                       bar.style.width = progress + '%';
                   }

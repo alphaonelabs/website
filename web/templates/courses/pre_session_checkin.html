@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Pre-Session Check-in - {{ session.title }}
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Pre-Session Check-in</h1>
+        <p class="text-gray-600 dark:text-gray-300">
+          Please rate your confidence level for this session's topic before we begin.
+        </p>
+        {% if remaining_sessions > 0 %}
+          <div class="mt-2 bg-blue-50 dark:bg-blue-900 p-3 rounded-md">
+            <p class="text-blue-700 dark:text-blue-300 text-sm">
+              <i class="fas fa-info-circle mr-1"></i> You have {{ remaining_sessions }} more session{{ remaining_sessions|pluralize }} to check in for after this one.
+            </p>
+          </div>
+        {% endif %}
+      </div>
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+        <div class="mb-4">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ session.title }}</h2>
+          <p class="text-gray-600 dark:text-gray-400">{{ session.course.title }}</p>
+        </div>
+        <form method="post" class="max-w-lg">
+          {% csrf_token %}
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ form.pre_rating.label }}</label>
+            <div class="flex flex-col space-y-2">
+              {{ form.pre_rating }}
+              {% if form.pre_rating.errors %}<p class="text-red-600 text-sm">{{ form.pre_rating.errors.0 }}</p>{% endif %}
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ form.pre_rating.help_text }}</p>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ form.notes.label }}</label>
+            <div>
+              {{ form.notes }}
+              {% if form.notes.errors %}<p class="text-red-600 text-sm">{{ form.notes.errors.0 }}</p>{% endif %}
+            </div>
+          </div>
+          <div class="flex justify-between mt-8">
+            <a href="{% url 'course_detail' slug=course.slug %}"
+               class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg transition duration-200">
+              Cancel
+            </a>
+            <button type="submit"
+                    class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
+              {% if remaining_sessions > 0 %}
+                Submit & Continue
+              {% else %}
+                Submit
+              {% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

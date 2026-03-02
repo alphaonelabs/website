@@ -286,6 +286,30 @@
         <!-- Quick Actions Section -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-4">
           <h2 class="text-lg font-bold mb-3">Quick Actions</h2>
+          <!-- Feedback History Button -->
+          <div class="mt-4 mb-2">
+            {% if user.profile.is_teacher %}
+              {% if courses.count > 0 %}
+                <a href="{% url 'teacher_feedback_insights' course_slug=courses.first.slug %}"
+                   class="flex items-center justify-center px-4 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200">
+                  <i class="fas fa-chart-line mr-2"></i>
+                  Feedback Insights
+                </a>
+              {% else %}
+                <a href="{% url 'learn' %}"
+                   class="flex items-center justify-center px-4 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200">
+                  <i class="fas fa-chart-line mr-2"></i>
+                  Feedback Insights
+                </a>
+              {% endif %}
+            {% else %}
+              <a href="{% url 'student_feedback_history' %}"
+                 class="flex items-center justify-center px-4 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200">
+                <i class="fas fa-chart-line mr-2"></i>
+                My Feedback History
+              </a>
+            {% endif %}
+          </div>
           <div class="space-y-2">
             <a href="{% url 'public_profile' user.username %}"
                class="block w-full text-center bg-teal-300 hover:bg-teal-400 text-gray-700 dark:text-gray-100 font-medium py-2 px-4 rounded text-sm">

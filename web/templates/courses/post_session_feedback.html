@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Post-Session Feedback - {{ session.title }}
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Session Feedback</h1>
+        <p class="text-gray-600 dark:text-gray-300">Please share your thoughts using the Rose/Bud/Thorn method:</p>
+        <ul class="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <li>
+            <span class="text-pink-500 font-medium">Rose</span>: Something positive about the session
+          </li>
+          <li>
+            <span class="text-green-500 font-medium">Bud</span>: Something with potential that could be improved
+          </li>
+          <li>
+            <span class="text-yellow-600 font-medium">Thorn</span>: Something challenging or difficult
+          </li>
+        </ul>
+      </div>
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+        <div class="mb-4">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">{{ session.title }}</h2>
+          <p class="text-gray-600 dark:text-gray-400">{{ session.course.title }}</p>
+        </div>
+        <form method="post" class="max-w-lg">
+          {% csrf_token %}
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ form.rose.label }} <span class="text-pink-500">★</span>
+            </label>
+            <div>
+              {{ form.rose }}
+              {% if form.rose.errors %}<p class="text-red-600 text-sm">{{ form.rose.errors.0 }}</p>{% endif %}
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ form.bud.label }} <span class="text-green-500">✿</span>
+            </label>
+            <div>
+              {{ form.bud }}
+              {% if form.bud.errors %}<p class="text-red-600 text-sm">{{ form.bud.errors.0 }}</p>{% endif %}
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ form.thorn.label }} <span class="text-yellow-600">◆</span>
+            </label>
+            <div>
+              {{ form.thorn }}
+              {% if form.thorn.errors %}<p class="text-red-600 text-sm">{{ form.thorn.errors.0 }}</p>{% endif %}
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ form.post_rating.label }}</label>
+            <div class="flex flex-col space-y-2">
+              {{ form.post_rating }}
+              {% if form.post_rating.errors %}<p class="text-red-600 text-sm">{{ form.post_rating.errors.0 }}</p>{% endif %}
+            </div>
+          </div>
+          <div class="flex justify-between mt-8">
+            <a href="{% url 'course_detail' slug=session.course.slug %}"
+               class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg transition duration-200">
+              Return to Course
+            </a>
+            <button type="submit"
+                    name="submit_feedback"
+                    class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
+              Submit Feedback
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

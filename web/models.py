@@ -2951,6 +2951,96 @@ class ScheduledPost(models.Model):
         return self.content
 
 
+class SessionFeedback(models.Model):
+    """
+    Rose, Bud, Thorn feedback for sessions
+    """
+
+    id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="session_feedback")
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="feedback")
+    rose = models.TextField(blank=True, help_text="Something that went well / they liked")
+    bud = models.TextField(blank=True, help_text="Something they want to learn more about or that has potential")
+    thorn = models.TextField(blank=True, help_text="Something that was difficult, confusing, or frustrating")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["student", "session"]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student.username}'s feedback for {self.session.title}"
+
+
+class SessionSurvey(models.Model):
+    """
+    Mini session surveys with clarity and confidence ratings
+    """
+
+    id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="session_surveys")
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="surveys")
+    content_rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="How beneficial was the session content (1-5)",
+    )
+    teaching_rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="How effective was the teaching/presentation (1-5)",
+    )
+    pace_rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)], help_text="Was the pace appropriate (1-5)"
+    )
+    materials_rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)], help_text="How useful were the materials (1-5)"
+    )
+    comments = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["student", "session"]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student.username}'s survey for {self.session.title}"
+
+
+class SelfCheckin(models.Model):
+    """
+    Self-assessments before and after sessions
+    """
+
+    id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="self_checkins")
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="checkins")
+    pre_rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="Confidence/understanding before session (1-5)",
+    )
+    post_rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True,
+        help_text="Confidence/understanding after session (1-5)",
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["student", "session"]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student.username}'s check-in for {self.session.title}"
+
+    @property
+    def growth(self):
+        """Calculate growth in understanding/confidence"""
+        if self.pre_rating is not None and self.post_rating is not None:
+            return self.post_rating - self.pre_rating
+        return None
+
+
 class ForumVote(models.Model):
     """Model for storing votes on forum topics and replies."""
 

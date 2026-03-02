@@ -43,7 +43,10 @@ from .models import (
     QuizOption,
     QuizQuestion,
     Review,
+    SelfCheckin,
     Session,
+    SessionFeedback,
+    SessionSurvey,
     Storefront,
     StudyGroup,
     Subject,
@@ -109,6 +112,11 @@ __all__ = [
     "GradeableLinkForm",
     "LinkGradeForm",
     "AwardAchievementForm",
+    "StudyGroupForm",
+    "SelfCheckinPreForm",
+    "SelfCheckinPostForm",
+    "SessionFeedbackForm",
+    "SessionSurveyForm",
     "SurveyForm",
     "VirtualClassroomForm",
     "VirtualClassroomCustomizationForm",
@@ -1907,6 +1915,160 @@ class StudyGroupForm(forms.ModelForm):
         fields = ["name", "description", "course", "max_members", "is_private"]
 
 
+class SelfCheckinPreForm(forms.ModelForm):
+    """Form for students to check in before a session with their confidence level"""
+
+    pre_rating = forms.IntegerField(
+        widget=forms.RadioSelect(
+            choices=[
+                (1, "1 - Not confident at all"),
+                (2, "2 - Slightly confident"),
+                (3, "3 - Moderately confident"),
+                (4, "4 - Very confident"),
+                (5, "5 - Extremely confident"),
+            ],
+            attrs={"class": "rating-select"},
+        ),
+        label="How confident are you about this session's topic?",
+        min_value=1,
+        max_value=5,
+    )
+
+    notes = forms.CharField(
+        widget=TailwindTextarea(
+            attrs={"rows": 3, "placeholder": "Anything specific you want to learn or struggling with?"}
+        ),
+        required=False,
+        label="Notes (optional)",
+    )
+
+    class Meta:
+        model = SelfCheckin
+        fields = ["pre_rating", "notes"]
+
+
+class SelfCheckinPostForm(forms.ModelForm):
+    """Form for students to check in after a session with their confidence level"""
+
+    post_rating = forms.IntegerField(
+        widget=forms.RadioSelect(
+            choices=[
+                (1, "1 - Not confident at all"),
+                (2, "2 - Slightly confident"),
+                (3, "3 - Moderately confident"),
+                (4, "4 - Very confident"),
+                (5, "5 - Extremely confident"),
+            ],
+            attrs={"class": "rating-select"},
+        ),
+        label="How confident are you NOW about this session's topic?",
+        min_value=1,
+        max_value=5,
+    )
+
+    notes = forms.CharField(
+        widget=TailwindTextarea(
+            attrs={"rows": 3, "placeholder": "Any thoughts about your progress during this session?"}
+        ),
+        required=False,
+        label="Notes (optional)",
+    )
+
+    class Meta:
+        model = SelfCheckin
+        fields = ["post_rating", "notes"]
+
+
+class SessionFeedbackForm(forms.ModelForm):
+    """Form for submitting Rose, Bud, Thorn feedback for a session"""
+
+    rose = forms.CharField(
+        widget=TailwindTextarea(
+            attrs={"rows": 3, "placeholder": "Something that went well or that you liked about the session"}
+        ),
+        required=False,
+        label="Rose 🌹 (What went well)",
+    )
+
+    bud = forms.CharField(
+        widget=TailwindTextarea(
+            attrs={"rows": 3, "placeholder": "Something you want to learn more about or that has potential"}
+        ),
+        required=False,
+        label="Bud 🌱 (What has potential)",
+    )
+
+    thorn = forms.CharField(
+        widget=TailwindTextarea(
+            attrs={"rows": 3, "placeholder": "Something that was difficult, confusing, or frustrating"}
+        ),
+        required=False,
+        label="Thorn 🌵 (What was difficult)",
+    )
+
+    class Meta:
+        model = SessionFeedback
+        fields = ["rose", "bud", "thorn"]
+
+
+class SessionSurveyForm(forms.ModelForm):
+    """Form for submitting ratings for a session"""
+
+    content_rating = forms.IntegerField(
+        widget=forms.RadioSelect(
+            choices=[(1, "1 - Poor"), (2, "2 - Fair"), (3, "3 - Good"), (4, "4 - Very Good"), (5, "5 - Excellent")],
+            attrs={"class": "rating-select"},
+        ),
+        label="How beneficial was the session content?",
+        min_value=1,
+        max_value=5,
+    )
+
+    teaching_rating = forms.IntegerField(
+        widget=forms.RadioSelect(
+            choices=[(1, "1 - Poor"), (2, "2 - Fair"), (3, "3 - Good"), (4, "4 - Very Good"), (5, "5 - Excellent")],
+            attrs={"class": "rating-select"},
+        ),
+        label="How effective was the teaching/presentation?",
+        min_value=1,
+        max_value=5,
+    )
+
+    pace_rating = forms.IntegerField(
+        widget=forms.RadioSelect(
+            choices=[
+                (1, "1 - Too slow"),
+                (2, "2 - Slightly slow"),
+                (3, "3 - Just right"),
+                (4, "4 - Slightly fast"),
+                (5, "5 - Too fast"),
+            ],
+            attrs={"class": "rating-select"},
+        ),
+        label="How was the pace of the session?",
+        min_value=1,
+        max_value=5,
+    )
+
+    materials_rating = forms.IntegerField(
+        widget=forms.RadioSelect(
+            choices=[(1, "1 - Poor"), (2, "2 - Fair"), (3, "3 - Good"), (4, "4 - Very Good"), (5, "5 - Excellent")],
+            attrs={"class": "rating-select"},
+        ),
+        label="How useful were the materials?",
+        min_value=1,
+        max_value=5,
+    )
+
+    comments = forms.CharField(
+        widget=TailwindTextarea(attrs={"rows": 3, "placeholder": "Any additional comments or suggestions?"}),
+        required=False,
+        label="Additional Comments (optional)",
+    )
+
+    class Meta:
+        model = SessionSurvey
+        fields = ["content_rating", "teaching_rating", "pace_rating", "materials_rating", "comments"]
 class VideoRequestForm(forms.ModelForm):
     """Form for users to request educational videos on specific topics, with XSS protection."""
 

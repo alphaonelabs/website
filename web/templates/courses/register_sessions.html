@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Register for Upcoming Sessions - {{ course.title }}
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-6">
+    <!-- Breadcrumbs -->
+    <nav class="flex items-center text-sm bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm mb-6">
+      <a href="{% url 'index' %}"
+         class="text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400">
+        <i class="fas fa-home"></i>
+      </a>
+      <span class="mx-2 text-gray-400 dark:text-gray-600">/</span>
+      <a href="{% url 'course_search' %}"
+         class="text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400">Courses</a>
+      <span class="mx-2 text-gray-400 dark:text-gray-600">/</span>
+      <a href="{% url 'course_detail' course.slug %}"
+         class="text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400">{{ course.title|truncatechars:40 }}</a>
+      <span class="mx-2 text-gray-400 dark:text-gray-600">/</span>
+      <span class="text-gray-700 dark:text-gray-300 font-medium">Register for Sessions</span>
+    </nav>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+      <div class="p-6">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Register for Upcoming Sessions</h1>
+        {% if enrollment %}
+          <div class="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 p-4 rounded-lg mb-6">
+            <div class="flex items-center">
+              <i class="fas fa-check-circle mr-2"></i>
+              <span>You're enrolled in this course! Select the sessions you would like to register for.</span>
+            </div>
+          </div>
+        {% else %}
+          <p class="text-gray-600 dark:text-gray-400 mb-6">Select the sessions you would like to register for.</p>
+        {% endif %}
+        {% if upcoming_sessions %}
+          <form method="post"
+                action="{% url 'register_upcoming_sessions' course.slug %}">
+            {% csrf_token %}
+            <div class="space-y-4 mb-6">
+              {% for session in upcoming_sessions %}
+                <div class="border dark:border-gray-700 rounded-lg p-4 relative">
+                  <div class="flex items-start">
+                    <div class="flex-shrink-0 mt-1">
+                      <input type="checkbox"
+                             name="sessions"
+                             value="{{ session.id }}"
+                             id="session-{{ session.id }}"
+                             class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-teal-600 focus:ring-teal-500" />
+                    </div>
+                    <label for="session-{{ session.id }}" class="ml-3 flex-1 cursor-pointer">
+                      <div class="text-lg font-medium text-gray-800 dark:text-gray-200">{{ session.title }}</div>
+                      <div class="mt-1 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <div class="flex items-center">
+                          <i class="far fa-calendar mr-2"></i>
+                          {{ session.start_time|date:"M j, Y" }}
+                        </div>
+                        <div class="flex items-center">
+                          <i class="far fa-clock mr-2"></i>
+                          {{ session.start_time|date:"g:i A" }} {{ session.start_time|date:"e" }} - {{ session.end_time|date:"g:i A" }} {{ session.end_time|date:"e" }}
+                        </div>
+                        {% if session.is_virtual %}
+                          <div class="flex items-center text-blue-600 dark:text-blue-400">
+                            <i class="fas fa-video mr-2"></i>
+                            Virtual
+                          </div>
+                        {% endif %}
+                        <div class="flex items-center text-green-600 dark:text-green-400">
+                          <i class="fas fa-location-dot mr-2"></i>
+                          {{ session.location }}
+                        </div>
+                        {% if course.allow_individual_sessions and session.price %}
+                          <div class="flex items-center text-orange-600 dark:text-orange-400 font-semibold">
+                            <i class="fas fa-tag mr-2"></i>
+                            ${{ session.price|floatformat:2 }}
+                          </div>
+                        {% endif %}
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            <div class="flex justify-between mt-8">
+              <a href="{% url 'course_detail' course.slug %}"
+                 class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-6 py-3 rounded-lg transition duration-200">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Course
+              </a>
+              <button type="submit"
+                      class="bg-teal-500 hover:bg-teal-600 text-white px-6 py-3 rounded-lg transition duration-200">
+                <i class="fas fa-calendar-check mr-2"></i>
+                Register for Selected Sessions
+              </button>
+            </div>
+          </form>
+        {% else %}
+          <div class="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-600 mb-4">
+              <i class="fas fa-calendar-times text-gray-400 dark:text-gray-500 text-2xl"></i>
+            </div>
+            <p class="text-gray-600 dark:text-gray-400 text-lg">No upcoming sessions are available for registration.</p>
+            <a href="{% url 'course_detail' course.slug %}"
+               class="inline-flex items-center mt-4 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition duration-200">
+              <i class="fas fa-arrow-left mr-2"></i>
+              Back to Course
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock content %}

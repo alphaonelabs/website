@@ -89,7 +89,11 @@ from .forms import (
     ProfileUpdateForm,
     ProgressTrackerForm,
     ReviewForm,
+    SelfCheckinPostForm,
+    SelfCheckinPreForm,
+    SessionFeedbackForm,
     SessionForm,
+    SessionSurveyForm,
     StorefrontForm,
     StudentEnrollmentForm,
     StudyGroupForm,
@@ -157,9 +161,12 @@ from .models import (
     Review,
     ScheduledPost,
     SearchLog,
+    SelfCheckin,
     Session,
     SessionAttendance,
     SessionEnrollment,
+    SessionFeedback,
+    SessionSurvey,
     Storefront,
     StudyGroup,
     StudyGroupInvite,
@@ -958,6 +965,66 @@ def enroll_course(request, course_slug):
         enrollment = Enrollment.objects.create(student=request.user, course=course, status="pending")
         messages.info(request, "Please complete the payment process to enroll in this course.")
         return redirect("course_detail", slug=course_slug)
+
+
+@login_required
+def register_upcoming_sessions(request, slug):
+    """View to register for all upcoming sessions of a course."""
+    course = get_object_or_404(Course, slug=slug)
+
+    # Check if the user is enrolled in the course
+    enrollment = Enrollment.objects.filter(student=request.user, course=course, status="approved").first()
+    if not enrollment:
+        messages.error(request, "You must be enrolled in the course to register for upcoming sessions.")
+        return redirect("course_detail", slug=slug)
+
+    # Get upcoming sessions that the user hasn't already registered for
+    upcoming_sessions = (
+        Session.objects.filter(course=course, start_time__gt=timezone.now())
+        .exclude(enrollments__student=request.user)
+        .order_by("start_time")
+    )
+
+    if request.method == "POST":
+        # Process registration
+        sessions_to_register = request.POST.getlist("sessions")
+
+        if not sessions_to_register:
+            messages.error(request, "Please select at least one session to register for.")
+            return redirect("register_upcoming_sessions", slug=slug)
+
+        # Register for selected sessions
+        registered_count = 0
+        registered_session_ids = []
+        for session_id in sessions_to_register:
+            try:
+                session = Session.objects.get(id=session_id, course=course)
+
+                # Check if already registered
+                if not SessionEnrollment.objects.filter(session=session, student=request.user).exists():
+                    SessionEnrollment.objects.create(session=session, student=request.user, status="approved")
+                    registered_count += 1
+                    registered_session_ids.append(session.id)
+            except Session.DoesNotExist:
+                continue
+
+        if registered_count > 0:
+            messages.success(request, f"Successfully registered for {registered_count} session(s).")
+
+            # Store session queue in session storage
+            if registered_session_ids:
+                request.session["checkin_session_queue"] = registered_session_ids
+                return redirect("pre_session_checkin", session_id=registered_session_ids[0])
+        else:
+            messages.info(request, "You're already registered for the selected sessions.")
+
+        return redirect("course_detail", slug=slug)
+
+    return render(
+        request,
+        "courses/register_sessions.html",
+        {"course": course, "upcoming_sessions": upcoming_sessions, "enrollment": enrollment},
+    )
 
 
 @login_required
@@ -1805,7 +1872,7 @@ def mark_session_completed(request, session_id):
         )
 
     messages.success(request, "Session marked as completed!")
-    return redirect("course_detail", slug=session.course.slug)
+    return redirect("post_session_checkin", session_id=session_id)
 
 
 @login_required
@@ -8140,6 +8207,495 @@ def delete_post(request, post_id):
     if request.method == "POST":
         post.delete()
     return redirect("social_media_dashboard")
+
+
+@login_required
+def pre_session_checkin(request, session_id):
+    """View for students to check in before a session with their confidence level"""
+    session = get_object_or_404(Session, id=session_id)
+
+    # Check if already completed a pre-checkin
+    existing_checkin = SelfCheckin.objects.filter(student=request.user, session=session).first()
+
+    if existing_checkin and existing_checkin.pre_rating:
+        messages.info(request, "You have already completed the pre-session check-in.")
+
+        # Check if there are more sessions in the queue
+        session_queue = request.session.get("checkin_session_queue", [])
+        if session_queue and str(session_id) in map(str, session_queue):
+            # Remove the current session from the queue
+            session_queue.remove(int(session_id))
+            request.session["checkin_session_queue"] = session_queue
+
+            # If there are more sessions, redirect to the next one
+            if session_queue:
+                next_session_id = session_queue[0]
+                return redirect("pre_session_checkin", session_id=next_session_id)
+
+        return redirect("course_detail", slug=session.course.slug)
+
+    if request.method == "POST":
+        form = SelfCheckinPreForm(request.POST, instance=existing_checkin)
+        if form.is_valid():
+            checkin = form.save(commit=False)
+            checkin.student = request.user
+            checkin.session = session
+            checkin.save()
+            messages.success(request, "Pre-session check-in recorded. Enjoy your session!")
+
+            # Check if there are more sessions in the queue
+            session_queue = request.session.get("checkin_session_queue", [])
+            if session_queue and int(session_id) in session_queue:
+                # Remove the current session from the queue
+                session_queue.remove(int(session_id))
+                request.session["checkin_session_queue"] = session_queue
+
+                # If there are more sessions, redirect to the next one
+                if session_queue:
+                    next_session_id = session_queue[0]
+                    return redirect("pre_session_checkin", session_id=next_session_id)
+
+            return redirect("course_detail", slug=session.course.slug)
+    else:
+        form = SelfCheckinPreForm(instance=existing_checkin)
+
+    # Get the remaining sessions count for display
+    session_queue = request.session.get("checkin_session_queue", [])
+    remaining_sessions = len(session_queue) - 1 if int(session_id) in session_queue else 0
+
+    context = {
+        "form": form,
+        "session": session,
+        "course": session.course,
+        "remaining_sessions": remaining_sessions,
+    }
+    return render(request, "courses/pre_session_checkin.html", context)
+
+
+@login_required
+def post_session_feedback(request, session_id):
+    """View for students to provide feedback after a session"""
+    session = get_object_or_404(Session, id=session_id)
+
+    # Get existing feedback/survey if any
+    existing_feedback = SessionFeedback.objects.filter(student=request.user, session=session).first()
+
+    # Initialize form unconditionally to avoid UnboundLocalError
+    feedback_form = SessionFeedbackForm(instance=existing_feedback)
+
+    if request.method == "POST":
+        if "submit_feedback" in request.POST:
+            feedback_form = SessionFeedbackForm(request.POST, instance=existing_feedback)
+
+            if feedback_form.is_valid():
+                feedback = feedback_form.save(commit=False)
+                feedback.student = request.user
+                feedback.session = session
+                feedback.save()
+                messages.success(request, "Thank you for your Rose, Bud, Thorn feedback!")
+
+                # Proceed to the next step (survey)
+                return redirect("post_session_survey", session_id=session_id)
+
+    context = {
+        "form": feedback_form,  # Use 'form' instead of 'feedback_form' to match template
+        "session": session,
+        "course": session.course,
+    }
+    return render(request, "courses/post_session_feedback.html", context)
+
+
+@login_required
+def post_session_survey(request, session_id):
+    """View for students to provide clarity and confidence ratings"""
+    session = get_object_or_404(Session, id=session_id)
+
+    existing_survey = SessionSurvey.objects.filter(student=request.user, session=session).first()
+
+    if request.method == "POST":
+        form = SessionSurveyForm(request.POST, instance=existing_survey)
+        if form.is_valid():
+            survey = form.save(commit=False)
+            survey.student = request.user
+            survey.session = session
+            survey.save()
+            messages.success(request, "Thank you for your session ratings!")
+            return redirect("course_detail", slug=session.course.slug)
+    else:
+        form = SessionSurveyForm(instance=existing_survey)
+
+    context = {
+        "form": form,
+        "session": session,
+        "course": session.course,
+    }
+    return render(request, "courses/post_session_survey.html", context)
+
+
+@login_required
+def post_session_checkin(request, session_id):
+    """View for students to provide post-session confidence level"""
+    session = get_object_or_404(Session, id=session_id)
+
+    # We need to have a pre-rating to compare with
+    existing_checkin = SelfCheckin.objects.filter(student=request.user, session=session).first()
+
+    if not existing_checkin or not existing_checkin.pre_rating:
+        messages.error(request, "You need to complete a pre-session check-in first.")
+        return redirect("course_detail", slug=session.course.slug)
+
+    if request.method == "POST":
+        form = SelfCheckinPostForm(request.POST, instance=existing_checkin)
+        if form.is_valid():
+            checkin = form.save(commit=False)
+            checkin.post_rating = form.cleaned_data["post_rating"]
+            checkin.notes = form.cleaned_data.get("notes", "")
+            checkin.save()
+
+            # Check growth and award achievements if significant improvement
+            if checkin.growth and checkin.growth >= 3:
+                Achievement.objects.get_or_create(
+                    student=request.user,
+                    course=session.course,
+                    achievement_type="excellence",
+                    defaults={
+                        "title": "Significant Growth!",
+                        "description": f"Showed significant improvement in {session.title}",
+                        "badge_icon": "fas fa-arrow-up",
+                    },
+                )
+
+            messages.success(request, "Check-in recorded. Please complete the session feedback.")
+            # Redirect to the first form in the sequence
+            return redirect("post_session_feedback", session_id=session_id)
+    else:
+        form = SelfCheckinPostForm(instance=existing_checkin)
+
+    context = {
+        "form": form,
+        "session": session,
+        "course": session.course,
+        "pre_checkin": existing_checkin,
+    }
+    return render(request, "courses/post_session_checkin.html", context)
+
+
+@login_required
+def student_feedback_history(request):
+    """View for students to see their feedback history across all sessions"""
+    # Get all feedback provided by the student
+    feedback = (
+        SessionFeedback.objects.filter(student=request.user)
+        .select_related("session", "session__course")
+        .order_by("-created_at")
+    )
+
+    # Get all surveys provided by the student
+    surveys = (
+        SessionSurvey.objects.filter(student=request.user)
+        .select_related("session", "session__course")
+        .order_by("-created_at")
+    )
+
+    # Get all self check-ins provided by the student
+    checkins = (
+        SelfCheckin.objects.filter(student=request.user)
+        .select_related("session", "session__course")
+        .order_by("-created_at")
+    )
+
+    # Prepare growth data for chart
+    growth_data = []
+    for checkin in checkins:
+        if checkin.pre_rating is not None and checkin.post_rating is not None:
+            growth_data.append(
+                {
+                    "session": checkin.session.title,
+                    "pre_rating": checkin.pre_rating,
+                    "post_rating": checkin.post_rating,
+                    "growth": checkin.growth,
+                    "date": checkin.session.start_time.strftime("%Y-%m-%d"),
+                }
+            )
+
+    context = {
+        "feedback": feedback,
+        "surveys": surveys,
+        "checkins": checkins,
+        "growth_data": growth_data,
+    }
+    return render(request, "courses/student_feedback_history.html", context)
+
+
+@login_required
+@teacher_required
+def teacher_feedback_insights(request, course_slug):
+    """View for teachers to see feedback insights for a specific course"""
+    course = get_object_or_404(Course, slug=course_slug, teacher=request.user)
+
+    # Get all sessions for this course
+    sessions = Session.objects.filter(course=course).order_by("start_time")
+
+    # Get all feedback for this course
+    feedback = (
+        SessionFeedback.objects.filter(session__course=course)
+        .select_related("session", "student")
+        .order_by("-created_at")
+    )
+
+    # Get all surveys for this course
+    surveys = (
+        SessionSurvey.objects.filter(session__course=course)
+        .select_related("session", "student")
+        .order_by("-created_at")
+    )
+
+    # Get all self check-ins for this course
+    checkins = (
+        SelfCheckin.objects.filter(session__course=course).select_related("session", "student").order_by("-created_at")
+    )
+
+    # Calculate average ratings per session
+    session_data = []
+    for session in sessions:
+        session_surveys = surveys.filter(session=session)
+        session_checkins = checkins.filter(session=session)
+        avg_clarity = session_surveys.aggregate(Avg("content_rating"))["content_rating__avg"] or 0
+        avg_confidence = session_surveys.aggregate(Avg("teaching_rating"))["teaching_rating__avg"] or 0
+
+        # Calculate average growth
+        total_growth = 0
+        growth_count = 0
+        for checkin in session_checkins:
+            if checkin.growth is not None:
+                total_growth += checkin.growth
+                growth_count += 1
+
+        avg_growth = round(total_growth / growth_count, 1) if growth_count > 0 else 0
+
+        # Count feedback types
+        roses = feedback.filter(session=session).exclude(rose="").count()
+        buds = feedback.filter(session=session).exclude(bud="").count()
+        thorns = feedback.filter(session=session).exclude(thorn="").count()
+
+        session_data.append(
+            {
+                "session": session,
+                "avg_clarity": round(avg_clarity, 1),
+                "avg_confidence": round(avg_confidence, 1),
+                "avg_growth": avg_growth,
+                "roses": roses,
+                "buds": buds,
+                "thorns": thorns,
+                "feedback_count": feedback.filter(session=session).count(),
+                "survey_count": session_surveys.count(),
+                "checkin_count": session_checkins.count(),
+            }
+        )
+
+    # Calculate overall course statistics
+    total_feedback = feedback.count()
+    total_surveys = surveys.count()
+    total_checkins = checkins.count()
+
+    # Calculate overall averages
+    overall_clarity = surveys.aggregate(Avg("content_rating"))["content_rating__avg"] or 0
+    overall_confidence = surveys.aggregate(Avg("teaching_rating"))["teaching_rating__avg"] or 0
+
+    # Calculate overall growth
+    total_growth = 0
+    growth_count = 0
+    for checkin in checkins:
+        if checkin.growth is not None:
+            total_growth += checkin.growth
+            growth_count += 1
+
+    overall_growth = round(total_growth / growth_count, 1) if growth_count > 0 else 0
+
+    # Count overall feedback types
+    total_roses = feedback.exclude(rose="").count()
+    total_buds = feedback.exclude(bud="").count()
+    total_thorns = feedback.exclude(thorn="").count()
+
+    # Get common themes from feedback (simplified example)
+    # In a real implementation, you might use NLP or keyword extraction
+    rose_themes = extract_common_themes(feedback, "rose")
+    bud_themes = extract_common_themes(feedback, "bud")
+    thorn_themes = extract_common_themes(feedback, "thorn")
+
+    # Students with most growth
+    top_growth_students = get_top_growth_students(checkins, limit=5)
+
+    # Students who need more attention (lowest confidence scores)
+    students_needing_attention = get_students_needing_attention(surveys, limit=5)
+
+    context = {
+        "course": course,
+        "session_data": session_data,
+        "total_feedback": total_feedback,
+        "total_surveys": total_surveys,
+        "total_checkins": total_checkins,
+        "overall_clarity": round(overall_clarity, 1),
+        "overall_confidence": round(overall_confidence, 1),
+        "overall_growth": overall_growth,
+        "total_roses": total_roses,
+        "total_buds": total_buds,
+        "total_thorns": total_thorns,
+        "rose_themes": rose_themes,
+        "bud_themes": bud_themes,
+        "thorn_themes": thorn_themes,
+        "top_growth_students": top_growth_students,
+        "students_needing_attention": students_needing_attention,
+    }
+
+    return render(request, "teachers/feedback_insights.html", context)
+
+
+def extract_common_themes(feedback_queryset, feedback_type):
+    """Extract common themes from feedback text using simple word frequency
+
+    Args:
+        feedback_queryset: QuerySet of SessionFeedback objects
+        feedback_type: Type of feedback ('rose', 'bud', or 'thorn')
+
+    Returns:
+        List of dictionaries containing theme and count
+    """
+    # This is a simplified approach - in a real implementation you might use
+    # NLP libraries or more sophisticated text analysis
+    import re
+    from collections import Counter
+
+    # Common words to exclude
+    stop_words = set(
+        [
+            "the",
+            "a",
+            "an",
+            "and",
+            "is",
+            "it",
+            "to",
+            "was",
+            "for",
+            "in",
+            "on",
+            "that",
+            "be",
+            "with",
+            "as",
+            "of",
+            "this",
+            "at",
+            "from",
+        ]
+    )
+
+    # Get all text from the specified feedback type
+    all_text = ""
+    if feedback_type == "rose":
+        all_text = " ".join([f.rose for f in feedback_queryset.exclude(rose="")[:100]])
+    elif feedback_type == "bud":
+        all_text = " ".join([f.bud for f in feedback_queryset.exclude(bud="")[:100]])
+    elif feedback_type == "thorn":
+        all_text = " ".join([f.thorn for f in feedback_queryset.exclude(thorn="")[:100]])
+
+    # Clean and tokenize text
+    words = re.findall(r"\b\w+\b", all_text.lower())
+    words = [word for word in words if word not in stop_words and len(word) > 3]
+
+    # Count frequencies
+    word_counts = Counter(words)
+
+    # Return top themes
+    top_themes = [{"theme": word, "count": count} for word, count in word_counts.most_common(10)]
+
+    return top_themes
+
+
+def get_top_growth_students(checkins, limit=5):
+    """Get students with the highest growth in understanding/confidence
+
+    Args:
+        checkins: QuerySet of SelfCheckin objects
+        limit: Number of students to return
+
+    Returns:
+        List of dictionaries containing student and growth info
+    """
+    # Group checkins by student and calculate average growth
+    student_growth = {}
+
+    for checkin in checkins:
+        if checkin.pre_rating is not None and checkin.post_rating is not None:
+            student_id = checkin.student_id
+            if student_id not in student_growth:
+                student_growth[student_id] = {
+                    "student": checkin.student,
+                    "total_growth": checkin.post_rating - checkin.pre_rating,
+                    "count": 1,
+                }
+            else:
+                student_growth[student_id]["total_growth"] += checkin.post_rating - checkin.pre_rating
+                student_growth[student_id]["count"] += 1
+
+    # Calculate average growth for each student
+    for student_id in student_growth:
+        student_growth[student_id]["avg_growth"] = round(
+            student_growth[student_id]["total_growth"] / student_growth[student_id]["count"], 1
+        )
+
+    # Convert to list and sort by average growth (descending)
+    top_students = sorted(
+        [data for data in student_growth.values() if data["count"] >= 2], key=lambda x: x["avg_growth"], reverse=True
+    )[:limit]
+
+    return top_students
+
+
+def get_students_needing_attention(surveys, limit=5):
+    """Get students with the lowest confidence scores who may need extra help
+
+    Args:
+        surveys: QuerySet of SessionSurvey objects
+        limit: Number of students to return
+
+    Returns:
+        List of dictionaries containing student and confidence info
+    """
+    # Group surveys by student and calculate average content and teaching ratings
+    student_ratings = {}
+
+    for survey in surveys:
+        student_id = survey.student_id
+        if student_id not in student_ratings:
+            student_ratings[student_id] = {
+                "student": survey.student,
+                "total_content_rating": survey.content_rating,
+                "total_teaching_rating": survey.teaching_rating,
+                "count": 1,
+            }
+        else:
+            student_ratings[student_id]["total_content_rating"] += survey.content_rating
+            student_ratings[student_id]["total_teaching_rating"] += survey.teaching_rating
+            student_ratings[student_id]["count"] += 1
+
+    # Calculate average ratings for each student
+    for student_id in student_ratings:
+        count = student_ratings[student_id]["count"]
+        student_ratings[student_id]["avg_content_rating"] = round(
+            student_ratings[student_id]["total_content_rating"] / count, 1
+        )
+        student_ratings[student_id]["avg_teaching_rating"] = round(
+            student_ratings[student_id]["total_teaching_rating"] / count, 1
+        )
+
+    # Convert to list and sort by average content rating (ascending)
+    students_needing_help = sorted(
+        [data for data in student_ratings.values() if data["count"] >= 2], key=lambda x: x["avg_content_rating"]
+    )[:limit]
+
+    return students_needing_help
 
 
 def generate_discount_code(length=8):
