@@ -7,6 +7,10 @@ WORKDIR /app
 # Install dependencies
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     curl \
+    build-essential \
+    pkg-config \
+    default-libmysqlclient-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only dependency manifests first (better layer caching)
