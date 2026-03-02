@@ -6,6 +6,12 @@
 {% block content %}
   <div class="container mx-auto p-4">
     <h1 class="text-2xl font-bold mb-4">Advanced Whiteboard</h1>
+    <!-- TOAST notification container with accessibility attributes -->
+    <div id="toast-container"
+         class="fixed top-4 right-4 z-50 space-y-2"
+         aria-live="polite"
+         role="region"
+         aria-atomic="true"></div>
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-4 mb-4">
       <div class="flex items-center gap-2">
@@ -83,6 +89,57 @@
       let imageScale = 1.0;
       let uploadedImage = null;
 
+      function showToast(message, type = 'error', duration = 5000) {
+          const container = document.getElementById('toast-container');
+          const toast = document.createElement('div');
+
+          // Set color classes based on project palette with dark mode support
+          let bgColorClass;
+          if (type === 'error') {
+              bgColorClass = 'bg-red-600 dark:bg-red-700';
+          } else if (type === 'success') {
+              bgColorClass = 'bg-green-600 dark:bg-green-700';
+          } else {
+              bgColorClass = 'bg-blue-500 dark:bg-blue-600';
+          }
+
+          toast.className = `${bgColorClass} text-white px-4 py-3 rounded shadow-lg transform transition-all duration-300 opacity-100 translate-x-0 flex items-center justify-between max-w-md`;
+
+          if (type === 'error') {
+              toast.setAttribute('role', 'alert');
+              toast.setAttribute('aria-live', 'assertive');
+          } else {
+              toast.setAttribute('role', 'status');
+              toast.setAttribute('aria-live', 'polite');
+          }
+          toast.setAttribute('aria-atomic', 'true');
+
+          // Create message span safely using textContent
+          const span = document.createElement('span');
+          span.textContent = message;
+
+          // Create close button safely
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '✕';
+          closeBtn.className = 'ml-4 text-white hover:text-gray-200';
+          closeBtn.setAttribute('aria-label', 'Close notification');
+          closeBtn.addEventListener('click', () => {
+              toast.remove();
+          });
+
+          toast.appendChild(span);
+          toast.appendChild(closeBtn);
+          container.appendChild(toast);
+
+          setTimeout(() => {
+              if (toast.parentElement) {
+                  toast.classList.remove('opacity-100', 'translate-x-0');
+                  toast.classList.add('opacity-0', 'translate-x-full');
+                  setTimeout(() => toast.remove(), 300);
+              }
+          }, duration);
+      }
+
       toolSelect.addEventListener('change', function() {
           currentTool = this.value;
           if (currentTool === 'pen') {
@@ -111,12 +168,14 @@
           imageScale = parseInt(this.value, 10) / 100;
           if (uploadedImage) {
               redrawBackground();
+              scheduleSave();
           }
       });
       clearBtn.addEventListener('click', () => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          localStorage.removeItem('whiteboardImage');
           uploadedImage = null;
+          saveCanvas();
+          showToast('Canvas cleared', 'success', 2000);
       });
       uploadBtn.addEventListener('click', () => {
           loadInput.click();
@@ -134,7 +193,8 @@
                   uploadedImage = img;
                   imageScale = parseInt(imageScaleInput.value, 10) / 100;
                   redrawBackground();
-                  localStorage.setItem('whiteboardImage', dataURL);
+                  saveCanvas();
+                  showToast('Image loaded successfully', 'success', 2000);
               };
           };
           reader.readAsDataURL(file);
@@ -146,7 +206,121 @@
           const newHeight = uploadedImage.height * imageScale;
           ctx.drawImage(uploadedImage, 0, 0, newWidth, newHeight);
       }
+
+      // Persistence and cross-tab sync:
+      const STORAGE_KEY = 'whiteboardData';
+      let saveScheduled = null;
+      let broadcastChannel = null;
+
+      // Initialize BroadcastChannel
+      if (window.BroadcastChannel) {
+          try {
+              broadcastChannel = new BroadcastChannel('whiteboard_channel');
+              broadcastChannel.addEventListener('message', (ev) => {
+                  if (ev.data && ev.data.data) {
+                      loadCanvasFromDataURL(ev.data.data);
+                  }
+              });
+          } catch (e) {
+              console.warn('Could not open BroadcastChannel', e);
+          }
+      } else {
+          // Storage event fallback for browsers without BroadcastChannel:
+          window.addEventListener('storage', (e) => {
+              if (e.key !== STORAGE_KEY) return;
+              try {
+                  const payload = JSON.parse(e.newValue || '{}');
+                  if (payload && payload.data) {
+                      loadCanvasFromDataURL(payload.data);
+                  }
+              } catch (err) {
+                  console.warn('Failed to parse storage event payload', err);
+              }
+          });
+      }
+
+      function saveCanvas() {
+          const data = canvas.toDataURL('image/png');
+          const ts = Date.now();
+
+          try {
+              const dataString = JSON.stringify({
+                  ts,
+                  data
+              });
+
+              // Single consistent check using dataString.length (what localStorage actually uses)
+              if (dataString.length > 4.5 * 1024 * 1024) { // >4.5MB character count
+                  showToast('Warning: Canvas too large for browser storage. Consider downloading your work.', 'error', 5000);
+              } else {
+                  localStorage.setItem(STORAGE_KEY, dataString);
+              }
+          } catch (err) {
+              console.warn('Failed to save whiteboard to localStorage', err);
+              showToast('Failed to auto-save. Please download your work manually.', 'error', 8000);
+          }
+
+          if (broadcastChannel) {
+              try {
+                  broadcastChannel.postMessage({
+                      ts,
+                      data
+                  });
+              } catch (e) {
+                  console.warn('BroadcastChannel error', e);
+              }
+          }
+
+          if (saveScheduled) {
+              clearTimeout(saveScheduled);
+              saveScheduled = null;
+          }
+      }
+
+      function scheduleSave(delay = 250) {
+          if (saveScheduled) return;
+          saveScheduled = setTimeout(() => {
+              saveScheduled = null;
+              saveCanvas();
+          }, delay);
+      }
+
+      function loadCanvasFromDataURL(dataURL) {
+          if (!dataURL) return;
+          const img = new Image();
+
+          img.onload = function() {
+              ctx.save();
+              ctx.globalCompositeOperation = 'source-over';
+              ctx.globalAlpha = 1.0;
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              ctx.restore();
+          };
+
+          img.onerror = function() {
+              console.warn('Failed to load canvas image from dataURL');
+              showToast('Failed to load canvas image', 'error', 5000);
+          };
+          img.src = dataURL;
+      }
+
       window.addEventListener('load', () => {
+          try {
+              const raw = localStorage.getItem(STORAGE_KEY);
+              if (raw) {
+                  const payload = JSON.parse(raw);
+                  if (payload && payload.data) {
+                      loadCanvasFromDataURL(payload.data);
+                      return;
+                  }
+              }
+          } catch (err) {
+              console.warn('Error loading saved whiteboard', err);
+              showToast('Failed to load saved whiteboard', 'error', 5000);
+          }
+
+          // Fallback to older single-image storage key
           const dataURL = localStorage.getItem('whiteboardImage');
           if (dataURL) {
               const img = new Image();
@@ -156,14 +330,19 @@
                   imageScale = parseInt(imageScaleInput.value, 10) / 100;
                   redrawBackground();
               };
+              img.onerror = function() {
+                  console.warn('Failed to load fallback image');
+              };
           }
       });
+
       downloadBtn.addEventListener('click', () => {
           const dataURL = canvas.toDataURL("image/png");
           const link = document.createElement('a');
           link.href = dataURL;
           link.download = "whiteboard.png";
           link.click();
+          showToast('Download started', 'success', 2000);
       });
 
       function takeSnapshot() {
@@ -191,6 +370,15 @@
           ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
           ctx.stroke();
       }
+
+      window.addEventListener('beforeunload', () => {
+          if (saveScheduled) {
+              clearTimeout(saveScheduled);
+              saveScheduled = null;
+              saveCanvas();
+          }
+      });
+
       canvas.addEventListener('mousedown', (e) => {
           drawing = true;
           startX = e.offsetX;
@@ -293,6 +481,8 @@
               ctx.globalCompositeOperation = 'source-over';
               drawArrow(startX, startY, currentX, currentY);
           }
+          // Save and sync after completing a stroke/shape
+          scheduleSave(250);
       });
 
       canvas.addEventListener('mouseleave', () => {
