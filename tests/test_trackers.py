@@ -1,15 +1,18 @@
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils.crypto import get_random_string
 
 from web.models import ProgressTracker
+
+TEST_PASSWORD = get_random_string(12)  # noqa: S105
 
 
 class ProgressTrackerTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username="testuser", password="testpassword")
-        self.client.login(username="testuser", password="testpassword")
+        self.user = User.objects.create_user(username="testuser", password=TEST_PASSWORD)
+        self.client.login(username="testuser", password=TEST_PASSWORD)
         self.tracker = ProgressTracker.objects.create(
             user=self.user,
             title="Test Tracker",
@@ -26,14 +29,17 @@ class ProgressTrackerTests(TestCase):
         self.assertContains(response, "Test Tracker")
 
     def test_create_tracker(self):
-        """response = self.client.post(reverse('create_tracker'), {
-            'title': 'New Tracker',
-            'description': 'New description',
-            'current_value': 10,
-            'target_value': 50,
-            'color': 'green-600',
-            'public': True
-        })"""
+        response = self.client.post(
+            reverse("create_tracker"),
+            {
+                "title": "New Tracker",
+                "description": "New description",
+                "current_value": 10,
+                "target_value": 50,
+                "color": "green-600",
+                "public": True,
+            },
+        )
         self.assertEqual(ProgressTracker.objects.count(), 2)
         new_tracker = ProgressTracker.objects.get(title="New Tracker")
         self.assertEqual(new_tracker.current_value, 10)
@@ -60,8 +66,8 @@ class ProgressTrackerTests(TestCase):
 class SubjectStrengthTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username="analyticsuser", email="analytics@test.com", password="testpassword")
-        self.client.login(username="analyticsuser", password="testpassword")
+        self.user = User.objects.create_user(username="analyticsuser", email="analytics@test.com", password=TEST_PASSWORD)
+        self.client.login(username="analyticsuser", password=TEST_PASSWORD)
 
         from web.models import Subject, SubjectStrength
 
@@ -117,8 +123,8 @@ class SubjectStrengthTests(TestCase):
 class LearningAnalyticsTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username="learner", email="learner@test.com", password="testpassword")
-        self.client.login(username="learner", password="testpassword")
+        self.user = User.objects.create_user(username="learner", email="learner@test.com", password=TEST_PASSWORD)
+        self.client.login(username="learner", password=TEST_PASSWORD)
 
     def test_analytics_dashboard_loads(self):
         response = self.client.get(reverse("learning_analytics"))
@@ -178,8 +184,8 @@ class LearningAnalyticsTests(TestCase):
 class StudyPlanTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username="planner", email="planner@test.com", password="testpassword")
-        self.client.login(username="planner", password="testpassword")
+        self.user = User.objects.create_user(username="planner", email="planner@test.com", password=TEST_PASSWORD)
+        self.client.login(username="planner", password=TEST_PASSWORD)
 
     def test_study_plan_view_loads(self):
         response = self.client.get(reverse("study_plan"))
@@ -238,7 +244,7 @@ class StudyPlanTests(TestCase):
     def test_complete_item_wrong_user(self):
         from web.models import StudyPlan, StudyPlanItem
 
-        other_user = User.objects.create_user(username="other", email="other@test.com", password="testpassword")
+        other_user = User.objects.create_user(username="other", email="other@test.com", password=TEST_PASSWORD)
         plan = StudyPlan.objects.create(user=other_user, title="Other Plan")
         item = StudyPlanItem.objects.create(
             plan=plan,
@@ -268,7 +274,7 @@ class StudyPlanTests(TestCase):
 class SubjectStrengthSignalTests(TestCase):
 
     def setUp(self):
-        self.user = User.objects.create_user(username="signaluser", email="signal@test.com", password="testpassword")
+        self.user = User.objects.create_user(username="signaluser", email="signal@test.com", password=TEST_PASSWORD)
 
         from web.models import Quiz, Subject
 

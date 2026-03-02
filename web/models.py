@@ -15,7 +15,7 @@ from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls import reverse
@@ -3201,13 +3201,14 @@ class SubjectStrength(models.Model):
     def update_from_quiz(self, score, max_score):
         """Update strength score from a quiz result."""
         if max_score > 0:
-            new_score = (score / max_score) * 100
+            clamped_score = max(0, min(score, max_score))
+            new_score = (clamped_score / max_score) * 100
             if self.total_quizzes == 0:
                 self.strength_score = new_score
             else:
                 self.strength_score = (0.7 * self.strength_score) + (0.3 * new_score)
             self.total_quizzes += 1
-            self.total_correct += score
+            self.total_correct += clamped_score
             self.total_questions += max_score
             self.save()
 
@@ -3232,6 +3233,13 @@ class StudyPlan(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=Q(status="active"),
+                name="unique_active_studyplan_per_user",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.title}"
@@ -3264,11 +3272,14 @@ class StudyPlanItem(models.Model):
         ("low", "Low"),
     ]
 
+    PRIORITY_RANK_MAP = {"high": 3, "medium": 2, "low": 1}
+
     plan = models.ForeignKey(StudyPlan, on_delete=models.CASCADE, related_name="items")
     item_type = models.CharField(max_length=10, choices=ITEM_TYPE_CHOICES, default="review")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
+    priority_rank = models.PositiveIntegerField(default=2)
     course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True)
     session = models.ForeignKey(Session, on_delete=models.SET_NULL, null=True, blank=True)
     quiz = models.ForeignKey("Quiz", on_delete=models.SET_NULL, null=True, blank=True)
@@ -3279,12 +3290,18 @@ class StudyPlanItem(models.Model):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ["order", "-priority", "due_date"]
+        ordering = ["order", "-priority_rank", "due_date"]
+
+    def save(self, *args, **kwargs):
+        self.priority_rank = self.PRIORITY_RANK_MAP.get(self.priority, 2)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} ({'✓' if self.is_completed else '○'})"
 
     def mark_complete(self):
+        if self.is_completed:
+            return
         self.is_completed = True
         self.completed_at = timezone.now()
         self.save()

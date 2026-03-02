@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+import logging
+from typing import Any
+
 from django.db.models import Avg, Count, Q
 
 from .models import Course
@@ -105,7 +110,6 @@ def get_learning_analytics(user):
     logger = logging.getLogger(__name__)
     now = timezone.now()
     thirty_days_ago = now - timedelta(days=30)
-    ninety_days_ago = now - timedelta(days=90)
 
     # --- Quiz Performance (all time + recent trend) ---
     quiz_attempts = UserQuiz.objects.filter(user=user, completed=True)
@@ -203,8 +207,8 @@ def get_learning_analytics(user):
         if hasattr(enrollment, "progress"):
             try:
                 completed_sessions = enrollment.progress.completed_sessions.count()
-            except Exception:
-                pass
+            except AttributeError as e:
+                logger.warning("Could not read completed_sessions for enrollment %s: %s", enrollment.id, e)
 
         remaining = total_sessions - completed_sessions
         if learning_velocity > 0 and remaining > 0:
@@ -286,7 +290,7 @@ def get_learning_analytics(user):
     }
 
 
-def _generate_ai_insights(student_profile, logger):
+def _generate_ai_insights(student_profile: dict[str, Any], logger: logging.Logger) -> dict[str, Any]:
     """Call OpenAI for learning insights. Returns empty dict on failure."""
     import json
 
@@ -299,7 +303,7 @@ def _generate_ai_insights(student_profile, logger):
     try:
         import openai
 
-        client = openai.OpenAI(api_key=api_key)
+        client = openai.OpenAI(api_key=api_key, timeout=20.0)
 
         prompt = f"""You are an expert educational AI tutor analyzing a student's learning data.
 Based on this student profile, provide personalized, actionable insights.
@@ -368,7 +372,14 @@ Rules:
         return {}
 
 
-def _generate_fallback_recommendations(weaknesses, attendance_rate, learning_velocity, risk_courses, total_attempts, avg_score):
+def _generate_fallback_recommendations(
+    weaknesses: list[dict[str, Any]],
+    attendance_rate: float,
+    learning_velocity: float,
+    risk_courses: list[dict[str, Any]],
+    total_attempts: int,
+    avg_score: float,
+) -> list[dict[str, Any]]:
     """Rule-based recommendations fallback."""
     recommendations = []
     if weaknesses:
@@ -433,113 +444,120 @@ def generate_study_plan(user):
     logger = logging.getLogger(__name__)
     now = timezone.now()
 
-    # Deactivate old plans
-    StudyPlan.objects.filter(user=user, status="active").update(status="paused")
+    from django.db import transaction
 
-    analytics = get_learning_analytics(user)
+    with transaction.atomic():
+        # Deactivate old plans
+        StudyPlan.objects.select_for_update().filter(user=user, status="active").update(status="paused")
 
-    # Gather context for AI
-    enrollments = Enrollment.objects.filter(student=user, status__in=["approved", "pending"]).select_related("course")
-    upcoming_sessions = Session.objects.filter(
-        course__enrollments__in=enrollments, start_time__gt=now, start_time__lte=now + timedelta(days=14)
-    ).order_by("start_time").select_related("course")[:15]
+        analytics = get_learning_analytics(user)
 
-    weak_subjects = SubjectStrength.objects.filter(user=user, strength_score__lt=50).select_related("subject")
-    medium_subjects = SubjectStrength.objects.filter(
-        user=user, strength_score__gte=50, strength_score__lt=70
-    ).select_related("subject")
+        # Gather context for AI
+        enrollments = Enrollment.objects.filter(student=user, status__in=["approved", "pending"]).select_related("course")
+        upcoming_sessions = Session.objects.filter(
+            course__enrollments__in=enrollments, start_time__gt=now, start_time__lte=now + timedelta(days=14)
+        ).order_by("start_time").select_related("course")[:15]
 
-    available_quizzes = []
-    for ss in list(weak_subjects) + list(medium_subjects):
-        quizzes = Quiz.objects.filter(subject=ss.subject, status="published")[:2]
-        for q in quizzes:
-            available_quizzes.append({"id": q.id, "title": q.title, "subject": ss.subject.name})
+        weak_subjects = SubjectStrength.objects.filter(user=user, strength_score__lt=50).select_related("subject")
+        medium_subjects = SubjectStrength.objects.filter(
+            user=user, strength_score__gte=50, strength_score__lt=70
+        ).select_related("subject")
 
-    session_list = []
-    for s in upcoming_sessions:
-        session_list.append({
-            "id": s.id,
-            "title": s.title,
-            "course": s.course.title,
-            "date": s.start_time.strftime("%Y-%m-%d %H:%M"),
-        })
+        available_quizzes = []
+        for ss in list(weak_subjects) + list(medium_subjects):
+            quizzes = Quiz.objects.filter(subject=ss.subject, status="published")[:2]
+            for q in quizzes:
+                available_quizzes.append({"id": q.id, "title": q.title, "subject": ss.subject.name})
 
-    # Try plan generation via OpenAI
-    ai_plan_items = _generate_ai_study_plan(
-        analytics, session_list, available_quizzes,
-        [{"subject": ss.subject.name, "score": ss.strength_score} for ss in weak_subjects],
-        [{"subject": ss.subject.name, "score": ss.strength_score} for ss in medium_subjects],
-        user.get_full_name() or user.username,
-        logger,
-    )
+        session_list = []
+        for s in upcoming_sessions:
+            session_list.append({
+                "id": s.id,
+                "title": s.title,
+                "course": s.course.title,
+                "date": s.start_time.strftime("%Y-%m-%d %H:%M"),
+            })
 
-    plan = StudyPlan.objects.create(
-        user=user,
-        title=f"Study Plan — {now.strftime('%B %d, %Y')}",
-        description=ai_plan_items.get("plan_description", "Plan based on your learning analytics."),
-        daily_goal_minutes=ai_plan_items.get("daily_goal_minutes", 30),
-        weekly_goal_sessions=ai_plan_items.get("weekly_goal_sessions", 5),
-    )
-
-    items = ai_plan_items.get("items", [])
-    if not items:
-        # Fallback to rule-based generation
-        items = _generate_fallback_plan_items(
-            upcoming_sessions, weak_subjects, medium_subjects, available_quizzes, analytics
+        # Try plan generation via OpenAI
+        ai_plan_items = _generate_ai_study_plan(
+            analytics, session_list, available_quizzes,
+            [{"subject": ss.subject.name, "score": ss.strength_score} for ss in weak_subjects],
+            [{"subject": ss.subject.name, "score": ss.strength_score} for ss in medium_subjects],
+            user.get_full_name() or user.username,
+            logger,
         )
 
-    # Create StudyPlanItem objects
-    session_map = {s.id: s for s in upcoming_sessions}
-    quiz_map = {q["id"]: q for q in available_quizzes}
-    course_map = {}
-    for enrollment in enrollments:
-        course_map[enrollment.course.title] = enrollment.course
+        plan = StudyPlan.objects.create(
+            user=user,
+            title=f"Study Plan — {now.strftime('%B %d, %Y')}",
+            description=ai_plan_items.get("plan_description", "Plan based on your learning analytics."),
+            daily_goal_minutes=ai_plan_items.get("daily_goal_minutes", 30),
+            weekly_goal_sessions=ai_plan_items.get("weekly_goal_sessions", 5),
+        )
 
-    for idx, item_data in enumerate(items):
-        item_kwargs = {
-            "plan": plan,
-            "item_type": item_data.get("type", "review"),
-            "title": item_data.get("title", "Study task"),
-            "description": item_data.get("description", ""),
-            "priority": item_data.get("priority", "medium"),
-            "estimated_minutes": item_data.get("minutes", 30),
-            "order": idx + 1,
-        }
+        items = ai_plan_items.get("items", [])
+        if not items:
+            items = _generate_fallback_plan_items(
+                upcoming_sessions, weak_subjects, medium_subjects, available_quizzes, analytics
+            )
 
-        # Link to session if referenced
-        session_id = item_data.get("session_id")
-        if session_id and session_id in session_map:
-            item_kwargs["session"] = session_map[session_id]
-            item_kwargs["course"] = session_map[session_id].course
+        # Create StudyPlanItem objects
+        session_map = {s.id: s for s in upcoming_sessions}
+        quiz_map = {q["id"]: q for q in available_quizzes}
+        course_map = {}
+        for enrollment in enrollments:
+            course_map[enrollment.course.title] = enrollment.course
 
-        # Link to quiz if referenced
-        quiz_id = item_data.get("quiz_id")
-        if quiz_id:
-            try:
-                item_kwargs["quiz"] = Quiz.objects.get(id=quiz_id)
-            except Quiz.DoesNotExist:
-                pass
+        for idx, item_data in enumerate(items):
+            item_kwargs = {
+                "plan": plan,
+                "item_type": item_data.get("type", "review"),
+                "title": item_data.get("title", "Study task"),
+                "description": item_data.get("description", ""),
+                "priority": item_data.get("priority", "medium"),
+                "estimated_minutes": item_data.get("minutes", 30),
+                "order": idx + 1,
+            }
 
-        # Link to course by name
-        course_name = item_data.get("course_name")
-        if course_name and course_name in course_map:
-            item_kwargs["course"] = course_map[course_name]
+            session_id = item_data.get("session_id")
+            if session_id and session_id in session_map:
+                item_kwargs["session"] = session_map[session_id]
+                item_kwargs["course"] = session_map[session_id].course
 
-        # Parse due date
-        due = item_data.get("due_date")
-        if due:
-            try:
-                from datetime import datetime
-                item_kwargs["due_date"] = datetime.strptime(due, "%Y-%m-%d").date()
-            except (ValueError, TypeError):
-                pass
+            quiz_id = item_data.get("quiz_id")
+            if quiz_id and quiz_id in quiz_map:
+                try:
+                    from .models import Quiz
+                    item_kwargs["quiz"] = Quiz.objects.get(id=quiz_id)
+                except Quiz.DoesNotExist:
+                    pass
 
-        StudyPlanItem.objects.create(**item_kwargs)
+            course_name = item_data.get("course_name")
+            if course_name and course_name in course_map:
+                item_kwargs["course"] = course_map[course_name]
 
-    return plan
+            due = item_data.get("due_date")
+            if due:
+                try:
+                    from datetime import datetime
+                    item_kwargs["due_date"] = datetime.strptime(due, "%Y-%m-%d").date()
+                except (ValueError, TypeError):
+                    pass
+
+            StudyPlanItem.objects.create(**item_kwargs)
+
+        return plan
 
 
-def _generate_ai_study_plan(analytics, sessions, quizzes, weak_subjects, medium_subjects, student_name, logger):
+def _generate_ai_study_plan(
+    analytics: dict[str, Any],
+    sessions: list[dict[str, Any]],
+    quizzes: list[dict[str, Any]],
+    weak_subjects: list[dict[str, Any]],
+    medium_subjects: list[dict[str, Any]],
+    student_name: str,
+    logger: logging.Logger,
+) -> dict[str, Any]:
     """Call OpenAI to generate study plan items. Returns empty on failure."""
     import json
 
@@ -552,7 +570,7 @@ def _generate_ai_study_plan(analytics, sessions, quizzes, weak_subjects, medium_
     try:
         import openai
 
-        client = openai.OpenAI(api_key=api_key)
+        client = openai.OpenAI(api_key=api_key, timeout=20.0)
 
         prompt = f"""You are an expert educational planner creating a 2-week personalized study plan.
 
@@ -627,7 +645,13 @@ Rules:
         return {"items": []}
 
 
-def _generate_fallback_plan_items(upcoming_sessions, weak_subjects, medium_subjects, available_quizzes, analytics):
+def _generate_fallback_plan_items(
+    upcoming_sessions: Any,
+    weak_subjects: Any,
+    medium_subjects: Any,
+    available_quizzes: list[dict[str, Any]],
+    analytics: dict[str, Any],
+) -> list[dict[str, Any]]:
     """Rule-based study plan item generation."""
     items = []
 

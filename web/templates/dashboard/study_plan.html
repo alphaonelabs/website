@@ -36,7 +36,7 @@
           <span class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1 rounded-full">
             <i class="fas fa-clock mr-1"></i> {{ plan.daily_goal_minutes }}min/day
           </span>
-          <span class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full">
+          <span class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1 rounded-full">
             <i class="fas fa-calendar mr-1"></i> {{ plan.weekly_goal_sessions }} sessions/week
           </span>
         </div>
@@ -45,7 +45,7 @@
         <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4">
           <div class="bg-teal-500 h-4 rounded-full transition-all duration-500"
                id="plan-progress-bar"
-               style="width: {{ plan.completion_percentage }}%"></div>
+               data-progress="{{ plan.completion_percentage }}"></div>
         </div>
         <span class="text-lg font-bold text-teal-600 dark:text-teal-400" id="plan-progress-text">{{ plan.completion_percentage }}%</span>
       </div>
@@ -155,6 +155,13 @@
 </div>
 
 <script>
+(function() {
+  var bar = document.getElementById('plan-progress-bar');
+  if (bar && bar.dataset.progress !== undefined) {
+    bar.style.width = Math.max(0, Math.min(100, parseFloat(bar.dataset.progress) || 0)) + '%';
+  }
+})();
+
 function completeItem(itemId) {
   const langPrefix = window.location.pathname.match(/^\/[a-z]{2}(-[a-z]{2})?\//)?.[0] || '/';
   fetch(`${langPrefix}dashboard/study-plan/complete/${itemId}/`, {

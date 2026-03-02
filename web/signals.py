@@ -1,6 +1,6 @@
 from allauth.account.signals import user_signed_up
 from django.core.cache import cache
-from django.db.models.signals import m2m_changed, post_delete, post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import CourseProgress, Enrollment, LearningStreak, Session, SessionAttendance, SubjectStrength, UserQuiz
@@ -69,10 +69,25 @@ def invalidate_session_cache(sender, instance, **kwargs):
         invalidate_progress_cache(enrollment.student)
 
 
+@receiver(pre_save, sender=UserQuiz)
+def cache_previous_completed_state(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            instance._prev_completed = UserQuiz.objects.filter(pk=instance.pk).values_list("completed", flat=True).first()
+        except UserQuiz.DoesNotExist:
+            instance._prev_completed = None
+    else:
+        instance._prev_completed = None
+
+
 @receiver(post_save, sender=UserQuiz)
-def update_subject_strength_on_quiz_complete(sender, instance, **kwargs):
+def update_subject_strength_on_quiz_complete(sender, instance, created, **kwargs):
     """Update SubjectStrength when a quiz is completed."""
-    if not instance.completed or not instance.user or not instance.quiz.subject:
+    was_completed = getattr(instance, "_prev_completed", None)
+    if not (created and instance.completed) and not (not created and instance.completed and not was_completed):
+        return
+
+    if not instance.user or not instance.quiz.subject:
         return
 
     if instance.max_score <= 0:
