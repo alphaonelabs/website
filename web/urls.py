@@ -98,6 +98,10 @@ urlpatterns += i18n_patterns(
     path("dashboard/student/", views.student_dashboard, name="student_dashboard"),
     path("dashboard/teacher/", views.teacher_dashboard, name="teacher_dashboard"),
     path("dashboard/content/", views.content_dashboard, name="content_dashboard"),
+    path("dashboard/analytics/", views.learning_analytics_dashboard, name="learning_analytics"),
+    path("dashboard/study-plan/", views.study_plan_view, name="study_plan"),
+    path("dashboard/study-plan/generate/", views.generate_study_plan_view, name="generate_study_plan"),
+    path("dashboard/study-plan/complete/<int:item_id>/", views.complete_study_plan_item, name="complete_study_plan_item"),
     # SURVEY URLs
     # Course Management
     path("courses/create/", views.create_course, name="create_course"),

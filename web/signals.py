@@ -1,9 +1,9 @@
 from allauth.account.signals import user_signed_up
 from django.core.cache import cache
-from django.db.models.signals import m2m_changed, post_delete, post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import CourseProgress, Enrollment, LearningStreak, Session, SessionAttendance
+from .models import CourseProgress, Enrollment, LearningStreak, Session, SessionAttendance, SubjectStrength, UserQuiz
 from .utils import send_slack_message
 
 
@@ -67,3 +67,45 @@ def invalidate_session_cache(sender, instance, **kwargs):
     enrollments = Enrollment.objects.filter(course=instance.course)
     for enrollment in enrollments:
         invalidate_progress_cache(enrollment.student)
+
+
+@receiver(pre_save, sender=UserQuiz)
+def cache_previous_completed_state(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            instance._prev_completed = UserQuiz.objects.filter(pk=instance.pk).values_list("completed", flat=True).first()
+        except UserQuiz.DoesNotExist:
+            instance._prev_completed = None
+    else:
+        instance._prev_completed = None
+
+
+@receiver(post_save, sender=UserQuiz)
+def update_subject_strength_on_quiz_complete(sender, instance, created, **kwargs):
+    """Update SubjectStrength when a quiz is completed."""
+    was_completed = getattr(instance, "_prev_completed", None)
+    if not (created and instance.completed) and not (not created and instance.completed and not was_completed):
+        return
+
+    if not instance.user or not instance.quiz.subject:
+        return
+
+    if instance.max_score <= 0:
+        return
+
+    subject = instance.quiz.subject
+    user = instance.user
+
+    strength, created = SubjectStrength.objects.get_or_create(
+        user=user,
+        subject=subject,
+        defaults={
+            "strength_score": (instance.score / instance.max_score) * 100,
+            "total_quizzes": 1,
+            "total_correct": instance.score,
+            "total_questions": instance.max_score,
+        },
+    )
+
+    if not created:
+        strength.update_from_quiz(instance.score, instance.max_score)
