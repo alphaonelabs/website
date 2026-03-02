@@ -39,4 +39,5 @@ jobs:
           fi
           git add data/leaderboard.json
           git commit -m "chore: update leaderboard data"
+          git pull --rebase --autostash origin main || (echo "Rebase failed due to conflicts" && exit 1)
           git push
