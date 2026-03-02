@@ -4594,6 +4594,13 @@ def graphing_calculator(request):
     return render(request, "graphing_calculator.html")
 
 
+def check_meme_owner(meme: Meme, user: User) -> HttpResponseForbidden | None:
+    """Return HttpResponseForbidden if user is not the meme owner, else None."""
+    if not meme.uploader or meme.uploader.id != user.id:
+        return HttpResponseForbidden("You do not have permission to modify this meme.")
+    return None
+
+
 def meme_list(request):
     memes = Meme.objects.all().order_by("-created_at")
     subjects = Subject.objects.filter(memes__isnull=False).distinct()
@@ -4627,6 +4634,44 @@ def add_meme(request):
         form = MemeForm()
     subjects = Subject.objects.all().order_by("name")
     return render(request, "add_meme.html", {"form": form, "subjects": subjects})
+
+
+@login_required
+def update_meme(request: HttpRequest, slug: str) -> HttpResponse:
+    """Edit meme metadata for the uploader while keeping the image immutable."""
+    meme = get_object_or_404(Meme, slug=slug)
+    forbidden = check_meme_owner(meme, request.user)
+    if forbidden:
+        return forbidden
+
+    from .forms import MemeEditForm
+
+    if request.method == "POST":
+        form = MemeEditForm(request.POST, instance=meme)
+        if form.is_valid():
+            meme_obj = form.save(commit=False)
+            meme_obj.image = meme.image
+            meme_obj.save()
+            messages.success(request, "Meme updated successfully.")
+            return redirect("meme_detail", slug=meme.slug)
+    else:
+        form = MemeEditForm(instance=meme)
+
+    subjects = Subject.objects.all().order_by("name")
+    return render(request, "add_meme.html", {"form": form, "subjects": subjects, "is_edit": True})
+
+
+@login_required
+@require_POST
+def delete_meme(request: HttpRequest, slug: str) -> HttpResponse:
+    """Delete a meme owned by the current user."""
+    meme = get_object_or_404(Meme, slug=slug)
+    forbidden = check_meme_owner(meme, request.user)
+    if forbidden:
+        return forbidden
+    meme.delete()
+    messages.success(request, "Meme deleted successfully.")
+    return redirect("meme_list")
 
 
 @login_required

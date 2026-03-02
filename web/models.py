@@ -1765,7 +1765,7 @@ class TeamInvite(models.Model):
 def validate_image_size(image):
     """Validate that the image file is not too large."""
     file_size = image.size
-    limit_mb = 2
+    limit_mb = 1
     if file_size > limit_mb * 1024 * 1024:
         raise ValidationError(f"Image file is too large. Size should not exceed {limit_mb} MB.")
 
@@ -1794,7 +1794,7 @@ class Meme(models.Model):
     image = models.ImageField(
         upload_to="memes/",
         validators=[validate_image_size, validate_image_extension],
-        help_text=_("Upload a meme image (JPG, PNG, or GIF, max 2MB)"),
+        help_text=_("Upload a meme image (JPG, PNG, or GIF, max 1MB)"),
     )
     uploader = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name="memes", null=True)
     created_at = models.DateTimeField(auto_now_add=True)

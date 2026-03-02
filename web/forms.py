@@ -1690,7 +1690,7 @@ class MemeForm(forms.ModelForm):
                 attrs={
                     "accept": "image/png,image/jpeg,image/gif",
                     "required": True,
-                    "help_text": "Upload a meme image (JPG, PNG, or GIF, max 2MB)",
+                    "help_text": "Upload a meme image (JPG, PNG, or GIF, max 1MB)",
                 }
             ),
         }
@@ -1700,11 +1700,16 @@ class MemeForm(forms.ModelForm):
         self.fields["subject"].required = False
         self.fields["subject"].help_text = "Select an existing subject"
 
-        # Improve error messages
-        self.fields["image"].error_messages = {
-            "required": "Please select an image file.",
-            "invalid": "Please upload a valid image file.",
-        }
+        # When editing an existing meme, the image should not be required.
+        if self.instance and self.instance.pk and "image" in self.fields:
+            self.fields["image"].required = False
+            # Image field is excluded from MemeEditForm; this branch exists only for defensive coverage
+
+        if "image" in self.fields:
+            self.fields["image"].error_messages = {
+                "required": "Please select an image file.",
+                "invalid": "Please upload a valid image file.",
+            }
 
     def clean(self):
         cleaned_data = super().clean()
@@ -1715,6 +1720,20 @@ class MemeForm(forms.ModelForm):
             raise forms.ValidationError("You must either select an existing subject or create a new one.")
 
         return cleaned_data
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+        # if editing and no new file provided, don't validate size/contents
+        if not image:
+            return image
+
+        if self.instance and self.instance.pk:
+            raise ValidationError("Uploaded image cannot be replaced after upload.")
+
+        limit_mb = 1
+        if image.size > limit_mb * 1024 * 1024:
+            raise ValidationError(f"Image file is too large. Size should not exceed {limit_mb} MB.")
+        return image
 
     def save(self, commit=True):
         meme = super().save(commit=False)
@@ -1732,6 +1751,19 @@ class MemeForm(forms.ModelForm):
         if commit:
             meme.save()
         return meme
+
+
+# Form used during updates, image may not be changed by users
+class MemeEditForm(MemeForm):
+    """Form used during meme updates; uploaded image is immutable."""
+
+    class Meta(MemeForm.Meta):
+        fields = tuple(f for f in MemeForm.Meta.fields if f != "image")
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        # ensure image field is not present
+        self.fields.pop("image", None)
 
 
 class StudentEnrollmentForm(forms.Form):

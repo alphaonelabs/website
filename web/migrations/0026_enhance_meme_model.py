@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 (
                     "image",
                     models.ImageField(
-                        help_text="Upload a meme image (JPG, PNG, or GIF, max 2MB)",
+                        help_text="Upload a meme image (JPG, PNG, or GIF, max 1MB)",
                         upload_to="memes/",
                         validators=[web.models.validate_image_size, web.models.validate_image_extension],
                     ),

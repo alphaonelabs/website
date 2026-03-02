@@ -1,26 +1,44 @@
 {% extends "base.html" %}
 
 {% block title %}
-  Add Educational Meme
+  {% if is_edit %}
+    Edit Educational Meme
+  {% else %}
+    Add Educational Meme
+  {% endif %}
 {% endblock title %}
 {% block content %}
   <div class="container mx-auto mt-8 mb-16 px-4 max-w-2xl">
-    <h1 class="text-2xl font-bold mb-6">Add a New Educational Meme</h1>
+    <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-300">
+      {% if is_edit %}
+        Edit
+      {% else %}
+        Add a New
+      {% endif %}
+      Educational Meme
+    </h1>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <form method="post" enctype="multipart/form-data" class="space-y-4">
         {% csrf_token %}
         <div>
-          <label for="{{ form.title.id_for_label }}" class="block mb-2 font-medium">Title</label>
+          <label for="{{ form.title.id_for_label }}"
+                 class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            Title
+            {% if form.title.field.required %}<span class="text-red-600">*</span>{% endif %}
+          </label>
           <input type="text"
                  name="{{ form.title.name }}"
                  id="{{ form.title.id_for_label }}"
                  value="{{ form.title.value|default:'' }}"
                  class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                  {% if form.title.required %}required{% endif %} />
-          {% if form.title.errors %}<p class="text-red-500 text-sm mt-1">{{ form.title.errors.0 }}</p>{% endif %}
+          {% if form.title.errors %}<p class="text-red-600 text-sm mt-1">{{ form.title.errors.0 }}</p>{% endif %}
         </div>
         <div>
-          <label for="{{ form.subject.id_for_label }}" class="block mb-2 font-medium">Subject</label>
+          <label for="{{ form.subject.id_for_label }}" class="block mb-2 font-medium">
+            Subject
+            {% if form.subject.field.required %}<span class="text-red-600">*</span>{% endif %}
+          </label>
           <select name="{{ form.subject.name }}"
                   id="{{ form.subject.id_for_label }}"
                   class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
@@ -30,12 +48,15 @@
                       {% if form.subject.value == value %}selected{% endif %}>{{ text }}</option>
             {% endfor %}
           </select>
-          {% if form.subject.errors %}<p class="text-red-500 text-sm mt-1">{{ form.subject.errors.0 }}</p>{% endif %}
+          {% if form.subject.errors %}<p class="text-red-600 text-sm mt-1">{{ form.subject.errors.0 }}</p>{% endif %}
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ form.subject.help_text }}</p>
         </div>
         <div>
           <label for="{{ form.new_subject.id_for_label }}"
-                 class="block mb-2 font-medium">Or create new subject</label>
+                 class="block mb-2 font-medium">
+            Or create new subject
+            {% if form.new_subject.field.required %}<span class="text-red-600">*</span>{% endif %}
+          </label>
           <input type="text"
                  name="{{ form.new_subject.name }}"
                  id="{{ form.new_subject.id_for_label }}"
@@ -44,34 +65,42 @@
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">If your subject isn't listed above, enter a new one here</p>
         </div>
         <div>
-          <label for="{{ form.caption.id_for_label }}" class="block mb-2 font-medium">Caption</label>
+          <label for="{{ form.caption.id_for_label }}" class="block mb-2 font-medium">
+            Caption
+            {% if form.caption.field.required %}<span class="text-red-600">*</span>{% endif %}
+          </label>
           <textarea name="{{ form.caption.name }}"
                     id="{{ form.caption.id_for_label }}"
                     class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     {% if form.caption.required %}required{% endif %}>{{ form.caption.value|default:'' }}</textarea>
-          {% if form.caption.errors %}
-            <p class="text-red-500 text-sm mt-1">{{ form.caption.errors.0 }}</p>
-          {% endif %}
+          {% if form.caption.errors %}<p class="text-red-600 text-sm mt-1">{{ form.caption.errors.0 }}</p>{% endif %}
         </div>
-        <div>
-          <label for="{{ form.image.id_for_label }}" class="block mb-2 font-medium">Meme Image</label>
-          {{ form.image }}
-          {% if form.image.errors %}<p class="text-red-500 text-sm mt-1">{{ form.image.errors.0 }}</p>{% endif %}
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Recommended: PNG or JPEG, max 2MB</p>
-          <div id="imagePreview"
-               class="hidden mt-4 border rounded p-4 dark:border-gray-600">
-            <p class="text-sm font-medium mb-2">Image Preview:</p>
-            <div class="flex justify-center">
-              <img id="preview"
-                   src=""
-                   alt="Preview"
-                   class="max-h-64 max-w-full object-contain" />
+        {% if not is_edit %}
+          <div>
+            <label for="{{ form.image.id_for_label }}" class="block mb-2 font-medium">
+              Meme Image
+              {% if form.image.field.required %}<span class="text-red-600">*</span>{% endif %}
+            </label>
+            {{ form.image }}
+            {% if form.image.errors %}<p class="text-red-600 text-sm mt-1">{{ form.image.errors.0 }}</p>{% endif %}
+            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Recommended: PNG or JPEG, max 1MB</p>
+            <div id="imagePreview"
+                 class="hidden mt-4 border rounded p-4 dark:border-gray-600">
+              <p class="text-sm font-medium mb-2 text-gray-600 dark:text-gray-300">Image Preview:</p>
+              <div class="flex justify-center">
+                <img id="preview"
+                     src=""
+                     alt="Preview"
+                     width="400"
+                     height="256"
+                     class="max-h-64 max-w-full object-contain" />
+              </div>
+              <p class="text-xs text-gray-600 dark:text-gray-300 mt-2 text-center">
+                Preview is for reference only and may appear differently on the site.
+              </p>
             </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-              Preview is for reference only and may appear differently on the site.
-            </p>
           </div>
-        </div>
+        {% endif %}
         {% if form.non_field_errors %}
           <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
@@ -79,42 +108,74 @@
         {% endif %}
         <div class="pt-4">
           <button type="submit"
-                  class="bg-teal-600 hover:bg-teal-700 text-white py-2 px-6 rounded-lg">Upload Meme</button>
+                  class="bg-teal-300 hover:bg-teal-400 text-white py-2 px-6 rounded-lg transition duration-200">
+            {% if is_edit %}
+              Save Changes
+            {% else %}
+              Upload Meme
+            {% endif %}
+          </button>
           <a href="{% url 'meme_list' %}"
              class="ml-4 text-gray-600 dark:text-gray-400 hover:underline">Cancel</a>
         </div>
       </form>
     </div>
   </div>
+  {{ is_edit|json_script:"is-edit-data" }}
   <script>
-      document.getElementById('{{ form.image.id_for_label }}').addEventListener('change', function(e) {
-          const preview = document.getElementById('preview');
-          const previewContainer = document.getElementById('imagePreview');
+      const IS_EDIT = JSON.parse(
+          document.getElementById('is-edit-data').textContent
+      );
 
-          if (this.files && this.files[0]) {
-              const reader = new FileReader();
-              reader.onload = function(e) {
-                  preview.src = e.target.result;
-                  previewContainer.classList.remove('hidden');
-              }
-              reader.readAsDataURL(this.files[0]);
-          } else {
-              previewContainer.classList.add('hidden');
+      // Image preview for add mode only
+      if (!IS_EDIT) {
+          const MAX_IMAGE_SIZE_BYTES = 1024 * 1024; // 1MB
+          const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+
+          if (imageInput) {
+              imageInput.addEventListener('change', function() {
+                  const preview = document.getElementById('preview');
+                  const previewContainer = document.getElementById('imagePreview');
+
+                  if (this.files && this.files[0]) {
+                      const file = this.files[0];
+
+                      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+                          this.setCustomValidity('Image must be 1MB or smaller.');
+                          this.reportValidity();
+                          this.value = '';
+                          previewContainer.classList.add('hidden');
+                          return;
+                      }
+
+                      this.setCustomValidity('');
+
+                      const reader = new FileReader();
+                      reader.onload = function(e) {
+                          preview.src = e.target.result;
+                          previewContainer.classList.remove('hidden');
+                      };
+
+                      reader.readAsDataURL(file);
+                  } else {
+                      this.setCustomValidity('');
+                      previewContainer.classList.add('hidden');
+                  }
+              });
           }
-      });
+      }
+
       const subjectField = document.getElementById('{{ form.subject.id_for_label }}');
       const newSubjectField = document.getElementById('{{ form.new_subject.id_for_label }}');
 
-      subjectField.addEventListener('change', function() {
-          if (this.value) {
-              newSubjectField.value = '';
-          }
-      });
+      if (subjectField && newSubjectField) {
+          subjectField.addEventListener('change', function() {
+              if (this.value) newSubjectField.value = '';
+          });
 
-      newSubjectField.addEventListener('input', function() {
-          if (this.value.trim()) {
-              subjectField.selectedIndex = 0;
-          }
-      });
+          newSubjectField.addEventListener('input', function() {
+              if (this.value.trim()) subjectField.selectedIndex = 0;
+          });
+      }
   </script>
 {% endblock content %}
