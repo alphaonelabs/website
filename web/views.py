@@ -20,7 +20,6 @@ import requests
 import stripe
 import tweepy
 from allauth.account.models import EmailAddress
-from allauth.account.utils import send_email_confirmation
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import NestedObjects
@@ -122,6 +121,7 @@ from .models import (
     ChallengeSubmission,
     Choice,
     Course,
+    CourseBookmark,
     CourseMaterial,
     CourseProgress,
     Discount,
@@ -892,6 +892,11 @@ def course_detail(request, slug):
     # Get active virtual classroom for the course
     virtual_classroom = course.virtual_classrooms.filter(is_active=True).first()
 
+    # Check if user has bookmarked this course
+    is_bookmarked = False
+    if request.user.is_authenticated:
+        is_bookmarked = CourseBookmark.objects.filter(user=request.user, course=course).exists()
+
     context = {
         "course": course,
         "sessions": sessions,
@@ -917,6 +922,7 @@ def course_detail(request, slug):
         "virtual_classroom": virtual_classroom,
         "next_session": next_session,
         "user_in_session_waiting_room": user_in_session_waiting_room,
+        "is_bookmarked": is_bookmarked,
     }
 
     return render(request, "courses/detail.html", context)
@@ -1333,7 +1339,11 @@ def teach(request):
                         )
                     else:
                         # Email not verified, resend verification email
-                        send_email_confirmation(request, user, signup=False)
+                        email_addr, _created = EmailAddress.objects.get_or_create(
+                            user=user, email=user.email,
+                            defaults={"primary": True, "verified": False},
+                        )
+                        email_addr.send_confirmation(request)
                         messages.info(
                             request,
                             "An account with this email exists. Please verify your email to continue.",
@@ -1360,10 +1370,10 @@ def teach(request):
                         profile.save()
 
                         # Add email address for allauth verification
-                        EmailAddress.objects.create(user=user, email=email, primary=True, verified=False)
+                        email_addr = EmailAddress.objects.create(user=user, email=email, primary=True, verified=False)
 
                         # Send verification email via allauth
-                        send_email_confirmation(request, user, signup=True)
+                        email_addr.send_confirmation(request)
                         # Send welcome email with username, email, and temp password
                         try:
                             send_welcome_teach_course_email(request, user, temp_password)
@@ -1592,6 +1602,11 @@ def course_search(request):
         "total_results": total_results,
         "is_teacher": is_teacher,
         "user_courses": user_courses,
+        "bookmarked_course_ids": set(
+            CourseBookmark.objects.filter(user=request.user).values_list("course_id", flat=True)
+        )
+        if request.user.is_authenticated
+        else set(),
     }
 
     return render(request, "courses/search.html", context)
@@ -8839,3 +8854,32 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+@login_required
+@require_POST
+def toggle_bookmark(request: HttpRequest, slug: str) -> JsonResponse:
+    """Toggle bookmark status for a course (AJAX)."""
+    course = get_object_or_404(Course, slug=slug)
+    bookmark, created = CourseBookmark.objects.get_or_create(user=request.user, course=course)
+    if not created:
+        bookmark.delete()
+        bookmarked = False
+    else:
+        bookmarked = True
+    return JsonResponse({"bookmarked": bookmarked})
+
+
+@login_required
+def my_bookmarks(request: HttpRequest) -> HttpResponse:
+    """Display user's bookmarked courses."""
+    bookmark_qs = CourseBookmark.objects.filter(user=request.user).select_related(
+        "course", "course__teacher", "course__subject", "course__teacher__profile"
+    ).prefetch_related("course__sessions", "course__enrollments")
+    courses = [b.course for b in bookmark_qs]
+    enrollments = Enrollment.objects.filter(student=request.user).select_related("course")
+    user_courses = {e.course.id for e in enrollments}
+    return render(request, "account/my_bookmarks.html", {
+        "courses": courses,
+        "user_courses": user_courses,
+    })

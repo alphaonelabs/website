@@ -505,6 +505,10 @@
                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <i class="fas fa-chart-line mr-2"></i> Progress Chart
                 </a>
+                <a href="{% url 'my_bookmarks' %}"
+                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <i class="fas fa-heart mr-2"></i> My Bookmarks
+                </a>
                 <form method="post" action="{% url 'account_logout' %}" class="block">
                   {% csrf_token %}
                   <button type="submit"
@@ -820,6 +824,11 @@
                         <span>System Dashboard</span>
                       </a>
                     {% endif %}
+                    <a href="{% url 'my_bookmarks' %}"
+                       class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                      <i class="fas fa-heart mr-2 text-teal-500"></i>
+                      <span>My Bookmarks</span>
+                    </a>
                     <form method="post" action="{% url 'account_logout' %}" class="block mt-2">
                       {% csrf_token %}
                       <button type="submit"
