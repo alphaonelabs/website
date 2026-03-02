@@ -172,7 +172,7 @@ By contributing, you agree that your contributions will be licensed under the AG
 ## Questions or Need Help?
 
 - Create an issue for bugs or feature requests
-- Join our [Slack community](https://join.slack.com/t/alphaonelabs/shared_invite/zt-1234567890) for:
+- Join our [Slack community](https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg) for:
   - Real-time discussions with other contributors
   - Direct access to core team members
   - Community support and collaboration
