@@ -8851,7 +8851,7 @@ def leave_session_waiting_room(request, course_slug):
 
 @login_required
 def learning_analytics_dashboard(request):
-    """Dashboard showing AI-powered learning analytics and insights."""
+    """Learning analytics dashboard view."""
     from .recommendations import get_learning_analytics
 
     analytics = get_learning_analytics(request.user)
@@ -8865,7 +8865,7 @@ def learning_analytics_dashboard(request):
 
 @login_required
 def study_plan_view(request):
-    """View the user's active study plan."""
+    """Active study plan view."""
     plan = StudyPlan.objects.filter(user=request.user, status="active").first()
     past_plans = StudyPlan.objects.filter(user=request.user).exclude(status="active").order_by("-created_at")[:5]
     context = {
@@ -8878,7 +8878,7 @@ def study_plan_view(request):
 @login_required
 @require_POST
 def generate_study_plan_view(request):
-    """Generate or regenerate a study plan."""
+    """Generate a study plan."""
     from .recommendations import generate_study_plan
 
     generate_study_plan(request.user)
@@ -8889,7 +8889,7 @@ def generate_study_plan_view(request):
 @login_required
 @require_POST
 def complete_study_plan_item(request, item_id):
-    """Mark a study plan item as complete (AJAX endpoint)."""
+    """Mark a study plan item as complete."""
     item = get_object_or_404(StudyPlanItem, id=item_id, plan__user=request.user)
     item.mark_complete()
     plan = item.plan

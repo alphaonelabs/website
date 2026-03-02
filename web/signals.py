@@ -71,11 +71,7 @@ def invalidate_session_cache(sender, instance, **kwargs):
 
 @receiver(post_save, sender=UserQuiz)
 def update_subject_strength_on_quiz_complete(sender, instance, **kwargs):
-    """
-    Automatically update SubjectStrength when any student completes a quiz.
-    This makes the analytics system work for every student without manual setup.
-    Uses a weighted moving average: 70% historical + 30% new score.
-    """
+    """Update SubjectStrength when a quiz is completed."""
     if not instance.completed or not instance.user or not instance.quiz.subject:
         return
 

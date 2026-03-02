@@ -79,7 +79,6 @@ class SubjectStrengthTests(TestCase):
         self.assertEqual(self.strength.strength_score, 50.0)
 
     def test_update_from_quiz_first_attempt(self):
-        """First quiz should set score directly, not weighted average."""
         self.strength.update_from_quiz(8, 10)
         self.strength.refresh_from_db()
         self.assertEqual(self.strength.strength_score, 80.0)
@@ -88,7 +87,6 @@ class SubjectStrengthTests(TestCase):
         self.assertEqual(self.strength.total_questions, 10)
 
     def test_update_from_quiz_weighted_average(self):
-        """Subsequent quizzes should use 70/30 weighted average."""
         self.strength.update_from_quiz(8, 10)  # Sets to 80
         self.strength.refresh_from_db()
         self.strength.update_from_quiz(6, 10)  # 70% of 80 + 30% of 60 = 56 + 18 = 74
@@ -97,7 +95,6 @@ class SubjectStrengthTests(TestCase):
         self.assertEqual(self.strength.total_quizzes, 2)
 
     def test_update_from_quiz_zero_max_score(self):
-        """Zero max_score should not update anything."""
         original_score = self.strength.strength_score
         self.strength.update_from_quiz(0, 0)
         self.strength.refresh_from_db()
@@ -133,7 +130,6 @@ class LearningAnalyticsTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
     def test_analytics_with_no_data(self):
-        """Analytics should return sensible defaults with no quiz/attendance data."""
         from web.recommendations import get_learning_analytics
 
         analytics = get_learning_analytics(self.user)
@@ -146,7 +142,6 @@ class LearningAnalyticsTests(TestCase):
         self.assertTrue(len(analytics["recommendations"]) > 0)
 
     def test_analytics_context_keys(self):
-        """Ensure all expected keys are in the analytics response."""
         from web.recommendations import get_learning_analytics
 
         analytics = get_learning_analytics(self.user)
@@ -172,7 +167,6 @@ class LearningAnalyticsTests(TestCase):
             self.assertIn(key, analytics)
 
     def test_analytics_quiz_trend(self):
-        """Quiz performance should include trend data."""
         from web.recommendations import get_learning_analytics
 
         analytics = get_learning_analytics(self.user)
@@ -206,7 +200,6 @@ class StudyPlanTests(TestCase):
         self.assertIsNotNone(plan)
 
     def test_regenerate_pauses_old_plan(self):
-        """Regenerating should pause the old active plan."""
         from web.models import StudyPlan
 
         # Generate first plan
@@ -243,7 +236,6 @@ class StudyPlanTests(TestCase):
         self.assertIsNotNone(item.completed_at)
 
     def test_complete_item_wrong_user(self):
-        """Users should not be able to complete other users' items."""
         from web.models import StudyPlan, StudyPlanItem
 
         other_user = User.objects.create_user(username="other", email="other@test.com", password="testpassword")
@@ -274,7 +266,6 @@ class StudyPlanTests(TestCase):
 
 
 class SubjectStrengthSignalTests(TestCase):
-    """Test that SubjectStrength auto-updates when a quiz is completed."""
 
     def setUp(self):
         self.user = User.objects.create_user(username="signaluser", email="signal@test.com", password="testpassword")
@@ -290,7 +281,6 @@ class SubjectStrengthSignalTests(TestCase):
         )
 
     def test_signal_creates_strength_on_first_quiz(self):
-        """Completing a quiz should auto-create SubjectStrength for that user+subject."""
         from web.models import SubjectStrength, UserQuiz
 
         UserQuiz.objects.create(
@@ -306,7 +296,6 @@ class SubjectStrengthSignalTests(TestCase):
         self.assertEqual(strength.total_quizzes, 1)
 
     def test_signal_updates_strength_on_subsequent_quiz(self):
-        """Second quiz should use weighted average."""
         from web.models import SubjectStrength, UserQuiz
 
         UserQuiz.objects.create(user=self.user, quiz=self.quiz, score=8, max_score=10, completed=True)
@@ -317,14 +306,12 @@ class SubjectStrengthSignalTests(TestCase):
         self.assertEqual(strength.total_quizzes, 2)
 
     def test_signal_ignores_incomplete_quiz(self):
-        """Incomplete quizzes should not trigger strength update."""
         from web.models import SubjectStrength, UserQuiz
 
         UserQuiz.objects.create(user=self.user, quiz=self.quiz, score=5, max_score=10, completed=False)
         self.assertFalse(SubjectStrength.objects.filter(user=self.user, subject=self.subject).exists())
 
     def test_signal_ignores_anonymous_quiz(self):
-        """Anonymous quiz attempts should not create strength records."""
         from web.models import SubjectStrength, UserQuiz
 
         UserQuiz.objects.create(user=None, quiz=self.quiz, score=5, max_score=10, completed=True, anonymous_id="abc123")

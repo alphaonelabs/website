@@ -85,12 +85,7 @@ def get_similar_courses(course, limit=3):
 
 
 def get_learning_analytics(user):
-    """
-    Generate comprehensive learning analytics for a user.
-    Collects all learning data, computes metrics, and uses AI to generate
-    personalized insights and coaching advice.
-    Works for any student — new or experienced.
-    """
+    """Return learning analytics data for the given user."""
     import json
     import logging
     from datetime import timedelta
@@ -251,7 +246,7 @@ def get_learning_analytics(user):
         "weekly_totals": [w["total"] for w in weekly_activity],
     }
 
-    # --- AI-Powered Insights ---
+    # --- Insights ---
     ai_insights = _generate_ai_insights(student_profile, logger)
 
     # --- Fallback recommendations (always available) ---
@@ -292,11 +287,7 @@ def get_learning_analytics(user):
 
 
 def _generate_ai_insights(student_profile, logger):
-    """
-    Use OpenAI to generate personalized learning insights.
-    Returns a dict with coaching_message, recommendations, study_tips, etc.
-    Gracefully falls back to empty dict if API is unavailable.
-    """
+    """Call OpenAI for learning insights. Returns empty dict on failure."""
     import json
 
     from django.conf import settings
@@ -378,7 +369,7 @@ Rules:
 
 
 def _generate_fallback_recommendations(weaknesses, attendance_rate, learning_velocity, risk_courses, total_attempts, avg_score):
-    """Generate rule-based recommendations when AI is unavailable."""
+    """Rule-based recommendations fallback."""
     recommendations = []
     if weaknesses:
         weak_names = ", ".join([w["subject"] for w in weaknesses[:3]])
@@ -422,12 +413,7 @@ def _generate_fallback_recommendations(weaknesses, attendance_rate, learning_vel
 
 
 def generate_study_plan(user):
-    """
-    Generate a truly personalized study plan using AI + learning data.
-    The AI analyzes the student's full profile and creates a tailored
-    day-by-day plan with specific, actionable items.
-    Falls back to intelligent rule-based generation if AI is unavailable.
-    """
+    """Generate a study plan for the user based on their analytics data."""
     import json
     import logging
     from datetime import timedelta
@@ -478,7 +464,7 @@ def generate_study_plan(user):
             "date": s.start_time.strftime("%Y-%m-%d %H:%M"),
         })
 
-    # Try AI-powered plan generation
+    # Try plan generation via OpenAI
     ai_plan_items = _generate_ai_study_plan(
         analytics, session_list, available_quizzes,
         [{"subject": ss.subject.name, "score": ss.strength_score} for ss in weak_subjects],
@@ -489,8 +475,8 @@ def generate_study_plan(user):
 
     plan = StudyPlan.objects.create(
         user=user,
-        title=f"AI Study Plan — {now.strftime('%B %d, %Y')}",
-        description=ai_plan_items.get("plan_description", "Personalized plan based on your learning analytics."),
+        title=f"Study Plan — {now.strftime('%B %d, %Y')}",
+        description=ai_plan_items.get("plan_description", "Plan based on your learning analytics."),
         daily_goal_minutes=ai_plan_items.get("daily_goal_minutes", 30),
         weekly_goal_sessions=ai_plan_items.get("weekly_goal_sessions", 5),
     )
@@ -554,7 +540,7 @@ def generate_study_plan(user):
 
 
 def _generate_ai_study_plan(analytics, sessions, quizzes, weak_subjects, medium_subjects, student_name, logger):
-    """Use AI to create a structured, personalized study plan."""
+    """Call OpenAI to generate study plan items. Returns empty on failure."""
     import json
 
     from django.conf import settings
@@ -642,7 +628,7 @@ Rules:
 
 
 def _generate_fallback_plan_items(upcoming_sessions, weak_subjects, medium_subjects, available_quizzes, analytics):
-    """Rule-based fallback when AI is unavailable."""
+    """Rule-based study plan item generation."""
     items = []
 
     # 1. Upcoming sessions

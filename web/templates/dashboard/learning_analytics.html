@@ -7,7 +7,7 @@
   <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
     <div>
       <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Learning Analytics</h1>
-      <p class="text-gray-600 dark:text-gray-400 mt-1">AI-powered insights into your learning journey</p>
+      <p class="text-gray-600 dark:text-gray-400 mt-1">Insights into your learning progress</p>
     </div>
     <div class="flex gap-3">
       <a href="{% url 'study_plan' %}"
@@ -21,7 +21,7 @@
     </div>
   </div>
 
-  <!-- AI Coaching Message -->
+  <!-- Coaching Message -->
   {% if analytics.ai_coaching %}
   <div class="bg-gradient-to-r from-teal-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 rounded-lg shadow-lg p-6 mb-8 border-l-4 border-teal-400">
     <div class="flex items-start gap-4">
@@ -30,7 +30,7 @@
       </div>
       <div>
         <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-1">
-          <i class="fas fa-sparkles text-teal-500 mr-1"></i> AI Coach
+          <i class="fas fa-sparkles text-teal-500 mr-1"></i> Coach
         </h2>
         <p class="text-gray-700 dark:text-gray-300">{{ analytics.ai_coaching }}</p>
         {% if analytics.learning_style_hint %}
@@ -180,12 +180,12 @@
     </div>
   </div>
 
-  <!-- AI Study Tips + At-Risk Courses -->
+  <!-- Study Tips + At-Risk Courses -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-    <!-- AI Study Tips -->
+    <!-- Study Tips -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
       <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-        <i class="fas fa-graduation-cap text-teal-500 mr-2"></i> AI Study Tips
+        <i class="fas fa-graduation-cap text-teal-500 mr-2"></i> Study Tips
       </h2>
       {% if analytics.ai_study_tips %}
         <ul class="space-y-3">
@@ -208,7 +208,7 @@
           </div>
           <div class="flex items-start gap-3">
             <span class="bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-300 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">3</span>
-            <p class="text-sm text-gray-700 dark:text-gray-300">Generate a study plan to get a personalized roadmap for the next 2 weeks.</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300">Generate a study plan to get a roadmap for the next 2 weeks.</p>
           </div>
         </div>
       {% endif %}
@@ -273,10 +273,10 @@
       {% endif %}
     </div>
 
-    <!-- Smart Recommendations -->
+    <!-- Recommendations -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
       <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i> Smart Recommendations
+        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i> Recommendations
       </h2>
       <div class="space-y-3">
         {% for rec in analytics.recommendations %}
@@ -331,12 +331,12 @@
     <div class="bg-teal-50 dark:bg-teal-900 rounded-lg shadow-lg p-8 text-center">
       <i class="fas fa-rocket text-teal-500 text-4xl mb-4"></i>
       <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Ready to level up?</h2>
-      <p class="text-gray-600 dark:text-gray-400 mb-4">Generate an AI-powered study plan tailored to your strengths, weaknesses, and schedule.</p>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">Generate a study plan based on your strengths, weaknesses, and schedule.</p>
       <form method="post" action="{% url 'generate_study_plan' %}">
         {% csrf_token %}
         <button type="submit"
                 class="bg-teal-300 hover:bg-teal-400 text-white px-8 py-3 rounded-lg transition duration-200 text-lg font-semibold">
-          <i class="fas fa-magic mr-2"></i> Generate AI Study Plan
+          <i class="fas fa-magic mr-2"></i> Generate Study Plan
         </button>
       </form>
     </div>

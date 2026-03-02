@@ -3199,7 +3199,7 @@ class SubjectStrength(models.Model):
         return f"{self.user.username} - {self.subject.name}: {self.strength_score:.0f}%"
 
     def update_from_quiz(self, score, max_score):
-        """Update strength using weighted moving average (70% historical, 30% new)."""
+        """Update strength score from a quiz result."""
         if max_score > 0:
             new_score = (score / max_score) * 100
             if self.total_quizzes == 0:
@@ -3213,7 +3213,6 @@ class SubjectStrength(models.Model):
 
 
 class StudyPlan(models.Model):
-    """A personalized study plan generated from learning analytics."""
 
     STATUS_CHOICES = [
         ("active", "Active"),
@@ -3251,7 +3250,6 @@ class StudyPlan(models.Model):
 
 
 class StudyPlanItem(models.Model):
-    """Individual item within a study plan."""
 
     ITEM_TYPE_CHOICES = [
         ("session", "Attend Session"),
