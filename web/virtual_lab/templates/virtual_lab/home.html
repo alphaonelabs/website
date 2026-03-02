@@ -2,47 +2,48 @@
 {% extends "virtual_lab/layout.html" %}
 
 {% load static %}
+{% load i18n %}
 
 {% block virtual_lab_content %}
-  <div class="max-w-5xl mx-auto px-6 py-8">
+  <div class="container mx-auto px-4 py-8">
     <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
       <div class="px-8 py-6">
-        <h2 class="text-4xl font-extrabold text-gray-800 dark:text-gray-100 mb-4">Welcome to the Alpha Science Lab</h2>
-        <p class="text-gray-600 dark:text-gray-300 mb-8">
-          Dive into interactive experiments and deepen your understanding of fundamental concepts. Click on any card below to begin.
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Pendulum Motion Card -->
-          <a href="{% url 'virtual_lab:physics_pendulum' %}"
-             class="block bg-gradient-to-b from-blue-50 dark:from-blue-900 to-white dark:to-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg p-6 shadow hover:shadow-md transition">
-            <h3 class="text-2xl font-semibold text-blue-700 dark:text-blue-300 mb-2">Pendulum Motion</h3>
-            <p class="text-blue-600 dark:text-blue-400">Visualize how length affects a pendulum's period.</p>
-          </a>
-          <!-- Projectile Motion Card -->
-          <a href="{% url 'virtual_lab:physics_projectile' %}"
-             class="block bg-gradient-to-b from-green-50 dark:from-green-900 to-white dark:to-gray-800 border border-green-200 dark:border-green-700 rounded-lg p-6 shadow hover:shadow-md transition">
-            <h3 class="text-2xl font-semibold text-green-700 dark:text-green-300 mb-2">Projectile Motion</h3>
-            <p class="text-green-600 dark:text-green-400">Launch a projectile and observe its real‐time trajectory.</p>
-          </a>
-          <!-- Inclined Plane Card -->
-          <a href="{% url 'virtual_lab:physics_inclined' %}"
-             class="block bg-gradient-to-b from-yellow-50 dark:from-yellow-900 to-white dark:to-gray-800 border border-yellow-200 dark:border-yellow-700 rounded-lg p-6 shadow hover:shadow-md transition">
-            <h3 class="text-2xl font-semibold text-yellow-800 dark:text-yellow-300 mb-2">Inclined Plane</h3>
-            <p class="text-yellow-700 dark:text-yellow-400">See a block slide down and discover acceleration on a ramp.</p>
-          </a>
-          <!-- Mass–Spring Oscillation Card -->
-          <a href="{% url 'virtual_lab:physics_mass_spring' %}"
-             class="block bg-gradient-to-b from-purple-50 dark:from-purple-900 to-white dark:to-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg p-6 shadow hover:shadow-md transition">
-            <h3 class="text-2xl font-semibold text-purple-700 dark:text-purple-300 mb-2">Mass–Spring Oscillation</h3>
-            <p class="text-purple-600 dark:text-purple-400">Set k and m, drag the mass, then watch it oscillate and view x(t).</p>
-          </a>
-          <!-- Basic Electrical Circuit Card -->
-          <a href="{% url 'virtual_lab:physics_electrical_circuit' %}"
-             class="block bg-gradient-to-b from-teal-50 dark:from-teal-900 to-white dark:to-gray-800 border border-teal-200 dark:border-teal-700 rounded-lg p-6 shadow hover:shadow-md transition">
-            <h3 class="text-2xl font-semibold text-teal-700 dark:text-teal-300 mb-2">Basic Electrical Circuit</h3>
-            <p class="text-teal-600 dark:text-teal-400">
-              Build an RC circuit, adjust R, C, and V₀, and watch the capacitor charge in real time.
-            </p>
+        <h2 class="text-4xl font-extrabold text-gray-800 dark:text-gray-100 mb-4">
+          {% trans "Welcome to the Alpha Science Lab" %}
+        </h2>
+        <p class="text-gray-600 dark:text-gray-300 mb-8">{% trans "Choose a subject to explore available virtual labs." %}</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {% for subject in virtual_lab_subjects %}
+            {% if subject.key == "physics" %}
+              <a href="{% url subject.url_name %}"
+                 class="block bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-6 shadow hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 dark:focus:ring-blue-400 dark:focus:ring-offset-gray-800">
+                <h3 class="text-2xl font-semibold text-blue-700 dark:text-blue-300 mb-2">{{ subject.label }}</h3>
+                <p class="text-blue-600 dark:text-blue-400">
+                  {% blocktrans with count=subject.labs|length %}Explore {{ count }} labs{% endblocktrans %}
+                </p>
+              </a>
+            {% elif subject.key == "chemistry" %}
+              <a href="{% url subject.url_name %}"
+                 class="block bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-6 shadow hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 dark:focus:ring-green-400 dark:focus:ring-offset-gray-800">
+                <h3 class="text-2xl font-semibold text-green-700 dark:text-green-300 mb-2">{{ subject.label }}</h3>
+                <p class="text-green-600 dark:text-green-400">
+                  {% blocktrans with count=subject.labs|length %}Explore {{ count }} labs{% endblocktrans %}
+                </p>
+              </a>
+            {% else %}
+              <a href="{% url subject.url_name %}"
+                 class="block bg-indigo-50 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-700 rounded-lg p-6 shadow hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-300 dark:focus:ring-indigo-400 dark:focus:ring-offset-gray-800">
+                <h3 class="text-2xl font-semibold text-indigo-700 dark:text-indigo-300 mb-2">{{ subject.label }}</h3>
+                <p class="text-indigo-600 dark:text-indigo-400">
+                  {% blocktrans with count=subject.labs|length %}Explore {{ count }} labs{% endblocktrans %}
+                </p>
+              </a>
+            {% endif %}
+          {% endfor %}
+          <a href="{% url 'virtual_lab:code_editor' %}"
+             class="block bg-teal-50 dark:bg-teal-900 border border-teal-200 dark:border-teal-700 rounded-lg p-6 shadow hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-300 dark:focus:ring-teal-400 dark:focus:ring-offset-gray-800">
+            <h3 class="text-2xl font-semibold text-teal-700 dark:text-teal-300 mb-2">{% trans "Code Editor" %}</h3>
+            <p class="text-teal-600 dark:text-teal-400">{% trans "Write and run code directly from the virtual lab." %}</p>
           </a>
         </div>
       </div>
