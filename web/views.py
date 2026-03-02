@@ -20,7 +20,7 @@ import requests
 import stripe
 import tweepy
 from allauth.account.models import EmailAddress
-from allauth.account.utils import send_email_confirmation
+from allauth.account.internal.flows.email_verification import send_verification_email_for_user
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import NestedObjects
@@ -179,6 +179,9 @@ from .models import (
     WaitingRoom,
     WebRequest,
     default_valid_until,
+    StudyPlan,
+    StudyPlanItem,
+    SubjectStrength,
 )
 from .notifications import (
     notify_session_reminder,
@@ -1332,7 +1335,7 @@ def teach(request):
                         )
                     else:
                         # Email not verified, resend verification email
-                        send_email_confirmation(request, user, signup=False)
+                        send_verification_email_for_user(request, user)
                         messages.info(
                             request,
                             "An account with this email exists. Please verify your email to continue.",
@@ -1362,7 +1365,7 @@ def teach(request):
                         EmailAddress.objects.create(user=user, email=email, primary=True, verified=False)
 
                         # Send verification email via allauth
-                        send_email_confirmation(request, user, signup=True)
+                        send_verification_email_for_user(request, user)
                         # Send welcome email with username, email, and temp password
                         try:
                             send_welcome_teach_course_email(request, user, temp_password)
@@ -8844,3 +8847,56 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+@login_required
+def learning_analytics_dashboard(request):
+    """Dashboard showing AI-powered learning analytics and insights."""
+    from .recommendations import get_learning_analytics
+
+    analytics = get_learning_analytics(request.user)
+    active_plan = StudyPlan.objects.filter(user=request.user, status="active").first()
+    context = {
+        "analytics": analytics,
+        "active_plan": active_plan,
+    }
+    return render(request, "dashboard/learning_analytics.html", context)
+
+
+@login_required
+def study_plan_view(request):
+    """View the user's active study plan."""
+    plan = StudyPlan.objects.filter(user=request.user, status="active").first()
+    past_plans = StudyPlan.objects.filter(user=request.user).exclude(status="active").order_by("-created_at")[:5]
+    context = {
+        "plan": plan,
+        "past_plans": past_plans,
+    }
+    return render(request, "dashboard/study_plan.html", context)
+
+
+@login_required
+@require_POST
+def generate_study_plan_view(request):
+    """Generate or regenerate a study plan."""
+    from .recommendations import generate_study_plan
+
+    generate_study_plan(request.user)
+    messages.success(request, "Your study plan has been generated!")
+    return redirect("study_plan")
+
+
+@login_required
+@require_POST
+def complete_study_plan_item(request, item_id):
+    """Mark a study plan item as complete (AJAX endpoint)."""
+    item = get_object_or_404(StudyPlanItem, id=item_id, plan__user=request.user)
+    item.mark_complete()
+    plan = item.plan
+    return JsonResponse(
+        {
+            "success": True,
+            "completion_percentage": plan.completion_percentage,
+            "items_remaining": plan.items_remaining,
+        }
+    )

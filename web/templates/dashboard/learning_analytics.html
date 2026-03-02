@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Learning Analytics - Dashboard{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Learning Analytics</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-1">AI-powered insights into your learning journey</p>
+    </div>
+    <div class="flex gap-3">
+      <a href="{% url 'study_plan' %}"
+         class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200 flex items-center">
+        <i class="fas fa-clipboard-list mr-2"></i> Study Plan
+      </a>
+      <a href="{% url 'student_dashboard' %}"
+         class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg transition duration-200">
+        <i class="fas fa-arrow-left mr-2"></i> Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- AI Coaching Message -->
+  {% if analytics.ai_coaching %}
+  <div class="bg-gradient-to-r from-teal-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 rounded-lg shadow-lg p-6 mb-8 border-l-4 border-teal-400">
+    <div class="flex items-start gap-4">
+      <div class="bg-teal-100 dark:bg-teal-900 rounded-full p-3 flex-shrink-0">
+        <i class="fas fa-robot text-teal-600 dark:text-teal-300 text-xl"></i>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-1">
+          <i class="fas fa-sparkles text-teal-500 mr-1"></i> AI Coach
+        </h2>
+        <p class="text-gray-700 dark:text-gray-300">{{ analytics.ai_coaching }}</p>
+        {% if analytics.learning_style_hint %}
+        <p class="text-sm text-teal-700 dark:text-teal-400 mt-2">
+          <i class="fas fa-lightbulb mr-1"></i> {{ analytics.learning_style_hint }}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Overview Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Quiz Average</p>
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-white">{{ analytics.quiz_performance.avg_score }}%</h3>
+        </div>
+        <div class="bg-teal-100 dark:bg-teal-900 rounded-full p-3">
+          <i class="fas fa-brain text-teal-500 dark:text-teal-300 text-xl"></i>
+        </div>
+      </div>
+      <div class="flex items-center mt-2 gap-1">
+        {% if analytics.quiz_performance.trend == "improving" %}
+          <i class="fas fa-arrow-up text-green-500 text-xs"></i>
+          <span class="text-xs text-green-600 dark:text-green-400">Improving ({{ analytics.quiz_performance.recent_avg }}% recent)</span>
+        {% elif analytics.quiz_performance.trend == "declining" %}
+          <i class="fas fa-arrow-down text-red-500 text-xs"></i>
+          <span class="text-xs text-red-600 dark:text-red-400">Declining ({{ analytics.quiz_performance.recent_avg }}% recent)</span>
+        {% else %}
+          <i class="fas fa-minus text-gray-400 text-xs"></i>
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ analytics.quiz_performance.total_attempts }} quizzes taken</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Attendance Rate</p>
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-white">{{ analytics.attendance_rate }}%</h3>
+        </div>
+        <div class="bg-green-100 dark:bg-green-900 rounded-full p-3">
+          <i class="fas fa-calendar-check text-green-600 dark:text-green-300 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+        {{ analytics.attendance_detail.attended }} attended, {{ analytics.attendance_detail.late }} late, {{ analytics.attendance_detail.absent }} absent
+      </p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Weekly Velocity</p>
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-white">{{ analytics.learning_velocity }}</h3>
+        </div>
+        <div class="bg-blue-100 dark:bg-blue-900 rounded-full p-3">
+          <i class="fas fa-tachometer-alt text-blue-500 dark:text-blue-300 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Sessions per week</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Study Hours</p>
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-white">{{ analytics.total_study_hours }}</h3>
+        </div>
+        <div class="bg-purple-100 dark:bg-purple-900 rounded-full p-3">
+          <i class="fas fa-clock text-purple-500 dark:text-purple-300 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Estimated total</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+    <!-- Subject Strength Chart -->
+    <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-chart-bar text-teal-500 mr-2"></i> Subject Mastery
+      </h2>
+      {% if analytics.subject_breakdown %}
+        <div class="space-y-4">
+          {% for subject in analytics.subject_breakdown %}
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ subject.subject }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ subject.accuracy }}% accuracy</span>
+                  <span class="text-sm font-semibold {% if subject.score >= 70 %}text-green-600 dark:text-green-400{% elif subject.score >= 50 %}text-yellow-600 dark:text-yellow-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                    {{ subject.score }}%
+                  </span>
+                </div>
+              </div>
+              <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                <div class="h-3 rounded-full transition-all duration-500 {% if subject.score >= 70 %}bg-green-500{% elif subject.score >= 50 %}bg-yellow-500{% else %}bg-red-500{% endif %}"
+                     role="progressbar" aria-valuenow="{{ subject.score }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ subject.subject }} mastery {{ subject.score }}%"
+                     data-width="{{ subject.score }}"></div>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ subject.quizzes }} quizzes taken</p>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400">Take some quizzes to see your subject mastery breakdown.</p>
+      {% endif %}
+    </div>
+
+    <!-- Strengths & Weaknesses -->
+    <div class="space-y-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <h2 class="text-lg font-semibold text-green-600 dark:text-green-400 mb-3">
+          <i class="fas fa-arrow-up mr-2"></i> Strengths
+        </h2>
+        {% if analytics.strengths %}
+          <ul class="space-y-2">
+            {% for s in analytics.strengths %}
+              <li class="flex justify-between items-center text-sm">
+                <span class="text-gray-700 dark:text-gray-300">{{ s.subject }}</span>
+                <span class="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded-full text-xs font-semibold">{{ s.score }}%</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-500 dark:text-gray-400">Keep taking quizzes to identify your strengths.</p>
+        {% endif %}
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <h2 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-3">
+          <i class="fas fa-arrow-down mr-2"></i> Needs Improvement
+        </h2>
+        {% if analytics.weaknesses %}
+          <ul class="space-y-2">
+            {% for w in analytics.weaknesses %}
+              <li class="flex justify-between items-center text-sm">
+                <span class="text-gray-700 dark:text-gray-300">{{ w.subject }}</span>
+                <span class="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-2 py-1 rounded-full text-xs font-semibold">{{ w.score }}%</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-500 dark:text-gray-400">No weak areas detected. Great job!</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Study Tips + At-Risk Courses -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- AI Study Tips -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-graduation-cap text-teal-500 mr-2"></i> AI Study Tips
+      </h2>
+      {% if analytics.ai_study_tips %}
+        <ul class="space-y-3">
+          {% for tip in analytics.ai_study_tips %}
+            <li class="flex items-start gap-3">
+              <span class="bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-300 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">{{ forloop.counter }}</span>
+              <p class="text-sm text-gray-700 dark:text-gray-300">{{ tip }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="space-y-3">
+          <div class="flex items-start gap-3">
+            <span class="bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-300 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">1</span>
+            <p class="text-sm text-gray-700 dark:text-gray-300">Take quizzes regularly to track your progress and identify areas for improvement.</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-300 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">2</span>
+            <p class="text-sm text-gray-700 dark:text-gray-300">Attend sessions consistently — even showing up late is better than missing entirely.</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-300 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5">3</span>
+            <p class="text-sm text-gray-700 dark:text-gray-300">Generate a study plan to get a personalized roadmap for the next 2 weeks.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- At-Risk Courses -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i> At-Risk Courses
+      </h2>
+      {% if analytics.risk_courses %}
+        <div class="space-y-4">
+          {% for rc in analytics.risk_courses %}
+            <div class="border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 bg-yellow-50 dark:bg-yellow-900">
+              <div class="flex justify-between items-center mb-2">
+                <h3 class="font-medium text-gray-800 dark:text-white">{{ rc.course }}</h3>
+                <span class="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{{ rc.progress }}%</span>
+              </div>
+              <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div class="bg-yellow-500 h-2 rounded-full" role="progressbar" aria-valuenow="{{ rc.progress }}" aria-valuemin="0" aria-valuemax="100" data-width="{{ rc.progress }}"></div>
+              </div>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-2">{{ rc.remaining_sessions }} of {{ rc.total_sessions }} sessions remaining</p>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-4">
+          <i class="fas fa-check-circle text-green-500 text-3xl mb-2"></i>
+          <p class="text-gray-500 dark:text-gray-400">All courses are on track!</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Weekly Activity -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-chart-line text-blue-500 mr-2"></i> Weekly Activity (Last 8 Weeks)
+      </h2>
+      {% if analytics.weekly_activity %}
+        <div class="flex items-end justify-between gap-2 h-40">
+          {% for week in analytics.weekly_activity %}
+            <div class="flex flex-col items-center flex-1">
+              <div class="w-full flex flex-col items-center justify-end h-32">
+                {% if week.total > 0 %}
+                  <span class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ week.total }}</span>
+                  <div class="w-full max-w-8 bg-teal-400 dark:bg-teal-500 rounded-t transition-all duration-500"
+                       data-height="{% widthratio week.total 10 100 %}"
+                       title="{{ week.sessions }} sessions, {{ week.quizzes }} quizzes"
+                       role="img" aria-label="{{ week.week }}: {{ week.total }} activities"></div>
+                {% else %}
+                  <div class="w-full max-w-8 bg-gray-200 dark:bg-gray-700 rounded-t h-1"></div>
+                {% endif %}
+              </div>
+              <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ week.week }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-500 dark:text-gray-400">No activity data yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- Smart Recommendations -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i> Smart Recommendations
+      </h2>
+      <div class="space-y-3">
+        {% for rec in analytics.recommendations %}
+          <div class="flex items-start gap-3 p-3 rounded-lg {% if rec.priority == 'high' %}bg-red-50 dark:bg-red-900{% elif rec.priority == 'medium' %}bg-yellow-50 dark:bg-yellow-900{% else %}bg-green-50 dark:bg-green-900{% endif %}">
+            <i class="{{ rec.icon }} {% if rec.priority == 'high' %}text-red-500{% elif rec.priority == 'medium' %}text-yellow-500{% else %}text-green-500{% endif %} mt-1"></i>
+            <div>
+              <p class="text-sm text-gray-700 dark:text-gray-300">{{ rec.text }}</p>
+              <span class="text-xs {% if rec.priority == 'high' %}text-red-600 dark:text-red-400{% elif rec.priority == 'medium' %}text-yellow-600 dark:text-yellow-400{% else %}text-green-600 dark:text-green-400{% endif %} font-semibold uppercase">{{ rec.priority }} priority</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Predicted Completion -->
+  {% if analytics.predicted_completion %}
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+    <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+      <i class="fas fa-flag-checkered text-purple-500 mr-2"></i> Course Progress & Predicted Completion
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for pc in analytics.predicted_completion %}
+        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ pc.course }}</h3>
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
+            <div class="bg-teal-500 h-2.5 rounded-full" role="progressbar" aria-valuenow="{{ pc.progress }}" aria-valuemin="0" aria-valuemax="100" data-width="{{ pc.progress }}"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>{{ pc.progress }}% complete</span>
+            {% if pc.predicted_date %}
+              <span>Est. {{ pc.predicted_date|date:"M d, Y" }}</span>
+            {% else %}
+              <span>{{ pc.remaining_sessions }} sessions left</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Motivation + CTA -->
+  {% if analytics.motivation_message %}
+  <div class="bg-gradient-to-r from-purple-50 to-teal-50 dark:from-gray-800 dark:to-gray-700 rounded-lg shadow-lg p-6 mb-8 text-center">
+    <i class="fas fa-fire text-orange-500 text-2xl mb-2"></i>
+    <p class="text-gray-700 dark:text-gray-300 text-lg italic">{{ analytics.motivation_message }}</p>
+  </div>
+  {% endif %}
+
+  {% if not active_plan %}
+    <div class="bg-teal-50 dark:bg-teal-900 rounded-lg shadow-lg p-8 text-center">
+      <i class="fas fa-rocket text-teal-500 text-4xl mb-4"></i>
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Ready to level up?</h2>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">Generate an AI-powered study plan tailored to your strengths, weaknesses, and schedule.</p>
+      <form method="post" action="{% url 'generate_study_plan' %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="bg-teal-300 hover:bg-teal-400 text-white px-8 py-3 rounded-lg transition duration-200 text-lg font-semibold">
+          <i class="fas fa-magic mr-2"></i> Generate AI Study Plan
+        </button>
+      </form>
+    </div>
+  {% else %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+      <p class="text-gray-600 dark:text-gray-400 mb-3">You have an active study plan ({{ active_plan.completion_percentage }}% complete)</p>
+      <a href="{% url 'study_plan' %}"
+         class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200 inline-block">
+        <i class="fas fa-clipboard-list mr-2"></i> View Study Plan
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-width]').forEach(function(bar) {
+    bar.style.width = bar.dataset.width + '%';
+  });
+  document.querySelectorAll('[data-height]').forEach(function(bar) {
+    bar.style.height = bar.dataset.height + '%';
+  });
+});
+</script>
+{% endblock content %}

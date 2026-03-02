@@ -511,3 +511,7 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
 SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=not DEBUG)
 GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
+
+# AI / OpenAI Configuration for Learning Analytics
+OPENAI_API_KEY = env.str("OPENAI_API_KEY", default="")
+AI_MODEL = env.str("AI_MODEL", default="gpt-4o-mini")

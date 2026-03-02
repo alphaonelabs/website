@@ -7,11 +7,17 @@
   <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
       <h1 class="text-3xl font-bold">Student Dashboard</h1>
-      <!-- Create Study Group Button -->
-      <a href="{% url 'create_study_group' %}"
-         class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg flex items-center">
-        <i class="fas fa-users mr-2"></i> Create Study Group
-      </a>
+      <div class="flex gap-3">
+        <a href="{% url 'learning_analytics' %}"
+           class="bg-teal-300 hover:bg-teal-400 text-white font-semibold px-4 py-2 rounded-lg flex items-center">
+          <i class="fas fa-chart-bar mr-2"></i> Learning Analytics
+        </a>
+        <!-- Create Study Group Button -->
+        <a href="{% url 'create_study_group' %}"
+           class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg flex items-center">
+          <i class="fas fa-users mr-2"></i> Create Study Group
+        </a>
+      </div>
     </div>
     <!-- Overview Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

@@ -3176,3 +3176,117 @@ class VirtualClassroomWhiteboard(models.Model):
         ordering = ["-last_updated"]
         verbose_name = "Virtual Classroom Whiteboard"
         verbose_name_plural = "Virtual Classroom Whiteboards"
+
+
+
+class SubjectStrength(models.Model):
+    """Tracks a user's strength/weakness per subject based on quiz performance."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="subject_strengths")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="user_strengths")
+    strength_score = models.FloatField(default=50.0, help_text="Score from 0-100 indicating mastery level")
+    total_quizzes = models.PositiveIntegerField(default=0)
+    total_correct = models.PositiveIntegerField(default=0)
+    total_questions = models.PositiveIntegerField(default=0)
+    last_assessed = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["user", "subject"]
+        ordering = ["strength_score"]
+        verbose_name_plural = "Subject strengths"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.subject.name}: {self.strength_score:.0f}%"
+
+    def update_from_quiz(self, score, max_score):
+        """Update strength using weighted moving average (70% historical, 30% new)."""
+        if max_score > 0:
+            new_score = (score / max_score) * 100
+            if self.total_quizzes == 0:
+                self.strength_score = new_score
+            else:
+                self.strength_score = (0.7 * self.strength_score) + (0.3 * new_score)
+            self.total_quizzes += 1
+            self.total_correct += score
+            self.total_questions += max_score
+            self.save()
+
+
+class StudyPlan(models.Model):
+    """A personalized study plan generated from learning analytics."""
+
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("completed", "Completed"),
+        ("paused", "Paused"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="study_plans")
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
+    daily_goal_minutes = models.PositiveIntegerField(default=30)
+    weekly_goal_sessions = models.PositiveIntegerField(default=5)
+    target_completion_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
+
+    @property
+    def completion_percentage(self):
+        total = self.items.count()
+        if total == 0:
+            return 0
+        completed = self.items.filter(is_completed=True).count()
+        return int((completed / total) * 100)
+
+    @property
+    def items_remaining(self):
+        return self.items.filter(is_completed=False).count()
+
+
+class StudyPlanItem(models.Model):
+    """Individual item within a study plan."""
+
+    ITEM_TYPE_CHOICES = [
+        ("session", "Attend Session"),
+        ("quiz", "Take Quiz"),
+        ("review", "Review Material"),
+        ("practice", "Practice Exercise"),
+        ("reading", "Reading Assignment"),
+    ]
+    PRIORITY_CHOICES = [
+        ("high", "High"),
+        ("medium", "Medium"),
+        ("low", "Low"),
+    ]
+
+    plan = models.ForeignKey(StudyPlan, on_delete=models.CASCADE, related_name="items")
+    item_type = models.CharField(max_length=10, choices=ITEM_TYPE_CHOICES, default="review")
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
+    course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True)
+    session = models.ForeignKey(Session, on_delete=models.SET_NULL, null=True, blank=True)
+    quiz = models.ForeignKey("Quiz", on_delete=models.SET_NULL, null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    estimated_minutes = models.PositiveIntegerField(default=30)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "-priority", "due_date"]
+
+    def __str__(self):
+        return f"{self.title} ({'✓' if self.is_completed else '○'})"
+
+    def mark_complete(self):
+        self.is_completed = True
+        self.completed_at = timezone.now()
+        self.save()

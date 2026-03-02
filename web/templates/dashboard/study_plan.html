@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Study Plan - Dashboard{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Study Plan</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-1">Your personalized learning roadmap</p>
+    </div>
+    <div class="flex gap-3">
+      <a href="{% url 'learning_analytics' %}"
+         class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg transition duration-200">
+        <i class="fas fa-chart-bar mr-2"></i> Analytics
+      </a>
+      <form method="post" action="{% url 'generate_study_plan' %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
+          <i class="fas fa-sync-alt mr-2"></i> {% if plan %}Regenerate{% else %}Generate{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {% if plan %}
+    <!-- Plan Progress -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-white">{{ plan.title }}</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ plan.description }}</p>
+        </div>
+        <div class="flex gap-4 text-sm">
+          <span class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1 rounded-full">
+            <i class="fas fa-clock mr-1"></i> {{ plan.daily_goal_minutes }}min/day
+          </span>
+          <span class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full">
+            <i class="fas fa-calendar mr-1"></i> {{ plan.weekly_goal_sessions }} sessions/week
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+          <div class="bg-teal-500 h-4 rounded-full transition-all duration-500"
+               id="plan-progress-bar"
+               style="width: {{ plan.completion_percentage }}%"></div>
+        </div>
+        <span class="text-lg font-bold text-teal-600 dark:text-teal-400" id="plan-progress-text">{{ plan.completion_percentage }}%</span>
+      </div>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2" id="items-remaining-text">{{ plan.items_remaining }} items remaining</p>
+    </div>
+
+    <!-- Plan Items -->
+    <div class="space-y-4">
+      {% for item in plan.items.all %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-5 flex items-start gap-4 transition duration-200 {% if item.is_completed %}opacity-60{% endif %}"
+             id="plan-item-{{ item.id }}">
+          <!-- Complete Button -->
+          <div class="flex-shrink-0 mt-1">
+            {% if item.is_completed %}
+              <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                <i class="fas fa-check text-white text-sm"></i>
+              </div>
+            {% else %}
+              <button onclick="completeItem({{ item.id }})"
+                      class="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-teal-500 dark:hover:border-teal-400 flex items-center justify-center transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      aria-label="Mark {{ item.title }} as complete">
+                <i class="fas fa-check text-transparent hover:text-teal-500 text-sm"></i>
+              </button>
+            {% endif %}
+          </div>
+          <!-- Item Content -->
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-semibold uppercase px-2 py-0.5 rounded-full
+                {% if item.item_type == 'session' %}bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300
+                {% elif item.item_type == 'quiz' %}bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300
+                {% elif item.item_type == 'review' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300
+                {% elif item.item_type == 'practice' %}bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300
+                {% else %}bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300{% endif %}">
+                {{ item.get_item_type_display }}
+              </span>
+              <span class="text-xs font-semibold uppercase
+                {% if item.priority == 'high' %}text-red-600 dark:text-red-400
+                {% elif item.priority == 'medium' %}text-yellow-600 dark:text-yellow-400
+                {% else %}text-green-600 dark:text-green-400{% endif %}">
+                {{ item.priority }}
+              </span>
+            </div>
+            <h3 class="font-medium text-gray-800 dark:text-white {% if item.is_completed %}line-through{% endif %}">{{ item.title }}</h3>
+            {% if item.description %}
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ item.description }}</p>
+            {% endif %}
+          </div>
+          <!-- Meta -->
+          <div class="flex-shrink-0 text-right text-sm text-gray-500 dark:text-gray-400">
+            {% if item.due_date %}
+              <p><i class="fas fa-calendar-day mr-1"></i> {{ item.due_date|date:"M d" }}</p>
+            {% endif %}
+            <p><i class="fas fa-clock mr-1"></i> {{ item.estimated_minutes }}min</p>
+            {% if item.is_completed and item.completed_at %}
+              <p class="text-green-600 dark:text-green-400 text-xs mt-1">
+                <i class="fas fa-check mr-1"></i> {{ item.completed_at|date:"M d" }}
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+          <i class="fas fa-clipboard text-gray-400 text-4xl mb-4"></i>
+          <p class="text-gray-500 dark:text-gray-400">This plan has no items yet.</p>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Past Plans -->
+    {% if past_plans %}
+      <div class="mt-8">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Previous Plans</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for pp in past_plans %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <h3 class="font-medium text-gray-800 dark:text-white text-sm">{{ pp.title }}</h3>
+              <div class="flex justify-between items-center mt-2">
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ pp.created_at|date:"M d, Y" }}</span>
+                <span class="text-xs font-semibold {% if pp.status == 'completed' %}text-green-600{% else %}text-gray-500{% endif %}">
+                  {{ pp.get_status_display }} - {{ pp.completion_percentage }}%
+                </span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <!-- No Plan State -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 text-center">
+      <i class="fas fa-clipboard-list text-teal-500 text-5xl mb-4"></i>
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">No Active Study Plan</h2>
+      <p class="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+        Generate an AI-powered study plan tailored to your quiz performance, attendance, and course progress. The AI analyzes your strengths and weaknesses to create a realistic 2-week roadmap.
+      </p>
+      <form method="post" action="{% url 'generate_study_plan' %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="bg-teal-300 hover:bg-teal-400 text-white px-8 py-3 rounded-lg transition duration-200 text-lg font-semibold">
+          <i class="fas fa-magic mr-2"></i> Generate My Study Plan
+        </button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function completeItem(itemId) {
+  const langPrefix = window.location.pathname.match(/^\/[a-z]{2}(-[a-z]{2})?\//)?.[0] || '/';
+  fetch(`${langPrefix}dashboard/study-plan/complete/${itemId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]') ?
+        document.querySelector('[name=csrfmiddlewaretoken]').value :
+        document.cookie.split('csrftoken=')[1]?.split(';')[0] || '',
+      'Content-Type': 'application/json',
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      const itemEl = document.getElementById(`plan-item-${itemId}`);
+      if (itemEl) {
+        itemEl.classList.add('opacity-60');
+        const btn = itemEl.querySelector('button');
+        if (btn) {
+          btn.outerHTML = '<div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"><i class="fas fa-check text-white text-sm"></i></div>';
+        }
+        const title = itemEl.querySelector('h3');
+        if (title) title.classList.add('line-through');
+      }
+      const progressBar = document.getElementById('plan-progress-bar');
+      const progressText = document.getElementById('plan-progress-text');
+      const remainingText = document.getElementById('items-remaining-text');
+      if (progressBar) progressBar.style.width = data.completion_percentage + '%';
+      if (progressText) progressText.textContent = data.completion_percentage + '%';
+      if (remainingText) remainingText.textContent = data.items_remaining + ' items remaining';
+    }
+  })
+  .catch(err => console.error('Error completing item:', err));
+}
+</script>
+{% endblock content %}

@@ -55,6 +55,9 @@ from .models import (
     VideoRequest,
     WaitingRoom,
     WebRequest,
+    SubjectStrength,
+    StudyPlan,
+    StudyPlanItem,
 )
 
 admin.site.unregister(EmailAddress)
@@ -889,3 +892,34 @@ class VideoRequestAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "category", "requester", "created_at")
     list_filter = ("status", "category")
     search_fields = ("title", "description", "requester__username")
+
+
+@admin.register(SubjectStrength)
+class SubjectStrengthAdmin(admin.ModelAdmin):
+    list_display = ("user", "subject", "strength_score", "total_quizzes", "last_assessed")
+    list_filter = ("subject", "last_assessed")
+    search_fields = ("user__username", "subject__name")
+    raw_id_fields = ("user", "subject")
+
+
+class StudyPlanItemInline(admin.TabularInline):
+    model = StudyPlanItem
+    extra = 0
+    readonly_fields = ("completed_at",)
+
+
+@admin.register(StudyPlan)
+class StudyPlanAdmin(admin.ModelAdmin):
+    list_display = ("user", "title", "status", "completion_percentage", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("user__username", "title")
+    raw_id_fields = ("user",)
+    inlines = [StudyPlanItemInline]
+
+
+@admin.register(StudyPlanItem)
+class StudyPlanItemAdmin(admin.ModelAdmin):
+    list_display = ("title", "plan", "item_type", "priority", "is_completed", "due_date")
+    list_filter = ("item_type", "priority", "is_completed")
+    search_fields = ("title", "plan__user__username")
+    raw_id_fields = ("plan", "course", "session", "quiz")
