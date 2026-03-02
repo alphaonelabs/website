@@ -15,6 +15,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
+    if: github.repository == 'alphaonelabs/alphaonelabs-gsoc' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository
