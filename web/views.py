@@ -47,7 +47,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
-from django.urls import NoReverseMatch, reverse, reverse_lazy
+from django.urls import NoReverseMatch, reverse, reverse_lazy, translate_url
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.html import strip_tags
@@ -8839,3 +8839,30 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+@require_POST
+def custom_set_language(request):
+    """
+    Custom view to set language and redirect to the translated URL.
+    This handles i18n_patterns where the language code is in the URL prefix.
+    """
+    lang_code = request.POST.get("language")
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
+
+    if not next_url:
+        next_url = "/"
+
+    response = HttpResponse(status=302)
+
+    if lang_code and lang_code in [l[0] for l in settings.LANGUAGES]:
+        if hasattr(request, "session"):
+            request.session["_language"] = lang_code
+
+        # Try to translate the URL to the new language
+        translated_url = translate_url(next_url, lang_code)
+        if translated_url:
+            next_url = translated_url
+
+    response["Location"] = next_url
+    return response
