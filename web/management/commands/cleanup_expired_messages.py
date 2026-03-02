@@ -20,6 +20,5 @@ class Command(BaseCommand):
         """
         cutoff = get_message_retention_cutoff()
         expired_qs = PeerMessage.objects.filter(created_at__lt=cutoff)
-        count = expired_qs.count()
-        expired_qs.delete()
-        self.stdout.write(self.style.SUCCESS(f"Successfully deleted {count} expired messages"))
+        deleted_count, _ = expired_qs.delete()
+        self.stdout.write(self.style.SUCCESS(f"Successfully deleted {deleted_count} expired messages"))

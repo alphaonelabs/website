@@ -27,7 +27,7 @@
             <button type="button"
                     class="flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 hover:bg-teal-200 dark:hover:bg-teal-800 transition group"
                     data-person-btn
-                    data-person="{{ person.username|escapejs }}">
+                    data-person="{{ person.username }}">
               {% if person.avatar_url %}
                 <img src="{{ person.avatar_url }}"
                      alt="Avatar"

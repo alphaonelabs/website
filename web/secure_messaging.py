@@ -309,9 +309,34 @@ def messaging_dashboard(request):
     received_users = PeerMessage.objects.filter(receiver=request.user).values_list("sender", flat=True)
     user_ids = set(list(sent_users) + list(received_users))
     user_ids.discard(request.user.id)
+
+    users = User.objects.filter(id__in=user_ids).select_related("profile")
+    users_by_id = {user.id: user for user in users}
+
+    all_messages = (
+        PeerMessage.objects.filter(
+            models.Q(sender=request.user, receiver_id__in=user_ids)
+            | models.Q(receiver=request.user, sender_id__in=user_ids)
+        )
+        .select_related("sender", "receiver")
+        .order_by("created_at")
+    )
+
+    messages_by_other_user_id = {}
+    current_user_id = request.user.id
+    for msg in all_messages:
+        other_user_id = msg.receiver_id if msg.sender_id == current_user_id else msg.sender_id
+        messages_by_other_user_id.setdefault(other_user_id, []).append(msg)
+
+    unread_counts = dict(
+        PeerMessage.objects.filter(sender_id__in=user_ids, receiver=request.user, is_read=False)
+        .values_list("sender_id")
+        .annotate(unread=models.Count("id"))
+    )
+
     people = []
     for uid in user_ids:
-        user = User.objects.filter(id=uid).first()
+        user = users_by_id.get(uid)
         if not user:
             continue
         # Get avatar URL or fallback
@@ -327,10 +352,8 @@ def messaging_dashboard(request):
             elif getattr(user.profile, "avatar", None):
                 if user.profile.avatar:
                     avatar_url = user.profile.avatar.url
-        # Get all messages between current user and this user
-        msgs = PeerMessage.objects.filter(
-            (models.Q(sender=request.user, receiver=user) | models.Q(sender=user, receiver=request.user))
-        ).order_by("created_at")
+
+        msgs = messages_by_other_user_id.get(uid, [])
         msg_list = []
         for msg in msgs:
             try:
@@ -346,8 +369,7 @@ def messaging_dashboard(request):
                     "starred": msg.starred,
                 }
             )
-        # Add has_unread flag for visual cue
-        has_unread = PeerMessage.objects.filter(sender=user, receiver=request.user, is_read=False).exists()
+        has_unread = unread_counts.get(uid, 0) > 0
         people.append(
             {
                 "username": user.username,
