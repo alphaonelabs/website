@@ -22,21 +22,6 @@
           scroll-behavior: smooth;
       }
 
-      .notification {
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          z-index: 1000;
-          max-width: 350px;
-          transform: translateY(30px);
-          opacity: 0;
-          transition: transform 0.3s, opacity 0.3s;
-      }
-
-      .notification.show {
-          transform: translateY(0);
-          opacity: 1;
-      }
 
       /* Hide scrollbar but keep functionality */
       .scrollbar-hide {
@@ -568,8 +553,9 @@
                           <span class="text-sm text-gray-700 dark:text-gray-300">Share on LinkedIn</span>
                         </a>
                         <button id="copyLinkBtn"
+                                type="button"
                                 class="w-full flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                                @click="copyToClipboard()">
+                                @click="copyToClipboard(); open = false">
                           <i class="fas fa-link text-gray-600 dark:text-gray-400 mr-2"></i>
                           <span class="text-sm text-gray-700 dark:text-gray-300">Copy Link</span>
                         </button>
@@ -1456,7 +1442,7 @@
        aria-live="assertive"
        class="fixed bottom-5 right-5 z-[1000] max-w-[350px] translate-y-[30px] opacity-0 transition-all duration-300 bg-teal-500 dark:bg-teal-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3">
     <i class="fas fa-check-circle notification-icon text-xl"></i>
-    <span class="notification-message font-medium">This is a notification</span>
+    <span class="notification-message font-medium"></span>
   </div>
   <script>
       function copyToClipboard() {
@@ -1495,9 +1481,10 @@
           } catch (err) {
               console.error('Fallback: Could not copy text', err);
               showNotification('Failed to copy link', 'error');
+          } finally {
+              document.body.removeChild(textArea);
           }
 
-          document.body.removeChild(textArea);
       }
 
       document.addEventListener('keydown', function(event) {
@@ -1598,6 +1585,8 @@
               });
       }
 
+      let notificationTimer = null;
+
       function showNotification(message, type = 'info') {
           const notification = document.getElementById('notification');
           const iconEl = notification.querySelector('.notification-icon');
@@ -1612,11 +1601,13 @@
               bgColor = 'bg-teal-500 dark:bg-teal-600';
           } else if (type === 'error') {
               icon = 'fa-exclamation-circle';
-              bgColor = 'bg-red-500 dark:bg-red-600';
+              bgColor = 'bg-red-600 dark:bg-red-700';
           } else if (type === 'warning') {
               icon = 'fa-exclamation-triangle';
-              bgColor = 'bg-yellow-500 dark:bg-yellow-600';
+              bgColor = 'bg-yellow-600 dark:bg-yellow-700';
           }
+
+          if (notificationTimer) clearTimeout(notificationTimer);
 
           // Update notification content
           iconEl.className = `fas ${icon} notification-icon text-xl`;
@@ -1624,8 +1615,9 @@
           messageEl.textContent = message;
 
           // Hide after 3 seconds
-          setTimeout(() => {
+          notificationTimer = setTimeout(() => {
               notification.className = `fixed bottom-5 right-5 z-[1000] max-w-[350px] transition-all duration-300 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 translate-y-[30px] opacity-0`;
+              notificationTimer = null;
           }, 3000);
       }
 
