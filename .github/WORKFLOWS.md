@@ -208,6 +208,49 @@ This project follows a **PR-first** contribution model. Maintainers manage the i
 - Validates Django migrations
 - Checks for migration conflicts
 
+### Copilot PR Label Tracker Workflow
+**File:** `.github/workflows/copilot-label-tracker.yml`
+
+**Triggers:**
+- `issue_comment` (created) — fires when a new comment is posted on any issue or PR
+- `pull_request_review` (submitted) — fires when a pull request review is submitted
+- Scheduled every 10 minutes (`*/10 * * * *`)
+
+**Purpose:** Automatically applies labels to pull requests based on GitHub Copilot's activity.
+
+**Labels managed:**
+| Label | Color | Meaning |
+|---|---|---|
+| `copilot-working` | Yellow (`fbca04`) | Copilot reacted with 👀 to a PR comment — work is in progress |
+| `copilot-finished` | Green (`0e8a16`) | Copilot posted a comment or review — work is complete |
+
+**How it works:**
+
+1. **Detecting the 👀 reaction (scheduled job)**
+   - Runs every 10 minutes against all open PRs
+   - For each PR that does not yet have a `copilot-working` or `copilot-finished` label, fetches all
+     issue-level comments and their reactions
+   - If any comment has an `eyes` (👀) reaction from a known Copilot account, adds the
+     `copilot-working` label to the PR
+
+2. **Detecting a Copilot comment or review (event-driven job)**
+   - Triggers immediately when a new comment or pull request review is submitted
+   - Checks whether the author is a known Copilot account
+     (`copilot-swe-agent[bot]`, `copilot[bot]`, `github-copilot[bot]`, etc.)
+   - If so, removes `copilot-working` (if present) and adds `copilot-finished`
+
+**Known Copilot accounts checked:**
+- `copilot-swe-agent[bot]`
+- `copilot[bot]`
+- `github-copilot[bot]`
+- `Copilot`
+- `copilot`
+
+**Notes:**
+- Both labels are created automatically if they do not already exist in the repository
+- The scheduled job skips PRs that already carry either label to avoid duplicate work
+- The `copilot-finished` label is idempotent — it will not be added twice
+
 ---
 
 For more information about GitHub Actions, see the [GitHub Actions documentation](https://docs.github.com/en/actions).
