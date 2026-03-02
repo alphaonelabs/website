@@ -8762,7 +8762,7 @@ class SurveyResultsView(LoginRequiredMixin, DetailView):
 
 class SurveyDeleteView(LoginRequiredMixin, DeleteView):
     model = Survey
-    success_url = reverse_lazy("surveys") 
+    success_url = reverse_lazy("surveys")
     template_name = "surveys/delete.html"
     login_url = "/accounts/login/"
 
