@@ -1,0 +1,80 @@
+Category,Path,View,Name,Score,Criticality,Notes,Recommendation
+Infrastructure,i18n/,django.conf.urls.i18n,i18n,10,CRITICAL,Critical - language selection,KEEP
+Infrastructure,captcha/,captcha.urls,captcha,9,CRITICAL,Critical - security/anti-spam,KEEP
+Infrastructure,markdownx/,markdownx.urls,markdownx,7,IMPORTANT,Important - content editing,KEEP
+Infrastructure,github_update/,views.github_update,github_update,6,USEFUL,Webhook - CI/CD integration,KEEP
+Core Pages,"",views.index,index,10,CRITICAL,Critical - homepage,KEEP
+Core Pages,learn/,views.learn,learn,10,CRITICAL,Critical - main student entry point,KEEP
+Core Pages,teach/,views.teach,teach,10,CRITICAL,Critical - main teacher entry point,KEEP
+Core Pages,about/,views.about,about,8,IMPORTANT,Important - site information,KEEP
+Core Pages,terms/,views.terms,terms,8,IMPORTANT,Important - legal,KEEP
+Core Pages,feedback/,views.feedback,feedback,7,IMPORTANT,Important - user feedback,KEEP
+Authentication,accounts/signup/,views.signup_view,account_signup,10,CRITICAL,Critical - user registration,KEEP
+Authentication,accounts/,allauth.urls,accounts,10,CRITICAL,Critical - login/logout/auth,KEEP
+Authentication,profile/,views.profile,profile,9,CRITICAL,Critical - user profile management,KEEP
+Authentication,accounts/profile/,views.profile,accounts_profile,9,CRITICAL,Critical - user profile,KEEP
+Authentication,accounts/delete/,views.delete_account,delete_account,7,IMPORTANT,Important - account deletion,KEEP
+Authentication,account/notification-preferences/,notification_preferences,notification_preferences,7,IMPORTANT,Important - notifications,KEEP
+Marketing,ref/<str:code>/,views.handle_referral,handle_referral,6,USEFUL,Useful - referral tracking,KEEP
+Marketing,discounts/apply/,apply_discount_via_referrer,apply_discount_via_referrer,6,USEFUL,Useful - discount system,KEEP
+Dashboards,dashboard/student/,views.student_dashboard,student_dashboard,10,CRITICAL,Critical - main student dashboard,KEEP
+Dashboards,dashboard/teacher/,views.teacher_dashboard,teacher_dashboard,10,CRITICAL,Critical - main teacher dashboard,KEEP
+Dashboards,dashboard/content/,views.content_dashboard,content_dashboard,7,USEFUL,Useful - content creator dashboard,KEEP
+Dashboards,dashboard/progress/,views.progress_visualization,progress_visualization,7,USEFUL,Useful - progress tracking,KEEP
+Courses,courses/create/,views.create_course,create_course,10,CRITICAL,Critical - course creation,KEEP
+Courses,courses/search/,views.course_search,course_search,9,CRITICAL,Critical - course discovery,KEEP
+Courses,courses/<slug:slug>/,views.course_detail,course_detail,10,CRITICAL,Critical - course detail view,KEEP
+Courses,courses/<slug:course_slug>/enroll/,views.enroll_course,enroll_course,10,CRITICAL,Critical - course enrollment,KEEP
+Courses,courses/<slug:slug>/edit/,views.update_course,update_course,9,CRITICAL,Critical - course management,KEEP
+Courses,courses/<slug:slug>/delete/,views.delete_course,delete_course,8,IMPORTANT,Important - course deletion,KEEP
+Courses,courses/<slug:slug>/toggle-status/,views.toggle_course_status,toggle_course_status,8,IMPORTANT,Important - course status,KEEP
+Content,memes/,views.meme_list,meme_list,3,OPTIONAL,Optional - meme list,REMOVE
+Content,memes/add/,views.add_meme,add_meme,2,OPTIONAL,Optional - add meme,REMOVE
+Content,memes/<slug:slug>/,views.meme_detail,meme_detail,2,OPTIONAL,Optional - meme detail,REMOVE
+Marketing,social-media/,views.social_media_dashboard,social_media_dashboard,3,OPTIONAL,Optional - social media dashboard,REMOVE
+Marketing,social-media/post/<int:post_id>/,views.post_to_twitter,post_to_twitter,3,OPTIONAL,Optional - post to twitter,REMOVE
+Marketing,social-media/create/,views.create_scheduled_post,create_scheduled_post,3,OPTIONAL,Optional - schedule post,REMOVE
+Marketing,social-media/delete/<int:post_id>/,views.delete_post,delete_post,2,OPTIONAL,Optional - delete post,REMOVE
+Legacy,whiteboard/<int:classroom_id>/,RedirectView,classroom_whiteboard_legacy,2,OPTIONAL,Deprecated - legacy redirect,REMOVE
+Legacy,update_student_attendance/<int:classroom_id>/,RedirectView,update_student_attendance_legacy,2,OPTIONAL,Deprecated - legacy redirect,REMOVE
+Development,test-sentry-error/,lambda,test_sentry,2,OPTIONAL,Optional - sentry testing,REMOVE
+Merchandise,store/create/,views.StorefrontCreateView,storefront_create,4,OPTIONAL,Optional - create store,EVALUATE
+Merchandise,store/<slug:store_slug>/edit/,views.StorefrontUpdateView,storefront_update,4,OPTIONAL,Optional - edit store,EVALUATE
+Merchandise,storefront/<slug:store_slug>/,views.StorefrontDetailView,storefront_detail,4,OPTIONAL,Optional - store detail,EVALUATE
+Merchandise,goods/,views.GoodsListView,goods_list,4,OPTIONAL,Optional - goods list,EVALUATE
+Merchandise,goods/<int:pk>/,views.GoodsDetailView,goods_detail,4,OPTIONAL,Optional - goods detail,EVALUATE
+Merchandise,store/<slug:store_slug>/goods/create/,views.GoodsCreateView,goods_create,4,OPTIONAL,Optional - create goods,EVALUATE
+Merchandise,goods/<int:pk>/edit/,views.GoodsUpdateView,goods_update,3,OPTIONAL,Optional - edit goods,EVALUATE
+Merchandise,goods/delete/<int:pk>/,views.GoodsDeleteView,goods_delete,3,OPTIONAL,Optional - delete goods,EVALUATE
+Merchandise,goods/add-to-cart/<int:pk>/,add_goods_to_cart,add_goods_to_cart,4,OPTIONAL,Optional - add goods to cart,EVALUATE
+Merchandise,products/,GoodsListingView,goods_listing,4,OPTIONAL,Optional - products listing,EVALUATE
+Merchandise,orders/<int:pk>/,views.OrderDetailView,order_detail,4,OPTIONAL,Optional - order detail,EVALUATE
+Merchandise,store/<slug:store_slug>/orders/,views.OrderManagementView,store_order_management,4,OPTIONAL,Optional - order management,EVALUATE
+Merchandise,orders/item/<int:item_id>/update-status/,views.update_order_status,update_order_status,4,OPTIONAL,Optional - update order,EVALUATE
+Merchandise,store/<slug:store_slug>/analytics/,views.StoreAnalyticsView,store_analytics,3,OPTIONAL,Optional - store analytics,EVALUATE
+Merchandise,admin/merchandise-analytics/,views.AdminMerchAnalyticsView,admin_merch_analytics,3,OPTIONAL,Optional - admin merch analytics,EVALUATE
+Tools,trackers/,views.tracker_list,tracker_list,4,OPTIONAL,Optional - tracker list,EVALUATE
+Tools,trackers/create/,views.create_tracker,create_tracker,4,OPTIONAL,Optional - create tracker,EVALUATE
+Tools,trackers/<int:tracker_id>/,views.tracker_detail,tracker_detail,4,OPTIONAL,Optional - tracker detail,EVALUATE
+Tools,trackers/<int:tracker_id>/update/,views.update_tracker,update_tracker,4,OPTIONAL,Optional - update tracker,EVALUATE
+Tools,trackers/<int:tracker_id>/progress/,views.update_progress,update_progress,4,OPTIONAL,Optional - update progress,EVALUATE
+Tools,trackers/embed/<str:embed_code>/,views.embed_tracker,embed_tracker,3,OPTIONAL,Optional - embed tracker,EVALUATE
+Personalization,avatar/customize/,views_avatar.customize_avatar,customize_avatar,4,OPTIONAL,Optional - avatar customize,EVALUATE
+Personalization,avatar/set-as-profile/,views_avatar.set_avatar_as_profile_pic,set_avatar_as_profile_pic,3,OPTIONAL,Optional - set profile pic,EVALUATE
+Personalization,avatar/preview/,views_avatar.preview_avatar,preview_avatar,3,OPTIONAL,Optional - avatar preview,EVALUATE
+Community,waiting-rooms/,views.waiting_room_list,waiting_room_list,5,USEFUL,Useful - waiting rooms list,EVALUATE
+Community,waiting-rooms/<int:waiting_room_id>/,views.waiting_room_detail,waiting_room_detail,5,USEFUL,Useful - waiting room detail,EVALUATE
+Community,waiting-rooms/<int:waiting_room_id>/join/,views.join_waiting_room,join_waiting_room,5,USEFUL,Useful - join waiting room,EVALUATE
+Community,waiting-rooms/<int:waiting_room_id>/leave/,views.leave_waiting_room,leave_waiting_room,4,OPTIONAL,Optional - leave waiting room,EVALUATE
+Community,waiting-rooms/<int:waiting_room_id>/delete/,views.delete_waiting_room,delete_waiting_room,4,OPTIONAL,Optional - delete waiting room,EVALUATE
+Community,waiting-rooms/<int:waiting_room_id>/create-course/,views.create_course_from_waiting_room,create_course_from_waiting_room,5,USEFUL,Useful - course from waiting room,EVALUATE
+Collaboration,teams/,views.team_goals,team_goals,5,USEFUL,Useful - team goals list,CONSOLIDATE
+Collaboration,teams/create/,views.create_team_goal,create_team_goal,5,USEFUL,Useful - create team goal,CONSOLIDATE
+Collaboration,teams/<int:goal_id>/,views.team_goal_detail,team_goal_detail,5,USEFUL,Useful - goal detail,CONSOLIDATE
+Collaboration,teams/invite/<int:invite_id>/accept/,views.accept_team_invite,accept_team_invite,4,OPTIONAL,Optional - accept invite,CONSOLIDATE
+Collaboration,teams/invite/<int:invite_id>/decline/,views.decline_team_invite,decline_team_invite,4,OPTIONAL,Optional - decline invite,CONSOLIDATE
+Collaboration,teams/<int:goal_id>/mark-contribution/,views.mark_team_contribution,mark_team_contribution,5,USEFUL,Useful - mark contribution,CONSOLIDATE
+Collaboration,teams/<int:goal_id>/delete/,views.delete_team_goal,delete_team_goal,4,OPTIONAL,Optional - delete goal,CONSOLIDATE
+Collaboration,teams/<int:goal_id>/remove-member/<int:member_id>/,views.remove_team_member,remove_team_member,4,OPTIONAL,Optional - remove member,CONSOLIDATE
+Collaboration,teams/<int:goal_id>/edit/,views.edit_team_goal,edit_team_goal,4,OPTIONAL,Optional - edit goal,CONSOLIDATE
+Collaboration,teams/<int:team_goal_id>/submit_proof/,views.submit_team_proof,submit_team_proof,4,OPTIONAL,Optional - submit proof,CONSOLIDATE
