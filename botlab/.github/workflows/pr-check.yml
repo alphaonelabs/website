@@ -1,0 +1,46 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check files exist
+        run: |
+          if [ ! -f "index.html" ]; then
+            echo "❌ index.html not found"
+            exit 1
+          fi
+          if [ ! -f "home.html" ]; then
+            echo "❌ home.html not found"
+            exit 1
+          fi
+          echo "✅ All required files exist"
+
+      - name: Test server
+        run: |
+          # Start server in background and save its process ID
+          python3 -m http.server 8000 &
+          SERVER_PID=$!
+          
+          # Wait for server to start
+          sleep 3
+          
+          # Test if server responds
+          curl -f http://localhost:8000/index.html || {
+            echo "❌ Server test failed"
+            kill $SERVER_PID
+            exit 1
+          }
+          
+          echo "✅ Server works correctly"
+          
+          # Stop the server (important!)
+          kill $SERVER_PID
+          echo "✅ Server stopped"
