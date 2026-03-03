@@ -22,13 +22,16 @@
             <a href="{% url 'docs_topic_detail' topic.slug %}"
                class="group block h-full bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden">
               <!-- Color Header -->
-              <div class="h-1 {% if topic.color == 'blue' %}bg-gradient-to-r from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700{% elif topic.color == 'purple' %}bg-gradient-to-r from-purple-400 to-purple-600 dark:from-purple-500 dark:to-purple-700{% elif topic.color == 'pink' %}bg-gradient-to-r from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700{% elif topic.color == 'green' %}bg-gradient-to-r from-green-400 to-green-600 dark:from-green-500 dark:to-green-700{% else %}bg-gradient-to-r from-teal-400 to-teal-600 dark:from-teal-500 dark:to-teal-700{% endif %}"></div>
+              <div class="h-1 {% if topic.color == 'blue' %}bg-gradient-to-r from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700{% elif topic.color == 'purple' %}bg-gradient-to-r from-purple-400 to-purple-600 dark:from-purple-500 dark:to-purple-700{% elif topic.color == 'pink' %}bg-gradient-to-r from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700{% elif topic.color == 'green' %}bg-gradient-to-r from-green-400 to-green-600 dark:from-green-500 dark:to-green-700{% else %}bg-gradient-to-r from-teal-400 to-teal-600 dark:from-teal-500 dark:to-teal-700{% endif %}">
+              </div>
               <!-- Content -->
               <div class="p-6">
                 <!-- Icon and Title -->
                 <div class="flex items-start justify-between mb-3">
                   <div>
-                    <h3 class="text-xl font-bold {% if topic.color == 'blue' %}text-blue-600 dark:text-blue-400{% elif topic.color == 'purple' %}text-purple-600 dark:text-purple-400{% elif topic.color == 'pink' %}text-pink-600 dark:text-pink-400{% elif topic.color == 'green' %}text-green-600 dark:text-green-400{% else %}text-teal-600 dark:text-teal-400{% endif %} group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-200">{{ topic.title }}</h3>
+                    <h3 class="text-xl font-bold {% if topic.color == 'blue' %}text-blue-600 dark:text-blue-400{% elif topic.color == 'purple' %}text-purple-600 dark:text-purple-400{% elif topic.color == 'pink' %}text-pink-600 dark:text-pink-400{% elif topic.color == 'green' %}text-green-600 dark:text-green-400{% else %}text-teal-600 dark:text-teal-400{% endif %} group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-200">
+                      {{ topic.title }}
+                    </h3>
                   </div>
                 </div>
                 <!-- Description -->
@@ -47,7 +50,7 @@
                     </svg>
                     {{ topic.sections.count }} sections
                   </div>
-                  {% if user.is_authenticated and user_progress|dict_key:topic.id %}
+                  {% if user.is_authenticated and user_progress|dict_key:topic.id != None %}
                     <div class="flex items-center">
                       <div class="text-xs font-semibold {% if topic.color == 'blue' %}text-blue-600 dark:text-blue-400{% elif topic.color == 'purple' %}text-purple-600 dark:text-purple-400{% elif topic.color == 'pink' %}text-pink-600 dark:text-pink-400{% elif topic.color == 'green' %}text-green-600 dark:text-green-400{% else %}text-teal-600 dark:text-teal-400{% endif %}">
                         {{ user_progress|dict_key:topic.id|floatformat:0 }}%
@@ -56,7 +59,7 @@
                   {% endif %}
                 </div>
                 <!-- Progress Bar (if user is authenticated) -->
-                {% if user.is_authenticated and user_progress|dict_key:topic.id %}
+                {% if user.is_authenticated and user_progress|dict_key:topic.id != None %}
                   <div class="mt-4 bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
                     <div class="h-full transition-all duration-300 {% if topic.color == 'blue' %}bg-gradient-to-r from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700{% elif topic.color == 'purple' %}bg-gradient-to-r from-purple-400 to-purple-600 dark:from-purple-500 dark:to-purple-700{% elif topic.color == 'pink' %}bg-gradient-to-r from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700{% elif topic.color == 'green' %}bg-gradient-to-r from-green-400 to-green-600 dark:from-green-500 dark:to-green-700{% else %}bg-gradient-to-r from-teal-400 to-teal-600 dark:from-teal-500 dark:to-teal-700{% endif %}"
                          style="width: {{ user_progress|dict_key:topic.id|floatformat:0 }}%"></div>

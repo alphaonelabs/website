@@ -203,14 +203,19 @@ class DocumentationNotes {
      */
     private async markSectionViewed(sectionSlug: string): Promise<void> {
         try {
-            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            // Get CSRF token from meta tag (cookie-based) or form input
+            let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrfToken) {
+                const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]') as HTMLInputElement;
+                csrfToken = csrfInput?.value;
+            }
             if (!csrfToken) return;
 
             const url = `/docs/${this.config.topicSlug}/section/${sectionSlug}/viewed/`;
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': (csrfToken as HTMLInputElement).value,
+                    'X-CSRFToken': csrfToken,
                     'Content-Type': 'application/json',
                 },
             });
@@ -255,10 +260,17 @@ class DocumentationNotes {
     private renderMarkdown(element: Element): void {
         if (!(window as any).marked) return;
 
-        element.querySelectorAll('[data-markdown]').forEach((el) => {
-            const content = (el as any).textContent;
-            if (content) {
-                (el as any).innerHTML = (window as any).marked.parse(content);
+        // Look for both doc-markdown divs (AJAX loaded content)
+        const markdownContainers = element.querySelectorAll('.doc-markdown');
+        markdownContainers.forEach((el) => {
+            // Find corresponding markdown source (usually next to or parent sibling)
+            const parent = el.parentElement;
+            const markdownSource = parent?.querySelector('#doc-markdown-source');
+            if (markdownSource) {
+                const content = markdownSource.textContent;
+                if (content && (content as any).trim()) {
+                    (el as any).innerHTML = (window as any).marked.parse(content).replace(/&lt;script/gi, '&amp;lt;script').replace(/&lt;iframe/gi, '&amp;lt;iframe').replace(/&lt;object/gi, '&amp;lt;object');
+                }
             }
         });
 

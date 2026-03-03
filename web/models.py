@@ -3346,4 +3346,3 @@ class DocumentationNoteProgress(models.Model):
         self.sections_viewed.add(section)
         self.current_section = section
         self.update_progress()
-        self.save()

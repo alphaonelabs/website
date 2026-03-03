@@ -26,7 +26,9 @@ def documentation_topics_list(request):
     Context:
         topics: QuerySet of published DocumentationNoteTopic objects
     """
-    topics = DocumentationNoteTopic.objects.filter(is_published=True).prefetch_related("sections")
+    from django.db.models import Count
+
+    topics = DocumentationNoteTopic.objects.filter(is_published=True).annotate(section_count=Count("sections"))
 
     user_progress = {}
     if request.user.is_authenticated:

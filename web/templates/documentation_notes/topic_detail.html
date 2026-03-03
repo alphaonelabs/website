@@ -124,7 +124,7 @@
                     <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">{{ current_section.description }}</p>
                   {% endif %}
                 </div>
-                {% if current_section.icon %}<div class="text-4xl">📚</div>{% endif %}
+                {% if current_section.icon %}<div class="text-4xl">{{ current_section.icon }}</div>{% endif %}
               </div>
             </div>
             <!-- Main Content -->
@@ -134,7 +134,13 @@
                    data-topic-slug="{{ topic.slug }}"
                    data-section-slug="{{ current_section.slug }}">
                 {% if content.markdown_content %}
-                  <script id="doc-markdown-source" type="text/plain">{{ content.markdown_content }}</script>
+                  <script id="doc-markdown-source" type="text/plain">
+                      {
+                          {
+                              content.markdown_content
+                          }
+                      }
+                  </script>
                   <div class="doc-markdown"></div>
                 {% else %}
                   <p class="text-gray-500 dark:text-gray-400 italic">This section doesn't have content yet.</p>
@@ -208,10 +214,12 @@
       });
 
       const markedRenderer = new window.marked.Renderer();
-      markedRenderer.link = function (href, title, text) {
+      markedRenderer.link = function(href, title, text) {
           return `<a href="${href}" title="${title || ''}" target="_blank" rel="noopener noreferrer">${text}</a>`;
       };
-      window.marked.setOptions({ renderer: markedRenderer });
+      window.marked.setOptions({
+          renderer: markedRenderer
+      });
 
       window.MathJax = {
           tex: {
@@ -253,33 +261,39 @@
           }
 
           // Only track progress for authenticated users
-          {% if user.is_authenticated %}
+          {
+              %
+              if user.is_authenticated %
+          }
           const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                           document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+              document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
           if (csrfToken) {
               fetch('{% url "docs_mark_section_viewed" topic.slug current_section.slug %}', {
-                  method: 'POST',
-                  headers: {
-                      'X-CSRFToken': csrfToken,
-                      'Content-Type': 'application/json',
-                  },
-              })
-              .then(function(response) {
-                  return response.json()
-              })
-              .then(function(data) {
-                  if (data.success) {
-                      const progressBar = document.querySelector('[style*="width"]')
-                      if (progressBar) {
-                          const newWidth = Math.round(data.completion_percentage)
-                          progressBar.style.width = newWidth + '%'
+                      method: 'POST',
+                      headers: {
+                          'X-CSRFToken': csrfToken,
+                          'Content-Type': 'application/json',
+                      },
+                  })
+                  .then(function(response) {
+                      return response.json()
+                  })
+                  .then(function(data) {
+                      if (data.success) {
+                          const progressBar = document.querySelector('[style*="width"]')
+                          if (progressBar) {
+                              const newWidth = Math.round(data.completion_percentage)
+                              progressBar.style.width = newWidth + '%'
+                          }
                       }
-                  }
-              })
-              .catch(function(err) {
-                  console.error('Error marking section as viewed:', err)
-              })
+                  })
+                  .catch(function(err) {
+                      console.error('Error marking section as viewed:', err)
+                  })
+          } {
+              % endif %
+          }
       })
   </script>
 {% endblock %}
