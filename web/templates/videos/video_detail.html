@@ -12,6 +12,7 @@
           {% with video.video_url|cut:"https://www.youtube.com/watch?v="|cut:"https://youtu.be/" as raw_id %}
             {% with raw_id|slice:":11" as video_id %}
               <iframe src="https://www.youtube.com/embed/{{ video_id }}?rel=0&modestbranding=1"
+                      title="YouTube video player - {{ video.title }}"
                       frameborder="0"
                       allow="autoplay; encrypted-media"
                       referrerpolicy="strict-origin-when-cross-origin"

@@ -6065,9 +6065,9 @@ def fetch_video_oembed(video_url):
 def video_detail(request, id):
     video = get_object_or_404(EducationalVideo, id=id)
 
-    related_videos = EducationalVideo.objects.filter(category=video.category).exclude(id=id)[:5]
+    # related_videos = EducationalVideo.objects.filter(category=video.category).exclude(id=id)[:5]
 
-    return render(request, "videos/video_detail.html", {"video": video, "related_videos": related_videos})
+    return render(request, "videos/video_detail.html", {"video": video})
 
 
 def upload_educational_video(request):
