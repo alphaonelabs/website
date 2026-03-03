@@ -243,6 +243,8 @@
 
       // ========== BLOCKS ==========
       let blocks = [];
+      const STORAGE_KEY = 'robotics_playground_state';
+      let lastSaveTime = 0;
 
       function generateBlocks() {
         blocks = [];
@@ -301,6 +303,7 @@
           }
           robot.holdingBlock = null;
           showMsg('Dropped!');
+          saveState();
         } else {
           // PICK
           for (let b of blocks) {
@@ -312,6 +315,7 @@
               b.held = true;
               robot.holdingBlock = b.id;
               showMsg('Grabbed! SPACE to drop');
+              saveState();
               break;
             }
           }
@@ -355,6 +359,7 @@
         }
         updatePartsList();
         showMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} added!`);
+        saveState();
       }
 
       function removePart(type) {
@@ -396,6 +401,7 @@
 
         updatePartsList();
         showMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} removed!`);
+        saveState();
       }
 
       function resetAll() {
@@ -422,6 +428,7 @@
         document.getElementById('detection-info').innerHTML = '<div class="text-gray-500">LiDAR not installed</div>';
         document.getElementById('detection-indicator').classList.add('hidden');
         updatePartsList();
+        localStorage.removeItem(STORAGE_KEY);
       }
 
       function updatePartsList() {
@@ -432,15 +439,18 @@
       function updatePower() {
         motorPower = +document.getElementById('power-slider').value;
         document.getElementById('power-val').textContent = motorPower + '%';
+        saveState();
       }
 
       function updateTurn() {
         turnSpeed = +document.getElementById('turn-slider').value;
         document.getElementById('turn-val').textContent = turnSpeed + '°';
+        saveState();
       }
 
       function updateColor() {
         robot.color = document.getElementById('color-picker').value;
+        saveState();
       }
 
       // ========== GAME LOOP ==========
@@ -731,12 +741,18 @@
       function loop() {
         update();
         render();
+        const now = Date.now();
+        if (robot.parts.chassis && now - lastSaveTime > 1000) {
+          saveState();
+          lastSaveTime = now;
+        }
         requestAnimationFrame(loop);
       }
 
       // ========== LIDAR DETECTION ==========
       let lastDetectedId = null;
 
+      loadState();
       loop();
 
       function segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
@@ -830,6 +846,79 @@
         } else {
           el.innerHTML = '<div class="text-gray-500">No objects detected</div>';
           indicator.classList.add('hidden');
+        }
+      }
+
+      // ========== STATE PERSISTENCE ==========
+      function saveState() {
+        try {
+          const state = {
+            robot: {
+              x: robot.x,
+              y: robot.y,
+              angle: robot.angle,
+              color: robot.color,
+              holdingBlock: robot.holdingBlock,
+              parts: { ...robot.parts },
+            },
+            motorPower,
+            turnSpeed,
+            blocks: blocks.map(b => ({ ...b })),
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+          // localStorage may be unavailable
+        }
+      }
+
+      function loadState() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (!saved) return;
+          const state = JSON.parse(saved);
+          if (!state) return;
+
+          if (state.robot) {
+            robot.x = typeof state.robot.x === 'number' ? Math.max(35, Math.min(canvas.width - 35, state.robot.x)) : canvas.width / 2;
+            robot.y = typeof state.robot.y === 'number' ? Math.max(35, Math.min(canvas.height - 35, state.robot.y)) : canvas.height / 2;
+            robot.angle = typeof state.robot.angle === 'number' ? state.robot.angle : 0;
+            robot.color = state.robot.color || '#0d9488';
+            robot.holdingBlock = state.robot.holdingBlock !== undefined ? state.robot.holdingBlock : null;
+            if (state.robot.parts) {
+              robot.parts = { ...robot.parts, ...state.robot.parts };
+            }
+          }
+
+          if (typeof state.motorPower === 'number') {
+            motorPower = state.motorPower;
+            document.getElementById('power-slider').value = motorPower;
+            document.getElementById('power-val').textContent = motorPower + '%';
+          }
+          if (typeof state.turnSpeed === 'number') {
+            turnSpeed = state.turnSpeed;
+            document.getElementById('turn-slider').value = turnSpeed;
+            document.getElementById('turn-val').textContent = turnSpeed + '°';
+          }
+
+          if (Array.isArray(state.blocks) && state.blocks.length > 0) {
+            blocks = state.blocks;
+            document.getElementById('block-count').textContent = blocks.length;
+          }
+
+          document.getElementById('color-picker').value = robot.color;
+
+          if (robot.parts.chassis) {
+            document.getElementById('start-prompt').classList.add('hidden');
+          }
+          if (robot.parts.camera) {
+            document.getElementById('camera-feed').classList.remove('hidden');
+          }
+          if (robot.parts.lidar) {
+            updateDetectionUI(null);
+          }
+          updatePartsList();
+        } catch (e) {
+          // Corrupted state, ignore
         }
       }
     </script>
