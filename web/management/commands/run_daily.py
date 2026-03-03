@@ -30,6 +30,11 @@ class Command(BaseCommand):
             call_command("cleanup_abandoned_drafts")
             self.stdout.write(self.style.SUCCESS("Successfully completed cleanup_abandoned_drafts"))
 
+            # Clean up expired direct messages
+            self.stdout.write("Running cleanup_expired_messages...")
+            call_command("cleanup_expired_messages")
+            self.stdout.write(self.style.SUCCESS("Successfully completed cleanup_expired_messages"))
+
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Error running daily tasks: {str(e)}"))
             raise e
