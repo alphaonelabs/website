@@ -6062,6 +6062,12 @@ def fetch_video_oembed(video_url):
     return {}
 
 
+def video_detail(request, id):
+    video = get_object_or_404(EducationalVideo, id=id)
+
+    return render(request, "videos/video_detail.html", {"video": video})
+
+
 def upload_educational_video(request):
     """
     Handles GET → render form, POST → save video.
