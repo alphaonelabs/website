@@ -222,11 +222,6 @@ def handle_referral(request, code):
     """Handle referral link with the format /en/ref/CODE/ and redirect to homepage."""
     # Store referral code in session
     request.session["referral_code"] = code
-
-    # The WebRequestMiddleware will automatically log this request with the correct path
-    # containing the referral code, so we don't need to create a WebRequest manually
-
-    # Redirect to homepage
     return redirect("index")
 
 
@@ -8767,12 +8762,11 @@ class SurveyResultsView(LoginRequiredMixin, DetailView):
 
 class SurveyDeleteView(LoginRequiredMixin, DeleteView):
     model = Survey
-    success_url = reverse_lazy("surveys")  # Use reverse_lazy
+    success_url = reverse_lazy("surveys")
     template_name = "surveys/delete.html"
     login_url = "/accounts/login/"
 
     def get_queryset(self):
-        # Override queryset to only allow creator to access the survey for deletion
         base_qs = super().get_queryset()
         return base_qs.filter(author=self.request.user)
 
@@ -8786,17 +8780,14 @@ def join_session_waiting_room(request, course_slug):
     """View for joining a session waiting room for the next session of a course."""
     course = get_object_or_404(Course, slug=course_slug)
 
-    # Get or create the session waiting room for this course
     session_waiting_room, created = WaitingRoom.objects.get_or_create(
         course=course, status="open", defaults={"status": "open"}
     )
 
-    # Check if the waiting room is open
     if session_waiting_room.status != "open":
         messages.error(request, "This session waiting room is no longer open for joining.")
         return redirect("course_detail", slug=course_slug)
 
-    # Add the user to participants if not already in
     if request.user not in session_waiting_room.participants.all():
         session_waiting_room.participants.add(request.user)
         next_session = session_waiting_room.get_next_session()

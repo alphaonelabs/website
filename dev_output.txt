@@ -1,0 +1,22 @@
+
+> alphaonelabs-education-website@1.0.0 dev
+> bash scripts/dev.sh
+
+[0;34m[1mPre-flight checks...[0m
+[0;32m  ✔ .env file found[0m
+[0;32m  ✔ Python: /Users/lakshyagupta/Desktop/GSOC'26/OSL/alphaonelabs-education-website/.venv/bin/python[0m
+[1;33m  ⚠ Redis CLI not found — skipping Redis check.[0m
+[1;33m  ⚠ WebSocket features (chat, whiteboard) require Redis at runtime.[0m
+[0;34m[1mCollecting static files...[0m
+Sentry DSN not configured; error events will not be sent.
+Using console email backend with Slack notifications for development
+Warning: Service account file not found at /Users/lakshyagupta/Desktop/GSOC'26/OSL/alphaonelabs-education-website/your-service-account-file-path
+[0;32m  ✔ Static files ready[0m
+
+[0;32m[1m══════════════════════════════════════════════════════════[0m
+[0;32m[1m  Alpha One Labs — Development Server[0m
+[0;32m[1m══════════════════════════════════════════════════════════[0m
+
+  [0;36mLocal:[0m   http://localhost:8000
+  [0;36mNetwork:[0m http://0.0.0.0:8000
+  [0;36mAdmin:[0m   http://localhost:8000/a-dmin-url123/
