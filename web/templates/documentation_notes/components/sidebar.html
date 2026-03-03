@@ -18,7 +18,7 @@
     {{ topic.title }}
   </h3>
   <!-- Sections Navigation -->
-  <nav class="space-y-1">
+  <nav id="sidebar-content" class="space-y-1">
     {% for section in sections %}
       <a href="{% url 'docs_section_detail' topic.slug section.slug %}"
          class="group flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200 {% if section.id == current_section.id %}bg-{{ topic.color }}-50 dark:bg-{{ topic.color }}-900/20 text-{{ topic.color }}-700 dark:text-{{ topic.color }}-300 font-semibold border-l-2 border-{{ topic.color }}-500{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 border-l-2 border-transparent{% endif %}">

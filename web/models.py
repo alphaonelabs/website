@@ -3334,7 +3334,15 @@ class DocumentationNoteProgress(models.Model):
         self.save()
 
     def mark_section_as_viewed(self, section):
-        """Mark a section as viewed and update progress"""
+        """Mark a section as viewed and update progress
+
+        Only allows sections that belong to this progress object's topic
+        to prevent corrupt progress state.
+        """
+        # Enforce topic consistency - only allow sections from this topic
+        if section.topic_id != self.topic_id:
+            raise ValueError("Section does not belong to this progress topic")
+
         self.sections_viewed.add(section)
         self.current_section = section
         self.update_progress()

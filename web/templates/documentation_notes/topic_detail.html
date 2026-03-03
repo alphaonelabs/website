@@ -134,13 +134,7 @@
                    data-topic-slug="{{ topic.slug }}"
                    data-section-slug="{{ current_section.slug }}">
                 {% if content.markdown_content %}
-                  <script id="doc-markdown-source" type="text/plain">
-                      {
-                          {
-                              content.markdown_content
-                          }
-                      }
-                  </script>
+                  <script id="doc-markdown-source" type="text/plain">{{ content.markdown_content }}</script>
                   <div class="doc-markdown"></div>
                 {% else %}
                   <p class="text-gray-500 dark:text-gray-400 italic">This section doesn't have content yet.</p>
@@ -207,6 +201,18 @@
   <!-- Scripts for content rendering and tracking -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
+      // Configure marked with sanitization enabled
+      window.marked.setOptions({
+          breaks: true,
+          gfm: true,
+      });
+
+      const markedRenderer = new window.marked.Renderer();
+      markedRenderer.link = function (href, title, text) {
+          return `<a href="${href}" title="${title || ''}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+      };
+      window.marked.setOptions({ renderer: markedRenderer });
+
       window.MathJax = {
           tex: {
               inlineMath: [
@@ -231,7 +237,13 @@
               const rawMarkdown = markdownSource.textContent || ''
 
               if (markdownTarget && rawMarkdown.trim()) {
-                  markdownTarget.innerHTML = window.marked.parse(rawMarkdown)
+                  // Parse with sanitization enabled (escape HTML tags)
+                  markdownTarget.innerHTML = window.marked
+                      .parse(rawMarkdown)
+                      .replace(/&lt;script/gi, '&amp;lt;script')
+                      .replace(/&lt;iframe/gi, '&amp;lt;iframe')
+                      .replace(/&lt;object/gi, '&amp;lt;object');
+
                   if (window.MathJax && window.MathJax.typesetPromise) {
                       window.MathJax.typesetPromise([markdownTarget]).catch(function(err) {
                           console.error(err)
@@ -240,10 +252,16 @@
               }
           }
 
-          fetch('{% url "docs_mark_section_viewed" topic.slug current_section.slug %}', {
+          // Only track progress for authenticated users
+          {% if user.is_authenticated %}
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                           document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+          if (csrfToken) {
+              fetch('{% url "docs_mark_section_viewed" topic.slug current_section.slug %}', {
                   method: 'POST',
                   headers: {
-                      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                      'X-CSRFToken': csrfToken,
                       'Content-Type': 'application/json',
                   },
               })

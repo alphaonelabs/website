@@ -2,36 +2,6 @@
 
 {% block title %}Documentation Topics - Alpha One Labs{% endblock %}
 {% block content %}
-  <style>
-      .topic-color-header {
-          height: 4px;
-      }
-
-      .topic-card {
-          --topic-light: #14b8a6;
-          --topic-dark: #0d9488;
-      }
-
-      .topic-card.color-blue {
-          --topic-light: #3b82f6;
-          --topic-dark: #1d4ed8;
-      }
-
-      .topic-card.color-purple {
-          --topic-light: #a855f7;
-          --topic-dark: #7e22ce;
-      }
-
-      .topic-card.color-pink {
-          --topic-light: #ec4899;
-          --topic-dark: #be185d;
-      }
-
-      .topic-card.color-green {
-          --topic-light: #22c55e;
-          --topic-dark: #15803d;
-      }
-  </style>
   <div class="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
     <!-- Header -->
     <div class="bg-gradient-to-r from-teal-50 to-blue-50 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-700">
@@ -50,17 +20,15 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {% for topic in topics %}
             <a href="{% url 'docs_topic_detail' topic.slug %}"
-               class="group topic-card color-{{ topic.color }} block h-full bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden">
+               class="group block h-full bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden">
               <!-- Color Header -->
-              <div class="topic-color-header"
-                   style="background: linear-gradient(90deg, var(--topic-light), var(--topic-dark))"></div>
+              <div class="h-1 {% if topic.color == 'blue' %}bg-gradient-to-r from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700{% elif topic.color == 'purple' %}bg-gradient-to-r from-purple-400 to-purple-600 dark:from-purple-500 dark:to-purple-700{% elif topic.color == 'pink' %}bg-gradient-to-r from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700{% elif topic.color == 'green' %}bg-gradient-to-r from-green-400 to-green-600 dark:from-green-500 dark:to-green-700{% else %}bg-gradient-to-r from-teal-400 to-teal-600 dark:from-teal-500 dark:to-teal-700{% endif %}"></div>
               <!-- Content -->
               <div class="p-6">
                 <!-- Icon and Title -->
                 <div class="flex items-start justify-between mb-3">
                   <div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-200"
-                        style="color: var(--topic-light)">{{ topic.title }}</h3>
+                    <h3 class="text-xl font-bold {% if topic.color == 'blue' %}text-blue-600 dark:text-blue-400{% elif topic.color == 'purple' %}text-purple-600 dark:text-purple-400{% elif topic.color == 'pink' %}text-pink-600 dark:text-pink-400{% elif topic.color == 'green' %}text-green-600 dark:text-green-400{% else %}text-teal-600 dark:text-teal-400{% endif %} group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-200">{{ topic.title }}</h3>
                   </div>
                 </div>
                 <!-- Description -->
@@ -81,7 +49,7 @@
                   </div>
                   {% if user.is_authenticated and user_progress|dict_key:topic.id %}
                     <div class="flex items-center">
-                      <div class="text-xs font-semibold" style="color: var(--topic-light);">
+                      <div class="text-xs font-semibold {% if topic.color == 'blue' %}text-blue-600 dark:text-blue-400{% elif topic.color == 'purple' %}text-purple-600 dark:text-purple-400{% elif topic.color == 'pink' %}text-pink-600 dark:text-pink-400{% elif topic.color == 'green' %}text-green-600 dark:text-green-400{% else %}text-teal-600 dark:text-teal-400{% endif %}">
                         {{ user_progress|dict_key:topic.id|floatformat:0 }}%
                       </div>
                     </div>
@@ -90,9 +58,8 @@
                 <!-- Progress Bar (if user is authenticated) -->
                 {% if user.is_authenticated and user_progress|dict_key:topic.id %}
                   <div class="mt-4 bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
-                    <div class="h-full transition-all duration-300"
-                         style="background: linear-gradient(90deg, var(--topic-light), var(--topic-dark));
-                                width: {{ user_progress|dict_key:topic.id|floatformat:0 }}%"></div>
+                    <div class="h-full transition-all duration-300 {% if topic.color == 'blue' %}bg-gradient-to-r from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700{% elif topic.color == 'purple' %}bg-gradient-to-r from-purple-400 to-purple-600 dark:from-purple-500 dark:to-purple-700{% elif topic.color == 'pink' %}bg-gradient-to-r from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700{% elif topic.color == 'green' %}bg-gradient-to-r from-green-400 to-green-600 dark:from-green-500 dark:to-green-700{% else %}bg-gradient-to-r from-teal-400 to-teal-600 dark:from-teal-500 dark:to-teal-700{% endif %}"
+                         style="width: {{ user_progress|dict_key:topic.id|floatformat:0 }}%"></div>
                   </div>
                 {% endif %}
               </div>

@@ -81,6 +81,7 @@ urlpatterns += i18n_patterns(
     path("blog/<slug:slug>/", views.blog_detail, name="blog_detail"),
     # Documentation Notes URLs
     path("docs/", documentation_views.documentation_topics_list, name="docs_topics_list"),
+    path("docs/user/progress/", documentation_views.user_progress, name="docs_user_progress"),
     path("docs/<slug:topic_slug>/", documentation_views.documentation_topic_detail, name="docs_topic_detail"),
     path(
         "docs/<slug:topic_slug>/<slug:section_slug>/",
@@ -92,7 +93,6 @@ urlpatterns += i18n_patterns(
         documentation_views.mark_section_viewed,
         name="docs_mark_section_viewed",
     ),
-    path("docs/user/progress/", documentation_views.user_progress, name="docs_user_progress"),
     # Leaderboard URLs
     path("leaderboards/", views.all_leaderboards, name="leaderboards"),
     # Success Stories URLs

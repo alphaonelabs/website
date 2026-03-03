@@ -58,9 +58,12 @@ class DocumentationNotes {
             nextBtn.addEventListener('click', () => this.goToNextSection());
         }
 
-        // Smooth scroll for anchor links in content
-        document.querySelectorAll('a[href^="#"]').forEach((link) => {
-            link.addEventListener('click', (e) => this.onAnchorClick(e));
+        // Use event delegation for anchor links (works for dynamically added content)
+        document.addEventListener('click', (e) => {
+            const link = (e.target as HTMLElement).closest('a[href^="#"]');
+            if (link) {
+                this.onAnchorClick(e as MouseEvent);
+            }
         });
     }
 

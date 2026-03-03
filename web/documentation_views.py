@@ -77,14 +77,13 @@ def documentation_topic_detail(request, topic_slug):
     # Load section content
     content = get_object_or_404(DocumentationNoteContent, section=section)
 
-    # Track progress if user is authenticated
+    # Get user progress (read-only on GET - progress updates happen via POST only)
     progress = None
     if request.user.is_authenticated:
         progress, _ = DocumentationNoteProgress.objects.get_or_create(
             user=request.user,
             topic=topic,
         )
-        progress.mark_section_as_viewed(section)
 
     section_ids = list(sections.values_list("id", flat=True))
     current_section_index = section_ids.index(section.id) + 1 if section.id in section_ids else 1
@@ -127,14 +126,13 @@ def documentation_section_detail(request, topic_slug, section_slug):
     # Load section content
     content = get_object_or_404(DocumentationNoteContent, section=section)
 
-    # Track progress if user is authenticated
+    # Get user progress (read-only on GET - progress updates happen via POST only)
     progress = None
     if request.user.is_authenticated:
         progress, _ = DocumentationNoteProgress.objects.get_or_create(
             user=request.user,
             topic=topic,
         )
-        progress.mark_section_as_viewed(section)
 
     section_ids = list(sections.values_list("id", flat=True))
     current_section_index = section_ids.index(section.id) + 1 if section.id in section_ids else 1
@@ -165,7 +163,7 @@ def mark_section_viewed(request, topic_slug, section_slug):
     Returns:
         JSON response with updated progress data
     """
-    topic = get_object_or_404(DocumentationNoteTopic, slug=topic_slug)
+    topic = get_object_or_404(DocumentationNoteTopic, slug=topic_slug, is_published=True)
     section = get_object_or_404(DocumentationNoteSection, slug=section_slug, topic=topic)
 
     progress, _ = DocumentationNoteProgress.objects.get_or_create(
