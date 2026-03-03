@@ -76,8 +76,8 @@ def documentation_topic_detail(request, topic_slug):
     first_section = sections.first()
     section = first_section
 
-    # Load section content
-    content = get_object_or_404(DocumentationNoteContent, section=section)
+    # Load section content (allow sections with no content)
+    content = DocumentationNoteContent.objects.filter(section=section).first()
 
     # Get user progress (read-only on GET - progress updates happen via POST only)
     progress = None
@@ -125,8 +125,8 @@ def documentation_section_detail(request, topic_slug, section_slug):
     section = get_object_or_404(DocumentationNoteSection, slug=section_slug, topic=topic)
     sections = topic.sections.all()
 
-    # Load section content
-    content = get_object_or_404(DocumentationNoteContent, section=section)
+    # Load section content (allow sections with no content)
+    content = DocumentationNoteContent.objects.filter(section=section).first()
 
     # Get user progress (read-only on GET - progress updates happen via POST only)
     progress = None
