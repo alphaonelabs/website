@@ -4,21 +4,34 @@ import logging
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.utils import timezone
 
 from .models import VirtualClassroom, VirtualClassroomParticipant, VirtualClassroomWhiteboard
+from .utils import can_access_classroom
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
 class VirtualClassroomConsumer(AsyncWebsocketConsumer):
+    def _get_avatar_url_sync(self) -> str | None:
+        """Return the current user's avatar URL, if available."""
+        profile = getattr(self.user, "profile", None)
+        avatar = getattr(profile, "avatar", None)
+        return avatar.url if avatar else None
+
+    @database_sync_to_async
+    def get_avatar_url(self) -> str | None:
+        """Fetch avatar URL via a sync wrapper safe for async consumers."""
+        return self._get_avatar_url_sync()
+
     async def connect(self):
         self.classroom_id = self.scope["url_route"]["kwargs"]["classroom_id"]
         self.room_group_name = f"classroom_{self.classroom_id}"
         self.user = self.scope["user"]
 
-        # Check if user is authenticated
+        # Check if user is authenticated - reject if not
         if not self.user.is_authenticated:
             await self.close()
             return
@@ -37,6 +50,14 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             # Add user to active participants
             participant = await self.add_participant()
             if participant:
+                # Clean up stale cache entries first
+                await self.cleanup_stale_cache_entries()
+
+                # Store in cache for real-time access
+                await self.cache_participant_presence()
+
+                avatar_url = await self.get_avatar_url()
+
                 # Broadcast to others that user has joined
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -45,6 +66,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                         "user": {
                             "username": self.user.username,
                             "full_name": self.user.get_full_name() or self.user.username,
+                            "avatar_url": avatar_url,
                         },
                         "seat_id": participant.seat_id,
                     },
@@ -52,6 +74,9 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
 
                 # Send current participants list to everyone
                 await self.send_participants_list()
+
+                # Broadcast classroom presence update
+                await self.broadcast_classroom_presence()
 
             # Send current user info to the newly connected client
             await self.send(
@@ -66,8 +91,8 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                     }
                 )
             )
-        except Exception as e:
-            logger.error(f"Error in connect: {str(e)}")
+        except Exception:
+            logger.exception("Error in connect")
             await self.close()
 
     async def disconnect(self, close_code):
@@ -75,6 +100,9 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             if hasattr(self, "user") and self.user.is_authenticated:
                 # Remove user from active participants
                 await self.remove_participant()
+
+                # Clean up cache
+                await self.remove_participant_presence()
 
                 # Broadcast to others that user has left
                 if hasattr(self, "room_group_name"):
@@ -89,6 +117,9 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                                 },
                             },
                         )
+
+                        # Broadcast updated presence
+                        await self.broadcast_classroom_presence()
                     except Exception as e:
                         logger.error(f"Error sending participant_left message: {str(e)}")
 
@@ -132,6 +163,9 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                     # Update participant's seat and last_active timestamp
                     participant = await self.update_participant_seat(seat_id)
                     if participant:
+                        await self.update_seat_assignment_cache(seat_id)
+                        await self.touch_participant_activity()
+                        await self.broadcast_classroom_presence()
                         # Broadcast seat update to all users
                         await self.channel_layer.group_send(
                             self.room_group_name,
@@ -152,7 +186,13 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 # Clear participant's seat
                 participant = await self.clear_participant_seat()
                 if participant:
-                    # Broadcast seat left to all users
+                    avatar_url = await self.get_avatar_url()
+                    # Update cache with empty string to clear seat
+                    await self.update_seat_assignment_cache("")
+                    # Update last_active timestamp
+                    await self.touch_participant_activity()
+
+                    # Broadcast seat leave
                     await self.channel_layer.group_send(
                         self.room_group_name,
                         {
@@ -160,13 +200,19 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                             "user": {
                                 "username": self.user.username,
                                 "full_name": self.user.get_full_name() or self.user.username,
+                                "avatar_url": avatar_url,
                             },
                             "seat_id": seat_id,
                         },
                     )
+
+                    # Broadcast updated presence
+                    await self.broadcast_classroom_presence()
                     # Send updated participants list
                     await self.send_participants_list()
             elif message_type == "position_update":
+                # Update last_active timestamp
+                await self.touch_participant_activity()
                 # Broadcast position update to all other users
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -194,8 +240,8 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 )
         except json.JSONDecodeError:
             logger.error("Invalid JSON received")
-        except Exception as e:
-            logger.error(f"Error in receive: {str(e)}")
+        except Exception:
+            logger.exception("Error in receive")
 
     async def participant_joined(self, event):
         """Handle when a new participant joins"""
@@ -225,27 +271,27 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({"type": "participants_list", "participants": event["participants"]}))
 
     @database_sync_to_async
-    def verify_classroom_access(self):
+    def verify_classroom_access(self) -> bool:
         """Verify user has access to this classroom"""
         try:
             classroom = VirtualClassroom.objects.get(id=self.classroom_id)
-            is_teacher = self.user == classroom.teacher
-            is_enrolled = False
-            if classroom.course:
-                is_enrolled = classroom.course.enrollments.filter(student=self.user, status="approved").exists()
-            return is_teacher or is_enrolled
+            return can_access_classroom(self.user, classroom)
         except VirtualClassroom.DoesNotExist:
             return False
-        except Exception as e:
-            logger.error(f"Error verifying classroom access: {str(e)}")
+        except Exception:
+            logger.exception("Error verifying classroom access")
             return False
 
     @database_sync_to_async
     def add_participant(self):
-        """Add user to active participants"""
+        """Add user to active participants (without auto-assigning seat)"""
         try:
             classroom = VirtualClassroom.objects.get(id=self.classroom_id)
-            participant, _ = VirtualClassroomParticipant.objects.get_or_create(classroom=classroom, user=self.user)
+            participant, _created = VirtualClassroomParticipant.objects.get_or_create(
+                classroom=classroom,
+                user=self.user,
+                defaults={"seat_id": ""},  # Start unseated (empty string) so users can move freely
+            )
             return participant
         except Exception as e:
             logger.error(f"Error adding participant: {str(e)}")
@@ -275,6 +321,13 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
         return None
 
     @database_sync_to_async
+    def touch_participant_activity(self) -> None:
+        """Update last_active timestamp for current participant"""
+        VirtualClassroomParticipant.objects.filter(classroom_id=self.classroom_id, user=self.user).update(
+            last_active=timezone.now()
+        )
+
+    @database_sync_to_async
     def is_seat_occupied(self, seat_id):
         """Check if a seat is already occupied by another user"""
         try:
@@ -300,7 +353,7 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
                 classroom_id=self.classroom_id, user=self.user
             ).first()
             if participant:
-                participant.seat_id = None
+                participant.seat_id = ""
                 participant.save()  # This will update last_active due to auto_now=True
                 return participant
         except Exception as e:
@@ -340,6 +393,93 @@ class VirtualClassroomConsumer(AsyncWebsocketConsumer):
             )
         except Exception as e:
             logger.error(f"Error sending participants list: {str(e)}")
+
+    @database_sync_to_async
+    def cache_participant_presence(self) -> None:
+        """Cache participant presence for real-time access (users start unseated)"""
+        try:
+            cache_key = f"classroom_{self.classroom_id}_presence"
+            current_presence = cache.get(cache_key, {})
+
+            # Get user's current seat if they have one (may be None)
+            participant = VirtualClassroomParticipant.objects.get(classroom_id=self.classroom_id, user=self.user)
+            assigned_seat = participant.seat_id  # Will be None if not yet seated
+
+            current_presence[self.user.username] = {
+                "user_id": self.user.id,
+                "full_name": self.user.get_full_name() or self.user.username,
+                "avatar_url": self._get_avatar_url_sync(),
+                "joined_at": timezone.now().isoformat(),
+                "seat_id": assigned_seat,
+            }
+
+            # Cache for 1 hour, will be refreshed on activity
+            cache.set(cache_key, current_presence, 3600)
+        except Exception:
+            logger.exception("Error caching participant presence")
+
+    @database_sync_to_async
+    def cleanup_stale_cache_entries(self) -> None:
+        """Remove stale cache entries and sync with active WebSocket connections"""
+        try:
+            cache_key = f"classroom_{self.classroom_id}_presence"
+            current_presence = cache.get(cache_key, {})
+            five_minutes_ago = timezone.now() - timezone.timedelta(minutes=5)
+            active_usernames = set(
+                VirtualClassroomParticipant.objects.filter(
+                    classroom_id=self.classroom_id, last_active__gte=five_minutes_ago
+                ).values_list("user__username", flat=True)
+            )
+            cleaned_presence = {u: v for u, v in current_presence.items() if u in active_usernames}
+            cache.set(cache_key, cleaned_presence, 3600)
+        except Exception:
+            logger.exception("Error cleaning up stale cache entries")
+
+    @database_sync_to_async
+    def remove_participant_presence(self) -> None:
+        """Remove participant from cache"""
+        try:
+            cache_key = f"classroom_{self.classroom_id}_presence"
+            current_presence = cache.get(cache_key, {})
+
+            if self.user.username in current_presence:
+                del current_presence[self.user.username]
+                cache.set(cache_key, current_presence, 3600)
+        except Exception:
+            logger.exception("Error removing participant presence")
+
+    @database_sync_to_async
+    def update_seat_assignment_cache(self, seat_id: str) -> None:
+        """Update seat assignment in cache"""
+        try:
+            cache_key = f"classroom_{self.classroom_id}_presence"
+            current_presence = cache.get(cache_key, {})
+
+            if self.user.username in current_presence:
+                current_presence[self.user.username]["seat_id"] = seat_id
+                cache.set(cache_key, current_presence, 3600)
+        except Exception:
+            logger.exception("Error updating seat assignment cache")
+
+    async def broadcast_classroom_presence(self) -> None:
+        """Broadcast current classroom presence to all participants"""
+        try:
+            cache_key = f"classroom_{self.classroom_id}_presence"
+            current_presence = await database_sync_to_async(cache.get)(cache_key, {})
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    "type": "classroom_presence_update",
+                    "presence": current_presence,
+                },
+            )
+        except Exception:
+            logger.exception("Error broadcasting classroom presence")
+
+    async def classroom_presence_update(self, event: dict) -> None:
+        """Handle classroom presence updates"""
+        await self.send(text_data=json.dumps({"type": "classroom_presence_update", "presence": event["presence"]}))
 
 
 class WhiteboardConsumer(AsyncWebsocketConsumer):

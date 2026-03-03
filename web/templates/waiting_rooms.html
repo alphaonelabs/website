@@ -6,15 +6,15 @@
   Waiting Rooms
 {% endblock title %}
 {% block content %}
-  <div class="container mx-auto px-4 py-8">
+  <div class="container mx-auto px-4 py-8 bg-gray-50 dark:bg-black min-h-screen">
     <div class="flex justify-between items-center mb-8">
-      <h1 class="text-3xl font-bold text-gray-800">Waiting Rooms</h1>
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Waiting Rooms</h1>
       <a href="{% url "learn" %}"
-         class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Create Learning Request</a>
+         class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ">Create Learning Request</a>
     </div>
     <div class="mb-10">
-      <h2 class="text-2xl font-semibold mb-4 text-gray-700">What are Waiting Rooms?</h2>
-      <p class="text-gray-600 mb-4">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-700 dark:text-slate-200">What are Waiting Rooms?</h2>
+      <p class="text-gray-600 dark:text-white mb-4">
         Waiting rooms allow you to express interest in subjects and topics you want to learn.
         Join existing waiting rooms or create your own to find others interested in the same topics.
         Teachers can see these waiting rooms and create courses based on popular demand.
@@ -24,12 +24,12 @@
     {% if open_rooms %}
       <div class="mb-10">
         <div class="flex items-center gap-3 mb-4">
-          <h2 class="text-2xl font-semibold text-gray-700">Open Waiting Rooms</h2>
+          <h2 class="text-2xl font-semibold text-gray-700 dark:text-slate-200">Open Waiting Rooms</h2>
           <span class="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-1 rounded-full">{{ open_rooms.count }}</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {% for room in open_rooms %}
-            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+            <div class="bg-white dark:bg-black rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
               {% include "waiting_room/room_card.html" with room=room room_topics=room_topics %}
             </div>
           {% endfor %}
@@ -40,12 +40,12 @@
     {% if fulfilled_rooms %}
       <div class="mb-10">
         <div class="flex items-center gap-3 mb-4">
-          <h2 class="text-2xl font-semibold text-gray-700">Fulfilled Waiting Rooms</h2>
+          <h2 class="text-2xl font-semibold text-gray-700 dark:text-slate-200">Fulfilled Waiting Rooms</h2>
           <span class="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-1 rounded-full">{{ fulfilled_rooms.count }}</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {% for room in fulfilled_rooms %}
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md overflow-hidden border border-blue-200 hover:shadow-lg transition-shadow duration-300">
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 rounded-lg shadow-md dark:shadow-lg dark:shadow-black/30 overflow-hidden border border-blue-200 dark:border-slate-700 hover:shadow-lg transition-shadow duration-300">
               {% include "waiting_room/room_card.html" with room=room room_topics=room_topics %}
               {% if room.fulfilled_course %}
                 <div class="px-6 py-4 bg-blue-100/50 border-t border-blue-200">
@@ -82,7 +82,7 @@
     <!-- Your Waiting Rooms -->
     {% if user_created_rooms or user_joined_rooms %}
       <div class="mb-10">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-700">Your Waiting Rooms</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-gray-700 dark:text-slate-200">Your Waiting Rooms</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {% for room in user_created_rooms %}
             <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300">
@@ -91,7 +91,7 @@
                   <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ room.title }}</h3>
                   <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Created by you</span>
                 </div>
-                <p class="text-gray-600 mb-4">{{ room.description|truncatechars:100 }}</p>
+                <p class="text-gray-600 dark:text-slate-300 mb-4">{{ room.description|truncatechars:100 }}</p>
                 <div class="mb-4">
                   <span class="font-medium text-gray-700">Subject:</span> {{ room.subject }}
                 </div>
@@ -113,7 +113,7 @@
           {% endfor %}
           {% for room in user_joined_rooms %}
             {% if room.creator != user %}
-              <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+              <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-lg dark:shadow-black/30 overflow-hidden border border-gray-200 dark:border-slate-700 hover:shadow-lg transition-shadow duration-300  ">
                 <div class="p-6">
                   <div class="flex justify-between items-start">
                     <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ room.title }}</h3>

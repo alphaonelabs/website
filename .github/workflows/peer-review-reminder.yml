@@ -1,0 +1,114 @@
+name: Peer Review Reminder
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check-peer-review:
+    runs-on: ubuntu-latest
+    name: Check PR has a peer review
+    steps:
+      - name: Check for approved peer review and comment if missing
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const repo = context.repo;
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
+
+            // Skip draft PRs
+            if (pr.draft) {
+              console.log(`PR #${prNumber} is a draft, skipping peer review check`);
+              return;
+            }
+
+            // Check for exempt users (bots and maintainers)
+            const exemptUsers = ['A1L13N', 'copilot-swe-agent[bot]', 'copilot[bot]', 'github-copilot[bot]', 'dependabot[bot]'];
+            if (exemptUsers.includes(pr.user.login)) {
+              console.log(`PR author ${pr.user.login} is exempt from peer review requirement`);
+              return;
+            }
+
+            // Check if PR branch is a copilot branch
+            if (pr.head.ref.startsWith('copilot/')) {
+              console.log(`PR branch ${pr.head.ref} starts with 'copilot/', exempt from peer review requirement`);
+              return;
+            }
+
+            // Fetch all reviews for this PR
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: repo.owner,
+              repo: repo.repo,
+              pull_number: prNumber,
+            });
+
+            // Check if there is at least one APPROVED review from someone other than the PR author
+            const approvedReview = reviews.find(
+              review => review.state === 'APPROVED' && review.user.login !== pr.user.login
+            );
+
+            const botUserName = 'github-actions[bot]';
+            const commentMarker = '<!-- peer-review-reminder -->';
+
+            // Fetch existing comments
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: prNumber,
+            });
+
+            const previousComment = comments.find(
+              comment => comment.user.login === botUserName && comment.body.includes(commentMarker)
+            );
+
+            if (approvedReview) {
+              console.log(`PR #${prNumber} has an approved review from ${approvedReview.user.login}`);
+
+              // Remove the reminder comment if it exists and PR now has approval
+              if (previousComment) {
+                await github.rest.issues.deleteComment({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  comment_id: previousComment.id,
+                });
+                console.log(`Removed peer review reminder comment from PR #${prNumber}`);
+              }
+              return;
+            }
+
+            // No approved review found — post a reminder if not already posted
+            if (previousComment) {
+              console.log(`Already commented about missing peer review on PR #${prNumber}, skipping duplicate`);
+              return;
+            }
+
+            const message = [
+              commentMarker,
+              '## 👀 Peer Review Required',
+              '',
+              `Hi @${pr.user.login}! This pull request does not yet have a **peer review**.`,
+              '',
+              'Before this PR can be merged, please request a review from one of your peers:',
+              '',
+              '- Go to the PR page and click **"Reviewers"** on the right sidebar.',
+              '- Select a team member or contributor to review your changes.',
+              '- Once they approve, this reminder will be automatically removed.',
+              '',
+              'Thank you for contributing! 🎉',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: prNumber,
+              body: message,
+            });
+
+            console.log(`Posted peer review reminder on PR #${prNumber}`);

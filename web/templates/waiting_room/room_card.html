@@ -1,12 +1,12 @@
 {% load dict_filters %}
 
 <a href="{% url "waiting_room_detail" room.id %}"
-   class="block bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+   class="block bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-md dark:shadow-lg dark:shadow-black/30 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
   <div class="p-6">
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center justify-between gap-4 mb-3">
       <div>
-        <h3 class="font-bold text-lg text-gray-900 mb-1">{{ room.title }}</h3>
-        <div class="flex items-center text-sm text-gray-500">
+        <h3 class="font-semibold text-lg text-gray-900 dark:text-white mb-1 truncate">{{ room.title }}</h3>
+        <div class="flex items-center text-sm text-gray-500 dark:text-slate-400">
           <span>{{ room.subject }}</span>
           <span class="mx-2">•</span>
           <span>{{ room.participants.count|add:"1" }} interested</span>
@@ -14,7 +14,7 @@
       </div>
       <div>
         {% if room.status == 'open' %}
-          <div class="flex items-center bg-green-50 px-3 py-1 rounded-full">
+          <div class="flex items-center bg-green-50 px-3 py-1 rounded-full shrink-0">
             <div class="h-2 w-2 bg-green-600 rounded-full mr-2 animate-pulse"></div>
             <span class="text-green-700 font-medium text-xs">Open</span>
           </div>
@@ -31,19 +31,21 @@
         {% endif %}
       </div>
     </div>
-    {% if room.description %}<p class="text-gray-600 text-sm line-clamp-2 mb-4">{{ room.description }}</p>{% endif %}
+    {% if room.description %}
+      <p class="text-gray-600 dark:text-slate-300 text-sm line-clamp-2 mb-4">{{ room.description }}</p>
+    {% endif %}
     <div class="flex flex-wrap gap-2 mb-4">
       {% for topic in room_topics|get_item:room.id %}
-        <span class="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{{ topic }}</span>
+        <span class="inline-block px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs rounded-full">{{ topic }}</span>
       {% endfor %}
     </div>
-    <div class="flex justify-between items-center mt-4">
+    <div class="flex items-center justify-between mt-6">
       <div class="flex items-center">
-        <div class="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center mr-2">
-          <span class="text-purple-600 text-sm font-medium">{{ room.creator.username }}</span>
+        <div class="h-8 w-8 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center mr-2">
+          <span class="text-purple-600 text-sm font-medium">{{ room.creator.username|first|upper }}</span>
         </div>
       </div>
-      <span class="text-xs text-gray-500">{{ room.created_at|timesince }} ago</span>
+      <span class="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{{ room.created_at|timesince }} ago</span>
     </div>
   </div>
 </a>
