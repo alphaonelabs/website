@@ -11,244 +11,209 @@
         Browse exciting topics, see how many people are interested, and find out if there's already a teacher or not.
       </p>
     </div>
-    <!-- Subjects Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-      <!-- Example Subject Card -->
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <!-- Subject Icon/Name -->
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-flask text-blue-500"></i>
-          <h2 class="text-lg font-semibold">Chemistry</h2>
+    <!-- Filter Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8 border border-gray-200 dark:border-gray-700">
+      <form method="get" id="filterForm" class="space-y-4">
+        <!-- First Row of Filters -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Search Input -->
+          <div class="space-y-1">
+            <label for="search"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300">Search Subjects</label>
+            <input type="text"
+                   id="search"
+                   name="search"
+                   value="{{ search_query }}"
+                   placeholder="Search by name or description..."
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <!-- Level Filter -->
+          <div class="space-y-1">
+            <label for="level"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300">Difficulty Level</label>
+            <select id="level"
+                    name="level"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+              <option value="">All Levels</option>
+              <option value="beginner" {% if level == 'beginner' %}selected{% endif %}>Beginner</option>
+              <option value="intermediate"
+                      {% if level == 'intermediate' %}selected{% endif %}>Intermediate</option>
+              <option value="advanced" {% if level == 'advanced' %}selected{% endif %}>Advanced</option>
+            </select>
+          </div>
+          <!-- Minimum Courses -->
+          <div class="space-y-1">
+            <label for="min_courses"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300">Min. Courses</label>
+            <input type="number"
+                   id="min_courses"
+                   name="min_courses"
+                   value="{{ min_courses }}"
+                   min="0"
+                   placeholder="0"
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
+          <!-- Minimum Students -->
+          <div class="space-y-1">
+            <label for="min_students"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300">Min. Interested Students</label>
+            <input type="number"
+                   id="min_students"
+                   name="min_students"
+                   value="{{ min_students }}"
+                   min="0"
+                   placeholder="0"
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" />
+          </div>
         </div>
-        <!-- Stats -->
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 57 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> Yes
-          </li>
-          <li>
-            <strong>Courses:</strong> 4
-          </li>
-        </ul>
-        <!-- Teach or Learn Buttons -->
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Chemistry"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Chemistry"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
+        <!-- Second Row of Filters -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <!-- Sort By -->
+          <div class="space-y-1">
+            <label for="sort_by"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sort By</label>
+            <select id="sort_by"
+                    name="sort_by"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+              <option value="order" {% if sort_by == 'order' %}selected{% endif %}>Default Order</option>
+              <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
+              <option value="created_at"
+                      {% if sort_by == 'created_at' %}selected{% endif %}>Recently Added</option>
+            </select>
+          </div>
+          <!-- Sort Order -->
+          <div class="space-y-1">
+            <label for="sort_order"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300">Order</label>
+            <select id="sort_order"
+                    name="sort_order"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+              <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+              <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+            </select>
+          </div>
+          <!-- Filter Actions -->
+          <div class="flex space-x-2">
+            <!-- Teacher Available Checkbox -->
+            <label class="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-md">
+              <input type="checkbox"
+                     name="teacher_available"
+                     value="true"
+                     {% if teacher_available == 'true' %}checked{% endif %}
+                     class="text-teal-600 focus:ring-teal-500 border-gray-300 rounded" />
+              <span class="text-sm text-gray-700 dark:text-gray-300">Teacher Available</span>
+            </label>
+            <!-- Clear Filters -->
+            {% if filter_active %}
+              <a href="{% url 'subjects' %}"
+                 class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                Clear All
+              </a>
+            {% endif %}
+          </div>
         </div>
-      </div>
-      <!-- Repeat for other subjects: 9 more examples -->
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-calculator text-green-500"></i>
-          <h2 class="text-lg font-semibold">Mathematics</h2>
+        <!-- Results Summary -->
+        <div class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-600">
+          <p class="text-sm text-gray-600 dark:text-gray-400">Showing {{ subjects|length }} of {{ total_count }} subjects</p>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            Filters will apply automatically as you type or change selections
+          </div>
         </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 82 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> Yes
-          </li>
-          <li>
-            <strong>Courses:</strong> 7
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Mathematics"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Mathematics"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
+      </form>
+    </div>
+    <!-- Subjects Results -->
+    <div id="results" aria-live="polite">
+      {% if subjects %}
+        <!-- Subjects Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          {% for subject in subjects %}
+            <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
+              <!-- Subject Icon/Name -->
+              <div class="flex items-center space-x-2 mb-2">
+                {% if subject.icon %}
+                  <i class="{{ subject.icon }}"></i>
+                {% else %}
+                  <i class="fa-solid fa-book text-gray-500"></i>
+                {% endif %}
+                <h2 class="text-lg font-semibold">{{ subject.name }}</h2>
+              </div>
+              <!-- Stats -->
+              <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
+                <li>
+                  <strong>Interested:</strong> {{ subject.a_interested_students|default:0 }} learner{{ subject.a_interested_students|pluralize }}
+                </li>
+                <li>
+                  <strong>Teacher Available:</strong>
+                  {% if subject.a_teacher_available %}
+                    <span class="text-green-600 dark:text-green-400">Yes</span>
+                  {% else %}
+                    <span class="text-red-600 dark:text-red-400">No</span>
+                  {% endif %}
+                </li>
+                <li>
+                  <strong>Courses:</strong> {{ subject.a_courses_count|default:0 }}
+                </li>
+              </ul>
+              <!-- Teach or Learn Buttons -->
+              <div class="flex space-x-2 mt-auto">
+                <a href="{% url 'teach' %}?subject={{ subject.slug }}"
+                   class="bg-teal-300 hover:bg-teal-400 text-white px-3 py-1.5 rounded-lg text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">Teach</a>
+                <a href="{% url 'learn' %}?subject={{ subject.slug }}"
+                   class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">Learn</a>
+              </div>
+            </div>
+          {% endfor %}
         </div>
-      </div>
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-code text-purple-500"></i>
-          <h2 class="text-lg font-semibold">Programming</h2>
+        <!-- Pagination -->
+        {% if subjects_page.has_other_pages %}
+          <div class="mt-8 flex justify-center">
+            <nav class="flex items-center space-x-2" aria-label="Pagination">
+              {% if subjects_page.has_previous %}
+                <a href="?{{ base_query }}page={{ subjects_page.previous_page_number }}"
+                   data-ajax="1"
+                   rel="prev"
+                   class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700">
+                  Previous
+                </a>
+              {% endif %}
+              <span class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
+                    aria-current="page">
+                Page {{ subjects_page.number }} of {{ subjects_page.paginator.num_pages }}
+              </span>
+              {% if subjects_page.has_next %}
+                <a href="?{{ base_query }}page={{ subjects_page.next_page_number }}"
+                   data-ajax="1"
+                   rel="next"
+                   class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700">
+                  Next
+                </a>
+              {% endif %}
+            </nav>
+          </div>
+        {% endif %}
+      {% else %}
+        <!-- No Results Message -->
+        <div class="text-center py-12">
+          <div class="max-w-md mx-auto">
+            <i class="fa-solid fa-search text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">No subjects found</h3>
+            <p class="text-gray-500 dark:text-gray-400 mb-4">
+              {% if filter_active %}
+                No subjects match your current filters. Try adjusting your search criteria.
+              {% else %}
+                No subjects are available at the moment. Check back later!
+              {% endif %}
+            </p>
+            {% if filter_active %}
+              <a href="{% url 'subjects' %}"
+                 class="inline-flex items-center px-6 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                <i class="fa-solid fa-rotate-right mr-2" aria-hidden="true"></i>
+                Clear All Filters
+              </a>
+            {% endif %}
+          </div>
         </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 134 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> No
-          </li>
-          <li>
-            <strong>Courses:</strong> 3
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Programming"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Programming"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-brain text-pink-500"></i>
-          <h2 class="text-lg font-semibold">Psychology</h2>
-        </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 29 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> Yes
-          </li>
-          <li>
-            <strong>Courses:</strong> 1
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Psychology"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Psychology"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-microchip text-blue-500"></i>
-          <h2 class="text-lg font-semibold">Electronics</h2>
-        </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 16 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> No
-          </li>
-          <li>
-            <strong>Courses:</strong> 0
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Electronics"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Electronics"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
-      <!-- 5 more to reach 10 example subjects -->
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-earth-americas text-green-500"></i>
-          <h2 class="text-lg font-semibold">Geography</h2>
-        </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 48 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> Yes
-          </li>
-          <li>
-            <strong>Courses:</strong> 2
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Geography"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Geography"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-book text-orange-500"></i>
-          <h2 class="text-lg font-semibold">Literature</h2>
-        </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 65 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> Yes
-          </li>
-          <li>
-            <strong>Courses:</strong> 3
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Literature"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Literature"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-music text-pink-500"></i>
-          <h2 class="text-lg font-semibold">Music Theory</h2>
-        </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 22 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> Yes
-          </li>
-          <li>
-            <strong>Courses:</strong> 2
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Music%20Theory"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Music%20Theory"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-robot text-gray-500"></i>
-          <h2 class="text-lg font-semibold">Robotics</h2>
-        </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 73 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> No
-          </li>
-          <li>
-            <strong>Courses:</strong> 5
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Robotics"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Robotics"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
-      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow hover:shadow-md transition-shadow">
-        <div class="flex items-center space-x-2 mb-2">
-          <i class="fa-solid fa-heart-pulse text-red-500"></i>
-          <h2 class="text-lg font-semibold">Health & Wellness</h2>
-        </div>
-        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
-          <li>
-            <strong>Interested:</strong> 41 learners
-          </li>
-          <li>
-            <strong>Teacher Available:</strong> Yes
-          </li>
-          <li>
-            <strong>Courses:</strong> 2
-          </li>
-        </ul>
-        <div class="flex space-x-2 mt-auto">
-          <a href="{% url 'teach' %}?subject=Health%20%26%20Wellness"
-             class="bg-indigo-500 text-white py-1 px-2 rounded hover:bg-indigo-600 text-sm">Teach</a>
-          <a href="{% url 'learn' %}?subject=Health%20%26%20Wellness"
-             class="bg-orange-500 text-white py-1 px-2 rounded hover:bg-orange-600 text-sm">Learn</a>
-        </div>
-      </div>
+      {% endif %}
     </div>
     <!-- Quick Form to Add Interest -->
     <div class="mt-8 max-w-lg mx-auto">
@@ -268,13 +233,13 @@
             <div class="flex space-x-2">
               <button type="button"
                       onclick="submitInterest('teach')"
-                      class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg flex items-center space-x-2 transition-colors">
+                      class="px-6 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg flex items-center space-x-2 transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
                 <i class="fa-solid fa-chalkboard-user"></i>
                 <span>Teach</span>
               </button>
               <button type="button"
                       onclick="submitInterest('learn')"
-                      class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg flex items-center space-x-2 transition-colors">
+                      class="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg flex items-center space-x-2 transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
                 <i class="fa-solid fa-graduation-cap"></i>
                 <span>Learn</span>
               </button>
@@ -287,7 +252,41 @@
       </div>
     </div>
   </div>
+  <script src="{% static 'js/subjects-filter.js' %}"></script>
   <script>
+      function submitInterest(type) {
+          const form = document.getElementById('interestForm');
+          const subject = document.getElementById('subjectInput').value;
+
+          if (!subject) {
+              alert('Please enter a subject');
+              return;
+          }
+
+          // Create a new form and submit it to the correct URL
+          const submitForm = document.createElement('form');
+          submitForm.method = 'post';
+          submitForm.action = type === 'teach' ? "{% url 'teach' %}" : "{% url 'learn' %}";
+
+          // Add CSRF token
+          const csrfInput = document.createElement('input');
+          csrfInput.type = 'hidden';
+          csrfInput.name = 'csrfmiddlewaretoken';
+          csrfInput.value = form.querySelector('[name=csrfmiddlewaretoken]').value;
+          submitForm.appendChild(csrfInput);
+
+          // Add subject
+          const subjectInput = document.createElement('input');
+          subjectInput.type = 'hidden';
+          subjectInput.name = 'subject';
+          subjectInput.value = subject;
+          submitForm.appendChild(subjectInput);
+
+          // Submit the form
+          document.body.appendChild(submitForm);
+          submitForm.submit();
+      }
+
       function submitInterest(type) {
           const form = document.getElementById('interestForm');
           const subject = document.getElementById('subjectInput').value;
