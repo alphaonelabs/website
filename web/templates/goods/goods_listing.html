@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% load custom_filters %}
+
 {% block title %}
   Explore Our Products
 {% endblock title %}
@@ -39,8 +41,23 @@
                     class="w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
               <option value="">All</option>
               {% for name in store_names %}
-                <option value="{{ name }}"
-                        {% if request.GET.store_name == name %}selected{% endif %}>{{ name }}</option>
+                {% with count=store_product_counts|get_item:name %}
+                  {% with is_empty=count|add:0 %}
+                    {% if is_empty == 0 %}
+                      <option value="{{ name }}"
+                              disabled
+                              title="No products available"
+                              {% if request.GET.store_name == name %}selected{% endif %}>
+                        {{ name }} (No products available)
+                      </option>
+                    {% else %}
+                      <option value="{{ name }}"
+                              {% if request.GET.store_name == name %}selected{% endif %}>
+                        {{ name }} ({{ count }} product{{ count|pluralize }} available)
+                      </option>
+                    {% endif %}
+                  {% endwith %}
+                {% endwith %}
               {% endfor %}
             </select>
           </div>
@@ -142,7 +159,11 @@
           </div>
         {% empty %}
           <div class="text-gray-500 dark:text-gray-400 text-center col-span-full text-lg">
-            <p>No products found.</p>
+            {% if request.GET.store_name %}
+              <p>No products available in {{ request.GET.store_name }} at the moment.</p>
+            {% else %}
+              <p>No products are available at the moment.</p>
+            {% endif %}
           </div>
         {% endfor %}
       </section>
