@@ -71,6 +71,46 @@ When the LiDAR sensor is active, its beam sweeps 360° around the robot. When th
 | **Turn** | Turning speed (1° – 15°) |
 | **Color** | Chassis colour picker |
 
+The **Parts** section shows all currently attached components, and **Blocks** displays the number of interactive objects in the simulation.
+
+---
+
+## 🎨 Tech Stack
+
+- **Pure HTML5/CSS3/JavaScript** — No frameworks required for the simulator
+- **React 18** — Landing page animations (CDN)
+- **Tailwind CSS** — Utility-first styling (CDN)
+- **GSAP 3.12** — Smooth scroll animations (CDN)
+- **Canvas API** — Real-time 2D graphics rendering
+
+---
+
+## 🌐 Browser Support
+
+| Browser | Version | Status |
+|---------|---------|--------|
+| Chrome | 90+ | ✅ Fully Supported |
+| Firefox | 88+ | ✅ Fully Supported |
+| Safari | 14+ | ✅ Fully Supported |
+| Edge | 90+ | ✅ Fully Supported |
+
+---
+
+## 🗂️ Project Structure
+
+```
+alphaonelabs-virtual-robotics-playground/
+├── index.html              # Landing page with animations
+├── home.html               # Main robotics simulator
+├── README.md               # This file
+├── CONTRIBUTING.md         # Contribution guidelines
+├── LICENSE                 # MIT License
+└── .github/
+    └── workflows/
+        ├── deploy.yml      # GitHub Pages deployment
+        └── pr-check.yml    # PR validation
+```
+
 ---
 
 ## 🤝 Contributing
@@ -83,7 +123,19 @@ Contributions, bug reports, and feature requests are welcome!
 4. Push to your fork: `git push origin feature/your-feature-name`
 5. Open a **Pull Request** against `main`
 
-Please open an [issue](https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground/issues) first to discuss major changes before starting work.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines and open an [issue](https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground/issues) first to discuss major changes before starting work.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Save/Load robot configurations
+- [ ] Obstacle course challenges with scoring
+- [ ] Autonomous robot programming interface
+- [ ] Multiplayer support (WebRTC)
+- [ ] 3D rendering with Three.js
+- [ ] Mobile touch controls
+- [ ] Export simulation data (CSV/JSON)
 
 ---
 
