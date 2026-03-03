@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}{{ topic.title }} - Documentation | Alpha One Labs{% endblock %}
+{% block content %}
+  <style>
+      :root {
+          --topic-light: #14b8a6;
+          --topic-dark: #0d9488;
+          --topic-light-bg: rgba(20, 184, 166, 0.1);
+          --topic-dark-bg: rgba(13, 148, 136, 0.1);
+      }
+
+      .topic-styled {
+          background: linear-gradient(135deg, var(--topic-light), var(--topic-dark));
+          color: white;
+      }
+
+      .topic-accent {
+          color: var(--topic-light);
+      }
+
+      .topic-border {
+          border-color: var(--topic-light);
+      }
+
+      .topic-bg {
+          background-color: var(--topic-light-bg);
+      }
+  </style>
+  <script>
+      // Set CSS variables based on topic color
+      const colorMap = {
+          teal: {
+              light: '#14b8a6',
+              dark: '#0d9488',
+              lightBg: 'rgba(20, 184, 166, 0.1)',
+              darkBg: 'rgba(13, 148, 136, 0.1)'
+          },
+          blue: {
+              light: '#3b82f6',
+              dark: '#1d4ed8',
+              lightBg: 'rgba(59, 130, 246, 0.1)',
+              darkBg: 'rgba(29, 78, 216, 0.1)'
+          },
+          purple: {
+              light: '#a855f7',
+              dark: '#7e22ce',
+              lightBg: 'rgba(168, 85, 247, 0.1)',
+              darkBg: 'rgba(126, 34, 206, 0.1)'
+          },
+          pink: {
+              light: '#ec4899',
+              dark: '#be185d',
+              lightBg: 'rgba(236, 72, 153, 0.1)',
+              darkBg: 'rgba(190, 24, 93, 0.1)'
+          },
+          green: {
+              light: '#22c55e',
+              dark: '#15803d',
+              lightBg: 'rgba(34, 197, 94, 0.1)',
+              darkBg: 'rgba(21, 128, 61, 0.1)'
+          }
+      };
+
+      const topicColor = '{{ topic.color }}';
+      const colors = colorMap[topicColor] || colorMap.teal;
+
+      document.documentElement.style.setProperty('--topic-light', colors.light);
+      document.documentElement.style.setProperty('--topic-dark', colors.dark);
+      document.documentElement.style.setProperty('--topic-light-bg', colors.lightBg);
+      document.documentElement.style.setProperty('--topic-dark-bg', colors.darkBg);
+  </script>
+  <div class="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+    <!-- Breadcrumb -->
+    <div class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 py-3">
+      <div class="mx-auto max-w-7xl px-4 md:px-6">
+        <div class="flex items-center text-sm text-gray-600 dark:text-gray-400 space-x-2">
+          <a href="{% url 'index' %}"
+             class="hover:text-gray-900 dark:hover:text-white transition-colors">Home</a>
+          <span>/</span>
+          <a href="{% url 'docs_topics_list' %}"
+             class="hover:text-gray-900 dark:hover:text-white transition-colors">Docs</a>
+          <span>/</span>
+          <span class="text-gray-900 dark:text-white font-medium">{{ topic.title }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="mx-auto max-w-7xl py-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 px-4 md:px-6">
+        <!-- Sidebar Navigation -->
+        {% include "documentation_notes/components/sidebar.html" %}
+        <!-- Main Content Area -->
+        <div class="md:col-span-3">
+          <!-- Topic Header -->
+          <div class="mb-8">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">{{ topic.title }}</h1>
+                {% if topic.description %}<p class="text-gray-600 dark:text-gray-400 text-lg">{{ topic.description }}</p>{% endif %}
+              </div>
+            </div>
+            <!-- Progress Bar -->
+            {% if user.is_authenticated and progress %}
+              <div class="mt-6">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Your Progress</span>
+                  <span class="text-sm font-semibold topic-accent">{{ progress.completion_percentage|floatformat:0 }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 h-3 rounded-full overflow-hidden">
+                  <div class="h-full transition-all duration-500 topic-styled"
+                       style="width: {{ progress.completion_percentage|floatformat:0 }}%"></div>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          <!-- Content Container -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <!-- Section Header -->
+            <div class="border-b border-gray-200 dark:border-gray-700 px-6 md:px-8 py-6 bg-gray-50 dark:bg-gray-800/50">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ current_section.title }}</h2>
+                  {% if current_section.description %}
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">{{ current_section.description }}</p>
+                  {% endif %}
+                </div>
+                {% if current_section.icon %}<div class="text-4xl">📚</div>{% endif %}
+              </div>
+            </div>
+            <!-- Main Content -->
+            <div class="px-6 md:px-8 py-8">
+              <div class="prose dark:prose-invert max-w-none"
+                   id="doc-content"
+                   data-topic-slug="{{ topic.slug }}"
+                   data-section-slug="{{ current_section.slug }}">
+                {% if content.markdown_content %}
+                  <script id="doc-markdown-source" type="text/plain">
+                      {
+                          {
+                              content.markdown_content
+                          }
+                      }
+                  </script>
+                  <div class="doc-markdown"></div>
+                {% else %}
+                  <p class="text-gray-500 dark:text-gray-400 italic">This section doesn't have content yet.</p>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Navigation Footer -->
+            {% include "documentation_notes/components/navigation.html" %}
+          </div>
+          <!-- Related Sections -->
+          <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Previous Section -->
+            {% if previous_section %}
+              <a href="{% url 'docs_section_detail' topic.slug previous_section.slug %}"
+                 class="group flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+                 style="border-color: var(--topic-light);
+                        opacity: 0.9;
+                        hover: opacity: 1">
+                <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
+                     style="background-color: var(--topic-light-bg)">
+                  <svg class="h-5 w-5 text-gray-600 dark:text-gray-300 group-hover:text-gray-900 transition-colors"
+                       fill="none"
+                       stroke="currentColor"
+                       viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                  </svg>
+                </div>
+                <div class="ml-4">
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Previous</p>
+                  <p class="text-sm font-medium text-gray-900 dark:text-white group-hover:text-gray-700 transition-colors">
+                    {{ previous_section.title }}
+                  </p>
+                </div>
+              </a>
+            {% endif %}
+            <!-- Next Section -->
+            {% if next_section %}
+              <a href="{% url 'docs_section_detail' topic.slug next_section.slug %}"
+                 class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200 md:col-start-2"
+                 style="border-color: var(--topic-light);
+                        opacity: 0.9">
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Next</p>
+                  <p class="text-sm font-medium text-gray-900 dark:text-white group-hover:text-gray-700 transition-colors">
+                    {{ next_section.title }}
+                  </p>
+                </div>
+                <div class="flex-shrink-0 flex items-center justify-center h-10 w-10 bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors ml-4"
+                     style="background-color: var(--topic-light-bg)">
+                  <svg class="h-5 w-5 text-gray-600 dark:text-gray-300 group-hover:text-gray-900 transition-colors"
+                       fill="none"
+                       stroke="currentColor"
+                       viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </div>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Scripts for content rendering and tracking -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+      window.MathJax = {
+          tex: {
+              inlineMath: [
+                  ['$', '$'],
+                  ['\\(', '\\)']
+              ],
+              displayMath: [
+                  ['$$', '$$'],
+                  ['\\[', '\\]']
+              ],
+          },
+      }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          const docContent = document.getElementById('doc-content')
+          const markdownSource = document.getElementById('doc-markdown-source')
+
+          if (docContent && markdownSource && window.marked) {
+              const markdownTarget = docContent.querySelector('.doc-markdown')
+              const rawMarkdown = markdownSource.textContent || ''
+
+              if (markdownTarget && rawMarkdown.trim()) {
+                  markdownTarget.innerHTML = window.marked.parse(rawMarkdown)
+                  if (window.MathJax && window.MathJax.typesetPromise) {
+                      window.MathJax.typesetPromise([markdownTarget]).catch(function(err) {
+                          console.error(err)
+                      })
+                  }
+              }
+          }
+
+          fetch('{% url "docs_mark_section_viewed" topic.slug current_section.slug %}', {
+                  method: 'POST',
+                  headers: {
+                      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                      'Content-Type': 'application/json',
+                  },
+              })
+              .then(function(response) {
+                  return response.json()
+              })
+              .then(function(data) {
+                  if (data.success) {
+                      const progressBar = document.querySelector('[style*="width"]')
+                      if (progressBar) {
+                          const newWidth = Math.round(data.completion_percentage)
+                          progressBar.style.width = newWidth + '%'
+                      }
+                  }
+              })
+              .catch(function(err) {
+                  console.error('Error marking section as viewed:', err)
+              })
+      })
+  </script>
+{% endblock %}

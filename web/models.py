@@ -3176,3 +3176,166 @@ class VirtualClassroomWhiteboard(models.Model):
         ordering = ["-last_updated"]
         verbose_name = "Virtual Classroom Whiteboard"
         verbose_name_plural = "Virtual Classroom Whiteboards"
+
+
+class DocumentationNoteTopic(models.Model):
+    """Model for documentation-style note topics (e.g., Physics, Mathematics)"""
+
+    title = models.CharField(max_length=255, unique=True)
+    slug = models.SlugField(unique=True)
+    description = models.TextField(blank=True)
+    icon = models.CharField(
+        max_length=50,
+        default="book",
+        help_text="Icon class name (e.g., 'book', 'beaker', 'calculator')",
+    )
+    color = models.CharField(
+        max_length=20,
+        default="teal",
+        help_text="Tailwind color class (e.g., 'teal', 'blue', 'purple')",
+    )
+    order = models.PositiveIntegerField(default=0, help_text="Display order in lists")
+    is_published = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "title"]
+        verbose_name = "Documentation Note Topic"
+        verbose_name_plural = "Documentation Note Topics"
+        indexes = [models.Index(fields=["slug"]), models.Index(fields=["is_published"])]
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+
+class DocumentationNoteSection(models.Model):
+    """Model for sections within a documentation note topic"""
+
+    topic = models.ForeignKey(
+        DocumentationNoteTopic,
+        on_delete=models.CASCADE,
+        related_name="sections",
+    )
+    title = models.CharField(max_length=255)
+    slug = models.SlugField()
+    description = models.CharField(max_length=500, blank=True)
+    order = models.PositiveIntegerField(default=0, help_text="Display order within topic")
+    icon = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Optional icon for section navigation",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order"]
+        unique_together = ("topic", "slug")
+        verbose_name = "Documentation Note Section"
+        verbose_name_plural = "Documentation Note Sections"
+        indexes = [models.Index(fields=["topic", "order"])]
+
+    def __str__(self):
+        return f"{self.topic.title} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+    def get_previous_section(self):
+        """Get the previous section in the topic"""
+        return (
+            DocumentationNoteSection.objects.filter(topic=self.topic, order__lt=self.order).order_by("-order").first()
+        )
+
+    def get_next_section(self):
+        """Get the next section in the topic"""
+        return DocumentationNoteSection.objects.filter(topic=self.topic, order__gt=self.order).order_by("order").first()
+
+
+class DocumentationNoteContent(models.Model):
+    """Model for storing actual content of documentation notes"""
+
+    section = models.OneToOneField(
+        DocumentationNoteSection,
+        on_delete=models.CASCADE,
+        related_name="content",
+    )
+    markdown_content = MarkdownxField(help_text="Supports Markdown formatting with LaTeX math support")
+    html_content = models.TextField(blank=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_edited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        editable=False,
+    )
+
+    class Meta:
+        verbose_name = "Documentation Note Content"
+        verbose_name_plural = "Documentation Note Contents"
+
+    def __str__(self):
+        return f"Content for {self.section.title}"
+
+
+class DocumentationNoteProgress(models.Model):
+    """Model to track user progress through documentation notes"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="note_progress")
+    topic = models.ForeignKey(DocumentationNoteTopic, on_delete=models.CASCADE)
+    sections_viewed = models.ManyToManyField(
+        DocumentationNoteSection,
+        blank=True,
+        help_text="Sections the user has viewed",
+    )
+    current_section = models.ForeignKey(
+        DocumentationNoteSection,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="viewing_users",
+    )
+    completion_percentage = models.FloatField(default=0.0, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_accessed_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("user", "topic")
+        verbose_name = "Documentation Note Progress"
+        verbose_name_plural = "Documentation Note Progress"
+        indexes = [models.Index(fields=["user", "topic"])]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.topic.title}"
+
+    def update_progress(self):
+        """Calculate and update completion percentage"""
+        total_sections = self.topic.sections.count()
+        if total_sections == 0:
+            return
+
+        viewed_sections = self.sections_viewed.count()
+        self.completion_percentage = (viewed_sections / total_sections) * 100
+
+        if self.completion_percentage == 100 and not self.completed_at:
+            self.completed_at = timezone.now()
+
+        self.save()
+
+    def mark_section_as_viewed(self, section):
+        """Mark a section as viewed and update progress"""
+        self.sections_viewed.add(section)
+        self.current_section = section
+        self.update_progress()
+        self.save()

@@ -305,9 +305,15 @@ class PageLoadTests(BaseViewTest):
 
     def test_index_shows_recent_courses(self):
         """Test that index page shows 6 most recent published courses"""
-        # Create 8 published courses with different creation times
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        # Create 8 published courses and set their creation times
+        base_time = timezone.now()
+        courses = []
         for i in range(8):
-            Course.objects.create(
+            course = Course.objects.create(
                 title=f"Test Course {i}",
                 description=f"Test Description {i}",
                 teacher=self.teacher,
@@ -319,6 +325,11 @@ class PageLoadTests(BaseViewTest):
                 status="published",
                 is_featured=(i < 3),  # Only first 3 are featured
             )
+            courses.append(course)
+
+        # Manually update created_at timestamps since auto_now_add=True ignores explicit values
+        for i, course in enumerate(courses):
+            Course.objects.filter(id=course.id).update(created_at=base_time + timedelta(minutes=i))
 
         # Get the index page
         response = self.client.get(self.urls_to_test["index"])

@@ -21,6 +21,10 @@ from .models import (
     Course,
     CourseMaterial,
     CourseProgress,
+    DocumentationNoteContent,
+    DocumentationNoteProgress,
+    DocumentationNoteSection,
+    DocumentationNoteTopic,
     Donation,
     Enrollment,
     ForumCategory,
@@ -889,3 +893,74 @@ class VideoRequestAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "category", "requester", "created_at")
     list_filter = ("status", "category")
     search_fields = ("title", "description", "requester__username")
+
+
+class DocumentationNoteSectionInline(admin.TabularInline):
+    model = DocumentationNoteSection
+    extra = 1
+    fields = ("title", "slug", "description", "order", "icon")
+    prepopulated_fields = {"slug": ("title",)}
+
+
+@admin.register(DocumentationNoteTopic)
+class DocumentationNoteTopicAdmin(admin.ModelAdmin):
+    list_display = ("title", "is_published", "order", "created_at", "updated_at")
+    list_filter = ("is_published", "created_at")
+    search_fields = ("title", "description")
+    prepopulated_fields = {"slug": ("title",)}
+    inlines = [DocumentationNoteSectionInline]
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "description")}),
+        ("Display Options", {"fields": ("icon", "color", "order")}),
+        ("Publication", {"fields": ("is_published",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse", "wide")}),
+    )
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("order", "title")
+
+
+@admin.register(DocumentationNoteSection)
+class DocumentationNoteSectionAdmin(admin.ModelAdmin):
+    list_display = ("title", "topic", "order", "created_at")
+    list_filter = ("topic", "created_at")
+    search_fields = ("title", "description")
+    raw_id_fields = ("topic",)
+    prepopulated_fields = {"slug": ("title",)}
+    fieldsets = (
+        (None, {"fields": ("topic", "title", "slug", "description")}),
+        ("Display Options", {"fields": ("icon", "order")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse", "wide")}),
+    )
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("topic", "order")
+
+
+@admin.register(DocumentationNoteContent)
+class DocumentationNoteContentAdmin(admin.ModelAdmin):
+    list_display = ("section", "created_at", "updated_at")
+    list_filter = ("section__topic", "created_at")
+    search_fields = ("section__title", "markdown_content")
+    raw_id_fields = ("section", "last_edited_by")
+    readonly_fields = ("html_content", "created_at", "updated_at", "last_edited_by")
+    fieldsets = (
+        (None, {"fields": ("section",)}),
+        ("Content", {"fields": ("markdown_content",)}),
+        ("Generated HTML", {"fields": ("html_content",), "classes": ("collapse",)}),
+        ("Edit Information", {"fields": ("last_edited_by", "created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(DocumentationNoteProgress)
+class DocumentationNoteProgressAdmin(admin.ModelAdmin):
+    list_display = ("user", "topic", "completion_percentage", "completed_at", "last_accessed_at")
+    list_filter = ("topic", "completed_at", "started_at")
+    search_fields = ("user__username", "user__email", "topic__title")
+    raw_id_fields = ("user", "topic", "current_section")
+    readonly_fields = ("started_at", "last_accessed_at", "completed_at", "sections_viewed")
+    fieldsets = (
+        (None, {"fields": ("user", "topic", "current_section")}),
+        ("Progress", {"fields": ("completion_percentage", "sections_viewed")}),
+        ("Timestamps", {"fields": ("started_at", "last_accessed_at", "completed_at"), "classes": ("collapse",)}),
+    )
+    date_hierarchy = "started_at"
+    ordering = ("-last_accessed_at",)

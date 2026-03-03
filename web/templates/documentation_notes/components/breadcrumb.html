@@ -1,0 +1,31 @@
+<!-- Breadcrumb Component -->
+<nav class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 py-3 sticky top-0 z-40">
+  <div class="mx-auto max-w-7xl px-4 md:px-6">
+    <div class="flex items-center text-sm text-gray-600 dark:text-gray-400 space-x-2 overflow-x-auto">
+      <!-- Home -->
+      <a href="{% url 'index' %}"
+         class="flex-shrink-0 hover:text-gray-900 dark:hover:text-white transition-colors">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z">
+          </path>
+        </svg>
+      </a>
+      <span class="flex-shrink-0">/</span>
+      <!-- Docs -->
+      <a href="{% url 'docs_topics_list' %}"
+         class="flex-shrink-0 hover:text-gray-900 dark:hover:text-white transition-colors">Docs</a>
+      <span class="flex-shrink-0">/</span>
+      <!-- Topic -->
+      {% if topic %}
+        <a href="{% url 'docs_topic_detail' topic.slug %}"
+           class="flex-shrink-0 hover:text-gray-900 dark:hover:text-white transition-colors truncate">
+          {{ topic.title }}
+        </a>
+        {% if current_section %}
+          <span class="flex-shrink-0">/</span>
+          <span class="flex-shrink-0 text-gray-900 dark:text-white font-medium truncate">{{ current_section.title }}</span>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</nav>

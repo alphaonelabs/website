@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import include, path
 from django.views.generic.base import RedirectView
 
-from . import admin_views, peer_challenge_views, quiz_views, views, views_avatar, views_whiteboard
+from . import admin_views, documentation_views, peer_challenge_views, quiz_views, views, views_avatar, views_whiteboard
 from .secure_messaging import (
     compose_message,
     download_message,
@@ -79,6 +79,20 @@ urlpatterns += i18n_patterns(
     path("blog/create/", views.create_blog_post, name="create_blog_post"),
     path("blog/tag/<str:tag>/", views.blog_tag, name="blog_tag"),
     path("blog/<slug:slug>/", views.blog_detail, name="blog_detail"),
+    # Documentation Notes URLs
+    path("docs/", documentation_views.documentation_topics_list, name="docs_topics_list"),
+    path("docs/<slug:topic_slug>/", documentation_views.documentation_topic_detail, name="docs_topic_detail"),
+    path(
+        "docs/<slug:topic_slug>/<slug:section_slug>/",
+        documentation_views.documentation_section_detail,
+        name="docs_section_detail",
+    ),
+    path(
+        "docs/<slug:topic_slug>/section/<slug:section_slug>/viewed/",
+        documentation_views.mark_section_viewed,
+        name="docs_mark_section_viewed",
+    ),
+    path("docs/user/progress/", documentation_views.user_progress, name="docs_user_progress"),
     # Leaderboard URLs
     path("leaderboards/", views.all_leaderboards, name="leaderboards"),
     # Success Stories URLs

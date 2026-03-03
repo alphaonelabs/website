@@ -1,0 +1,72 @@
+<!-- Sidebar Navigation Component -->
+<div class="sticky top-20 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 h-fit shadow-sm">
+  <!-- Sidebar Header -->
+  <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+    <a href="{% url 'docs_topics_list' %}"
+       class="flex items-center text-sm font-semibold text-{{ topic.color }}-600 dark:text-{{ topic.color }}-400 hover:text-{{ topic.color }}-700 transition-colors">
+      <svg class="w-4 h-4 mr-2"
+           fill="none"
+           stroke="currentColor"
+           viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19l-7-7 7-7m8 0l7 7-7 7"></path>
+      </svg>
+      Back to Topics
+    </a>
+  </div>
+  <!-- Topic Title -->
+  <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-2">
+    {{ topic.title }}
+  </h3>
+  <!-- Sections Navigation -->
+  <nav class="space-y-1">
+    {% for section in sections %}
+      <a href="{% url 'docs_section_detail' topic.slug section.slug %}"
+         class="group flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200 {% if section.id == current_section.id %}bg-{{ topic.color }}-50 dark:bg-{{ topic.color }}-900/20 text-{{ topic.color }}-700 dark:text-{{ topic.color }}-300 font-semibold border-l-2 border-{{ topic.color }}-500{% else %}text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 border-l-2 border-transparent{% endif %}">
+        <!-- Icon -->
+        {% if section.icon %}
+          <span class="mr-3">{{ section.icon }}</span>
+        {% else %}
+          <svg class="w-4 h-4 mr-3 flex-shrink-0 {% if section.id == current_section.id %}text-{{ topic.color }}-600 dark:text-{{ topic.color }}-400{% else %}text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300{% endif %}"
+               fill="none"
+               stroke="currentColor"
+               viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C6.5 6.253 2 10.998 2 17s4.5 10.747 10 10.747c5.5 0 10-4.998 10-10.747S17.5 6.253 12 6.253z">
+            </path>
+          </svg>
+        {% endif %}
+        <!-- Section Title -->
+        <span class="flex-1 truncate">{{ section.title }}</span>
+        <!-- Status Indicator -->
+        {% if user.is_authenticated and section in progress.sections_viewed.all %}
+          <svg class="w-4 h-4 ml-2 text-green-500 flex-shrink-0"
+               fill="currentColor"
+               viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd">
+            </path>
+          </svg>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </nav>
+  <!-- Info Box -->
+  <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+      <p class="text-xs text-blue-900 dark:text-blue-300">
+        <strong>{{ sections.count }}</strong> sections in this topic
+      </p>
+      {% if user.is_authenticated and progress %}
+        <div class="mt-2 text-xs text-blue-700 dark:text-blue-400">
+          <strong>{{ progress.sections_viewed.count }}</strong> sections viewed
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  <!-- Mobile Toggle (Hidden on larger screens) -->
+  <div class="md:hidden mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-center">
+    <button class="text-sm font-medium text-gray-700 dark:text-gray-300 w-full py-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+            type="button"
+            onclick="document.getElementById('sidebar-content').classList.toggle('hidden')">
+      📖 Show/Hide Sections
+    </button>
+  </div>
+</div>
