@@ -75,9 +75,12 @@
           </div>
         </div>
         <div>
-          <label for="{{ form.captcha.id_for_label }}" class="block mb-2 font-medium">CAPTCHA</label>
+          <label for="{{ form.captcha.id_for_label }}"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CAPTCHA</label>
           {{ form.captcha }}
-          {% if form.captcha.errors %}<p class="text-red-500 text-sm mt-1">{{ form.captcha.errors.0 }}</p>{% endif %}
+          {% if form.captcha.errors %}
+            <p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ form.captcha.errors.0 }}</p>
+          {% endif %}
         </div>
         {% if form.non_field_errors %}
           <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">

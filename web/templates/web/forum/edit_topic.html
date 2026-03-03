@@ -68,7 +68,7 @@
           </div>
           <div>
             <label for="{{ form.captcha.id_for_label }}"
-                   class="block text-sm font-medium mb-2">CAPTCHA</label>
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CAPTCHA</label>
             {{ form.captcha }}
             {% if form.captcha.errors %}
               <div class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.captcha.errors }}</div>
