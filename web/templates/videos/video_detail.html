@@ -7,13 +7,13 @@
   <div class="w-full py-8 bg-white dark:bg-gray-900 transition-colors duration-300">
     <div class="mx-auto max-w-5xl px-6">
       <!-- Video Player -->
-      <div class="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-xl mb-6">
+      <div class="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-xl mb-6 flex items-center justify-center text-white">
         {% if "youtube.com" in video.video_url or "youtu.be" in video.video_url %}
           {% with video.video_url|cut:"https://www.youtube.com/watch?v="|cut:"https://youtu.be/" as raw_id %}
             {% with raw_id|slice:":11" as video_id %}
               <iframe src="https://www.youtube.com/embed/{{ video_id }}?rel=0&modestbranding=1"
-                      title="YouTube video player - {{ video.title }}"
                       frameborder="0"
+                      title="YouTube video player - {{ video.title }}"
                       allow="autoplay; encrypted-media"
                       referrerpolicy="strict-origin-when-cross-origin"
                       allowfullscreen
@@ -21,6 +21,20 @@
               </iframe>
             {% endwith %}
           {% endwith %}
+        {% else %}
+          <!-- Fallback for non-YouTube videos -->
+          <div class="text-center p-4">
+            <p class="mb-2 text-lg font-medium">Video cannot be played directly.</p>
+            {% if video.video_url %}
+              <a href="{{ video.video_url }}"
+                 target="_blank"
+                 class="inline-block bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg transition-colors">
+                Open Video in New Tab
+              </a>
+            {% else %}
+              <p>No video URL available.</p>
+            {% endif %}
+          </div>
         {% endif %}
       </div>
       <!-- Title -->
