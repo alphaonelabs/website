@@ -28,7 +28,8 @@
             {% if video.video_url %}
               <a href="{{ video.video_url }}"
                  target="_blank"
-                 class="inline-block bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg transition-colors">
+                 rel="noopener noreferrer"
+                 class="inline-block bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
                 Open Video in New Tab
               </a>
             {% else %}
@@ -49,7 +50,7 @@
           Uploaded by Anonymous
         {% endif %}
         • {{ video.uploaded_at|date:"F j, Y" }}
-        • {{ video.category.name }}
+        {% if video.category %}• {{ video.category.name }}{% endif %}
       </div>
       <!-- Description -->
       <div class="text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ video.description }}</div>
