@@ -66,6 +66,14 @@
               <div class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.github_milestone_url.errors }}</div>
             {% endif %}
           </div>
+          <div>
+            <label for="{{ form.captcha.id_for_label }}"
+                   class="block text-sm font-medium mb-2">CAPTCHA</label>
+            {{ form.captcha }}
+            {% if form.captcha.errors %}
+              <div class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.captcha.errors }}</div>
+            {% endif %}
+          </div>
           <div class="flex justify-end space-x-4">
             <a href="{% url 'forum_topic' topic.category.slug topic.id %}"
                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">

@@ -65,12 +65,19 @@
               <img id="preview"
                    src=""
                    alt="Preview"
+                   width="1024"
+                   height="768"
                    class="max-h-64 max-w-full object-contain" />
             </div>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
               Preview is for reference only and may appear differently on the site.
             </p>
           </div>
+        </div>
+        <div>
+          <label for="{{ form.captcha.id_for_label }}" class="block mb-2 font-medium">CAPTCHA</label>
+          {{ form.captcha }}
+          {% if form.captcha.errors %}<p class="text-red-500 text-sm mt-1">{{ form.captcha.errors.0 }}</p>{% endif %}
         </div>
         {% if form.non_field_errors %}
           <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
