@@ -4593,19 +4593,37 @@ def whiteboard(request):
 def graphing_calculator(request):
     return render(request, "graphing_calculator.html")
 
-
 def meme_list(request):
     memes = Meme.objects.all().order_by("-created_at")
+    
     subjects = Subject.objects.filter(memes__isnull=False).distinct()
+    users = User.objects.filter(memes__isnull=False).distinct()  # Get users who have posted memes
+
     # Filter by subject if provided
     subject_filter = request.GET.get("subject")
     if subject_filter:
         memes = memes.filter(subject__slug=subject_filter)
+
+    # Filter by user if provided
+    user_filter = request.GET.get("user")
+    if user_filter:
+        memes = memes.filter(user__username=user_filter)
+
     paginator = Paginator(memes, 12)  # Show 12 memes per page
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    return render(request, "memes.html", {"memes": page_obj, "subjects": subjects, "selected_subject": subject_filter})
+    return render(
+        request,
+        "memes.html",
+        {
+            "memes": page_obj,
+            "subjects": subjects,
+            "users": users,
+            "selected_subject": subject_filter,
+            "selected_user": user_filter,
+        },
+    )
 
 
 def meme_detail(request: HttpRequest, slug: str) -> HttpResponse:
@@ -4681,21 +4699,17 @@ def team_goal_detail(request, goal_id):
     """View and manage a specific team goal."""
     goal = get_object_or_404(TeamGoal.objects.prefetch_related("members__user"), id=goal_id)
 
-    # Check if user has access to this goal
     if not (goal.creator == request.user or goal.members.filter(user=request.user).exists()):
         messages.error(request, "You do not have access to this team goal.")
         return redirect("team_goals")
 
-    # Get existing team members to exclude from invitation
     existing_members = goal.members.values_list("user_id", flat=True)
 
-    # Handle inviting new members
     if request.method == "POST":
         form = TeamInviteForm(request.POST)
         if form.is_valid():
-            # Check for existing invites using the validated User object
             if TeamInvite.objects.filter(
-                goal__id=goal.id, recipient=form.cleaned_data["recipient"]  # Changed to use User object
+                goal__id=goal.id, recipient=form.cleaned_data["recipient"] 
             ).exists():
                 messages.warning(request, "An invite for this user is already pending.")
                 return redirect("team_goal_detail", goal_id=goal.id)
@@ -4709,8 +4723,6 @@ def team_goal_detail(request, goal_id):
 
     else:
         form = TeamInviteForm()
-
-    # Get users that can be invited (exclude existing members and the creator)
     available_users = User.objects.exclude(id__in=list(existing_members) + [goal.creator.id]).values(
         "id", "username", "email"
     )

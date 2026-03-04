@@ -3,6 +3,7 @@
 {% block title %}
   Educational Memes
 {% endblock title %}
+
 {% block content %}
   <div class="container mx-auto mt-8 mb-16 px-4">
     <div class="flex justify-between items-center mb-6">
@@ -12,22 +13,71 @@
         <i class="fas fa-plus mr-2"></i> Add Meme
       </a>
     </div>
-    <!-- Subject filter -->
-    <div class="mb-6">
+
+    <!-- Dropdown filters -->
+    <form method="get" class="mb-6 flex flex-wrap gap-4 items-center">
+      <div>
+        <label class="font-semibold mr-2">Subject:</label>
+        <select name="subject" class="px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600">
+          <option value="">All Subjects</option>
+          {% for subject in subjects %}
+            <option value="{{ subject.slug }}" {% if subject.slug == selected_subject %}selected{% endif %}>
+              {{ subject.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="font-semibold mr-2">User:</label>
+        <select name="user" class="px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600">
+          <option value="">All Users</option>
+          {% for user in users %}
+            <option value="{{ user.username }}" {% if user.username == selected_user %}selected{% endif %}>
+              {{ user.username }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit"
+              class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-1 rounded-md">
+        Filter
+      </button>
+    </form>
+
+    <!-- Subject filter as buttons -->
+    <div class="mb-4">
       <div class="flex flex-wrap items-center gap-2">
         <span class="font-semibold">Filter by subject:</span>
-        <a href="{% url 'meme_list' %}"
+        <a href="{% url 'meme_list' %}{% if selected_user %}?user={{ selected_user }}{% endif %}"
            class="px-3 py-1 rounded-full {% if not selected_subject %}bg-teal-600 text-white{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
           All
         </a>
         {% for subject in subjects %}
-          <a href="{% url 'meme_list' %}?subject={{ subject.slug }}"
+          <a href="{% url 'meme_list' %}?subject={{ subject.slug }}{% if selected_user %}&user={{ selected_user }}{% endif %}"
              class="px-3 py-1 rounded-full {% if selected_subject == subject.slug %}bg-teal-600 text-white{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
             {{ subject.name }}
           </a>
         {% endfor %}
       </div>
     </div>
+
+    <!-- User filter as buttons -->
+    <div class="mb-6">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-semibold">Filter by user:</span>
+        <a href="{% url 'meme_list' %}{% if selected_subject %}?subject={{ selected_subject }}{% endif %}"
+           class="px-3 py-1 rounded-full {% if not selected_user %}bg-teal-600 text-white{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
+          All
+        </a>
+        {% for user in users %}
+          <a href="{% url 'meme_list' %}?{% if selected_subject %}subject={{ selected_subject }}&{% endif %}user={{ user.username }}"
+             class="px-3 py-1 rounded-full {% if selected_user == user.username %}bg-teal-600 text-white{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
+            {{ user.username }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
     <!-- Meme grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {% for meme in memes %}
@@ -53,12 +103,13 @@
         </div>
       {% endfor %}
     </div>
+
     <!-- Pagination controls -->
     {% if memes.paginator.num_pages > 1 %}
       <div class="mt-8 flex justify-center">
         <nav class="inline-flex rounded-md shadow-sm">
           {% if memes.has_previous %}
-            <a href="?{% if selected_subject %}subject={{ selected_subject }}&{% endif %}page={{ memes.previous_page_number }}"
+            <a href="?{% if selected_subject %}subject={{ selected_subject }}&{% endif %}{% if selected_user %}user={{ selected_user }}&{% endif %}page={{ memes.previous_page_number }}"
                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-l-md hover:bg-gray-50 dark:hover:bg-gray-700">
               Previous
             </a>
@@ -67,14 +118,14 @@
             {% if memes.number == num %}
               <span class="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-teal-600">{{ num }}</span>
             {% else %}
-              <a href="?{% if selected_subject %}subject={{ selected_subject }}&{% endif %}page={{ num }}"
+              <a href="?{% if selected_subject %}subject={{ selected_subject }}&{% endif %}{% if selected_user %}user={{ selected_user }}&{% endif %}page={{ num }}"
                  class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
                 {{ num }}
               </a>
             {% endif %}
           {% endfor %}
           {% if memes.has_next %}
-            <a href="?{% if selected_subject %}subject={{ selected_subject }}&{% endif %}page={{ memes.next_page_number }}"
+            <a href="?{% if selected_subject %}subject={{ selected_subject }}&{% endif %}{% if selected_user %}user={{ selected_user }}&{% endif %}page={{ memes.next_page_number }}"
                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-r-md hover:bg-gray-50 dark:hover:bg-gray-700">
               Next
             </a>
