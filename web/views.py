@@ -321,12 +321,15 @@ def index(request):
     latest_post = BlogPost.objects.filter(status="published").order_by("-published_at").first()
 
     # Get latest success story
-    latest_success_story = (
-    SuccessStory.objects.filter(status="published")
-    .exclude(title__iexact="test")
-    .order_by("-published_at")
-    .first()
-)
+        latest_success_story = (
+        SuccessStory.objects.filter(status="published")
+        .exclude(title__iexact="test")
+        .order_by("-published_at")
+        .first()
+    )
+    
+    
+
 
 
     #Get last two waiting room requests
