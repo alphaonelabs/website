@@ -2293,7 +2293,7 @@ def api_course_list(request):
             "description": course.description,
             "teacher": course.teacher.username,
             "price": str(course.price),
-            "subject": course.subject,
+            "subject": course.subject.name,
             "level": course.level,
             "slug": course.slug,
         }
@@ -2309,7 +2309,22 @@ def api_course_create(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    # Required fields check
+    required_fields = ["title", "description", "learning_objectives", "price", "max_students", "subject"]
+    for field in required_fields:
+        if field not in data:
+            return JsonResponse({"error": f"Missing required field: {field}"}, status=400)
+
+    try:
+        subject = Subject.objects.get(id=data["subject"])
+    except (Subject.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({"error": "Invalid subject ID"}, status=400)
+
     course = Course.objects.create(
         teacher=request.user,
         title=data["title"],
@@ -2318,8 +2333,8 @@ def api_course_create(request):
         prerequisites=data.get("prerequisites", ""),
         price=data["price"],
         max_students=data["max_students"],
-        subject=data["subject"],
-        level=data["level"],
+        subject=subject,
+        level=data.get("level", "beginner"),
     )
     return JsonResponse(
         {
@@ -2341,7 +2356,7 @@ def api_course_detail(request, slug):
         "description": course.description,
         "teacher": course.teacher.username,
         "price": str(course.price),
-        "subject": course.subject,
+        "subject": course.subject.name,
         "level": course.level,
         "prerequisites": course.prerequisites,
         "learning_objectives": course.learning_objectives,
@@ -2438,7 +2453,17 @@ def api_forum_topic_create(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    # Required fields check
+    required_fields = ["title", "content", "category"]
+    for field in required_fields:
+        if field not in data:
+            return JsonResponse({"error": f"Missing required field: {field}"}, status=400)
+
     category = get_object_or_404(ForumCategory, id=data["category"])
     topic = ForumTopic.objects.create(
         title=data["title"],
@@ -2461,7 +2486,17 @@ def api_forum_reply_create(request):
     if request.method != "POST":
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    # Required fields check
+    required_fields = ["topic", "content"]
+    for field in required_fields:
+        if field not in data:
+            return JsonResponse({"error": f"Missing required field: {field}"}, status=400)
+
     topic = get_object_or_404(ForumTopic, id=data["topic"])
     reply = ForumReply.objects.create(
         topic=topic,
