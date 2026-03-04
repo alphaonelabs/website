@@ -2314,11 +2314,12 @@ def api_course_create(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    # Required fields check
+    # Required fields check (must be present and not empty)
     required_fields = ["title", "description", "learning_objectives", "price", "max_students", "subject"]
     for field in required_fields:
-        if field not in data:
-            return JsonResponse({"error": f"Missing required field: {field}"}, status=400)
+        val = data.get(field)
+        if val is None or (isinstance(val, str) and not val.strip()):
+            return JsonResponse({"error": f"Missing or empty required field: {field}"}, status=400)
 
     try:
         subject = Subject.objects.get(id=data["subject"])
@@ -2458,11 +2459,12 @@ def api_forum_topic_create(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    # Required fields check
+    # Required fields check (must be present and not empty)
     required_fields = ["title", "content", "category"]
     for field in required_fields:
-        if field not in data:
-            return JsonResponse({"error": f"Missing required field: {field}"}, status=400)
+        val = data.get(field)
+        if val is None or (isinstance(val, str) and not val.strip()):
+            return JsonResponse({"error": f"Missing or empty required field: {field}"}, status=400)
 
     category = get_object_or_404(ForumCategory, id=data["category"])
     topic = ForumTopic.objects.create(
@@ -2491,11 +2493,12 @@ def api_forum_reply_create(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    # Required fields check
+    # Required fields check (must be present and not empty)
     required_fields = ["topic", "content"]
     for field in required_fields:
-        if field not in data:
-            return JsonResponse({"error": f"Missing required field: {field}"}, status=400)
+        val = data.get(field)
+        if val is None or (isinstance(val, str) and not val.strip()):
+            return JsonResponse({"error": f"Missing or empty required field: {field}"}, status=400)
 
     topic = get_object_or_404(ForumTopic, id=data["topic"])
     reply = ForumReply.objects.create(
