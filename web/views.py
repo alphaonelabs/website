@@ -329,7 +329,7 @@ def index(request):
 )
 
 
-    # Get last two waiting room requests
+    #Get last two waiting room requests
     latest_waiting_room_requests = WaitingRoom.objects.filter(status="open").order_by("-created_at")[:2]
 
     # Global virtual classroom summary for homepage CTA
