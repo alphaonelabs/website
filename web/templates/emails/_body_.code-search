@@ -1,0 +1,129 @@
+# Query: </body>
+# ContextLines: 1
+
+21 results - 21 files
+
+web/templates/base.html:
+  1121      {% endblock extra_js %} 
+  <!-- Back to Top Button -->
+<button
+  id="back-to-top"
+  onclick="window.scrollTo({top: 0, behavior: 'smooth'})"
+  class="fixed bottom-8 right-8 z-50 hidden bg-teal-600 hover:bg-teal-700 text-white rounded-full p-3 shadow-lg transition-all duration-300"
+  aria-label="Back to top"
+>
+  <i class="fas fa-arrow-up"></i>
+</button>
+
+<script>
+  const backToTopBtn = document.getElementById('back-to-top');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+      backToTopBtn.classList.remove('hidden');
+    } else {
+      backToTopBtn.classList.add('hidden');
+    }
+  });
+</script>
+  1122:   </body>
+  1123  </html>
+
+web/templates/emails/base_email.html:
+  8      {% block content %}{% endblock %}
+  9:   </body>
+  10  </html>
+
+web/templates/emails/course_invitation.html:
+  97      </div>
+  98:   </body>
+  99  </html>
+
+web/templates/emails/course_update.html:
+  101      </div>
+  102:   </body>
+  103  </html>
+
+web/templates/emails/donation_thank_you.html:
+  128      </div>
+  129:   </body>
+  130  </html>
+
+web/templates/emails/enrollment_confirmation.html:
+  92      </div>
+  93:   </body>
+  94  </html>
+
+web/templates/emails/learn_interest.html:
+  73      </div>
+  74:   </body>
+  75  </html>
+
+web/templates/emails/new_enrollment_notification.html:
+  94      </div>
+  95:   </body>
+  96  </html>
+
+web/templates/emails/notification.html:
+  50      </div>
+  51:   </body>
+  52  </html>
+
+web/templates/emails/session_reminder.html:
+  127      </div>
+  128:   </body>
+  129  </html>
+
+web/templates/emails/student_enrollment.html:
+  18      <p>Thank you!</p>
+  19:   </body>
+  20  </html>
+
+web/templates/emails/teach_application.html:
+  56      </div>
+  57:   </body>
+  58  </html>
+
+web/templates/emails/teacher_message.html:
+  86      </div>
+  87:   </body>
+  88  </html>
+
+web/templates/emails/verification_reminder.html:
+  56      </p>
+  57:   </body>
+  58  </html>
+
+web/templates/emails/weekly_progress.html:
+  134      </div>
+  135:   </body>
+  136  </html>
+
+web/templates/emails/welcome_guest.html:
+  58      </div>
+  59:   </body>
+  60  </html>
+
+web/templates/emails/welcome_teach_course.html:
+  65      </div>
+  66:   </body>
+  67  </html>
+
+web/templates/emails/marketing/course_promotion.html:
+  102      </div>
+  103:   </body>
+  104  </html>
+
+web/templates/trackers/embed.html:
+  31      </div>
+  32:   </body>
+  33  </html>
+
+web/templates/virtual_classroom/index.html:
+  481      <script src="{% static 'js/virtual_classroom.js' %}"></script>
+  482:   </body>
+  483  </html>
+
+web/templates/web/emails/teacher_message.html:
+  113      </div>
+  114:   </body>
+  115  </html>
