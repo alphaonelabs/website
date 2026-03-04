@@ -322,7 +322,7 @@ def index(request):
 
     # Get latest success story
     latest_success_story = SuccessStory.objects.filter(status="published").exclude(title__iexact="test").order_by("-published_at").first()
-```
+
 
     # Get last two waiting room requests
     latest_waiting_room_requests = WaitingRoom.objects.filter(status="open").order_by("-created_at")[:2]
