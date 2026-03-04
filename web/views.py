@@ -2326,6 +2326,17 @@ def api_course_create(request):
     except (Subject.DoesNotExist, ValueError, TypeError):
         return JsonResponse({"error": "Invalid subject ID"}, status=400)
 
+    # Normalize and validate level
+    level = data.get("level")
+    if level is None or (isinstance(level, str) and not level.strip()):
+        level = "beginner"
+    else:
+        level = str(level).strip().lower()
+
+    valid_levels = dict(Course._meta.get_field("level").choices).keys()
+    if level not in valid_levels:
+        return JsonResponse({"error": f"Invalid level. Must be one of: {', '.join(valid_levels)}"}, status=400)
+
     course = Course.objects.create(
         teacher=request.user,
         title=data["title"],
@@ -2335,7 +2346,7 @@ def api_course_create(request):
         price=data["price"],
         max_students=data["max_students"],
         subject=subject,
-        level=data.get("level", "beginner"),
+        level=level,
     )
     return JsonResponse(
         {
