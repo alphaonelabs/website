@@ -1874,6 +1874,167 @@ class Donation(models.Model):
         return self.email.split("@")[0]  # Use part before @ in email
 
 
+class Campaign(models.Model):
+    """Model for classroom crowdfunding campaigns."""
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("pending", "Pending Approval"),
+        ("active", "Active"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name="campaigns")
+    title = models.CharField(max_length=200, help_text="Campaign title")
+    slug = models.SlugField(unique=True, max_length=200)
+    description = MarkdownxField(help_text="Detailed description of the campaign")
+    funding_goal = models.DecimalField(
+        max_digits=10, decimal_places=2, help_text="Target amount to raise"
+    )
+    current_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, help_text="Amount raised so far"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    budget_breakdown = models.TextField(
+        blank=True, help_text="Itemized budget showing how funds will be used"
+    )
+    video_url = models.URLField(blank=True, help_text="Optional video pitch URL")
+    deadline = models.DateField(null=True, blank=True, help_text="Campaign deadline")
+    school_name = models.CharField(max_length=200, blank=True, help_text="School or institution name")
+    school_verified = models.BooleanField(default=False, help_text="Whether school identity is verified")
+
+    # Matching grants
+    matching_enabled = models.BooleanField(default=False, help_text="Enable matching grants")
+    matching_multiplier = models.DecimalField(
+        max_digits=3, decimal_places=1, default=1.0, help_text="Matching multiplier (e.g., 2.0 for 2x match)"
+    )
+    matching_limit = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True, help_text="Maximum matching amount"
+    )
+    matching_sponsor = models.CharField(
+        max_length=200, blank=True, help_text="Name of matching sponsor"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} - {self.teacher.username}"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+    @property
+    def progress_percentage(self):
+        """Calculate funding progress percentage."""
+        if self.funding_goal > 0:
+            return min((self.current_amount / self.funding_goal) * 100, 100)
+        return 0
+
+    @property
+    def is_fully_funded(self):
+        """Check if campaign has reached its goal."""
+        return self.current_amount >= self.funding_goal
+
+    @property
+    def donors_count(self):
+        """Get total number of donors."""
+        return self.donations.values("user").distinct().count()
+
+
+class CampaignImage(models.Model):
+    """Model for campaign images."""
+
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="campaign_images/", help_text="Campaign image")
+    caption = models.CharField(max_length=200, blank=True)
+    is_primary = models.BooleanField(default=False, help_text="Set as campaign cover image")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-is_primary", "created_at"]
+
+    def __str__(self):
+        return f"Image for {self.campaign.title}"
+
+    def save(self, *args, **kwargs):
+        # Resize image to optimize storage
+        if self.image:
+            img = Image.open(self.image)
+            max_size = (800, 600)
+            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+            output = BytesIO()
+            img_format = img.format or "JPEG"
+            img.save(output, format=img_format, quality=85)
+            output.seek(0)
+
+            self.image = ContentFile(output.read(), name=self.image.name)
+
+        super().save(*args, **kwargs)
+
+
+class CampaignDonation(models.Model):
+    """Model for tracking donations to specific campaigns."""
+
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name="donations")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="campaign_donations")
+    email = models.EmailField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    message = models.TextField(blank=True, help_text="Message from donor")
+    anonymous = models.BooleanField(default=False)
+    stripe_payment_intent_id = models.CharField(max_length=100, blank=True, default="")
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pending", "Pending"),
+            ("completed", "Completed"),
+            ("failed", "Failed"),
+            ("refunded", "Refunded"),
+        ],
+        default="pending",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.email} - ${self.amount} to {self.campaign.title}"
+
+    @property
+    def display_name(self):
+        if self.anonymous:
+            return "Anonymous"
+        if self.user:
+            return self.user.get_full_name() or self.user.username
+        return self.email.split("@")[0]
+
+
+class CampaignUpdate(models.Model):
+    """Model for campaign progress updates."""
+
+    campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name="updates")
+    title = models.CharField(max_length=200)
+    content = MarkdownxField(help_text="Update content")
+    image = models.ImageField(upload_to="campaign_updates/", blank=True, help_text="Optional update image")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.campaign.title} - {self.title}"
+
+
 class Badge(models.Model):
     BADGE_TYPES = [
         ("challenge", "Challenge Completion"),

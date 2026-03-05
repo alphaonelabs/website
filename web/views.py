@@ -116,6 +116,10 @@ from .models import (
     Badge,
     BlogComment,
     BlogPost,
+    Campaign,
+    CampaignDonation,
+    CampaignImage,
+    CampaignUpdate,
     CartItem,
     Certificate,
     Challenge,
@@ -8839,3 +8843,193 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+# Campaign Views
+@login_required
+def campaign_list(request):
+    """View for listing all active campaigns."""
+    campaigns = Campaign.objects.filter(status="active").select_related("teacher").prefetch_related("images")
+
+    # Filter by status if specified
+    status_filter = request.GET.get("status")
+    if status_filter:
+        campaigns = campaigns.filter(status=status_filter)
+
+    # Search functionality
+    search_query = request.GET.get("q")
+    if search_query:
+        campaigns = campaigns.filter(
+            models.Q(title__icontains=search_query)
+            | models.Q(description__icontains=search_query)
+            | models.Q(school_name__icontains=search_query)
+        )
+
+    context = {
+        "campaigns": campaigns,
+        "search_query": search_query,
+    }
+    return render(request, "campaigns/list.html", context)
+
+
+@login_required
+def campaign_detail(request, slug):
+    """View for displaying campaign details."""
+    campaign = get_object_or_404(
+        Campaign.objects.select_related("teacher").prefetch_related(
+            "images", "updates", "donations"
+        ),
+        slug=slug
+    )
+
+    # Get recent donations (non-anonymous or with permission)
+    recent_donations = campaign.donations.filter(status="completed").order_by("-created_at")[:10]
+
+    context = {
+        "campaign": campaign,
+        "recent_donations": recent_donations,
+        "is_owner": request.user == campaign.teacher,
+    }
+    return render(request, "campaigns/detail.html", context)
+
+
+@login_required
+def campaign_create(request):
+    """View for creating a new campaign."""
+    # Only teachers can create campaigns
+    if not request.user.profile.is_teacher:
+        messages.error(request, "Only teachers can create crowdfunding campaigns.")
+        return redirect("home")
+
+    if request.method == "POST":
+        title = request.POST.get("title")
+        description = request.POST.get("description")
+        funding_goal = request.POST.get("funding_goal")
+        budget_breakdown = request.POST.get("budget_breakdown", "")
+        school_name = request.POST.get("school_name", "")
+        video_url = request.POST.get("video_url", "")
+        deadline = request.POST.get("deadline", None)
+
+        # Create the campaign
+        campaign = Campaign.objects.create(
+            teacher=request.user,
+            title=title,
+            description=description,
+            funding_goal=funding_goal,
+            budget_breakdown=budget_breakdown,
+            school_name=school_name,
+            video_url=video_url,
+            deadline=deadline if deadline else None,
+            status="draft",
+        )
+
+        # Handle image uploads
+        images = request.FILES.getlist("images")
+        for idx, image in enumerate(images):
+            CampaignImage.objects.create(
+                campaign=campaign,
+                image=image,
+                is_primary=(idx == 0),
+            )
+
+        messages.success(
+            request,
+            "Campaign created successfully! It will be reviewed before going live."
+        )
+        return redirect("campaign_detail", slug=campaign.slug)
+
+    return render(request, "campaigns/create.html")
+
+
+@login_required
+def campaign_edit(request, slug):
+    """View for editing a campaign."""
+    campaign = get_object_or_404(Campaign, slug=slug, teacher=request.user)
+
+    if request.method == "POST":
+        campaign.title = request.POST.get("title")
+        campaign.description = request.POST.get("description")
+        campaign.funding_goal = request.POST.get("funding_goal")
+        campaign.budget_breakdown = request.POST.get("budget_breakdown", "")
+        campaign.school_name = request.POST.get("school_name", "")
+        campaign.video_url = request.POST.get("video_url", "")
+        deadline = request.POST.get("deadline", None)
+        campaign.deadline = deadline if deadline else None
+
+        campaign.save()
+
+        # Handle new image uploads
+        images = request.FILES.getlist("images")
+        for image in images:
+            CampaignImage.objects.create(
+                campaign=campaign,
+                image=image,
+            )
+
+        messages.success(request, "Campaign updated successfully!")
+        return redirect("campaign_detail", slug=campaign.slug)
+
+    context = {"campaign": campaign}
+    return render(request, "campaigns/edit.html", context)
+
+
+@login_required
+def campaign_donate(request, slug):
+    """View for donating to a campaign."""
+    campaign = get_object_or_404(Campaign, slug=slug, status="active")
+
+    if request.method == "POST":
+        amount = request.POST.get("amount")
+        message = request.POST.get("message", "")
+        anonymous = request.POST.get("anonymous") == "on"
+
+        # Create the donation record
+        donation = CampaignDonation.objects.create(
+            campaign=campaign,
+            user=request.user,
+            email=request.user.email,
+            amount=amount,
+            message=message,
+            anonymous=anonymous,
+            status="pending",
+        )
+
+        # In production, this would redirect to Stripe payment
+        # For now, we'll just mark it as completed
+        donation.status = "completed"
+        donation.save()
+
+        # Update campaign amount
+        campaign.current_amount += float(amount)
+        campaign.save()
+
+        messages.success(request, f"Thank you for your donation of ${amount}!")
+        return redirect("campaign_detail", slug=campaign.slug)
+
+    context = {"campaign": campaign}
+    return render(request, "campaigns/donate.html", context)
+
+
+@login_required
+def campaign_update_create(request, slug):
+    """View for creating a campaign update."""
+    campaign = get_object_or_404(Campaign, slug=slug, teacher=request.user)
+
+    if request.method == "POST":
+        title = request.POST.get("title")
+        content = request.POST.get("content")
+        image = request.FILES.get("image")
+
+        update = CampaignUpdate.objects.create(
+            campaign=campaign,
+            title=title,
+            content=content,
+            image=image,
+        )
+
+        messages.success(request, "Campaign update posted successfully!")
+        return redirect("campaign_detail", slug=campaign.slug)
+
+    context = {"campaign": campaign}
+    return render(request, "campaigns/update_create.html", context)
+

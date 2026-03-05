@@ -143,6 +143,13 @@ urlpatterns += i18n_patterns(
     path("surveys/<int:pk>/delete/", SurveyDeleteView.as_view(), name="survey-delete"),
     path("surveys/<int:pk>/submit/", submit_survey, name="submit-survey"),
     path("surveys/<int:pk>/results/", SurveyResultsView.as_view(), name="survey-results"),
+    # Campaign URLs
+    path("campaigns/", views.campaign_list, name="campaign_list"),
+    path("campaigns/create/", views.campaign_create, name="campaign_create"),
+    path("campaigns/<slug:slug>/", views.campaign_detail, name="campaign_detail"),
+    path("campaigns/<slug:slug>/edit/", views.campaign_edit, name="campaign_edit"),
+    path("campaigns/<slug:slug>/donate/", views.campaign_donate, name="campaign_donate"),
+    path("campaigns/<slug:slug>/update/", views.campaign_update_create, name="campaign_update_create"),
     # Payment URLs
     path(
         "courses/<slug:slug>/create-payment-intent/",

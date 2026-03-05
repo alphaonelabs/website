@@ -14,6 +14,10 @@ from .models import (
     Badge,
     BlogComment,
     BlogPost,
+    Campaign,
+    CampaignDonation,
+    CampaignImage,
+    CampaignUpdate,
     Cart,
     CartItem,
     Challenge,
@@ -765,6 +769,144 @@ class DonationAdmin(admin.ModelAdmin):
         return obj.display_name
 
     display_name.short_description = "Name"
+
+
+class CampaignImageInline(admin.TabularInline):
+    model = CampaignImage
+    extra = 1
+    fields = ("image", "caption", "is_primary")
+
+
+class CampaignUpdateInline(admin.StackedInline):
+    model = CampaignUpdate
+    extra = 0
+    fields = ("title", "content", "image", "created_at")
+    readonly_fields = ("created_at",)
+
+
+class CampaignDonationInline(admin.TabularInline):
+    model = CampaignDonation
+    extra = 0
+    fields = ("email", "amount", "status", "anonymous", "created_at")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(Campaign)
+class CampaignAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "teacher",
+        "status",
+        "funding_goal",
+        "current_amount",
+        "progress_percentage",
+        "created_at",
+    )
+    list_filter = ("status", "school_verified", "matching_enabled", "created_at")
+    search_fields = ("title", "description", "teacher__username", "school_name")
+    readonly_fields = ("created_at", "updated_at", "progress_percentage", "donors_count")
+    prepopulated_fields = {"slug": ("title",)}
+    inlines = [CampaignImageInline, CampaignUpdateInline, CampaignDonationInline]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "teacher",
+                    "title",
+                    "slug",
+                    "description",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Funding Details",
+            {
+                "fields": (
+                    "funding_goal",
+                    "current_amount",
+                    "progress_percentage",
+                    "donors_count",
+                    "deadline",
+                    "budget_breakdown",
+                )
+            },
+        ),
+        (
+            "School Information",
+            {"fields": ("school_name", "school_verified")},
+        ),
+        (
+            "Matching Grants",
+            {
+                "fields": (
+                    "matching_enabled",
+                    "matching_multiplier",
+                    "matching_limit",
+                    "matching_sponsor",
+                )
+            },
+        ),
+        ("Media", {"fields": ("video_url",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def progress_percentage(self, obj):
+        return f"{obj.progress_percentage:.1f}%"
+
+    progress_percentage.short_description = "Progress"
+
+
+@admin.register(CampaignImage)
+class CampaignImageAdmin(admin.ModelAdmin):
+    list_display = ("campaign", "caption", "is_primary", "created_at")
+    list_filter = ("is_primary", "created_at")
+    search_fields = ("campaign__title", "caption")
+
+
+@admin.register(CampaignDonation)
+class CampaignDonationAdmin(admin.ModelAdmin):
+    list_display = ("campaign", "display_name", "amount", "status", "created_at")
+    list_filter = ("status", "anonymous", "created_at")
+    search_fields = ("campaign__title", "email", "user__username")
+    readonly_fields = ("created_at", "updated_at")
+
+    fieldsets = (
+        (
+            "Donation Information",
+            {
+                "fields": (
+                    "campaign",
+                    "user",
+                    "email",
+                    "amount",
+                    "status",
+                    "message",
+                    "anonymous",
+                )
+            },
+        ),
+        (
+            "Payment Information",
+            {"fields": ("stripe_payment_intent_id",)},
+        ),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def display_name(self, obj):
+        return obj.display_name
+
+    display_name.short_description = "Donor"
+
+
+@admin.register(CampaignUpdate)
+class CampaignUpdateAdmin(admin.ModelAdmin):
+    list_display = ("campaign", "title", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("campaign__title", "title", "content")
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(Badge)
