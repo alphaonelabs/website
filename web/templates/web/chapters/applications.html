@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}
+  My Chapter Applications - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">My Chapter Applications</h1>
+        <p class="text-lg text-gray-600 dark:text-gray-300">
+          Track the status of your chapter applications
+        </p>
+      </div>
+      {% if applications %}
+        <div class="space-y-4">
+          {% for application in applications %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+              <div class="flex justify-between items-start">
+                <div class="flex-1">
+                  <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ application.chapter_name }}</h3>
+                  <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i>
+                    {{ application.region }}{% if application.country %}, {{ application.country }}{% endif %}
+                  </p>
+                  <p class="text-gray-700 dark:text-gray-400 mb-4">{{ application.description|truncatewords:30 }}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-500">
+                    Applied on {{ application.created_at|date:"M d, Y" }}
+                  </p>
+                </div>
+                <div class="ml-4">
+                  <span class="px-4 py-2 rounded-full text-sm font-semibold {% if application.status == 'approved' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300{% elif application.status == 'rejected' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300{% else %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300{% endif %}">
+                    {{ application.get_status_display }}
+                  </span>
+                </div>
+              </div>
+              {% if application.review_notes %}
+                <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Review Notes:</p>
+                  <p class="text-gray-600 dark:text-gray-400">{{ application.review_notes }}</p>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+          <i class="fas fa-file-alt text-gray-400 text-6xl mb-4"></i>
+          <p class="text-xl text-gray-600 dark:text-gray-400">No applications yet.</p>
+          <p class="text-gray-500 dark:text-gray-500 mt-2">
+            <a href="{% url 'chapter_apply' %}" class="text-teal-300 hover:text-teal-400 font-semibold">Apply to start a chapter</a>
+            in your area!
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ chapter.name }} - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Chapter Header -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-8">
+        {% if chapter.image %}
+          <img src="{{ chapter.image.url }}"
+               alt="{{ chapter.name }}"
+               class="w-full h-64 object-cover">
+        {% else %}
+          <div class="w-full h-64 bg-gradient-to-br from-teal-300 to-blue-400 flex items-center justify-center">
+            <i class="fas fa-users text-white text-8xl"></i>
+          </div>
+        {% endif %}
+        <div class="p-8">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">{{ chapter.name }}</h1>
+              <p class="text-xl text-gray-600 dark:text-gray-300 flex items-center">
+                <i class="fas fa-map-marker-alt mr-2 text-teal-300"></i>
+                {{ chapter.region }}{% if chapter.country %}, {{ chapter.country }}{% endif %}
+              </p>
+            </div>
+            <div>
+              {% if user.is_authenticated %}
+                {% if is_member %}
+                  <a href="{% url 'chapter_leave' chapter.slug %}"
+                     class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition duration-200 inline-flex items-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    Leave Chapter
+                  </a>
+                {% else %}
+                  <a href="{% url 'chapter_join' chapter.slug %}"
+                     class="bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200 inline-flex items-center">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    Join Chapter
+                  </a>
+                {% endif %}
+              {% else %}
+                <a href="{% url 'account_login' %}?next={{ request.path }}"
+                   class="bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200 inline-flex items-center">
+                  <i class="fas fa-sign-in-alt mr-2"></i>
+                  Login to Join
+                </a>
+              {% endif %}
+            </div>
+          </div>
+          <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+            <div class="grid md:grid-cols-3 gap-4 mb-6">
+              <div class="flex items-center text-gray-700 dark:text-gray-300">
+                <i class="fas fa-users text-teal-300 text-2xl mr-3"></i>
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Members</p>
+                  <p class="text-lg font-semibold">{{ chapter.member_count }}</p>
+                </div>
+              </div>
+              <div class="flex items-center text-gray-700 dark:text-gray-300">
+                <i class="fas fa-calendar text-teal-300 text-2xl mr-3"></i>
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Upcoming Events</p>
+                  <p class="text-lg font-semibold">{{ upcoming_events|length }}</p>
+                </div>
+              </div>
+              <div class="flex items-center text-gray-700 dark:text-gray-300">
+                <i class="fas fa-clock text-teal-300 text-2xl mr-3"></i>
+                <div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Founded</p>
+                  <p class="text-lg font-semibold">{{ chapter.created_at|date:"M Y" }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="prose dark:prose-invert max-w-none">
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">About</h2>
+              <p class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ chapter.description }}</p>
+            </div>
+            {% if chapter.meeting_schedule %}
+              <div class="mt-6">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Meeting Schedule</h2>
+                <p class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ chapter.meeting_schedule }}</p>
+              </div>
+            {% endif %}
+            {% if chapter.contact_email or chapter.website %}
+              <div class="mt-6 flex gap-4">
+                {% if chapter.contact_email %}
+                  <a href="mailto:{{ chapter.contact_email }}"
+                     class="text-teal-300 hover:text-teal-400 inline-flex items-center">
+                    <i class="fas fa-envelope mr-2"></i>
+                    Contact
+                  </a>
+                {% endif %}
+                {% if chapter.website %}
+                  <a href="{{ chapter.website }}"
+                     target="_blank"
+                     class="text-teal-300 hover:text-teal-400 inline-flex items-center">
+                    <i class="fas fa-globe mr-2"></i>
+                    Website
+                  </a>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <!-- Upcoming Events -->
+      {% if upcoming_events %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Upcoming Events</h2>
+            <a href="{% url 'chapter_event_list' chapter.slug %}"
+               class="text-teal-300 hover:text-teal-400 font-semibold">
+              View All <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+          </div>
+          <div class="space-y-4">
+            {% for event in upcoming_events %}
+              <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-teal-300 transition duration-200">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">{{ event.title }}</h3>
+                    <div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span class="flex items-center">
+                        <i class="fas fa-calendar mr-2 text-teal-300"></i>
+                        {{ event.start_datetime|date:"M d, Y" }}
+                      </span>
+                      <span class="flex items-center">
+                        <i class="fas fa-clock mr-2 text-teal-300"></i>
+                        {{ event.start_datetime|time:"g:i A" }}
+                      </span>
+                      <span class="flex items-center">
+                        <i class="fas fa-{% if event.is_virtual %}video{% else %}map-marker-alt{% endif %} mr-2 text-teal-300"></i>
+                        {% if event.is_virtual %}Virtual{% else %}{{ event.location }}{% endif %}
+                      </span>
+                      <span class="flex items-center">
+                        <i class="fas fa-users mr-2 text-teal-300"></i>
+                        {{ event.rsvp_count }} RSVP{% if event.max_attendees %} / {{ event.max_attendees }}{% endif %}
+                      </span>
+                    </div>
+                  </div>
+                  <a href="{% url 'chapter_event_detail' chapter.slug event.slug %}"
+                     class="ml-4 text-teal-300 hover:text-teal-400 font-semibold whitespace-nowrap">
+                    Details <i class="fas fa-arrow-right ml-1"></i>
+                  </a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      <!-- Chapter Leaders -->
+      {% if chapter.leaders %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Chapter Leaders</h2>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for leader in chapter.leaders %}
+              <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 bg-teal-300 rounded-full flex items-center justify-center text-gray-900 font-bold">
+                  {{ leader.username|slice:":1"|upper }}
+                </div>
+                <div>
+                  <p class="font-semibold text-gray-900 dark:text-white">{{ leader.username }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {% with leader.chapter_memberships.get as membership %}
+                      {{ membership.get_role_display }}
+                    {% endwith %}
+                  </p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}

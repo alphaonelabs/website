@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import include, path
 from django.views.generic.base import RedirectView
 
-from . import admin_views, peer_challenge_views, quiz_views, views, views_avatar, views_whiteboard
+from . import admin_views, peer_challenge_views, quiz_views, views, views_avatar, views_chapters, views_whiteboard
 from .secure_messaging import (
     compose_message,
     download_message,
@@ -492,6 +492,41 @@ urlpatterns += i18n_patterns(
         views.create_membership_subscription,
         name="create_membership_subscription",
     ),
+    path("membership/success/", views.membership_success, name="membership_success"),
+    path("membership/settings/", views.membership_settings, name="membership_settings"),
+    path("membership/cancel/", views.cancel_membership, name="cancel_membership"),
+    path("membership/reactivate/", views.reactivate_membership, name="reactivate_membership"),
+    path("membership/update-payment-method/", views.update_payment_method, name="update_payment_method"),
+    path("membership/update-payment-method/api/", views.update_payment_method_api, name="update_payment_method_api"),
+    # Chapter URLs
+    path("chapters/", views_chapters.chapter_directory, name="chapter_directory"),
+    path("chapters/apply/", views_chapters.chapter_apply, name="chapter_apply"),
+    path("chapters/applications/", views_chapters.chapter_applications, name="chapter_applications"),
+    path("chapters/<slug:slug>/", views_chapters.chapter_detail, name="chapter_detail"),
+    path("chapters/<slug:slug>/join/", views_chapters.chapter_join, name="chapter_join"),
+    path("chapters/<slug:slug>/leave/", views_chapters.chapter_leave, name="chapter_leave"),
+    path("chapters/<slug:chapter_slug>/events/", views_chapters.chapter_event_list, name="chapter_event_list"),
+    path(
+        "chapters/<slug:chapter_slug>/events/create/",
+        views_chapters.chapter_event_create,
+        name="chapter_event_create",
+    ),
+    path(
+        "chapters/<slug:chapter_slug>/events/<slug:event_slug>/",
+        views_chapters.chapter_event_detail,
+        name="chapter_event_detail",
+    ),
+    path(
+        "chapters/<slug:chapter_slug>/events/<slug:event_slug>/rsvp/",
+        views_chapters.chapter_event_rsvp,
+        name="chapter_event_rsvp",
+    ),
+    path(
+        "chapters/<slug:chapter_slug>/events/<slug:event_slug>/cancel-rsvp/",
+        views_chapters.chapter_event_cancel_rsvp,
+        name="chapter_event_cancel_rsvp",
+    ),
+    path("test-sentry-error/", lambda request: 1 / 0, name="test_sentry"),
     path(
         "membership/success/",
         views.membership_success,

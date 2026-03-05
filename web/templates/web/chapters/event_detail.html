@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ event.title }} - {{ chapter.name }} - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Breadcrumb -->
+      <nav class="flex mb-6" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+          <li class="inline-flex items-center">
+            <a href="{% url 'chapter_directory' %}"
+               class="text-gray-700 dark:text-gray-300 hover:text-teal-300">Chapters</a>
+          </li>
+          <li>
+            <div class="flex items-center">
+              <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+              <a href="{% url 'chapter_detail' chapter.slug %}"
+                 class="text-gray-700 dark:text-gray-300 hover:text-teal-300">{{ chapter.name }}</a>
+            </div>
+          </li>
+          <li>
+            <div class="flex items-center">
+              <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+              <a href="{% url 'chapter_event_list' chapter.slug %}"
+                 class="text-gray-700 dark:text-gray-300 hover:text-teal-300">Events</a>
+            </div>
+          </li>
+          <li aria-current="page">
+            <div class="flex items-center">
+              <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+              <span class="text-gray-500 dark:text-gray-400">{{ event.title|truncatewords:3 }}</span>
+            </div>
+          </li>
+        </ol>
+      </nav>
+      <!-- Event Details -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        {% if event.image %}
+          <img src="{{ event.image.url }}"
+               alt="{{ event.title }}"
+               class="w-full h-80 object-cover">
+        {% else %}
+          <div class="w-full h-80 bg-gradient-to-br from-teal-300 to-blue-400 flex items-center justify-center">
+            <i class="fas fa-calendar-alt text-white text-8xl"></i>
+          </div>
+        {% endif %}
+        <div class="p-8">
+          <div class="flex justify-between items-start mb-6">
+            <div>
+              <div class="flex items-center gap-3 mb-3">
+                <h1 class="text-4xl font-bold text-gray-900 dark:text-white">{{ event.title }}</h1>
+                <span class="px-3 py-1 text-sm font-semibold rounded-full {% if event.event_type == 'workshop' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300{% elif event.event_type == 'training' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300{% elif event.event_type == 'hackathon' %}bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300{% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+                  {{ event.get_event_type_display }}
+                </span>
+              </div>
+              <p class="text-lg text-gray-600 dark:text-gray-300">
+                Hosted by <a href="{% url 'chapter_detail' chapter.slug %}"
+    class="text-teal-300 hover:text-teal-400">{{ chapter.name }}</a>
+              </p>
+            </div>
+            <div>
+              {% if user.is_authenticated %}
+                {% if user_rsvp %}
+                  <div class="flex gap-2">
+                    <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 px-6 py-3 rounded-lg font-semibold inline-flex items-center">
+                      <i class="fas fa-check-circle mr-2"></i>
+                      RSVP'd
+                    </span>
+                    <a href="{% url 'chapter_event_cancel_rsvp' chapter.slug event.slug %}"
+                       class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition duration-200">
+                      Cancel
+                    </a>
+                  </div>
+                {% else %}
+                  {% if event.is_full %}
+                    <span class="bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold inline-flex items-center cursor-not-allowed">
+                      <i class="fas fa-users mr-2"></i>
+                      Event Full
+                    </span>
+                  {% else %}
+                    <a href="{% url 'chapter_event_rsvp' chapter.slug event.slug %}"
+                       class="bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200 inline-flex items-center">
+                      <i class="fas fa-calendar-check mr-2"></i>
+                      RSVP
+                    </a>
+                  {% endif %}
+                {% endif %}
+              {% else %}
+                <a href="{% url 'account_login' %}?next={{ request.path }}"
+                   class="bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200 inline-flex items-center">
+                  <i class="fas fa-sign-in-alt mr-2"></i>
+                  Login to RSVP
+                </a>
+              {% endif %}
+            </div>
+          </div>
+          <!-- Event Details Grid -->
+          <div class="grid md:grid-cols-2 gap-6 mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-start">
+              <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mr-4">
+                <i class="fas fa-calendar text-teal-300 text-xl"></i>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Date</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ event.start_datetime|date:"l, F d, Y" }}</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mr-4">
+                <i class="fas fa-clock text-teal-300 text-xl"></i>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Time</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ event.start_datetime|time:"g:i A" }} - {{ event.end_datetime|time:"g:i A" }}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mr-4">
+                <i class="fas fa-{% if event.is_virtual %}video{% else %}map-marker-alt{% endif %} text-teal-300 text-xl"></i>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Location</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                  {% if event.is_virtual %}
+                    Virtual Event
+                    {% if event.virtual_link and user_rsvp %}
+                      <br><a href="{{ event.virtual_link }}"
+   target="_blank"
+   class="text-teal-300 hover:text-teal-400 text-sm">Join Link</a>
+                    {% endif %}
+                  {% else %}
+                    {{ event.location }}
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mr-4">
+                <i class="fas fa-users text-teal-300 text-xl"></i>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Attendees</p>
+                <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ event.rsvp_count }} RSVP{% if event.max_attendees %} / {{ event.max_attendees }}{% endif %}
+                </p>
+              </div>
+            </div>
+          </div>
+          <!-- Description -->
+          <div class="prose dark:prose-invert max-w-none">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">About This Event</h2>
+            <p class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ event.description }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

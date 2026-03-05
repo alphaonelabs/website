@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Chapter Directory - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Educational Chapters</h1>
+            <p class="text-lg text-gray-600 dark:text-gray-300">
+              Join local communities of learners, teachers, and supporters
+            </p>
+          </div>
+          <div>
+            <a href="{% url 'chapter_apply' %}"
+               class="bg-teal-300 hover:bg-teal-400 text-gray-900 dark:text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200 inline-flex items-center">
+              <i class="fas fa-plus mr-2"></i>
+              Start a Chapter
+            </a>
+          </div>
+        </div>
+        <!-- Search and Filters -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <form method="get" class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1">
+              <input type="text"
+                     name="search"
+                     value="{{ search_query }}"
+                     placeholder="Search chapters by name, region, or country..."
+                     class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300">
+            </div>
+            <div class="w-full md:w-48">
+              <select name="country"
+                      class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300">
+                <option value="">All Countries</option>
+                {% for country in countries %}
+                  <option value="{{ country }}" {% if country_filter == country %}selected{% endif %}>{{ country }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit"
+                    class="bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-2 rounded-lg font-semibold transition duration-200">
+              <i class="fas fa-search mr-2"></i>Search
+            </button>
+          </form>
+        </div>
+      </div>
+      <!-- Chapters Grid -->
+      {% if page_obj %}
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {% for chapter in page_obj %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition duration-200 overflow-hidden">
+              {% if chapter.image %}
+                <img src="{{ chapter.image.url }}"
+                     alt="{{ chapter.name }}"
+                     class="w-full h-48 object-cover">
+              {% else %}
+                <div class="w-full h-48 bg-gradient-to-br from-teal-300 to-blue-400 flex items-center justify-center">
+                  <i class="fas fa-users text-white text-6xl"></i>
+                </div>
+              {% endif %}
+              <div class="p-6">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{{ chapter.name }}</h3>
+                <p class="text-gray-600 dark:text-gray-300 flex items-center mb-3">
+                  <i class="fas fa-map-marker-alt mr-2 text-teal-300"></i>
+                  {{ chapter.region }}{% if chapter.country %}, {{ chapter.country }}{% endif %}
+                </p>
+                <p class="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">{{ chapter.description|truncatewords:20 }}</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-users mr-1"></i>
+                    {{ chapter.member_count }} member{{ chapter.member_count|pluralize }}
+                  </span>
+                  <a href="{% url 'chapter_detail' chapter.slug %}"
+                     class="text-teal-300 hover:text-teal-400 font-semibold">
+                    Learn More <i class="fas fa-arrow-right ml-1"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+          <div class="flex justify-center items-center space-x-2">
+            {% if page_obj.has_previous %}
+              <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}"
+                 class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            {% endif %}
+            <span class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            {% if page_obj.has_next %}
+              <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if country_filter %}&country={{ country_filter }}{% endif %}"
+                 class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+          <i class="fas fa-search text-gray-400 text-6xl mb-4"></i>
+          <p class="text-xl text-gray-600 dark:text-gray-400">No chapters found.</p>
+          <p class="text-gray-500 dark:text-gray-500 mt-2">
+            Be the first to
+            <a href="{% url 'chapter_apply' %}" class="text-teal-300 hover:text-teal-400 font-semibold">start a chapter</a>
+            in your area!
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}

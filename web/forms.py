@@ -25,6 +25,10 @@ from .models import (
     Avatar,
     BlogPost,
     ChallengeSubmission,
+    Chapter,
+    ChapterApplication,
+    ChapterEvent,
+    ChapterEventRSVP,
     Course,
     CourseMaterial,
     EducationalVideo,
@@ -1975,6 +1979,95 @@ class SurveyForm(forms.ModelForm):
         if len(title) < 5:
             raise forms.ValidationError(_("Title too short"), code="invalid_length", params={"min_length": 5})
         return title
+
+
+class ChapterApplicationForm(forms.ModelForm):
+    """Form for applying to create a new chapter."""
+
+    class Meta:
+        model = ChapterApplication
+        fields = ["chapter_name", "region", "country", "description", "proposed_schedule", "experience"]
+        widgets = {
+            "chapter_name": TailwindInput(),
+            "region": TailwindInput(),
+            "country": TailwindInput(),
+            "description": TailwindTextarea(),
+            "proposed_schedule": TailwindTextarea(),
+            "experience": TailwindTextarea(),
+        }
+
+
+class ChapterForm(forms.ModelForm):
+    """Form for creating and editing chapters."""
+
+    class Meta:
+        model = Chapter
+        fields = [
+            "name",
+            "description",
+            "region",
+            "country",
+            "latitude",
+            "longitude",
+            "meeting_schedule",
+            "image",
+            "contact_email",
+            "website",
+        ]
+        widgets = {
+            "name": TailwindInput(),
+            "description": TailwindTextarea(),
+            "region": TailwindInput(),
+            "country": TailwindInput(),
+            "latitude": TailwindNumberInput(),
+            "longitude": TailwindNumberInput(),
+            "meeting_schedule": TailwindTextarea(),
+            "image": TailwindFileInput(),
+            "contact_email": TailwindEmailInput(),
+            "website": TailwindInput(),
+        }
+
+
+class ChapterEventForm(forms.ModelForm):
+    """Form for creating and editing chapter events."""
+
+    class Meta:
+        model = ChapterEvent
+        fields = [
+            "title",
+            "description",
+            "event_type",
+            "start_datetime",
+            "end_datetime",
+            "location",
+            "is_virtual",
+            "virtual_link",
+            "max_attendees",
+            "image",
+        ]
+        widgets = {
+            "title": TailwindInput(),
+            "description": TailwindTextarea(),
+            "event_type": TailwindSelect(),
+            "start_datetime": TailwindDateTimeInput(),
+            "end_datetime": TailwindDateTimeInput(),
+            "location": TailwindInput(),
+            "is_virtual": TailwindCheckboxInput(),
+            "virtual_link": TailwindInput(),
+            "max_attendees": TailwindNumberInput(),
+            "image": TailwindFileInput(),
+        }
+
+
+class ChapterEventRSVPForm(forms.ModelForm):
+    """Form for RSVP to chapter events."""
+
+    class Meta:
+        model = ChapterEventRSVP
+        fields = ["status"]
+        widgets = {
+            "status": TailwindSelect(),
+        }
 
 
 class VirtualClassroomForm(forms.ModelForm):

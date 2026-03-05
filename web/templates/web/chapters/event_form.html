@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Create Event - {{ chapter.name }} - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+      <div class="max-w-3xl mx-auto">
+        <div class="mb-8">
+          <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Create Event</h1>
+          <p class="text-lg text-gray-600 dark:text-gray-300">
+            Create a new event for {{ chapter.name }}
+          </p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+          <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+            <div>
+              <label for="{{ form.title.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Event Title <span class="text-red-500">*</span>
+              </label>
+              {{ form.title }}
+              {% if form.title.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.title.errors|first }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.event_type.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Event Type <span class="text-red-500">*</span>
+              </label>
+              {{ form.event_type }}
+              {% if form.event_type.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.event_type.errors|first }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.description.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Description <span class="text-red-500">*</span>
+              </label>
+              {{ form.description }}
+              {% if form.description.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.description.errors|first }}</p>
+              {% endif %}
+            </div>
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <label for="{{ form.start_datetime.id_for_label }}"
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Start Date & Time <span class="text-red-500">*</span>
+                </label>
+                {{ form.start_datetime }}
+                {% if form.start_datetime.errors %}
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.start_datetime.errors|first }}</p>
+                {% endif %}
+              </div>
+              <div>
+                <label for="{{ form.end_datetime.id_for_label }}"
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  End Date & Time <span class="text-red-500">*</span>
+                </label>
+                {{ form.end_datetime }}
+                {% if form.end_datetime.errors %}
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.end_datetime.errors|first }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <div>
+              <label class="flex items-center">
+                {{ form.is_virtual }}
+                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Virtual Event</span>
+              </label>
+            </div>
+            <div>
+              <label for="{{ form.location.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Location <span class="text-red-500">*</span>
+              </label>
+              {{ form.location }}
+              {% if form.location.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.location.errors|first }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Physical address or "Virtual"</p>
+            </div>
+            <div>
+              <label for="{{ form.virtual_link.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Virtual Link (if applicable)
+              </label>
+              {{ form.virtual_link }}
+              {% if form.virtual_link.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.virtual_link.errors|first }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.max_attendees.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Max Attendees
+              </label>
+              {{ form.max_attendees }}
+              {% if form.max_attendees.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.max_attendees.errors|first }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Leave blank for unlimited</p>
+            </div>
+            <div>
+              <label for="{{ form.image.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Event Image
+              </label>
+              {{ form.image }}
+              {% if form.image.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.image.errors|first }}</p>
+              {% endif %}
+            </div>
+            <div class="flex gap-4">
+              <button type="submit"
+                      class="flex-1 bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200">
+                <i class="fas fa-calendar-plus mr-2"></i>
+                Create Event
+              </button>
+              <a href="{% url 'chapter_event_list' chapter.slug %}"
+                 class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-900 dark:text-white px-6 py-3 rounded-lg font-semibold transition duration-200 text-center">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Events - {{ chapter.name }} - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+      <!-- Header -->
+      <div class="mb-8">
+        <nav class="flex mb-4" aria-label="Breadcrumb">
+          <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <li class="inline-flex items-center">
+              <a href="{% url 'chapter_directory' %}"
+                 class="text-gray-700 dark:text-gray-300 hover:text-teal-300">
+                Chapters
+              </a>
+            </li>
+            <li>
+              <div class="flex items-center">
+                <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                <a href="{% url 'chapter_detail' chapter.slug %}"
+                   class="text-gray-700 dark:text-gray-300 hover:text-teal-300">
+                  {{ chapter.name }}
+                </a>
+              </div>
+            </li>
+            <li aria-current="page">
+              <div class="flex items-center">
+                <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                <span class="text-gray-500 dark:text-gray-400">Events</span>
+              </div>
+            </li>
+          </ol>
+        </nav>
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">{{ chapter.name }} Events</h1>
+            <p class="text-lg text-gray-600 dark:text-gray-300">
+              Upcoming events and meetups
+            </p>
+          </div>
+          {% if is_leader %}
+            <a href="{% url 'chapter_event_create' chapter.slug %}"
+               class="bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200 inline-flex items-center">
+              <i class="fas fa-plus mr-2"></i>
+              Create Event
+            </a>
+          {% endif %}
+        </div>
+      </div>
+      <!-- Filter Tabs -->
+      <div class="mb-6">
+        <div class="border-b border-gray-200 dark:border-gray-700">
+          <nav class="-mb-px flex space-x-8">
+            <a href="?filter=upcoming"
+               class="{% if event_filter == 'upcoming' %}border-teal-300 text-teal-300{% else %}border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium">
+              Upcoming Events
+            </a>
+            <a href="?filter=past"
+               class="{% if event_filter == 'past' %}border-teal-300 text-teal-300{% else %}border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium">
+              Past Events
+            </a>
+            <a href="?filter=all"
+               class="{% if event_filter == 'all' %}border-teal-300 text-teal-300{% else %}border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium">
+              All Events
+            </a>
+          </nav>
+        </div>
+      </div>
+      <!-- Events List -->
+      {% if page_obj %}
+        <div class="space-y-4 mb-8">
+          {% for event in page_obj %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition duration-200 overflow-hidden">
+              <div class="p-6">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-3">
+                      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ event.title }}</h2>
+                      <span class="px-3 py-1 text-xs font-semibold rounded-full {% if event.event_type == 'workshop' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300{% elif event.event_type == 'training' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300{% elif event.event_type == 'hackathon' %}bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300{% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+                        {{ event.get_event_type_display }}
+                      </span>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">{{ event.description|truncatewords:30 }}</p>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                      <div class="flex items-center text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-calendar mr-2 text-teal-300"></i>
+                        {{ event.start_datetime|date:"M d, Y" }}
+                      </div>
+                      <div class="flex items-center text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-clock mr-2 text-teal-300"></i>
+                        {{ event.start_datetime|time:"g:i A" }} - {{ event.end_datetime|time:"g:i A" }}
+                      </div>
+                      <div class="flex items-center text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-{% if event.is_virtual %}video{% else %}map-marker-alt{% endif %} mr-2 text-teal-300"></i>
+                        {% if event.is_virtual %}Virtual{% else %}{{ event.location|truncatewords:3 }}{% endif %}
+                      </div>
+                      <div class="flex items-center text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-users mr-2 text-teal-300"></i>
+                        {{ event.rsvp_count }} RSVP{% if event.max_attendees %} / {{ event.max_attendees }}{% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  <a href="{% url 'chapter_event_detail' chapter.slug event.slug %}"
+                     class="ml-4 bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-2 rounded-lg font-semibold transition duration-200 whitespace-nowrap">
+                    View Details
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+          <div class="flex justify-center items-center space-x-2">
+            {% if page_obj.has_previous %}
+              <a href="?page={{ page_obj.previous_page_number }}&filter={{ event_filter }}"
+                 class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            {% endif %}
+            <span class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            {% if page_obj.has_next %}
+              <a href="?page={{ page_obj.next_page_number }}&filter={{ event_filter }}"
+                 class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+          <i class="fas fa-calendar-alt text-gray-400 text-6xl mb-4"></i>
+          <p class="text-xl text-gray-600 dark:text-gray-400">No events found.</p>
+          {% if is_leader %}
+            <p class="text-gray-500 dark:text-gray-500 mt-2">
+              <a href="{% url 'chapter_event_create' chapter.slug %}"
+                 class="text-teal-300 hover:text-teal-400 font-semibold">Create the first event</a>
+              for this chapter!
+            </p>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}

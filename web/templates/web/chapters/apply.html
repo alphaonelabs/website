@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Apply to Start a Chapter - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+      <div class="max-w-3xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+          <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">Start a Chapter</h1>
+          <p class="text-lg text-gray-600 dark:text-gray-300">
+            Lead a local educational community in your area
+          </p>
+        </div>
+        <!-- Info Section -->
+        <div class="bg-teal-50 dark:bg-teal-900 border-l-4 border-teal-300 p-6 mb-8 rounded-lg">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">What is a Chapter?</h3>
+          <p class="text-gray-700 dark:text-gray-300 mb-4">
+            Alpha One Chapters are local, community-led groups that gather around shared values of education, curiosity, and collaboration. Chapters host events, meetups, workshops, and co-learning sessions.
+          </p>
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">What we're looking for:</h3>
+          <ul class="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1">
+            <li>Passionate educators and community organizers</li>
+            <li>Commitment to inclusive, collaborative learning</li>
+            <li>Ability to host regular events or meetups</li>
+            <li>Alignment with Alpha One Labs values</li>
+          </ul>
+        </div>
+        <!-- Application Form -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+          <form method="post" class="space-y-6">
+            {% csrf_token %}
+            <div>
+              <label for="{{ form.chapter_name.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Chapter Name <span class="text-red-500">*</span>
+              </label>
+              {{ form.chapter_name }}
+              {% if form.chapter_name.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.chapter_name.errors|first }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">e.g., "Alpha One Seattle" or "Alpha One Mumbai"</p>
+            </div>
+            <div>
+              <label for="{{ form.region.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Region <span class="text-red-500">*</span>
+              </label>
+              {{ form.region }}
+              {% if form.region.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.region.errors|first }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">City or area (e.g., "Seattle, WA" or "Mumbai")</p>
+            </div>
+            <div>
+              <label for="{{ form.country.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Country <span class="text-red-500">*</span>
+              </label>
+              {{ form.country }}
+              {% if form.country.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.country.errors|first }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.description.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Chapter Vision <span class="text-red-500">*</span>
+              </label>
+              {{ form.description }}
+              {% if form.description.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.description.errors|first }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Describe your vision for the chapter and what activities you plan to organize</p>
+            </div>
+            <div>
+              <label for="{{ form.proposed_schedule.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Proposed Meeting Schedule <span class="text-red-500">*</span>
+              </label>
+              {{ form.proposed_schedule }}
+              {% if form.proposed_schedule.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.proposed_schedule.errors|first }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">How often and when do you plan to meet? (e.g., "Monthly on first Saturday")</p>
+            </div>
+            <div>
+              <label for="{{ form.experience.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Your Experience <span class="text-red-500">*</span>
+              </label>
+              {{ form.experience }}
+              {% if form.experience.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.experience.errors|first }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tell us about your relevant experience in education or community organizing</p>
+            </div>
+            <div class="flex gap-4">
+              <button type="submit"
+                      class="flex-1 bg-teal-300 hover:bg-teal-400 text-gray-900 px-6 py-3 rounded-lg font-semibold transition duration-200">
+                <i class="fas fa-paper-plane mr-2"></i>
+                Submit Application
+              </button>
+              <a href="{% url 'chapter_directory' %}"
+                 class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-900 dark:text-white px-6 py-3 rounded-lg font-semibold transition duration-200 text-center">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

@@ -3086,7 +3086,6 @@ class Response(models.Model):
     def __str__(self):
         return f"Response by {self.user.username} to {self.question.text}"
 
-
 class VirtualClassroom(models.Model):
     """Model for storing virtual classroom instances."""
 
@@ -3100,9 +3099,204 @@ class VirtualClassroom(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     max_students = models.PositiveIntegerField(default=30)
 
+class Chapter(models.Model):
+    """Model for local Alpha One educational chapters."""
+
+    STATUS_CHOICES = [
+        ("pending", "Pending Approval"),
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+        ("suspended", "Suspended"),
+    ]
+
+    name = models.CharField(max_length=200, help_text="Chapter name (e.g., 'Alpha One Seattle')")
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
+    description = models.TextField(help_text="Description of the chapter's mission and activities")
+    region = models.CharField(max_length=200, help_text="City, region, or area (e.g., 'Seattle, WA')")
+    country = models.CharField(max_length=100, default="", blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    meeting_schedule = models.TextField(blank=True, help_text="Proposed meeting schedule or format")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_chapters")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    image = models.ImageField(upload_to="chapters/", blank=True, null=True)
+    contact_email = models.EmailField(blank=True)
+    website = models.URLField(blank=True)
+    social_links = models.JSONField(default=dict, blank=True, help_text="Social media links")
+
     class Meta:
         ordering = ["-created_at"]
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} - {self.region}"
+
+    def get_absolute_url(self):
+        return reverse("chapter_detail", kwargs={"slug": self.slug})
+
+    @property
+    def member_count(self):
+        return self.memberships.filter(status="active").count()
+
+    @property
+    def leaders(self):
+        return User.objects.filter(
+            chapter_memberships__chapter=self, chapter_memberships__role__in=["leader", "co_organizer"]
+        )
+
+
+class ChapterMembership(models.Model):
+    """Model for managing chapter members and their roles."""
+
+    ROLE_CHOICES = [
+        ("leader", "Chapter Lead"),
+        ("co_organizer", "Co-Organizer"),
+        ("volunteer", "Volunteer"),
+        ("participant", "Participant"),
+    ]
+
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+    ]
+
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chapter_memberships")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="participant")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    joined_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["chapter", "user"]
+        ordering = ["-joined_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.chapter.name} ({self.get_role_display()})"
+
+
+class ChapterEvent(models.Model):
+    """Model for chapter events and meetups."""
+
+    EVENT_TYPE_CHOICES = [
+        ("workshop", "Workshop"),
+        ("meetup", "Meetup"),
+        ("training", "Teacher Training"),
+        ("showcase", "Student Showcase"),
+        ("talk", "Guest Speaker Talk"),
+        ("hackathon", "Educational Hackathon"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("published", "Published"),
+        ("cancelled", "Cancelled"),
+        ("completed", "Completed"),
+    ]
+
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name="events")
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, blank=True)
+    description = models.TextField()
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPE_CHOICES, default="meetup")
+    start_datetime = models.DateTimeField()
+    end_datetime = models.DateTimeField()
+    location = models.CharField(max_length=300, help_text="Physical or virtual location")
+    is_virtual = models.BooleanField(default=False)
+    virtual_link = models.URLField(blank=True, help_text="Link for virtual events")
+    max_attendees = models.PositiveIntegerField(null=True, blank=True, help_text="Leave blank for unlimited")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_chapter_events")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    image = models.ImageField(upload_to="chapter_events/", blank=True, null=True)
+
+    class Meta:
+        ordering = ["start_datetime"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)
+            self.slug = f"{base_slug}-{self.chapter.slug}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.title} - {self.chapter.name}"
+
+    def get_absolute_url(self):
+        return reverse("chapter_event_detail", kwargs={"chapter_slug": self.chapter.slug, "event_slug": self.slug})
+
+    @property
+    def rsvp_count(self):
+        return self.rsvps.filter(status="confirmed").count()
+
+    @property
+    def is_full(self):
+        if not self.max_attendees:
+            return False
+        return self.rsvp_count >= self.max_attendees
+
+
+class ChapterEventRSVP(models.Model):
+    """Model for event RSVPs."""
+
+    STATUS_CHOICES = [
+        ("confirmed", "Confirmed"),
+        ("maybe", "Maybe"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    event = models.ForeignKey(ChapterEvent, on_delete=models.CASCADE, related_name="rsvps")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chapter_event_rsvps")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["event", "user"]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.event.title} ({self.get_status_display()})"
+
+
+class ChapterApplication(models.Model):
+    """Model for chapter creation applications."""
+
+    STATUS_CHOICES = [
+        ("pending", "Pending Review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    applicant = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chapter_applications")
+    chapter_name = models.CharField(max_length=200)
+    region = models.CharField(max_length=200)
+    country = models.CharField(max_length=100, default="", blank=True)
+    description = models.TextField(help_text="Describe your vision for the chapter")
+    proposed_schedule = models.TextField(help_text="Proposed meeting schedule")
+    experience = models.TextField(help_text="Your relevant experience in education or community organizing")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_applications"
+    )
+    review_notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.chapter_name} - {self.region} ({self.get_status_display()})"
+=======
     def __str__(self) -> str:
         return f"{self.name} - {self.teacher.username}"
 

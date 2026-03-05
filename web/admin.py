@@ -18,6 +18,11 @@ from .models import (
     CartItem,
     Challenge,
     ChallengeSubmission,
+    Chapter,
+    ChapterApplication,
+    ChapterEvent,
+    ChapterEventRSVP,
+    ChapterMembership,
     Course,
     CourseMaterial,
     CourseProgress,
@@ -889,3 +894,70 @@ class VideoRequestAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "category", "requester", "created_at")
     list_filter = ("status", "category")
     search_fields = ("title", "description", "requester__username")
+
+
+@admin.register(Chapter)
+class ChapterAdmin(admin.ModelAdmin):
+    list_display = ("name", "region", "country", "status", "member_count", "created_by", "created_at")
+    list_filter = ("status", "country", "created_at")
+    search_fields = ("name", "region", "country", "description")
+    prepopulated_fields = {"slug": ("name",)}
+    raw_id_fields = ("created_by",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("name", "slug", "description", "status")}),
+        ("Location", {"fields": ("region", "country", "latitude", "longitude")}),
+        ("Details", {"fields": ("meeting_schedule", "image", "contact_email", "website", "social_links")}),
+        ("Meta", {"fields": ("created_by", "created_at", "updated_at")}),
+    )
+
+
+@admin.register(ChapterMembership)
+class ChapterMembershipAdmin(admin.ModelAdmin):
+    list_display = ("user", "chapter", "role", "status", "joined_at")
+    list_filter = ("role", "status", "joined_at")
+    search_fields = ("user__username", "chapter__name")
+    raw_id_fields = ("chapter", "user")
+    readonly_fields = ("joined_at", "updated_at")
+
+
+@admin.register(ChapterEvent)
+class ChapterEventAdmin(admin.ModelAdmin):
+    list_display = ("title", "chapter", "event_type", "start_datetime", "status", "rsvp_count", "created_by")
+    list_filter = ("event_type", "status", "is_virtual", "start_datetime")
+    search_fields = ("title", "description", "chapter__name")
+    prepopulated_fields = {"slug": ("title",)}
+    raw_id_fields = ("chapter", "created_by")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("chapter", "title", "slug", "description", "event_type", "status")}),
+        ("Schedule", {"fields": ("start_datetime", "end_datetime")}),
+        ("Location", {"fields": ("location", "is_virtual", "virtual_link")}),
+        ("Capacity", {"fields": ("max_attendees",)}),
+        ("Media", {"fields": ("image",)}),
+        ("Meta", {"fields": ("created_by", "created_at", "updated_at")}),
+    )
+
+
+@admin.register(ChapterEventRSVP)
+class ChapterEventRSVPAdmin(admin.ModelAdmin):
+    list_display = ("user", "event", "status", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("user__username", "event__title")
+    raw_id_fields = ("event", "user")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ChapterApplication)
+class ChapterApplicationAdmin(admin.ModelAdmin):
+    list_display = ("chapter_name", "region", "applicant", "status", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("chapter_name", "region", "applicant__username")
+    raw_id_fields = ("applicant", "reviewed_by")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("applicant", "chapter_name", "region", "country")}),
+        ("Application Details", {"fields": ("description", "proposed_schedule", "experience")}),
+        ("Review", {"fields": ("status", "reviewed_by", "review_notes")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
