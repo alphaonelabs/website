@@ -103,38 +103,33 @@
       </div>
     {% endif %}
   </main>
+  {# djlint:off #}
   <script>
       document.addEventListener('DOMContentLoaded', function() {
           const form = document.querySelector('form');
-          if (!form) return; // Prevent error if no form (e.g., already submitted)
+          if (!form) return;
 
           form.addEventListener('submit', function(e) {
-              const requiredCheckboxQuestions = [{
-                  %
-                  for question in object.question_set.all %
-              } {
-                  %
-                  if question.type == 'checkbox'
-                  and question.required %
-              } {
-                  id: "question_{{ question.id }}",
-                  text: "{{ question.text|escapejs }}"
-              }, {
-                  %
-                  endif %
-              } {
-                  %
-                  endfor %
-              }];
+              const requiredCheckboxQuestions = [
+                  {% for question in object.question_set.all %}
+                      {% if question.type == 'checkbox' and question.required %}
+                          {
+                              id: "question_{{ question.id }}",
+                              text: "{{ question.text|escapejs }}"
+                          },
+                      {% endif %}
+                  {% endfor %}
+              ];
 
-              requiredCheckboxQuestions.forEach(function(question) {
+              for (const question of requiredCheckboxQuestions) {
                   if (!document.querySelectorAll(`input[name="${question.id}"]:checked`).length) {
                       e.preventDefault();
                       alert(`Please answer: ${question.text}`);
-                      return false;
+                      return;
                   }
-              });
+              }
           });
       });
-  </script>
+</script>
+  {# djlint:on #}
 {% endblock content %}
