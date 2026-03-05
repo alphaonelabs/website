@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="New message notification" />
+    <meta name="keywords" content="education, message, notification" />
+    <title>New Message from {{ sender.get_full_name|default:sender.username }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2563eb;
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .message-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .sender-name {
+            font-weight: bold;
+            color: #2563eb;
+            font-size: 16px;
+        }
+
+        .action-button {
+            display: inline-block;
+            background-color: #2563eb;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .action-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5e5;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+
+        .footer a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="header">
+        <h1>📨 New Message</h1>
+      </div>
+      <p>Hi {{ receiver.get_full_name|default:receiver.username }},</p>
+      <p>You have received a new message in your Alpha One Labs inbox.</p>
+      <div class="message-info">
+        <p>
+          <strong>From:</strong> <span class="sender-name">{{ sender.get_full_name|default:sender.username }}</span>
+        </p>
+        {% if sender.email %}
+          <p>
+            <strong>Email:</strong> {{ sender.email }}
+          </p>
+        {% endif %}
+      </div>
+      <p>Click the button below to view your message:</p>
+      <div style="text-align: center;">
+        <a href="{{ message_url }}" class="action-button">View Message</a>
+      </div>
+      <p>Or copy and paste this link into your browser:</p>
+      <p style="word-break: break-all;
+                background-color: #f8f9fa;
+                padding: 10px;
+                border-radius: 4px">{{ message_url }}</p>
+      <div class="footer">
+        <p>
+          This email was sent from <a href="{{ site_url }}">Alpha One Labs Education Platform</a>
+        </p>
+        <p>Please do not reply to this email directly.</p>
+      </div>
+    </div>
+  </body>
+</html>
