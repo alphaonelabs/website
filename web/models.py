@@ -538,6 +538,12 @@ class CourseMaterial(models.Model):
     requires_enrollment = models.BooleanField(
         default=True, help_text="If True, only enrolled students can access full content"
     )
+    unlock_by_sharing = models.BooleanField(
+        default=False, help_text="If True, users must share to unlock this bonus material"
+    )
+    shares_required = models.PositiveIntegerField(
+        default=1, help_text="Number of shares required to unlock this material"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -567,6 +573,16 @@ class CourseMaterial(models.Model):
         if self.file:
             return os.path.splitext(self.file.name)[1].lower()
         return ""
+
+    def is_unlocked_for_user(self, user):
+        """Check if material is unlocked for a given user."""
+        if not self.unlock_by_sharing:
+            return True
+        if not user.is_authenticated:
+            return False
+        # Count verified shares for this user and material
+        verified_shares = self.share_unlocks.filter(user=user, is_verified=True).count()
+        return verified_shares >= self.shares_required
 
     @property
     def file_size(self):
@@ -3085,6 +3101,43 @@ class Response(models.Model):
 
     def __str__(self):
         return f"Response by {self.user.username} to {self.question.text}"
+
+
+class ShareUnlock(models.Model):
+    """Track user shares and unlocked content."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="share_unlocks")
+    material = models.ForeignKey(CourseMaterial, on_delete=models.CASCADE, related_name="share_unlocks")
+    share_token = models.CharField(max_length=32, unique=True)
+    shared_at = models.DateTimeField(auto_now_add=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
+    platform = models.CharField(
+        max_length=20,
+        choices=[
+            ("twitter", "Twitter"),
+            ("facebook", "Facebook"),
+            ("linkedin", "LinkedIn"),
+            ("email", "Email"),
+            ("other", "Other"),
+        ],
+        default="twitter",
+    )
+
+    class Meta:
+        ordering = ["-shared_at"]
+        indexes = [
+            models.Index(fields=["user", "material"]),
+            models.Index(fields=["share_token"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.material.title}"
+
+    def save(self, *args, **kwargs):
+        if not self.share_token:
+            self.share_token = "".join(random.choices(string.ascii_letters + string.digits, k=32))
+        super().save(*args, **kwargs)
 
 
 class VirtualClassroom(models.Model):

@@ -1083,9 +1083,51 @@
                           {% for material in course.materials.all %}
                             <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 shadow-sm">
                               <div class="flex justify-between items-start">
-                                <div>
+                                <div class="flex-1">
                                   <h3 class="font-semibold text-sm">
-                                    {% if is_enrolled or not material.requires_enrollment or is_teacher %}
+                                    {% if material.unlock_by_sharing %}
+                                      <!-- Check if material is unlocked for user -->
+                                      {% if material.id in material_unlock_status and material_unlock_status|get_item:material.id|get_item:'is_unlocked' or is_teacher %}
+                                        <!-- Material is unlocked -->
+                                        {% if material.external_url %}
+                                          <a href="{{ material.external_url }}"
+                                             target="_blank"
+                                             class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                            <i class="fas fa-unlock text-green-600 dark:text-green-400 mr-1"></i>
+                                            {{ material.title }}
+                                            <i class="fas fa-external-link-alt ml-1 text-xs"></i>
+                                          </a>
+                                        {% else %}
+                                          <a href="{% url 'download_material' course.slug material.id %}"
+                                             class="text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                            <i class="fas fa-unlock text-green-600 dark:text-green-400 mr-1"></i>
+                                            {{ material.title }}
+                                            <i class="fas fa-download ml-1 text-xs"></i>
+                                          </a>
+                                        {% endif %}
+                                      {% else %}
+                                        <!-- Material is locked -->
+                                        <span class="text-gray-600 dark:text-gray-400">
+                                          <i class="fas fa-lock text-orange-600 dark:text-orange-400 mr-1"></i>
+                                          {{ material.title }}
+                                        </span>
+                                        <div class="mt-2">
+                                          {% if user.is_authenticated %}
+                                            {% if material.id in material_unlock_status %}
+                                              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                                Shares: {{ material_unlock_status|get_item:material.id|get_item:'shares_count' }} / {{ material.shares_required }}
+                                              </p>
+                                            {% endif %}
+                                            <button onclick="shareMaterial({{ material.id }}, '{{ material.title|escapejs }}')"
+                                                    class="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-1 rounded-lg transition duration-200">
+                                              <i class="fas fa-share-alt mr-1"></i>Share to Unlock
+                                            </button>
+                                          {% else %}
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">Login to unlock</span>
+                                          {% endif %}
+                                        </div>
+                                      {% endif %}
+                                    {% elif is_enrolled or not material.requires_enrollment or is_teacher %}
                                       {% if material.external_url %}
                                         <a href="{{ material.external_url }}"
                                            target="_blank"
@@ -1111,7 +1153,7 @@
                                 </div>
                                 {% if user == course.teacher %}
                                   <a href="{% url 'delete_material' course.slug material.id %}"
-                                     class="text-red-600 hover:text-red-800 dark:text-red-400 text-sm">
+                                     class="text-red-600 hover:text-red-800 dark:text-red-400 text-sm ml-2">
                                     <i class="fas fa-trash"></i>
                                   </a>
                                 {% endif %}
@@ -1676,6 +1718,55 @@
               });
           });
       });
+  </script>
+  <script>
+      // Function to handle material sharing
+      function shareMaterial(materialId, materialTitle) {
+          // Get CSRF token
+          const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+          // Create share token
+          fetch(`/material/${materialId}/create-share-token/`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrftoken,
+              },
+              body: JSON.stringify({
+                  platform: 'twitter'
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  // Create Twitter share URL
+                  const shareText = data.share_text;
+                  const shareUrl = data.share_url;
+                  const tweetText = `${shareText}\n\nUnlock it here: ${shareUrl}`;
+                  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+
+                  // Open Twitter share dialog
+                  const shareWindow = window.open(twitterUrl, 'Share on Twitter', 'width=600,height=400');
+
+                  // Poll to check if window is closed
+                  const pollTimer = setInterval(() => {
+                      if (shareWindow.closed) {
+                          clearInterval(pollTimer);
+                          // Refresh page to show updated unlock status
+                          setTimeout(() => {
+                              location.reload();
+                          }, 2000);
+                      }
+                  }, 500);
+              } else {
+                  alert('Error: ' + data.error);
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              alert('Failed to create share link. Please try again.');
+          });
+      }
   </script>
   <script>
       document.getElementById('open-share-window').addEventListener('click', function() {
