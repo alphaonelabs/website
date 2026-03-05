@@ -27,7 +27,9 @@ from .models import (
     ForumReply,
     ForumTopic,
     Goods,
+    Infographic,
     LearningStreak,
+    LessonSummary,
     MembershipPlan,
     MembershipSubscriptionEvent,
     Notification,
@@ -889,3 +891,35 @@ class VideoRequestAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "category", "requester", "created_at")
     list_filter = ("status", "category")
     search_fields = ("title", "description", "requester__username")
+
+
+@admin.register(Infographic)
+class InfographicAdmin(admin.ModelAdmin):
+    list_display = ("title", "category", "created_by", "is_published", "views", "shares", "created_at")
+    list_filter = ("category", "is_published", "subject")
+    search_fields = ("title", "content", "created_by__username")
+    raw_id_fields = ("created_by", "subject")
+    readonly_fields = ("views", "shares", "created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("title", "content", "category", "subject", "created_by")}),
+        ("Design", {"fields": ("image", "background_color", "text_color")}),
+        ("Publishing", {"fields": ("is_published",)}),
+        ("Stats", {"fields": ("views", "shares"), "classes": ("collapse",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(LessonSummary)
+class LessonSummaryAdmin(admin.ModelAdmin):
+    list_display = ("title", "user", "course", "date", "is_public", "created_at")
+    list_filter = ("is_public", "background_style", "date")
+    search_fields = ("title", "key_learnings", "user__username")
+    raw_id_fields = ("user", "course", "session")
+    readonly_fields = ("created_at", "updated_at")
+    date_hierarchy = "date"
+    fieldsets = (
+        (None, {"fields": ("title", "user", "course", "session")}),
+        ("Content", {"fields": ("key_learnings", "additional_notes")}),
+        ("Settings", {"fields": ("date", "background_style", "is_public")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )

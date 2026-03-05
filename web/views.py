@@ -80,8 +80,10 @@ from .forms import (
     ForumTopicForm,
     GoodsForm,
     GradeableLinkForm,
+    InfographicForm,
     InviteStudentForm,
     LearnForm,
+    LessonSummaryForm,
     LinkGradeForm,
     MemeForm,
     MessageTeacherForm,
@@ -136,7 +138,9 @@ from .models import (
     ForumVote,
     Goods,
     GradeableLink,
+    Infographic,
     LearningStreak,
+    LessonSummary,
     LinkGrade,
     MembershipPlan,
     MembershipSubscriptionEvent,
@@ -8839,3 +8843,168 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+# Infographic Views
+
+
+@login_required
+def infographic_list(request):
+    """View to list all published infographics."""
+    infographics = Infographic.objects.filter(is_published=True).select_related("created_by", "subject")
+
+    # Filter by category if provided
+    category = request.GET.get("category")
+    if category:
+        infographics = infographics.filter(category=category)
+
+    # Filter by subject if provided
+    subject_id = request.GET.get("subject")
+    if subject_id:
+        infographics = infographics.filter(subject_id=subject_id)
+
+    # Paginate results
+    paginator = Paginator(infographics, 12)
+    page_number = request.GET.get("page")
+    infographics_page = paginator.get_page(page_number)
+
+    subjects = Subject.objects.all().order_by("name")
+    categories = Infographic.CATEGORY_CHOICES
+
+    return render(
+        request,
+        "web/infographics/list.html",
+        {
+            "infographics": infographics_page,
+            "subjects": subjects,
+            "categories": categories,
+            "selected_category": category,
+            "selected_subject": subject_id,
+        },
+    )
+
+
+@login_required
+def infographic_detail(request, pk):
+    """View to display a single infographic."""
+    infographic = get_object_or_404(Infographic, pk=pk, is_published=True)
+
+    # Increment view count
+    infographic.views += 1
+    infographic.save(update_fields=["views"])
+
+    return render(request, "web/infographics/detail.html", {"infographic": infographic})
+
+
+@login_required
+def infographic_create(request):
+    """View to create a new infographic."""
+    if request.method == "POST":
+        form = InfographicForm(request.POST, request.FILES)
+        if form.is_valid():
+            infographic = form.save(commit=False)
+            infographic.created_by = request.user
+            infographic.save()
+            messages.success(request, "Infographic created successfully!")
+            return redirect("infographic_detail", pk=infographic.pk)
+    else:
+        form = InfographicForm()
+
+    return render(request, "web/infographics/create.html", {"form": form})
+
+
+@login_required
+def infographic_share(request, pk):
+    """View to handle sharing of infographics."""
+    infographic = get_object_or_404(Infographic, pk=pk, is_published=True)
+
+    # Increment share count
+    infographic.shares += 1
+    infographic.save(update_fields=["shares"])
+
+    # Return JSON response for AJAX requests
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"success": True, "shares": infographic.shares})
+
+    messages.success(request, "Infographic shared successfully!")
+    return redirect("infographic_detail", pk=infographic.pk)
+
+
+# Lesson Summary Views
+
+
+@login_required
+def lesson_summary_list(request):
+    """View to list lesson summaries."""
+    # Show user's own summaries and public summaries from others
+    summaries = LessonSummary.objects.filter(models.Q(user=request.user) | models.Q(is_public=True)).select_related(
+        "user", "course", "session"
+    )
+
+    # Filter by user's own summaries if requested
+    if request.GET.get("my_summaries") == "true":
+        summaries = summaries.filter(user=request.user)
+
+    # Paginate results
+    paginator = Paginator(summaries, 10)
+    page_number = request.GET.get("page")
+    summaries_page = paginator.get_page(page_number)
+
+    return render(request, "web/lesson_summaries/list.html", {"summaries": summaries_page})
+
+
+@login_required
+def lesson_summary_detail(request, pk):
+    """View to display a single lesson summary."""
+    summary = get_object_or_404(
+        LessonSummary, models.Q(pk=pk) & (models.Q(user=request.user) | models.Q(is_public=True))
+    )
+
+    return render(request, "web/lesson_summaries/detail.html", {"summary": summary})
+
+
+@login_required
+def lesson_summary_create(request):
+    """View to create a new lesson summary."""
+    if request.method == "POST":
+        form = LessonSummaryForm(request.POST, user=request.user)
+        if form.is_valid():
+            summary = form.save(commit=False)
+            summary.user = request.user
+            summary.save()
+            messages.success(request, "Lesson summary created successfully!")
+            return redirect("lesson_summary_detail", pk=summary.pk)
+    else:
+        form = LessonSummaryForm(user=request.user)
+
+    return render(request, "web/lesson_summaries/create.html", {"form": form})
+
+
+@login_required
+def lesson_summary_update(request, pk):
+    """View to update a lesson summary."""
+    summary = get_object_or_404(LessonSummary, pk=pk, user=request.user)
+
+    if request.method == "POST":
+        form = LessonSummaryForm(request.POST, instance=summary, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Lesson summary updated successfully!")
+            return redirect("lesson_summary_detail", pk=summary.pk)
+    else:
+        form = LessonSummaryForm(instance=summary, user=request.user)
+
+    return render(request, "web/lesson_summaries/update.html", {"form": form, "summary": summary})
+
+
+@login_required
+def lesson_summary_delete(request, pk):
+    """View to delete a lesson summary."""
+    summary = get_object_or_404(LessonSummary, pk=pk, user=request.user)
+
+    if request.method == "POST":
+        summary.delete()
+        messages.success(request, "Lesson summary deleted successfully!")
+        return redirect("lesson_summary_list")
+
+    return render(request, "web/lesson_summaries/delete.html", {"summary": summary})

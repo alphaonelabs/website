@@ -11,3 +11,4 @@ backup.json
 ansible/inventory.yml
 education-website-*.json
 *.sql
+.env

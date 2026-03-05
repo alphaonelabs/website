@@ -12,7 +12,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
-from django.db import IntegrityError
+from django.db import IntegrityError, models
 from django.forms.widgets import URLInput
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -31,6 +31,8 @@ from .models import (
     ForumCategory,
     Goods,
     GradeableLink,
+    Infographic,
+    LessonSummary,
     LinkGrade,
     Meme,
     NotificationPreference,
@@ -110,6 +112,8 @@ __all__ = [
     "LinkGradeForm",
     "AwardAchievementForm",
     "SurveyForm",
+    "InfographicForm",
+    "LessonSummaryForm",
     "VirtualClassroomForm",
     "VirtualClassroomCustomizationForm",
 ]
@@ -1975,6 +1979,75 @@ class SurveyForm(forms.ModelForm):
         if len(title) < 5:
             raise forms.ValidationError(_("Title too short"), code="invalid_length", params={"min_length": 5})
         return title
+
+
+class InfographicForm(forms.ModelForm):
+    """Form for creating educational infographics with tips and facts."""
+
+    class Meta:
+        model = Infographic
+        fields = ["title", "content", "category", "subject", "image", "background_color", "text_color"]
+        widgets = {
+            "title": TailwindInput(attrs={"placeholder": "Enter infographic title"}),
+            "content": TailwindTextarea(attrs={"rows": 5, "placeholder": "Enter your educational tip or fact here..."}),
+            "category": TailwindSelect(),
+            "subject": TailwindSelect(),
+            "image": TailwindFileInput(),
+            "background_color": forms.TextInput(
+                attrs={
+                    "type": "color",
+                    "class": "w-full h-10 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer",
+                }
+            ),
+            "text_color": forms.TextInput(
+                attrs={
+                    "type": "color",
+                    "class": "w-full h-10 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["subject"].required = False
+        self.fields["image"].required = False
+
+
+class LessonSummaryForm(forms.ModelForm):
+    """Form for creating 'What I Learned Today' lesson summaries."""
+
+    class Meta:
+        model = LessonSummary
+        fields = ["title", "course", "session", "key_learnings", "additional_notes", "background_style", "is_public"]
+        widgets = {
+            "title": TailwindInput(attrs={"placeholder": "What did you learn today?"}),
+            "course": TailwindSelect(),
+            "session": TailwindSelect(),
+            "key_learnings": TailwindTextarea(
+                attrs={
+                    "rows": 6,
+                    "placeholder": "Enter key learnings (one per line):\n• Learning point 1\n• Learning point 2",
+                }
+            ),
+            "additional_notes": TailwindTextarea(attrs={"rows": 3, "placeholder": "Any additional thoughts or notes?"}),
+            "background_style": TailwindSelect(),
+            "is_public": TailwindCheckboxInput(),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["course"].required = False
+        self.fields["session"].required = False
+        self.fields["additional_notes"].required = False
+
+        # Filter courses and sessions based on user
+        if user:
+            self.fields["course"].queryset = Course.objects.filter(
+                models.Q(enrollments__user=user) | models.Q(teacher=user)
+            ).distinct()
+            self.fields["session"].queryset = Session.objects.filter(
+                models.Q(course__enrollments__user=user) | models.Q(course__teacher=user)
+            ).distinct()
 
 
 class VirtualClassroomForm(forms.ModelForm):
