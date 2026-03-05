@@ -94,6 +94,17 @@ class Profile(models.Model):
     how_did_you_hear_about_us = models.TextField(
         blank=True, help_text="How did you hear about us? You can enter text or a link."
     )
+    # Email status tracking fields (Mailgun)
+    last_email_sent_at = models.DateTimeField(null=True, blank=True)
+    last_email_event = models.CharField(max_length=50, blank=True, default="")
+    last_email_event_time = models.DateTimeField(null=True, blank=True)
+    email_bounce_count = models.PositiveIntegerField(default=0)
+    email_delivered_count = models.PositiveIntegerField(default=0)
+    email_open_count = models.PositiveIntegerField(default=0)
+    email_click_count = models.PositiveIntegerField(default=0)
+    email_drop_count = models.PositiveIntegerField(default=0)
+    email_spam_report_count = models.PositiveIntegerField(default=0)
+    email_last_event_data = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         visibility = "Public" if self.is_profile_public else "Private"
@@ -3087,7 +3098,48 @@ class Response(models.Model):
         return f"Response by {self.user.username} to {self.question.text}"
 
 
-class VirtualClassroom(models.Model):
+class EmailEvent(models.Model):
+    """Model to track email events from Mailgun webhook."""
+
+    EVENT_TYPES = [
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("delivered", "Delivered"),
+        ("failed", "Failed"),
+        ("opened", "Opened"),
+        ("clicked", "Clicked"),
+        ("unsubscribed", "Unsubscribed"),
+        ("complained", "Complained"),
+        ("stored", "Stored"),
+        ("other", "Other"),
+    ]
+
+    email = models.EmailField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="email_events", null=True, blank=True)
+    event_type = models.CharField(max_length=50, choices=EVENT_TYPES)
+    timestamp = models.DateTimeField()
+    mg_message_id = models.CharField(max_length=255, blank=True, help_text="Mailgun message ID")
+    mg_event_id = models.CharField(max_length=255, blank=True, help_text="Mailgun event ID")
+    event_data = models.JSONField(default=dict, help_text="Raw JSON data received from Mailgun webhook")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["email"]),
+            models.Index(fields=["event_type"]),
+            models.Index(fields=["timestamp"]),
+            models.Index(fields=["mg_message_id"]),
+            models.Index(fields=["email", "timestamp"], name="web_emailev_email_time_idx"),
+            models.Index(fields=["email", "event_type"], name="web_emailev_email_event_idx"),
+        ]
+        ordering = ["-timestamp"]
+        verbose_name = "Email Event"
+        verbose_name_plural = "Email Events"
+
+    def __str__(self):
+        return f"{self.email} - {self.event_type} ({self.timestamp.strftime('%Y-%m-%d %H:%M')})"
+
+ class VirtualClassroom(models.Model):
     """Model for storing virtual classroom instances."""
 
     name = models.CharField(max_length=200)
