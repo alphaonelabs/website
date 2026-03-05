@@ -47,6 +47,7 @@ from .models import (
     SearchLog,
     Session,
     SessionAttendance,
+    SessionInvite,
     Storefront,
     Subject,
     SuccessStory,
@@ -528,6 +529,14 @@ class SessionAttendanceAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at")
     search_fields = ("session__title", "student__username", "notes")
     raw_id_fields = ("session", "student")
+
+
+@admin.register(SessionInvite)
+class SessionInviteAdmin(admin.ModelAdmin):
+    list_display = ("session", "inviter", "invitee_email", "status", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("session__title", "inviter__username", "invitee_email")
+    raw_id_fields = ("session", "inviter", "invitee")
 
 
 @admin.register(Notification)

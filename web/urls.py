@@ -303,6 +303,8 @@ urlpatterns += i18n_patterns(
     path("cart/checkout/success/", views.checkout_success, name="checkout_success"),
     # Course Invitation URLs
     path("courses/<int:course_id>/invite/", views.invite_student, name="invite_student"),
+    # Session Invitation URLs
+    path("sessions/<int:session_id>/invite/", views.invite_to_session, name="invite_to_session"),
     path("terms/", views.terms, name="terms"),
     path("feedback/", views.feedback, name="feedback"),
     path("stripe/connect/onboarding/", views.stripe_connect_onboarding, name="stripe_connect_onboarding"),

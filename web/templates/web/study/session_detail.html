@@ -103,11 +103,16 @@
             {% endif %}
           {% endif %}
           {% if is_teacher %}
-            <div class="mt-6 flex space-x-4">
+            <div class="mt-6 flex flex-wrap gap-4">
               <a href="{% url 'edit_session' session.id %}"
                  class="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg flex items-center">
                 <i class="fa-solid fa-edit mr-2"></i>
                 {% trans "Edit Session" %}
+              </a>
+              <a href="{% url 'invite_to_session' session.id %}"
+                 class="bg-teal-300 hover:bg-teal-400 text-white font-semibold px-4 py-2 rounded-lg flex items-center">
+                <i class="fa-solid fa-user-plus mr-2"></i>
+                {% trans "Invite Friends" %}
               </a>
               <button type="button"
                       onclick="document.getElementById('deleteModal').classList.remove('hidden')"
@@ -115,6 +120,14 @@
                 <i class="fa-solid fa-trash mr-2"></i>
                 {% trans "Delete Session" %}
               </button>
+            </div>
+          {% elif is_enrolled %}
+            <div class="mt-6">
+              <a href="{% url 'invite_to_session' session.id %}"
+                 class="bg-teal-300 hover:bg-teal-400 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center">
+                <i class="fa-solid fa-user-plus mr-2"></i>
+                {% trans "Invite Friends to This Session" %}
+              </a>
             </div>
           {% endif %}
         </div>

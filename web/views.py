@@ -81,6 +81,7 @@ from .forms import (
     GoodsForm,
     GradeableLinkForm,
     InviteStudentForm,
+    InviteToSessionForm,
     LearnForm,
     LinkGradeForm,
     MemeForm,
@@ -160,6 +161,7 @@ from .models import (
     Session,
     SessionAttendance,
     SessionEnrollment,
+    SessionInvite,
     Storefront,
     StudyGroup,
     StudyGroupInvite,
@@ -3166,6 +3168,92 @@ Click here to view the course: {course_url}
         "form": form,
     }
     return render(request, "courses/invite.html", context)
+
+
+@login_required
+def invite_to_session(request, session_id):
+    session = get_object_or_404(Session, id=session_id)
+
+    # Check if user is enrolled in the course or is the teacher
+    is_teacher = session.course.teacher == request.user
+    is_enrolled = session.course.enrollments.filter(student=request.user).exists()
+
+    if not (is_teacher or is_enrolled):
+        messages.error(request, "You must be enrolled in this course to invite others to this session.")
+        return redirect("course_detail", slug=session.course.slug)
+
+    if request.method == "POST":
+        form = InviteToSessionForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data["email"]
+            message = form.cleaned_data.get("message", "")
+
+            # Check if invite already exists
+            if SessionInvite.objects.filter(session=session, invitee_email=email).exists():
+                messages.warning(request, f"An invitation for {email} has already been sent.")
+            else:
+                # Create the invite
+                invite = SessionInvite.objects.create(
+                    session=session, inviter=request.user, invitee_email=email, message=message
+                )
+
+                # Try to link to existing user
+                try:
+                    user = User.objects.get(email=email)
+                    invite.invitee = user
+                    invite.save()
+                except User.DoesNotExist:
+                    pass
+
+                # Generate session URL
+                session_url = request.build_absolute_uri(reverse("session_detail", kwargs={"pk": session.id}))
+
+                # Send invitation email
+                context = {
+                    "session": session,
+                    "inviter": request.user,
+                    "message": message,
+                    "session_url": session_url,
+                }
+                html_message = render_to_string("emails/session_invitation.html", context)
+                text_message = f"""
+You have been invited to join {session.title}!
+
+Message from {request.user.get_full_name() or request.user.username}:
+{message}
+
+Session: {session.title}
+Course: {session.course.title}
+Date: {session.start_time.strftime('%B %d, %Y at %I:%M %p')}
+{
+    'Virtual Meeting: ' + session.meeting_link
+    if session.is_virtual and session.meeting_link
+    else 'Location: ' + session.location
+}
+
+Click here to view the session: {session_url}
+"""
+
+                try:
+                    send_mail(
+                        f"Invitation to join {session.title}",
+                        text_message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [email],
+                        html_message=html_message,
+                    )
+                    messages.success(request, f"Invitation sent to {email}")
+                    return redirect("session_detail", pk=session.id)
+                except Exception:
+                    messages.error(request, "Failed to send invitation email. Please try again.")
+    else:
+        form = InviteToSessionForm()
+
+    context = {
+        "session": session,
+        "form": form,
+    }
+    return render(request, "sessions/invite.html", context)
 
 
 def terms(request):

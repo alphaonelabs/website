@@ -399,6 +399,17 @@ class Session(models.Model):
         blank=True,
         help_text="What is the teachng style of session",
     )
+    session_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("regular", "Regular Session"),
+            ("webinar", "Webinar"),
+            ("meetup", "Meetup"),
+        ],
+        default="regular",
+        blank=True,
+        help_text="Type of session - regular course session, webinar, or meetup",
+    )
 
     class Meta:
         ordering = ["start_time"]
@@ -629,6 +640,31 @@ class SessionAttendance(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - {self.session.title} ({self.status})"
+
+
+class SessionInvite(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("declined", "Declined"),
+    ]
+
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="invites")
+    inviter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_session_invites")
+    invitee_email = models.EmailField()
+    invitee = models.ForeignKey(
+        User, on_delete=models.CASCADE, null=True, blank=True, related_name="received_session_invites"
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["session", "invitee_email"]
+
+    def __str__(self):
+        return f"Invite to {self.session.title} for {self.invitee_email}"
 
 
 class CourseProgress(models.Model):
