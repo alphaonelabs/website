@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <!-- Competition Header -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden mb-6">
+      {% if competition.image %}
+        <img src="{{ competition.image.url }}"
+             alt="{{ competition.title }}"
+             class="w-full h-64 object-cover" />
+      {% else %}
+        <div class="w-full h-64 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+          <i class="fas fa-trophy text-8xl text-white opacity-50"></i>
+        </div>
+      {% endif %}
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <span class="px-4 py-2 text-lg rounded-full {% if competition.status == 'active' %}bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100{% elif competition.status == 'upcoming' %}bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100{% else %}bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300{% endif %}">
+            {{ competition.get_status_display }}
+          </span>
+          {% if user.is_authenticated and not user_participant and competition.status in 'active,upcoming' %}
+            <a href="{% url 'competition_join' competition.id %}"
+               class="bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
+              <i class="fas fa-sign-in-alt"></i> Join Competition
+            </a>
+          {% elif user_participant %}
+            <span class="bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 px-6 py-2 rounded-lg">
+              <i class="fas fa-check-circle"></i> Participating
+            </span>
+          {% endif %}
+        </div>
+        <h1 class="text-4xl font-bold mb-4 text-gray-900 dark:text-white">{{ competition.title }}</h1>
+        <p class="text-lg text-gray-600 dark:text-gray-300 mb-4">{{ competition.description }}</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+            <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">Start Date</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ competition.start_date|date:"M d, Y" }}</div>
+          </div>
+          <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+            <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">End Date</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ competition.end_date|date:"M d, Y" }}</div>
+          </div>
+          <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+            <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">Participants</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ competition.total_participants }}
+              {% if competition.max_participants %}/ {{ competition.max_participants }}{% endif %}
+            </div>
+          </div>
+        </div>
+        {% if competition.entry_fee_points > 0 %}
+          <div class="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 p-4 rounded-lg mb-6">
+            <p class="text-yellow-800 dark:text-yellow-200">
+              <i class="fas fa-star"></i> Entry Fee: <strong>{{ competition.entry_fee_points }} points</strong>
+            </p>
+          </div>
+        {% endif %}
+        {% if user_participant %}
+          <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 p-4 rounded-lg mb-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-blue-800 dark:text-blue-200 font-semibold">Your Progress</p>
+                <p class="text-blue-600 dark:text-blue-300">Score: {{ user_participant.score }} points</p>
+                {% if user_participant.rank %}
+                  <p class="text-blue-600 dark:text-blue-300">Rank: #{{ user_participant.rank }}</p>
+                {% endif %}
+              </div>
+              <i class="fas fa-chart-line text-4xl text-blue-300 dark:text-blue-600"></i>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <!-- Rewards Section -->
+    {% if rewards %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+          <i class="fas fa-gift text-teal-300"></i> Rewards
+        </h2>
+        <div class="grid gap-4">
+          {% for reward in rewards %}
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="bg-teal-300 text-white px-3 py-1 rounded-full text-sm font-semibold">#{{ reward.position }}</span>
+                  <span class="text-lg font-semibold text-gray-900 dark:text-white">{{ reward.name }}</span>
+                </div>
+                <p class="text-gray-600 dark:text-gray-300">{{ reward.description }}</p>
+                <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  {% if reward.reward_type == 'scholarship' %}
+                    <i class="fas fa-graduation-cap"></i> Scholarship Value: ${{ reward.value }}
+                  {% elif reward.reward_type == 'premium_subscription' %}
+                    <i class="fas fa-crown"></i> {{ reward.subscription_months }} month
+                    {% if reward.subscription_months > 1 %}s{% endif %}
+                    premium access
+                  {% elif reward.reward_type == 'points' %}
+                    <i class="fas fa-star"></i> {{ reward.points_amount }} points
+                  {% elif reward.reward_type == 'merchandise' %}
+                    <i class="fas fa-tshirt"></i> {{ reward.goods_item.name }}
+                  {% else %}
+                    <i class="fas fa-award"></i> {{ reward.get_reward_type_display }}
+                  {% endif %}
+                </div>
+              </div>
+              <div class="text-center">
+                <div class="text-2xl font-bold text-teal-300">×{{ reward.quantity }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">available</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <!-- Challenges Section -->
+    {% if challenges %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+          <i class="fas fa-tasks text-teal-300"></i> Challenges
+        </h2>
+        <div class="grid gap-4">
+          {% for challenge in challenges %}
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">{{ challenge.title }}</h3>
+              <p class="text-gray-600 dark:text-gray-300 mb-2">{{ challenge.description }}</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                  {{ challenge.start_date|date:"M d" }} - {{ challenge.end_date|date:"M d" }}
+                </span>
+                <a href="{% url 'challenge_detail' challenge.id %}"
+                   class="text-teal-300 hover:text-teal-400 transition">
+                  View Challenge <i class="fas fa-arrow-right"></i>
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <!-- Leaderboard Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+          <i class="fas fa-medal text-teal-300"></i> Leaderboard (Top 10)
+        </h2>
+        {% if leaderboard|length > 10 %}
+          <a href="{% url 'competition_leaderboard' competition.id %}"
+             class="text-teal-300 hover:text-teal-400 transition">
+            View Full Leaderboard <i class="fas fa-arrow-right"></i>
+          </a>
+        {% endif %}
+      </div>
+      {% if leaderboard %}
+        <div class="space-y-2">
+          {% for participant in leaderboard %}
+            <div class="flex items-center justify-between p-4 rounded-lg {% if forloop.counter <= 3 %}bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900 dark:to-yellow-800{% else %}bg-gray-50 dark:bg-gray-700{% endif %}">
+              <div class="flex items-center gap-4">
+                <div class="text-2xl font-bold {% if forloop.counter == 1 %}text-yellow-500{% elif forloop.counter == 2 %}text-gray-400{% elif forloop.counter == 3 %}text-amber-700{% else %}text-gray-500 dark:text-gray-400{% endif %}">
+                  #{{ forloop.counter }}
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900 dark:text-white">{{ participant.user.username }}</div>
+                  <div class="text-sm text-gray-500 dark:text-gray-400">Joined {{ participant.joined_at|date:"M d, Y" }}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-2xl font-bold text-teal-300">{{ participant.score }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">points</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-center text-gray-500 dark:text-gray-400 py-8">No participants yet. Be the first to join!</p>
+      {% endif %}
+    </div>
+    <!-- Rules Section -->
+    {% if competition.rules %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mt-6">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+          <i class="fas fa-clipboard-list text-teal-300"></i> Rules
+        </h2>
+        <div class="prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300">
+          {{ competition.rules|linebreaks }}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}

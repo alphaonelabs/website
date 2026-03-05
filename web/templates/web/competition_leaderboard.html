@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="{% url 'competition_detail' competition.id %}"
+         class="text-teal-300 hover:text-teal-400 transition">
+        <i class="fas fa-arrow-left"></i> Back to Competition
+      </a>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <h1 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+        <i class="fas fa-medal text-teal-300"></i> {{ competition.title }} - Full Leaderboard
+      </h1>
+      {% if participants %}
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead class="bg-gray-100 dark:bg-gray-700">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rank</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Username
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Score
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Joined
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Last Activity
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              {% for participant in participants %}
+                <tr class="{% if forloop.counter <= 3 %}bg-yellow-50 dark:bg-yellow-900{% elif participant.user == user %}bg-blue-50 dark:bg-blue-900{% else %}bg-white dark:bg-gray-800{% endif %}">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-lg font-bold {% if forloop.counter == 1 %}text-yellow-500{% elif forloop.counter == 2 %}text-gray-400{% elif forloop.counter == 3 %}text-amber-700{% else %}text-gray-500 dark:text-gray-400{% endif %}">
+                      #{{ forloop.counter }}
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <div class="font-semibold text-gray-900 dark:text-white">
+                        {{ participant.user.username }}
+                        {% if participant.user == user %}
+                          <span class="ml-2 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 rounded-full">You</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-xl font-bold text-teal-300">{{ participant.score }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ participant.joined_at|date:"M d, Y" }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {% if participant.last_submission_at %}
+                      {{ participant.last_submission_at|date:"M d, Y H:i" }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-center text-gray-500 dark:text-gray-400 py-8">No participants yet.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}
