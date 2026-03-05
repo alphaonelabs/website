@@ -24,6 +24,7 @@ from web.models import (
     ForumReply,
     ForumTopic,
     Goods,
+    Meme,
     PeerConnection,
     PeerMessage,
     Points,
@@ -72,6 +73,7 @@ class Command(BaseCommand):
             Profile,
             User,
             Goods,
+            Meme,
             ProductImage,
         ]
         for model in models:
@@ -114,6 +116,8 @@ class Command(BaseCommand):
             EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
             students.append(user)
             self.stdout.write(f"Created student: {user.username}")
+
+        users = teachers + students
 
         # Create challenges first
         challenges = []
@@ -574,4 +578,149 @@ class Command(BaseCommand):
                 )
             self.stdout.write(f"Created images for product: {product.name}")
 
+        # Create educational memes with random users
+        self.create_meme_test_data(subjects, users)
+
         self.stdout.write(self.style.SUCCESS("Successfully created test data"))
+
+    def create_meme_test_data(self, subjects: list[Subject], users: list[User]) -> None:
+        """Create test data for educational memes."""
+        self.stdout.write("Creating educational meme test data...")
+
+        # Define meme data for various subjects
+        meme_data = [
+            {
+                "subject_name": "Mathematics",
+                "description": "The study of numbers, quantities, and shapes",
+                "icon": "fas fa-square-root-alt",
+                "memes": [
+                    {
+                        "title": "When You Finally Solve That Math Problem",
+                        "caption": "The feeling when you've been stuck on a calculus problem for"
+                        " hours and finally get it right.",
+                        "image": "memes/math_eureka.jpg",
+                    },
+                    {
+                        "title": "Algebra vs. Real World Problems",
+                        "caption": "When you can solve complex equations but can't figure out how to adult.",
+                        "image": "memes/algebra_vs_life.jpg",
+                    },
+                ],
+            },
+            {
+                "subject_name": "Computer Science",
+                "description": "The study of computers and computational systems",
+                "icon": "fas fa-laptop-code",
+                "memes": [
+                    {
+                        "title": "Debugging Be Like",
+                        "caption": "When you've spent all day looking for a bug and it was just a missing semicolon.",
+                        "image": "memes/debugging_semicolon.png",
+                    },
+                    {
+                        "title": "Python vs JavaScript",
+                        "caption": "The eternal debate among programmers.",
+                        "image": "memes/python_vs_js.png",
+                    },
+                ],
+            },
+            {
+                "subject_name": "Physics",
+                "description": "The study of matter, energy, and the interaction between them",
+                "icon": "fas fa-atom",
+                "memes": [
+                    {
+                        "title": "Newton's Third Law in Real Life",
+                        "caption": "For every action, there is an equal and opposite reaction. "
+                        "Especially when messing with cats.",
+                        "image": "memes/newton_cat.gif",
+                    },
+                    {
+                        "title": "Schrodinger's Cat Explained",
+                        "caption": "When the cat is both alive and dead until you open the box"
+                        " - quantum physics at its finest.",
+                        "image": "memes/schrodinger_cat.jpg",
+                    },
+                ],
+            },
+            {
+                "subject_name": "Biology",
+                "description": "The study of living organisms",
+                "icon": "fas fa-dna",
+                "memes": [
+                    {
+                        "title": "Mitochondria is the Powerhouse of the Cell",
+                        "caption": "The one thing everyone remembers from biology class.",
+                        "image": "memes/mitochondria_powerhouse.jpg",
+                    },
+                    {
+                        "title": "Evolution of Humans",
+                        "caption": "From apes to smartphone zombies - the missing link is WiFi.",
+                        "image": "memes/evolution_wifi.jpg",
+                    },
+                ],
+            },
+            {
+                "subject_name": "History",
+                "description": "The study of past events",
+                "icon": "fas fa-landmark",
+                "memes": [
+                    {
+                        "title": "History Students During Exams",
+                        "caption": "When you need to remember hundreds of dates and events for your history final.",
+                        "image": "memes/history_dates.png",
+                    },
+                    {
+                        "title": "When Your History Teacher Says 'Pop Quiz'",
+                        "caption": "Sudden panic when you realize you haven't memorized all those important dates.",
+                        "image": "memes/history_pop_quiz.png",
+                    },
+                ],
+            },
+        ]
+
+        # For each subject, create or get the subject and add memes
+        for subject_data in meme_data:
+            # Find or create the subject
+            subject_name = subject_data["subject_name"]
+            subject_obj = None
+
+            # Try to find the subject in the existing subjects
+            for s in subjects:
+                if s.name == subject_name:
+                    subject_obj = s
+                    break
+
+            # If subject doesn't exist, create it
+            if not subject_obj:
+                subject_obj = Subject.objects.create(
+                    name=subject_name,
+                    slug=slugify(subject_name),
+                    description=subject_data.get("description", f"Study of {subject_name}"),
+                    icon=subject_data.get("icon", "fas fa-graduation-cap"),
+                    order=len(subjects) + 1,
+                )
+                subjects.append(subject_obj)
+                self.stdout.write(f"Created new subject: {subject_obj.name}")
+
+            # Create memes for this subject
+            for meme_info in subject_data["memes"]:
+                # Select a random user as uploader
+                uploader = random.choice(users)
+
+                # Generate a random date within the last month
+                random_date = timezone.now() - timedelta(days=random.randint(0, 30))
+
+                # Create the meme
+                meme = Meme.objects.create(
+                    title=meme_info["title"],
+                    subject=subject_obj,
+                    caption=meme_info["caption"],
+                    image=meme_info["image"],
+                    uploader=uploader,
+                    slug=slugify(meme_info["title"]),
+                    created_at=random_date,
+                    updated_at=random_date,
+                )
+
+                self.stdout.write(f"Created meme: {meme.title} (uploaded by {uploader.username})")
