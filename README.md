@@ -207,6 +207,18 @@ poetry run pre-commit run --all-files
 - Use docstrings for Python functions and classes
 - Comment complex logic
 
+## Google Summer of Code
+
+Alpha One Labs participates in Google Summer of Code! We offer exciting projects for students interested in education technology, web development, and innovative learning tools.
+
+### GSoC 2025 Project Ideas
+
+Check out our [GSoC 2025 Project Ideas](docs/gsoc-2025/) to explore potential projects, including:
+
+- 🧠 **NeuroLearnPi**: DIY Hardware Edition - Build a Raspberry Pi-based brainwave-reading educational device
+
+Visit our [GSoC Landing Page](https://alphaonelabs.com/gsoc/) for more information and to see our top contributors.
+
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the project.
