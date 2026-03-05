@@ -5,13 +5,13 @@
 {% endblock title %}
 {% block content %}
   <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Advanced Whiteboard</h1>
+    <h1 class="text-2xl font-bold mb-4 dark:text-gray-100">Advanced Whiteboard</h1>
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-4 mb-4">
       <div class="flex items-center gap-2">
-        <label for="toolSelect" class="font-medium">Tool:</label>
+        <label for="toolSelect" class="font-medium text-gray-700 dark:text-gray-300">Tool:</label>
         <select id="toolSelect"
-                class="border rounded p-1 dark:bg-gray-800 dark:text-white">
+                class="border rounded p-1 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
           <option value="pen">Pen</option>
           <option value="eraser">Eraser</option>
           <option value="highlighter">Highlighter</option>
@@ -24,17 +24,20 @@
       </div>
       <!-- Color picker -->
       <div class="flex items-center gap-2">
-        <label for="penColor" class="font-medium">Color:</label>
-        <input type="color" id="penColor" value="#000000" class="border rounded p-1" />
+        <label for="penColor" class="font-medium text-gray-700 dark:text-gray-300">Color:</label>
+        <input type="color"
+               id="penColor"
+               value="#000000"
+               class="border rounded p-1 dark:border-gray-600" />
       </div>
       <!-- Pen width -->
       <div class="flex items-center gap-2">
-        <label for="penWidth" class="font-medium">Width:</label>
+        <label for="penWidth" class="font-medium text-gray-700 dark:text-gray-300">Width:</label>
         <input type="range" id="penWidth" min="1" max="10" value="2" class="w-24" />
       </div>
       <!-- Image Scale (for background image) -->
       <div class="flex items-center gap-2">
-        <label for="imageScale" class="font-medium">Image Scale (%):</label>
+        <label for="imageScale" class="font-medium text-gray-700 dark:text-gray-300">Image Scale (%):</label>
         <input type="range"
                id="imageScale"
                min="10"
@@ -44,18 +47,24 @@
       </div>
       <!-- Upload (Load) and Download buttons -->
       <button id="uploadBoard"
-              class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">Load Image</button>
+              class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700">
+        Load Image
+      </button>
       <input type="file" id="loadInput" accept="image/*" style="display: none;" />
       <button id="downloadBoard"
-              class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Download</button>
+              class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700">
+        Download
+      </button>
       <!-- Clear button -->
       <button id="clearBoard"
-              class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Clear</button>
+              class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700">
+        Clear
+      </button>
     </div>
     <!-- Canvas -->
     <div class="overflow-auto">
       <canvas id="whiteboard"
-              class="border border-gray-300"
+              class="border border-gray-300 dark:border-gray-600"
               width="1500"
               height="600">
         Your browser does not support the HTML5 canvas.
@@ -82,6 +91,26 @@
       let penWidth = parseInt(penWidthInput.value, 10);
       let imageScale = 1.0;
       let uploadedImage = null;
+
+      function isDarkMode() {
+          return document.documentElement.classList.contains('dark') ||
+              window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      function getCanvasBackgroundColor() {
+          return isDarkMode() ? '#111827' : '#ffffff';
+      }
+
+      function setDefaultPenColor() {
+          penColorInput.value = isDarkMode() ? '#ffffff' : '#000000';
+          penColor = penColorInput.value;
+      }
+
+      function initializeCanvas() {
+          const bgColor = getCanvasBackgroundColor();
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
 
       toolSelect.addEventListener('change', function() {
           currentTool = this.value;
@@ -147,6 +176,8 @@
           ctx.drawImage(uploadedImage, 0, 0, newWidth, newHeight);
       }
       window.addEventListener('load', () => {
+          initializeCanvas();
+          setDefaultPenColor();
           const dataURL = localStorage.getItem('whiteboardImage');
           if (dataURL) {
               const img = new Image();
@@ -157,6 +188,16 @@
                   redrawBackground();
               };
           }
+      });
+      const handleThemeChange = () => {
+          setDefaultPenColor();
+      };
+
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', handleThemeChange);
+
+      new MutationObserver(handleThemeChange).observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['class'],
       });
       downloadBtn.addEventListener('click', () => {
           const dataURL = canvas.toDataURL("image/png");
