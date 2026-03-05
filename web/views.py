@@ -3538,37 +3538,52 @@ def system_status(request):
 @login_required
 @teacher_required
 def message_enrolled_students(request, slug):
-    """Send an email to all enrolled students in a course with encrypted content."""
+    """Send an email to selected students in a course with encrypted content."""
     course = get_object_or_404(Course, slug=slug, teacher=request.user)
+
+    # Get all enrolled students for the dropdown
+    enrolled_students = User.objects.filter(enrollments__course=course, enrollments__status="approved").distinct()
 
     if request.method == "POST":
         title = request.POST.get("title")
         message = request.POST.get("message")
+        student_id = request.POST.get("student_id")
 
         if title and message:
-            original_message = message
+            # Import the encryption function from our secure messaging module
+            from web.secure_messaging import encrypt_message
 
-            # Get all enrolled students
-            enrolled_students = User.objects.filter(
-                enrollments__course=course, enrollments__status="approved"
-            ).distinct()
+            # Encrypt the message using Fernet and decode to string for email content
+            encrypted_message = encrypt_message(message).decode("utf-8")
 
-            # Send email to each student with the encrypted message
-            for student in enrolled_students:
+            # Determine recipients based on selection
+            if student_id == "all":
+                recipients = enrolled_students
+                success_message = "Email sent successfully to all enrolled students!"
+            else:
+                # Get the specific student
+                try:
+                    student = User.objects.get(id=student_id, enrollments__course=course)
+                    recipients = [student]
+                    success_message = f"Email sent successfully to {student.username}!"
+                except User.DoesNotExist:
+                    messages.error(request, "Selected student not found!")
+                    return redirect("message_students", slug=slug)
+
+            # Send email to each recipient
+            for student in recipients:
                 send_mail(
                     subject=f"[{course.title}] {title}",
-                    message=original_message,
+                    message=encrypted_message,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[student.email],
                     fail_silently=True,
                 )
 
-            messages.success(request, "Email sent successfully to all enrolled students!")
+            messages.success(request, success_message)
             return redirect("course_detail", slug=slug)
-        else:
-            messages.error(request, "Both title and message are required!")
 
-    return render(request, "courses/message_students.html", {"course": course})
+    return render(request, "courses/message_students.html", {"course": course, "enrolled_students": enrolled_students})
 
 
 def message_teacher(request, teacher_id):
