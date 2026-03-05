@@ -1450,10 +1450,22 @@
     <span class="notification-message">This is a notification</span>
   </div>
   <script>
-      document.addEventListener('keydown', function(event) {
+      // Store event listener for cleanup
+      const escapeKeyHandler = function(event) {
           if (event.key === 'Escape') {
               closeDeleteModal();
           }
+      };
+
+      document.addEventListener('keydown', escapeKeyHandler);
+
+      // Clean up event listener when page is unloaded
+      window.addEventListener('beforeunload', function() {
+          document.removeEventListener('keydown', escapeKeyHandler);
+      });
+
+      window.addEventListener('pagehide', function() {
+          document.removeEventListener('keydown', escapeKeyHandler);
       });
 
       function setRatingDistributionWidths() {

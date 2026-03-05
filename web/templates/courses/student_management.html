@@ -705,7 +705,7 @@
       // Add a failsafe to ensure buttons are clickable
       document.addEventListener('DOMContentLoaded', function() {
           // Set an interval to periodically check and ensure buttons are enabled
-          setInterval(function() {
+          const buttonCheckInterval = setInterval(function() {
               document.querySelectorAll('.attendance-btn').forEach(btn => {
                   if (btn.disabled || btn.style.pointerEvents === 'none') {
                       console.log('Fixing disabled button:', btn);
@@ -726,6 +726,20 @@
                   this.style.pointerEvents = 'auto';
                   this.classList.remove('opacity-75');
               });
+          });
+
+          // Clean up interval when page is unloaded to prevent memory leaks
+          window.addEventListener('beforeunload', function() {
+              if (buttonCheckInterval) {
+                  clearInterval(buttonCheckInterval);
+              }
+          });
+
+          // Also clean up when navigating away (for SPAs)
+          window.addEventListener('pagehide', function() {
+              if (buttonCheckInterval) {
+                  clearInterval(buttonCheckInterval);
+              }
           });
       });
 
