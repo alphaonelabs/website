@@ -321,12 +321,12 @@ def index(request):
     latest_post = BlogPost.objects.filter(status="published").order_by("-published_at").first()
 
     # Get latest success story
-        latest_success_story = (
-        SuccessStory.objects.filter(status="published")
-        .exclude(title__iexact="test")
-        .order_by("-published_at")
-        .first()
-    )
+    latest_success_story = (
+            SuccessStory.objects.filter(status="published")
+            .exclude(title__iexact="test")
+            .order_by("-published_at")
+            .first()
+        )
     
     
 
@@ -1470,6 +1470,29 @@ def send_welcome_teach_course_email(request, user, temp_password):
         fail_silently=False,
     )
 
+
+
+def search_autocomplete(request):
+    query = request.GET.get('q', '').strip()
+    results = []
+    if len(query) >= 2:
+        courses = Course.objects.filter(
+            status='published'
+        ).filter(
+            Q(title__icontains=query)
+            | Q(tags__icontains=query)
+            | Q(teacher__username__icontains=query)
+            | Q(teacher__first_name__icontains=query)
+            | Q(teacher__last_name__icontains=query)
+        ).values('title', 'slug', 'teacher__username')[:8]
+        for course in courses:
+            results.append({
+                'type': 'course',
+                'title': course['title'],
+                'url': '/courses/' + course['slug'] + '/',
+                'teacher': course['teacher__username'],
+            })
+    return JsonResponse({'results': results})
 
 def course_search(request):
     query = request.GET.get("q", "")

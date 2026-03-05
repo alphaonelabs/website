@@ -102,6 +102,7 @@ urlpatterns += i18n_patterns(
     # Course Management
     path("courses/create/", views.create_course, name="create_course"),
     path("courses/search/", views.course_search, name="course_search"),
+    path("search/autocomplete/", views.search_autocomplete, name="search_autocomplete"),
     path("courses/<slug:slug>/", views.course_detail, name="course_detail"),
     path("courses/<slug:course_slug>/enroll/", views.enroll_course, name="enroll_course"),
     path("courses/<slug:slug>/add-session/", views.add_session, name="add_session"),
