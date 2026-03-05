@@ -146,6 +146,49 @@
         *::after {
             box-sizing: inherit;
         }
+
+        /* Mobile touch target improvements */
+        @media (max-width: 768px) {
+
+            /* Ensure all interactive elements meet minimum touch target size */
+            button:not(.btn-sm),
+            a:not(.text-sm):not(.text-xs),
+            input[type="button"],
+            input[type="submit"],
+            .btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+
+            /* Improve form inputs on mobile */
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="number"],
+            input[type="tel"],
+            input[type="url"],
+            select,
+            textarea {
+                font-size: 16px !important;
+                /* Prevent zoom on iOS */
+                padding: 12px 16px !important;
+                min-height: 44px;
+            }
+
+            /* Better spacing for mobile navigation */
+            .mobile-menu-content a,
+            .mobile-menu-content button {
+                padding: 12px 16px !important;
+                min-height: 44px;
+            }
+
+            /* Improve card touch targets */
+            .card,
+            .bg-white.rounded-lg,
+            .bg-gray-100.rounded-lg {
+                margin-bottom: 16px;
+            }
+        }
     </style>
     {% block extra_head %}
     {% endblock extra_head %}
@@ -165,8 +208,9 @@
           <span class="text-xl font-bold text-white ">Alpha One Labs</span>
         </a>
         <!-- Mobile Menu Button -->
-        <button class="md:hidden p-2 hover:bg-teal-700 rounded-lg"
-                onclick="toggleMobileMenu()">
+        <button class="md:hidden p-3 hover:bg-teal-700 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                onclick="toggleMobileMenu()"
+                aria-label="Toggle mobile menu">
           <i class="fas fa-bars text-xl"></i>
         </button>
         <!-- Nav and additional actions -->
@@ -534,8 +578,9 @@
              class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden">
           <div class="absolute right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 shadow-lg overflow-y-auto mobile-menu-content">
             <!-- Close button -->
-            <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    onclick="toggleMobileMenu()">
+            <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    onclick="toggleMobileMenu()"
+                    aria-label="Close mobile menu">
               <i class="fas fa-times text-xl"></i>
             </button>
             <!-- Mobile menu content -->
@@ -548,7 +593,8 @@
                          placeholder="What do you want to learn?"
                          class="w-full rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700" />
                   <button type="submit"
-                          class="absolute right-3 top-2.5 text-gray-500 dark:text-gray-400">
+                          class="absolute right-2 top-2 text-gray-500 dark:text-gray-400 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                          aria-label="Search courses">
                     <i class="fas fa-search"></i>
                   </button>
                 </form>
@@ -557,15 +603,18 @@
               <div class="space-y-4">
                 <!-- LEARN Section -->
                 <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
-                  <div class="flex items-center justify-between py-2 cursor-pointer"
-                       onclick="toggleAccordion('learn-accordion')">
+                  <div class="flex items-center justify-between py-3 cursor-pointer min-h-[44px]"
+                       onclick="toggleAccordion('learn-accordion')"
+                       role="button"
+                       aria-expanded="false"
+                       aria-controls="learn-accordion">
                     <span class="text-gray-800 dark:text-gray-200 font-semibold">LEARN</span>
                     <i id="learn-accordion-icon"
                        class="fas fa-chevron-down text-gray-500 dark:text-gray-400 transition-transform duration-200"></i>
                   </div>
                   <div id="learn-accordion" class="hidden mt-2 ml-2 space-y-2">
                     <a href="{% url 'classes_map' %}"
-                       class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                       class="flex items-center py-3 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md min-h-[44px]">
                       <i class="fas fa-map-marker-alt mr-2 text-teal-500"></i>
                       <span>Classes Near Me</span>
                     </a>
@@ -1092,9 +1141,18 @@
         function toggleAccordion(accordionId) {
             const accordion = document.getElementById(accordionId);
             const icon = document.getElementById(accordionId + '-icon');
+            const trigger = document.querySelector(`[onclick="toggleAccordion('${accordionId}')"]`);
+
+            if (!accordion || !icon) return;
 
             // Toggle the accordion content
+            const isHidden = accordion.classList.contains('hidden');
             accordion.classList.toggle('hidden');
+
+            // Update ARIA attributes for accessibility
+            if (trigger) {
+                trigger.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            }
 
             // Rotate the icon when open
             if (accordion.classList.contains('hidden')) {
@@ -1109,9 +1167,12 @@
                 if (id !== accordionId) {
                     const otherAccordion = document.getElementById(id);
                     const otherIcon = document.getElementById(id + '-icon');
+                    const otherTrigger = document.querySelector(`[onclick="toggleAccordion('${id}')"]`);
+
                     if (otherAccordion && !otherAccordion.classList.contains('hidden')) {
                         otherAccordion.classList.add('hidden');
-                        otherIcon.classList.remove('rotate-180');
+                        if (otherIcon) otherIcon.classList.remove('rotate-180');
+                        if (otherTrigger) otherTrigger.setAttribute('aria-expanded', 'false');
                     }
                 }
             });
