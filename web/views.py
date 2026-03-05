@@ -130,6 +130,8 @@ from .models import (
     Enrollment,
     EventCalendar,
     FeatureVote,
+    Flashcard,
+    FlashcardDeck,
     ForumCategory,
     ForumReply,
     ForumTopic,
@@ -8779,6 +8781,190 @@ class SurveyDeleteView(LoginRequiredMixin, DeleteView):
     def handle_no_permission(self):
         messages.error(self.request, "You can only delete surveys that you created.")
         return redirect("surveys")
+
+
+# ============== FLASHCARD VIEWS ===============
+
+
+@login_required
+def flashcard_deck_list(request):
+    """List all flashcard decks (public + user's private)."""
+    user_decks = FlashcardDeck.objects.filter(creator=request.user)
+    public_decks = FlashcardDeck.objects.filter(is_public=True).exclude(creator=request.user)
+
+    context = {
+        "user_decks": user_decks,
+        "public_decks": public_decks,
+    }
+    return render(request, "flashcards/deck_list.html", context)
+
+
+@login_required
+def flashcard_deck_detail(request, slug):
+    """View a specific flashcard deck with its cards."""
+    deck = get_object_or_404(FlashcardDeck, slug=slug)
+
+    # Check permissions
+    if not deck.is_public and deck.creator != request.user:
+        messages.error(request, "You don't have permission to view this deck.")
+        return redirect("flashcard_deck_list")
+
+    cards = deck.flashcards.all()
+
+    context = {
+        "deck": deck,
+        "cards": cards,
+        "can_edit": deck.creator == request.user,
+    }
+    return render(request, "flashcards/deck_detail.html", context)
+
+
+@login_required
+def flashcard_deck_create(request):
+    """Create a new flashcard deck."""
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        is_public = request.POST.get("is_public") == "on"
+
+        if name:
+            deck = FlashcardDeck.objects.create(
+                name=name, description=description, creator=request.user, is_public=is_public
+            )
+            messages.success(request, f'Deck "{deck.name}" created successfully!')
+            return redirect("flashcard_deck_detail", slug=deck.slug)
+        else:
+            messages.error(request, "Deck name is required.")
+
+    return render(request, "flashcards/deck_form.html", {"action": "Create"})
+
+
+@login_required
+def flashcard_deck_edit(request, slug):
+    """Edit an existing flashcard deck."""
+    deck = get_object_or_404(FlashcardDeck, slug=slug, creator=request.user)
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        is_public = request.POST.get("is_public") == "on"
+
+        if name:
+            deck.name = name
+            deck.description = description
+            deck.is_public = is_public
+            deck.save()
+            messages.success(request, f'Deck "{deck.name}" updated successfully!')
+            return redirect("flashcard_deck_detail", slug=deck.slug)
+        else:
+            messages.error(request, "Deck name is required.")
+
+    context = {"deck": deck, "action": "Edit"}
+    return render(request, "flashcards/deck_form.html", context)
+
+
+@login_required
+def flashcard_deck_delete(request, slug):
+    """Delete a flashcard deck."""
+    deck = get_object_or_404(FlashcardDeck, slug=slug, creator=request.user)
+
+    if request.method == "POST":
+        deck_name = deck.name
+        deck.delete()
+        messages.success(request, f'Deck "{deck_name}" deleted successfully!')
+        return redirect("flashcard_deck_list")
+
+    context = {"deck": deck}
+    return render(request, "flashcards/deck_confirm_delete.html", context)
+
+
+@login_required
+def flashcard_create(request, deck_slug):
+    """Add a new flashcard to a deck."""
+    deck = get_object_or_404(FlashcardDeck, slug=deck_slug, creator=request.user)
+
+    if request.method == "POST":
+        front_text = request.POST.get("front_text", "").strip()
+        back_text = request.POST.get("back_text", "").strip()
+
+        if front_text and back_text:
+            # Get next order number
+            last_card = deck.flashcards.last()
+            order = (last_card.order + 1) if last_card else 1
+
+            Flashcard.objects.create(deck=deck, front_text=front_text, back_text=back_text, order=order)
+            messages.success(request, "Card added successfully!")
+            return redirect("flashcard_deck_detail", slug=deck.slug)
+        else:
+            messages.error(request, "Both front and back text are required.")
+
+    context = {"deck": deck, "action": "Add"}
+    return render(request, "flashcards/card_form.html", context)
+
+
+@login_required
+def flashcard_edit(request, deck_slug, card_id):
+    """Edit an existing flashcard."""
+    deck = get_object_or_404(FlashcardDeck, slug=deck_slug, creator=request.user)
+    card = get_object_or_404(Flashcard, id=card_id, deck=deck)
+
+    if request.method == "POST":
+        front_text = request.POST.get("front_text", "").strip()
+        back_text = request.POST.get("back_text", "").strip()
+
+        if front_text and back_text:
+            card.front_text = front_text
+            card.back_text = back_text
+            card.save()
+            messages.success(request, "Card updated successfully!")
+            return redirect("flashcard_deck_detail", slug=deck.slug)
+        else:
+            messages.error(request, "Both front and back text are required.")
+
+    context = {"deck": deck, "card": card, "action": "Edit"}
+    return render(request, "flashcards/card_form.html", context)
+
+
+@login_required
+def flashcard_delete(request, deck_slug, card_id):
+    """Delete a flashcard."""
+    deck = get_object_or_404(FlashcardDeck, slug=deck_slug, creator=request.user)
+    card = get_object_or_404(Flashcard, id=card_id, deck=deck)
+
+    if request.method == "POST":
+        card.delete()
+        messages.success(request, "Card deleted successfully!")
+        return redirect("flashcard_deck_detail", slug=deck.slug)
+
+    context = {"deck": deck, "card": card}
+    return render(request, "flashcards/card_confirm_delete.html", context)
+
+
+@login_required
+def flashcard_study(request, slug):
+    """Study mode for a flashcard deck."""
+    deck = get_object_or_404(FlashcardDeck, slug=slug)
+
+    # Check permissions
+    if not deck.is_public and deck.creator != request.user:
+        messages.error(request, "You don't have permission to study this deck.")
+        return redirect("flashcard_deck_list")
+
+    cards = list(deck.flashcards.all())
+
+    if not cards:
+        messages.info(request, "This deck doesn't have any cards yet.")
+        return redirect("flashcard_deck_detail", slug=deck.slug)
+
+    context = {
+        "deck": deck,
+        "cards": cards,
+        "card_count": len(cards),
+    }
+    return render(request, "flashcards/study.html", context)
+
+
+# ============== SESSION WAITING ROOM VIEWS ===============
 
 
 @login_required

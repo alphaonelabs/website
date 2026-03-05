@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}
+  {{ action }} Flashcard Deck
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto">
+      <div class="mb-8">
+        <div class="flex items-center mb-4">
+          <a href="{% if deck %}{% url 'flashcard_deck_detail' deck.slug %}{% else %}{% url 'flashcard_deck_list' %}{% endif %}"
+             class="text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 mr-4">
+            <i class="fas fa-arrow-left mr-2"></i>Back to
+            {% if deck %}
+              {{ deck.name }}
+            {% else %}
+              Flashcards
+            {% endif %}
+          </a>
+        </div>
+        <h1 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
+          <i class="fas fa-layer-group mr-3 text-teal-500"></i>{{ action }} Flashcard Deck
+        </h1>
+        <p class="text-gray-600 dark:text-gray-300">
+          {% if action == "Create" %}
+            Create a new flashcard deck to organize your study cards.
+          {% else %}
+            Update your flashcard deck information.
+          {% endif %}
+        </p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+        <form method="post" class="space-y-6">
+          {% csrf_token %}
+          <div>
+            <label for="name"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Deck Name <span class="text-red-500">*</span>
+            </label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   value="{% if deck %}{{ deck.name }}{% endif %}"
+                   required
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                   placeholder="Enter deck name..." />
+          </div>
+          <div>
+            <label for="description"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Description (Optional)
+            </label>
+            <textarea id="description"
+                      name="description"
+                      rows="4"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Describe what this deck is about...">{% if deck %}{{ deck.description }}{% endif %}</textarea>
+          </div>
+          <div class="flex items-center">
+            <input type="checkbox"
+                   id="is_public"
+                   name="is_public"
+                   {% if deck and deck.is_public %}checked{% endif %}
+                   class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700" />
+            <label for="is_public"
+                   class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+              Make this deck public (other users can view and study it)
+            </label>
+          </div>
+          <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-600">
+            <a href="{% if deck %}{% url 'flashcard_deck_detail' deck.slug %}{% else %}{% url 'flashcard_deck_list' %}{% endif %}"
+               class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+              Cancel
+            </a>
+            <button type="submit"
+                    class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 inline-flex items-center">
+              <i class="fas fa-save mr-2"></i>{{ action }} Deck
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
