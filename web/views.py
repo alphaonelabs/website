@@ -1472,27 +1472,42 @@ def send_welcome_teach_course_email(request, user, temp_password):
 
 
 
-def search_autocomplete(request):
-    query = request.GET.get('q', '').strip()
+@require_GET
+def search_autocomplete(request: HttpRequest) -> JsonResponse:
+    """Return course autocomplete results for navbar search.
+
+    Args:
+        request: HTTP GET request with 'q' query parameter.
+
+    Returns:
+        JsonResponse with list of matching courses (up to 8).
+    """
+    query = request.GET.get("q", "").strip()
     results = []
     if len(query) >= 2:
         courses = Course.objects.filter(
-            status='published'
+            status="published"
         ).filter(
             Q(title__icontains=query)
             | Q(tags__icontains=query)
             | Q(teacher__username__icontains=query)
             | Q(teacher__first_name__icontains=query)
             | Q(teacher__last_name__icontains=query)
-        ).values('title', 'slug', 'teacher__username')[:8]
+        ).values("title", "slug", "teacher__username", "teacher__first_name", "teacher__last_name")[:8]
         for course in courses:
-            results.append({
-                'type': 'course',
-                'title': course['title'],
-                'url': '/courses/' + course['slug'] + '/',
-                'teacher': course['teacher__username'],
-            })
-    return JsonResponse({'results': results})
+            teacher_name = " ".join(
+                part for part in [course["teacher__first_name"], course["teacher__last_name"]] if part
+            ) or course["teacher__username"]
+            results.append(
+                {
+                    "type": "course",
+                    "title": course["title"],
+                    "url": reverse("course_detail", kwargs={"slug": course["slug"]}),
+                    "teacher": teacher_name,
+                }
+            )
+    return JsonResponse({"results": results})
+
 
 def course_search(request):
     query = request.GET.get("q", "")

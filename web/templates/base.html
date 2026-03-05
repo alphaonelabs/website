@@ -1139,7 +1139,7 @@
             return;
         }
         debounceTimer = setTimeout(() => {
-            fetch('/search/autocomplete/?q=' + encodeURIComponent(query))
+            fetch("{% url 'search_autocomplete' %}" + '?q=' + encodeURIComponent(query))
                 .then(r => r.json())
                 .then(data => {
                     if (!data.results || data.results.length === 0) {
@@ -1147,13 +1147,22 @@
                         dropdown.innerHTML = '';
                         return;
                     }
-                    dropdown.innerHTML = data.results.map(item =>
-                        `<a href="${item.url}" class="flex items-center px-4 py-2 hover:bg-teal-50 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                            <i class="fas fa-book-open mr-2 text-teal-500 text-xs"></i>
-                            <span class="font-medium">${item.title}</span>
-                            <span class="ml-auto text-xs text-gray-400">${item.teacher}</span>
-                        </a>`
-                    ).join('');
+                    dropdown.replaceChildren();
+                    data.results.forEach((item) => {
+                        const a = document.createElement('a');
+                        a.href = item.url;
+                        a.className = 'flex items-center px-4 py-2 hover:bg-teal-50 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700 last:border-0';
+                        const icon = document.createElement('i');
+                        icon.className = 'fas fa-book-open mr-2 text-teal-500 text-xs';
+                        const title = document.createElement('span');
+                        title.className = 'font-medium';
+                        title.textContent = item.title;
+                        const teacher = document.createElement('span');
+                        teacher.className = 'ml-auto text-xs text-gray-400';
+                        teacher.textContent = item.teacher;
+                        a.append(icon, title, teacher);
+                        dropdown.appendChild(a);
+                    });
                     dropdown.classList.remove('hidden');
                 });
         }, 250);
