@@ -345,6 +345,8 @@
           <div class="relative hidden lg:inline-block w-[250px]">
             <form action="{% url 'course_search' %}" method="get" class="m-0">
               <input type="text"
+                                id="search-input-desktop"
+                                autocomplete="off"
                      name="q"
                      placeholder="What do you want to learn?"
                      class="rounded-full w-[250px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700" />
@@ -353,14 +355,13 @@
                 <i class="fas fa-search"></i>
               </button>
             </form>
+            <div id="autocomplete-dropdown" role="listbox" aria-label="Course suggestions" class="absolute z-50 w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-1 hidden border border-gray-200 dark:border-gray-700"></div>
           </div>
-          <!-- Messaging Button -->
           <a href="{% url 'inbox' %}"
              title="Messages"
              class="flex items-center p-2 hover:bg-teal-700 rounded-lg">
             <i class="fas fa-comments text-xl"></i>
           </a> <!-- Language and Dark Mode -->
-          <div class="flex items-center space-x-2">
             <!-- Cart Icon -->
             <a href="{% url 'cart_view' %}"
                class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
@@ -1119,5 +1120,71 @@
     </script>
     {% block extra_js %}
     {% endblock extra_js %}
+<script>
+(function() {
+    const input = document.getElementById('search-input-desktop');
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    if (!input || !dropdown) return;
+
+    let debounceTimer;
+    let currentController = null;
+
+    input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            dropdown.classList.add('hidden');
+            dropdown.innerHTML = '';
+            return;
+        }
+        debounceTimer = setTimeout(() => {
+            if (currentController) currentController.abort();
+            currentController = new AbortController();
+            fetch("{% url 'search_autocomplete' %}" + '?q=' + encodeURIComponent(query), { signal: currentController.signal })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.results || data.results.length === 0) {
+                        dropdown.classList.add('hidden');
+                        dropdown.innerHTML = '';
+                        return;
+                    }
+                    dropdown.replaceChildren();
+                    data.results.forEach((item) => {
+                        const a = document.createElement('a');
+                        a.href = item.url;
+                        a.setAttribute('role', 'option');
+                        a.setAttribute('aria-selected', 'false');
+                        a.className = 'flex items-center px-4 py-2 hover:bg-teal-50 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700 last:border-0';
+                        const icon = document.createElement('i');
+                        icon.className = 'fas fa-book-open mr-2 text-teal-500 text-xs';
+                        const title = document.createElement('span');
+                        title.className = 'font-medium';
+                        title.textContent = item.title;
+                        const teacher = document.createElement('span');
+                        teacher.className = 'ml-auto text-xs text-gray-400';
+                        teacher.textContent = item.teacher;
+                        a.append(icon, title, teacher);
+                        dropdown.appendChild(a);
+                    });
+                    dropdown.classList.remove('hidden');
+                })
+                .catch(() => {
+                    dropdown.classList.add('hidden');
+                    dropdown.replaceChildren();
+                });
+        }, 250);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') dropdown.classList.add('hidden');
+    });
+})();
+</script>
   </body>
 </html>
