@@ -7,6 +7,8 @@ from django.urls import include, path
 from django.views.generic.base import RedirectView
 
 from . import admin_views, peer_challenge_views, quiz_views, views, views_avatar, views_whiteboard
+from .mass_class import views as mass_class_views
+
 from .secure_messaging import (
     compose_message,
     download_message,
@@ -98,6 +100,10 @@ urlpatterns += i18n_patterns(
     path("dashboard/student/", views.student_dashboard, name="student_dashboard"),
     path("dashboard/teacher/", views.teacher_dashboard, name="teacher_dashboard"),
     path("dashboard/content/", views.content_dashboard, name="content_dashboard"),
+    # Mass Class URLs
+    path("mass-class/broadcast/", mass_class_views.teacher_broadcast_view, name="mass_class_broadcast"),
+    path("mass-class/view/<uuid:session_id>/", mass_class_views.student_view, name="mass_class_view"),
+    path("mass-class/manage/", mass_class_views.manage_streams, name="mass_class_manage"),
     # SURVEY URLs
     # Course Management
     path("courses/create/", views.create_course, name="create_course"),

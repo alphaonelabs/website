@@ -38,7 +38,7 @@ channels_application = ProtocolTypeRouter(  # type: ignore
     {
         "http": django_asgi_app,
         "websocket": AuthMiddlewareStack(URLRouter(websocket_urlpatterns)),  # type: ignore
-    }
+    },
 )
 
 # Wrap the entire router so both HTTP and WebSocket errors reach Sentry

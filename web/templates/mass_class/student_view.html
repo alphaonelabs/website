@@ -1,0 +1,149 @@
+<!-- web/templates/mass_class/student_view.html -->
+{% extends "base.html" %}
+
+{% block title %}Mass Class: {{ stream.title }}{% endblock %}
+{% load static %}
+
+{% block content %}
+  <div class="classroom-container">
+    <div class="stream-header">
+      <div class="stream-info">
+        <h1 id="streamTitle">{{ stream.title }}</h1>
+        <div class="teacher-info">
+          <span>Teacher: <strong>{{ stream.teacher.get_full_name|default:stream.teacher.username }}</strong></span>
+          <span class="stream-status">Status: <span id="streamStatus">{{ stream.status }}</span></span>
+        </div>
+      </div>
+      <div class="viewer-info">
+        <span>Viewers: <span id="viewerCount">0</span></span>
+        <span>Started: <span id="streamStarted">{{ stream.started_at|date:"g:i A" }}</span></span>
+      </div>
+    </div>
+    <div class="classroom-body">
+      <div class="video-container">
+        <div id="youtubePlayer"></div>
+      </div>
+      <div class="interaction-panel">
+        <div class="tabs">
+          <button class="tab-button active" data-tab="chat">Chat</button>
+          <button class="tab-button" data-tab="questions">Ask Questions</button>
+          <button class="tab-button" data-tab="polls">Polls</button>
+          <button class="tab-button" data-tab="raise-hand">Raise Hand</button>
+        </div>
+        <div class="tab-content" id="chatTab">
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-controls">
+            <input type="text" id="chatMessage" placeholder="Type your message..." />
+            <button id="sendChat" class="btn btn-sm btn-primary">Send</button>
+          </div>
+        </div>
+        <div class="tab-content hidden" id="questionsTab">
+          <div class="questions-container">
+            <div class="ask-question">
+              <textarea id="questionText" placeholder="Ask the teacher a question..."></textarea>
+              <button id="submitQuestion" class="btn btn-primary">Submit Question</button>
+            </div>
+            <div class="my-questions">
+              <h4>My Questions</h4>
+              <div id="myQuestionsList"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-content hidden" id="pollsTab">
+          <div id="noPollsMessage">No active polls at the moment.</div>
+          <div id="activePoll" class="hidden">
+            <h4>Poll Question:</h4>
+            <div id="pollQuestion" class="poll-question"></div>
+            <div id="pollOptions" class="poll-options"></div>
+            <button id="submitVote" class="btn btn-primary">Submit Vote</button>
+            <div id="pollResults" class="poll-results hidden"></div>
+          </div>
+        </div>
+        <div class="tab-content hidden" id="raiseHandTab">
+          <div class="raise-hand-container">
+            <p>Raise your hand to get the teacher's attention.</p>
+            <button id="raiseHandBtn" class="btn btn-lg btn-primary">Raise Hand</button>
+            <div id="handStatus" class="hand-status hidden">
+              <p>Your hand is raised! The teacher will see your request.</p>
+              <button id="lowerHandBtn" class="btn btn-sm btn-secondary">Lower Hand</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="streamEndedModal" class="modal hidden" role="dialog" aria-labelledby="streamEndedTitle" aria-hidden="true">
+    <div class="modal-content">
+      <h3 id="streamEndedTitle">Stream Ended</h3>
+      <p>The teacher has ended the live stream.</p>
+      <button class="btn btn-primary" onclick="window.location.reload()" autofocus>Refresh</button>
+    </div>
+  </div>
+{% endblock %}
+{% block extra_js %}
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+      // YouTube player
+      let player;
+
+      function onYouTubeIframeAPIReady() {
+          // Extract video ID from YouTube URL
+          const youtubeUrl = "{{ stream.youtube_url }}";
+          let videoId;
+          if (youtubeUrl.includes('v=')) {
+              videoId = youtubeUrl.split('v=')[1].split('&')[0];
+          } else if (youtubeUrl.includes('youtu.be/')) {
+              videoId = youtubeUrl.split('youtu.be/')[1].split('?')[0];
+          } else {
+              console.error('Invalid YouTube URL format');
+              // Fallback or error handling
+          }
+
+          player = new YT.Player('youtubePlayer', {
+              height: '100%',
+              width: '100%',
+              videoId: videoId,
+              playerVars: {
+                  'autoplay': 1,
+                  'playsinline': 1,
+                  'modestbranding': 1,
+                  'rel': 0
+              },
+              events: {
+                  'onReady': onPlayerReady,
+                  'onStateChange': onPlayerStateChange
+              }
+          });
+      }
+
+      function onPlayerReady(event) {
+          event.target.playVideo();
+      }
+
+      function onPlayerStateChange(event) {
+          // Handle different player states
+          switch(event.data) {
+              case YT.PlayerState.ENDED:
+                  document.getElementById('streamStatus').textContent = 'Ended';
+                  document.getElementById('streamEndedModal').classList.remove('hidden');
+                  break;
+              case YT.PlayerState.PLAYING:
+                  document.getElementById('streamStatus').textContent = 'Live';
+                  break;
+              case YT.PlayerState.PAUSED:
+                  // Handle paused state
+                  break;
+              case YT.PlayerState.BUFFERING:
+                  // Handle buffering state
+                  break;
+              case YT.PlayerState.CUED:
+                  // Handle video cued
+                  break;
+              case -1: // Unstarted
+                  // Handle unstarted state
+                  break;
+          }
+      }
+  </script>
+  <script src="{% static 'js/mass_class/student_view.js' %}"></script>
+{% endblock %}

@@ -455,6 +455,8 @@ SLACK_WEBHOOK_URL = env.str("SLACK_WEBHOOK_URL", default="")
 # Slack webhook for email notifications
 EMAIL_SLACK_WEBHOOK = env.str("EMAIL_SLACK_WEBHOOK", default=SLACK_WEBHOOK_URL)
 
+# YouTube Live Streaming - Teachers configure their stream keys in their profile settings
+
 LANGUAGES = [
     ("en", "English"),
     ("es", "Spanish"),
