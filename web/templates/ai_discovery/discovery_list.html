@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  Discoveries - AI Discovery Engine
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="{% url 'ai_discovery:home' %}"
+         class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Discovery Engine
+      </a>
+    </div>
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+        <i class="fas fa-star mr-3 text-yellow-500"></i>Your Scientific Discoveries
+      </h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-2">
+        Browse and review all discoveries synthesized from your AI-driven research
+      </p>
+    </div>
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+      <form method="get" class="flex items-center space-x-4">
+        <div class="flex-1">
+          <label for="significance"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Significance</label>
+          <select id="significance"
+                  name="significance"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onchange="this.form.submit()">
+            <option value="">All Significance Levels</option>
+            <option value="minor" {% if significance_filter == 'minor' %}selected{% endif %}>Minor Finding</option>
+            <option value="moderate" {% if significance_filter == 'moderate' %}selected{% endif %}>Moderate Discovery</option>
+            <option value="significant" {% if significance_filter == 'significant' %}selected{% endif %}>Significant Discovery</option>
+            <option value="breakthrough" {% if significance_filter == 'breakthrough' %}selected{% endif %}>Breakthrough</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <a href="{% url 'ai_discovery:discovery_list' %}"
+             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">Clear Filter</a>
+        </div>
+      </form>
+    </div>
+    <!-- Discoveries Grid -->
+    {% if page_obj %}
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {% for discovery in page_obj %}
+          <a href="{% url 'ai_discovery:discovery_detail' discovery.pk %}"
+             class="bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition duration-200 p-6">
+            <div class="flex items-start justify-between mb-4">
+              <span class="{% if discovery.significance == 'breakthrough' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% elif discovery.significance == 'significant' %}bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200{% elif discovery.significance == 'moderate' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-3 py-1 rounded-full text-xs">
+                {{ discovery.get_significance_display }}
+              </span>
+              {% if discovery.is_verified %}
+                <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-3 py-1 rounded-full text-xs">
+                  <i class="fas fa-check-circle mr-1"></i>Verified
+                </span>
+              {% endif %}
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">{{ discovery.title|truncatewords:15 }}</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{{ discovery.summary|truncatewords:30 }}</p>
+            <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <span>
+                <i class="fas fa-project-diagram mr-1"></i>{{ discovery.project.title|truncatewords:5 }}
+              </span>
+              <span>
+                <i class="far fa-calendar mr-1"></i>{{ discovery.created_at|date:"M d, Y" }}
+              </span>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+      <!-- Pagination -->
+      {% if page_obj.has_other_pages %}
+        <div class="flex items-center justify-center space-x-2">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if significance_filter %}&significance={{ significance_filter }}{% endif %}"
+               class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          {% endif %}
+          <span class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if significance_filter %}&significance={{ significance_filter }}{% endif %}"
+               class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 text-center">
+        <i class="fas fa-star text-gray-300 dark:text-gray-600 text-6xl mb-4"></i>
+        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Discoveries Yet</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          Start by creating projects, generating hypotheses, and running experiments.
+          When you have supporting evidence, you can synthesize discoveries!
+        </p>
+        <a href="{% url 'ai_discovery:home' %}"
+           class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-3 rounded-lg font-semibold transition duration-200 inline-block">
+          <i class="fas fa-arrow-left mr-2"></i>Back to Discovery Engine
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  {{ discovery.title }} - AI Discovery Engine
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="{% url 'ai_discovery:discovery_list' %}"
+         class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Discoveries
+      </a>
+    </div>
+    <!-- Discovery Header -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 mb-8">
+      <div class="flex items-start justify-between mb-6">
+        <div class="flex-1">
+          <div class="flex items-center mb-4">
+            <span class="{% if discovery.significance == 'breakthrough' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% elif discovery.significance == 'significant' %}bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200{% elif discovery.significance == 'moderate' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-3 py-1 rounded-full text-sm mr-2">
+              {{ discovery.get_significance_display }}
+            </span>
+            {% if discovery.is_verified %}
+              <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-3 py-1 rounded-full text-sm">
+                <i class="fas fa-check-circle mr-1"></i>Verified
+              </span>
+            {% endif %}
+          </div>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">{{ discovery.title }}</h1>
+          <div class="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400 mb-4">
+            <span>
+              <i class="fas fa-project-diagram mr-1"></i>
+              <a href="{% url 'ai_discovery:project_detail' project.slug %}"
+                 class="text-teal-300 hover:text-teal-400">{{ project.title }}</a>
+            </span>
+            <span>
+              <i class="far fa-calendar mr-1"></i>{{ discovery.created_at|date:"M d, Y" }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <!-- Summary -->
+      <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500 p-6 mb-6">
+        <h3 class="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          <i class="fas fa-info-circle mr-2"></i>Summary
+        </h3>
+        <p class="text-blue-900 dark:text-blue-100">{{ discovery.summary }}</p>
+      </div>
+      <!-- Detailed Report -->
+      <div class="prose dark:prose-invert max-w-none">
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          <i class="fas fa-file-alt mr-2 text-teal-300"></i>Detailed Report
+        </h3>
+        <div class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ discovery.detailed_report }}</div>
+      </div>
+    </div>
+    <!-- Related Hypothesis -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 mb-8">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+        <i class="fas fa-lightbulb mr-2 text-yellow-500"></i>Source Hypothesis
+      </h2>
+      <a href="{% url 'ai_discovery:hypothesis_detail' hypothesis.pk %}"
+         class="block bg-gray-50 dark:bg-gray-700 rounded-lg p-6 hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-200">
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <div class="flex items-center mb-2">
+              <span class="{% if hypothesis.status == 'proposed' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% elif hypothesis.status == 'testing' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% elif hypothesis.status == 'supported' %}bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200{% elif hypothesis.status == 'rejected' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-2 py-1 rounded text-xs mr-2">
+                {{ hypothesis.get_status_display }}
+              </span>
+              {% if hypothesis.is_ai_generated %}
+                <span class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded text-xs">
+                  <i class="fas fa-robot mr-1"></i>AI Generated
+                </span>
+              {% endif %}
+            </div>
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ hypothesis.statement }}</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">{{ hypothesis.rationale|truncatewords:30 }}</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <!-- Supporting Data -->
+    {% if discovery.supporting_data.experiments %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+          <i class="fas fa-flask mr-2 text-purple-500"></i>Supporting Experiments
+        </h2>
+        <div class="space-y-4">
+          {% for experiment in discovery.supporting_data.experiments %}
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+              <div class="flex items-center mb-2">
+                <span class="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-2 py-1 rounded text-xs">Experiment #{{ forloop.counter }}</span>
+              </div>
+              <p class="text-gray-700 dark:text-gray-300 text-sm mb-2">Type: {{ experiment.type }}</p>
+              {% if experiment.results %}
+                <div class="bg-white dark:bg-gray-800 rounded p-4 mt-2">
+                  <div class="space-y-1 text-sm">
+                    <div class="flex items-center">
+                      <span class="text-gray-600 dark:text-gray-400 w-32">Success:</span>
+                      <span class="{% if experiment.results.success %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                        {{ experiment.results.success|yesno:"Yes,No" }}
+                      </span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="text-gray-600 dark:text-gray-400 w-32">Confidence:</span>
+                      <span class="text-gray-900 dark:text-white">{{ experiment.results.confidence|floatformat:2 }}</span>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <!-- Citations -->
+    {% if discovery.citations %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+          <i class="fas fa-book mr-2 text-indigo-500"></i>References & Citations
+        </h2>
+        <div class="space-y-2">
+          {% for citation in discovery.citations %}
+            <div class="text-sm text-gray-700 dark:text-gray-300">{{ forloop.counter }}. {{ citation }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}

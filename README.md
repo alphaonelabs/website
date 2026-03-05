@@ -40,6 +40,8 @@ Alpha One Labs is an education platform designed to facilitate both learning and
 - 🔍 Search functionality
 - 🎨 Customizable UI
 - 🏆 "Get a Grade" system with academic grading scale
+- 🧪 Virtual Lab with interactive simulations
+- 🧠 AI-Driven Scientific Discovery Engine
 
 ## Tech Stack
 

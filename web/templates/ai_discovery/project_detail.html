@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  {{ project.title }} - AI Discovery Engine
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="{% url 'ai_discovery:home' %}"
+         class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Discovery Engine
+      </a>
+    </div>
+    <!-- Project Header -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 mb-8">
+      <div class="flex items-start justify-between mb-4">
+        <div class="flex-1">
+          <div class="flex items-center mb-2">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mr-4">{{ project.title }}</h1>
+            <span class="{% if project.status == 'active' %}bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200{% elif project.status == 'paused' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-3 py-1 rounded-full text-sm">
+              {{ project.get_status_display }}
+            </span>
+          </div>
+          <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
+            <span>
+              <i class="fas fa-user mr-1"></i>{{ project.user.username }}
+            </span>
+            <span>
+              <i class="fas fa-flask mr-1"></i>{{ project.get_domain_display }}
+            </span>
+            <span>
+              <i class="far fa-calendar mr-1"></i>Created {{ project.created_at|date:"M d, Y" }}
+            </span>
+            {% if project.is_public %}
+              <span class="text-teal-300">
+                <i class="fas fa-globe mr-1"></i>Public
+              </span>
+            {% endif %}
+          </div>
+          <p class="text-gray-700 dark:text-gray-300">{{ project.description }}</p>
+        </div>
+      </div>
+      {% if is_owner %}
+        <div class="flex items-center space-x-4 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <form method="post" action="{% url 'ai_discovery:generate_hypothesis' project.slug %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold transition duration-200">
+              <i class="fas fa-magic mr-2"></i>Generate New Hypothesis
+            </button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Total Hypotheses</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ hypothesis_stats.total }}</p>
+          </div>
+          <i class="fas fa-lightbulb text-yellow-500 text-3xl"></i>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Testing</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ hypothesis_stats.testing }}</p>
+          </div>
+          <i class="fas fa-flask text-blue-500 text-3xl"></i>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Supported</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ hypothesis_stats.supported }}</p>
+          </div>
+          <i class="fas fa-check-circle text-green-500 text-3xl"></i>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Rejected</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ hypothesis_stats.rejected }}</p>
+          </div>
+          <i class="fas fa-times-circle text-red-500 text-3xl"></i>
+        </div>
+      </div>
+    </div>
+    <!-- Content Tabs -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+      <div class="border-b border-gray-200 dark:border-gray-700">
+        <nav class="flex space-x-8 px-6" aria-label="Tabs">
+          <button onclick="showTab('hypotheses')"
+                  id="tab-hypotheses"
+                  class="tab-button py-4 px-1 border-b-2 font-medium text-sm active">Hypotheses ({{ hypotheses|length }})</button>
+          <button onclick="showTab('discoveries')"
+                  id="tab-discoveries"
+                  class="tab-button py-4 px-1 border-b-2 font-medium text-sm">Discoveries ({{ discoveries|length }})</button>
+        </nav>
+      </div>
+      <!-- Hypotheses Tab -->
+      <div id="content-hypotheses" class="tab-content p-6">
+        {% if hypotheses %}
+          <div class="space-y-4">
+            {% for hypothesis in hypotheses %}
+              <a href="{% url 'ai_discovery:hypothesis_detail' hypothesis.pk %}"
+                 class="block bg-gray-50 dark:bg-gray-700 rounded-lg p-6 hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-200">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center mb-2">
+                      <span class="{% if hypothesis.status == 'proposed' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% elif hypothesis.status == 'testing' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% elif hypothesis.status == 'supported' %}bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200{% elif hypothesis.status == 'rejected' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-2 py-1 rounded text-xs mr-2">
+                        {{ hypothesis.get_status_display }}
+                      </span>
+                      {% if hypothesis.is_ai_generated %}
+                        <span class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-1 rounded text-xs">
+                          <i class="fas fa-robot mr-1"></i>AI Generated
+                        </span>
+                      {% endif %}
+                    </div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ hypothesis.statement }}</h3>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">{{ hypothesis.rationale|truncatewords:30 }}</p>
+                    <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                      <span>
+                        <i class="fas fa-tachometer-alt mr-1"></i>Confidence: {{ hypothesis.confidence_score|floatformat:2 }}
+                      </span>
+                      <span>
+                        <i class="far fa-clock mr-1"></i>{{ hypothesis.created_at|timesince }} ago
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-12">
+            <i class="fas fa-lightbulb text-gray-300 dark:text-gray-600 text-6xl mb-4"></i>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">No hypotheses generated yet.</p>
+            {% if is_owner %}
+              <form method="post" action="{% url 'ai_discovery:generate_hypothesis' project.slug %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold transition duration-200">
+                  <i class="fas fa-magic mr-2"></i>Generate First Hypothesis
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+      <!-- Discoveries Tab -->
+      <div id="content-discoveries" class="tab-content p-6 hidden">
+        {% if discoveries %}
+          <div class="space-y-4">
+            {% for discovery in discoveries %}
+              <a href="{% url 'ai_discovery:discovery_detail' discovery.pk %}"
+                 class="block bg-gray-50 dark:bg-gray-700 rounded-lg p-6 hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-200">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center mb-2">
+                      <span class="{% if discovery.significance == 'breakthrough' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% elif discovery.significance == 'significant' %}bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200{% elif discovery.significance == 'moderate' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-2 py-1 rounded text-xs">
+                        {{ discovery.get_significance_display }}
+                      </span>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ discovery.title }}</h3>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">{{ discovery.summary|truncatewords:30 }}</p>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      <i class="far fa-clock mr-1"></i>{{ discovery.created_at|timesince }} ago
+                    </div>
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-12">
+            <i class="fas fa-star text-gray-300 dark:text-gray-600 text-6xl mb-4"></i>
+            <p class="text-gray-600 dark:text-gray-400">No discoveries made yet. Complete experiments to synthesize discoveries!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <script>
+    function showTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+
+        // Remove active class from all tab buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active', 'border-teal-300', 'text-teal-300');
+            button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+        });
+
+        // Show selected tab content
+        document.getElementById('content-' + tabName).classList.remove('hidden');
+
+        // Add active class to selected tab button
+        const activeButton = document.getElementById('tab-' + tabName);
+        activeButton.classList.add('active', 'border-teal-300', 'text-teal-300');
+        activeButton.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+    }
+
+    // Initialize first tab as active
+    document.addEventListener('DOMContentLoaded', function() {
+        showTab('hypotheses');
+    });
+  </script>
+{% endblock content %}
