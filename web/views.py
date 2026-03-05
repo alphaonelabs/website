@@ -1483,6 +1483,8 @@ def search_autocomplete(request: HttpRequest) -> JsonResponse:
         JsonResponse with list of matching courses (up to 8).
     """
     query = request.GET.get("q", "").strip()
+    if len(query) > 64:
+        return JsonResponse({"results": []})
     results = []
     if len(query) >= 2:
         courses = Course.objects.filter(
@@ -1493,7 +1495,9 @@ def search_autocomplete(request: HttpRequest) -> JsonResponse:
             | Q(teacher__username__icontains=query)
             | Q(teacher__first_name__icontains=query)
             | Q(teacher__last_name__icontains=query)
-        ).values("title", "slug", "teacher__username", "teacher__first_name", "teacher__last_name")[:8]
+        ).order_by("title").values(
+            "title", "slug", "teacher__username", "teacher__first_name", "teacher__last_name"
+        )[:8]
         for course in courses:
             teacher_name = " ".join(
                 part for part in [course["teacher__first_name"], course["teacher__last_name"]] if part
