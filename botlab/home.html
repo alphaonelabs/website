@@ -59,40 +59,50 @@
       <section id="playground" class="h-full">
         <div class="h-full">
           <div class="bg-gray-900 flex flex-col lg:flex-row h-full">
-            <div class="w-full lg:w-52 bg-gray-800 border-b lg:border-b-0 lg:border-r border-gray-700 p-3 flex flex-col">
-              <div class="font-bold text-gray-300 mb-2 text-sm">🧰 Toolbox</div>
-              <div class="space-y-2 flex-1">
+            <div class="w-full lg:w-52 bg-gray-800 border-b lg:border-b-0 lg:border-r border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
+              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-sm">🧰 Toolbox</div>
+              <div class="grid grid-cols-3 gap-1 lg:flex lg:flex-col lg:gap-2 flex-1">
                 <button onclick="addPart('chassis')"
-                        class="w-full bg-teal-700 hover:bg-teal-600 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
+                        class="w-full bg-teal-700 hover:bg-teal-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
                   <i class="fas fa-cube"></i> Chassis
                 </button>
                 <button onclick="addPart('wheels')"
-                        class="w-full bg-orange-600 hover:bg-orange-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
-                  <i class="fas fa-circle-notch"></i> Wheels (WASD)
+                        class="w-full bg-orange-600 hover:bg-orange-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-circle-notch"></i>
+                  <span class="hidden lg:inline">Wheels (WASD)</span>
+                  <span class="lg:hidden">Wheels</span>
                 </button>
                 <button onclick="addPart('lidar')"
-                        class="w-full bg-red-600 hover:bg-red-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
+                        class="w-full bg-red-600 hover:bg-red-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
                   <i class="fas fa-satellite-dish"></i> Lidar
                 </button>
                 <button onclick="addPart('camera')"
-                        class="w-full bg-blue-600 hover:bg-blue-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
-                  <i class="fas fa-video"></i> Camera (View)
+                        class="w-full bg-blue-600 hover:bg-blue-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-video"></i>
+                  <span class="hidden lg:inline">Camera (View)</span>
+                  <span class="lg:hidden">Camera</span>
                 </button>
                 <button onclick="addPart('arm')"
-                        class="w-full bg-purple-600 hover:bg-purple-500 p-2 rounded text-white text-xs flex items-center gap-2 transition font-medium">
-                  <i class="fas fa-hand-paper"></i> Arm (SPACE)
+                        class="w-full bg-purple-600 hover:bg-purple-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-hand-paper"></i>
+                  <span class="hidden lg:inline">Arm (SPACE)</span>
+                  <span class="lg:hidden">Arm</span>
                 </button>
               </div>
-              <button onclick="resetAll()"
-                      class="mt-3 w-full bg-gray-700 hover:bg-gray-600 p-2 rounded text-gray-300 text-xs flex items-center justify-center gap-2 transition">
-                <i class="fas fa-redo"></i> Reset All
-              </button>
-              <a href="https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 class="mt-2 w-full bg-indigo-700 hover:bg-indigo-600 p-2 rounded text-white text-xs flex items-center justify-center gap-2 transition font-medium">
-                <i class="fas fa-code-branch"></i> Contribute
-              </a>
+              <div class="grid grid-cols-2 gap-1 mt-1 lg:block lg:mt-0">
+                <button onclick="resetAll()"
+                        class="w-full lg:mt-3 bg-gray-700 hover:bg-gray-600 p-1.5 lg:p-2 rounded text-gray-300 text-[10px] lg:text-xs flex items-center justify-center gap-1 lg:gap-2 transition">
+                  <i class="fas fa-redo"></i>
+                  <span class="hidden lg:inline">Reset All</span>
+                  <span class="lg:hidden">Reset</span>
+                </button>
+                <a href="https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="lg:mt-2 w-full bg-indigo-700 hover:bg-indigo-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex items-center justify-center gap-2 transition font-medium">
+                  <i class="fas fa-code-branch"></i> Contribute
+                </a>
+              </div>
             </div>
             <div class="flex-1 relative bg-gray-950" id="viewport-wrapper">
               <canvas id="sim-canvas"
@@ -136,11 +146,30 @@
                   Add a <strong>Chassis</strong> to start
                 </div>
               </div>
+              <!-- Touch Controls - mobile only -->
+              <div class="lg:hidden absolute bottom-4 inset-x-4 flex justify-between items-end pointer-events-none">
+                <!-- D-pad -->
+                <div class="grid grid-cols-3 gap-1 pointer-events-auto select-none" style="width:112px">
+                  <div></div>
+                  <button id="btn-up"    aria-label="Move forward"  class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-up text-xs"></i></button>
+                  <div></div>
+                  <button id="btn-left"  aria-label="Turn left"     class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-left text-xs"></i></button>
+                  <div class="w-9 h-9 bg-gray-900/50 rounded"></div>
+                  <button id="btn-right" aria-label="Turn right"    class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-right text-xs"></i></button>
+                  <div></div>
+                  <button id="btn-down"  aria-label="Move backward" class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-down text-xs"></i></button>
+                  <div></div>
+                </div>
+                <!-- Pick/Drop button -->
+                <button id="btn-space" aria-label="Pick or drop object" class="w-14 h-14 bg-purple-700/80 active:bg-purple-500 rounded-full text-white flex items-center justify-center pointer-events-auto select-none">
+                  <i class="fas fa-hand-paper text-lg"></i>
+                </button>
+              </div>
             </div>
             <!-- Right Sidebar: Properties -->
-            <div class="w-full lg:w-52 bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700 p-3 flex flex-col">
-              <div class="font-bold text-gray-300 mb-2 text-sm">⚙️ Settings</div>
-              <div class="space-y-3 flex-1">
+            <div class="w-full lg:w-52 bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
+              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-sm">⚙️ Settings</div>
+              <div class="grid grid-cols-2 gap-x-3 gap-y-1 lg:block lg:space-y-3 flex-1">
                 <div>
                   <label class="text-gray-400 text-xs flex justify-between">
                     <span>Power</span><span id="power-val" class="text-teal-400">50%</span>
@@ -150,7 +179,7 @@
                          min="10"
                          max="100"
                          value="50"
-                         class="w-full accent-teal-500 mt-1"
+                         class="w-full accent-teal-500 mt-0.5 lg:mt-1"
                          oninput="updatePower()" />
                 </div>
                 <div>
@@ -162,34 +191,36 @@
                          min="1"
                          max="15"
                          value="5"
-                         class="w-full accent-teal-500 mt-1"
+                         class="w-full accent-teal-500 mt-0.5 lg:mt-1"
                          oninput="updateTurn()" />
                 </div>
-                <div>
+                <div class="col-span-2 lg:col-span-1">
                   <label class="text-gray-400 text-xs">Color</label>
                   <input type="color"
                          id="color-picker"
                          value="#0d9488"
-                         class="w-full h-6 rounded mt-1 cursor-pointer"
+                         class="w-full h-5 lg:h-6 rounded mt-0.5 lg:mt-1 cursor-pointer"
                          oninput="updateColor()" />
                 </div>
               </div>
               <!-- Parts & Info -->
-              <div class="mt-3 pt-3 border-t border-gray-700">
-                <div class="text-gray-400 text-xs mb-1">Parts:</div>
-                <div id="parts-list" class="text-gray-500 text-xs">None</div>
-                <div class="mt-2 text-gray-500 text-[10px]">
-                  Blocks: <span id="block-count">0</span>
+              <div class="mt-1.5 lg:mt-3 pt-1.5 lg:pt-3 border-t border-gray-700 grid grid-cols-2 lg:block gap-x-3">
+                <div>
+                  <div class="text-gray-400 text-xs mb-0.5 lg:mb-1">Parts:</div>
+                  <div id="parts-list" class="text-gray-500 text-xs">None</div>
+                  <div class="mt-1 text-gray-500 text-[10px]">
+                    Blocks: <span id="block-count">0</span>
+                  </div>
                 </div>
-              </div>
-              <!-- LiDAR Detection Panel -->
-              <div class="mt-3 pt-3 border-t border-gray-700">
-                <div class="text-gray-400 text-xs mb-1 flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse hidden" id="detection-indicator"></span>
-                  📡 Detection:
-                </div>
-                <div id="detection-info" class="text-[10px] space-y-0.5">
-                  <div class="text-gray-500">LiDAR not installed</div>
+                <!-- LiDAR Detection Panel -->
+                <div class="lg:mt-3 lg:pt-3 lg:border-t lg:border-gray-700">
+                  <div class="text-gray-400 text-xs mb-0.5 lg:mb-1 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse hidden" id="detection-indicator"></span>
+                    📡 Detection:
+                  </div>
+                  <div id="detection-info" class="text-[10px] space-y-0.5">
+                    <div class="text-gray-500">LiDAR not installed</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1057,6 +1088,37 @@
           // Corrupted state, ignore
         }
       }
+
+      // ========== TOUCH CONTROLS ==========
+      (function setupTouchControls() {
+        const btnKeyMap = { 'btn-up': 'w', 'btn-down': 's', 'btn-left': 'a', 'btn-right': 'd' };
+        Object.entries(btnKeyMap).forEach(([id, key]) => {
+          const btn = document.getElementById(id);
+          if (!btn) return;
+          const handlePress   = (e) => { e.preventDefault(); keys[key] = true; };
+          const handleRelease = (e) => { e.preventDefault(); keys[key] = false; };
+          btn.addEventListener('touchstart',  handlePress,   { passive: false });
+          btn.addEventListener('touchend',    handleRelease, { passive: false });
+          btn.addEventListener('touchcancel', handleRelease, { passive: false });
+          btn.addEventListener('mousedown',  handlePress);
+          btn.addEventListener('mouseup',    handleRelease);
+          btn.addEventListener('mouseleave', handleRelease);
+        });
+
+        const spaceBtn = document.getElementById('btn-space');
+        if (spaceBtn) {
+          const triggerPick = (e) => {
+            e.preventDefault();
+            if (!spaceJustPressed) {
+              spaceJustPressed = true;
+              handlePickDrop();
+              setTimeout(() => { spaceJustPressed = false; }, 300);
+            }
+          };
+          spaceBtn.addEventListener('touchstart', triggerPick, { passive: false });
+          spaceBtn.addEventListener('mousedown',  triggerPick);
+        }
+      })();
     </script>
   </body>
 </html>
