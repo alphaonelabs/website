@@ -246,6 +246,9 @@
       const STORAGE_KEY = 'robotics_playground_state';
       let lastSaveTime = 0;
 
+      // ========== HUMANS ==========
+      let humans = [];
+
       function generateBlocks() {
         blocks = [];
         const shapes = ['square', 'circle', 'triangle'];
@@ -261,6 +264,32 @@
           });
         }
         document.getElementById('block-count').textContent = blocks.length;
+      }
+
+      function generateHumans() {
+        humans = [];
+        for (let i = 0; i < 5; i++) {
+          humans.push({
+            id: 'human_' + i,
+            x: 80 + Math.random() * (canvas.width - 160),
+            y: 80 + Math.random() * (canvas.height - 160),
+            angle: Math.random() * Math.PI * 2,
+            speed: 0.4 + Math.random() * 0.6,
+            size: 18,
+          });
+        }
+      }
+
+      function updateHumans() {
+        humans.forEach((h) => {
+          if (Math.random() < 0.02) h.angle += (Math.random() - 0.5) * Math.PI * 0.5;
+          h.x += Math.sin(h.angle) * h.speed;
+          h.y -= Math.cos(h.angle) * h.speed;
+          if (h.x < 30 || h.x > canvas.width - 30) h.angle = Math.PI - h.angle;
+          if (h.y < 30 || h.y > canvas.height - 30) h.angle = -h.angle;
+          h.x = Math.max(30, Math.min(canvas.width - 30, h.x));
+          h.y = Math.max(30, Math.min(canvas.height - 30, h.y));
+        });
       }
 
       // ========== INPUT ==========
@@ -349,6 +378,7 @@
           robot.y = canvas.height / 2;
           document.getElementById('start-prompt').classList.add('hidden');
           generateBlocks();
+          generateHumans();
         }
         if (type === 'camera') {
           document.getElementById('camera-feed').classList.remove('hidden');
@@ -421,6 +451,7 @@
           },
         };
         blocks = [];
+        humans = [];
         document.getElementById('start-prompt').classList.remove('hidden');
         document.getElementById('camera-feed').classList.add('hidden');
         document.getElementById('block-count').textContent = '0';
@@ -494,6 +525,8 @@
             updateDetectionUI(detected);
           }
         }
+
+        updateHumans();
       }
 
       function drawGrid() {
@@ -677,45 +710,102 @@
       function drawCameraView() {
         if (!robot.parts.camera) return;
 
+        const camW = 176, camH = 112, horizon = 56;
+        const fov = Math.PI / 2;
+        const detectionPad = 3;
+
         // Sky gradient
-        const sky = camCtx.createLinearGradient(0, 0, 0, 56);
+        const sky = camCtx.createLinearGradient(0, 0, 0, horizon);
         sky.addColorStop(0, '#0c1929');
         sky.addColorStop(1, '#1e3a5f');
         camCtx.fillStyle = sky;
-        camCtx.fillRect(0, 0, 176, 56);
+        camCtx.fillRect(0, 0, camW, horizon);
 
         // Ground gradient
-        const gnd = camCtx.createLinearGradient(0, 56, 0, 112);
+        const gnd = camCtx.createLinearGradient(0, horizon, 0, camH);
         gnd.addColorStop(0, '#374151');
         gnd.addColorStop(1, '#1f2937');
         camCtx.fillStyle = gnd;
-        camCtx.fillRect(0, 56, 176, 56);
+        camCtx.fillRect(0, horizon, camW, horizon);
 
-        // Render blocks in view
-        blocks.forEach((b) => {
-          const cx = b.x + b.size / 2;
-          const cy = b.y + b.size / 2;
-          const dx = cx - robot.x;
-          const dy = cy - robot.y;
+        // Helper: project a world position into camera screen coordinates
+        function project(wx, wy) {
+          const dx = wx - robot.x;
+          const dy = wy - robot.y;
           const dist = Math.hypot(dx, dy);
-
           let worldAng = Math.atan2(dx, -dy);
           let relAng = worldAng - robot.angle;
           while (relAng > Math.PI) relAng -= 2 * Math.PI;
           while (relAng < -Math.PI) relAng += 2 * Math.PI;
+          if (Math.abs(relAng) >= fov / 2 || dist > 400 || dist < 20) return null;
+          const screenX = 88 + (relAng / (fov / 2)) * 88;
+          const sz = Math.max(6, 600 / dist);
+          const screenY = horizon - sz / 2 + dist / 30;
+          return { screenX, screenY, sz, dist };
+        }
 
-          const fov = Math.PI / 2;
-          if (Math.abs(relAng) < fov / 2 && dist < 400 && dist > 40) {
-            const screenX = 88 + (relAng / (fov / 2)) * 88;
-            const sz = Math.max(6, 600 / dist);
-            const screenY = 56 - sz / 2 + dist / 30;
+        // Render blocks with detection bounding boxes
+        blocks.forEach((b) => {
+          if (b.held) return;
+          const proj = project(b.x + b.size / 2, b.y + b.size / 2);
+          if (!proj) return;
+          const { screenX, screenY, sz } = proj;
+          const sy = Math.max(5, screenY);
 
-            camCtx.fillStyle = b.color;
-            camCtx.fillRect(screenX - sz / 2, Math.max(5, screenY), sz, sz);
-            camCtx.strokeStyle = '#fff';
-            camCtx.lineWidth = 1;
-            camCtx.strokeRect(screenX - sz / 2, Math.max(5, screenY), sz, sz);
-          }
+          camCtx.fillStyle = b.color;
+          camCtx.fillRect(screenX - sz / 2, sy, sz, sz);
+          camCtx.strokeStyle = '#fff';
+          camCtx.lineWidth = 1;
+          camCtx.strokeRect(screenX - sz / 2, sy, sz, sz);
+
+          // Detection bounding box (cyan)
+          const bx = screenX - sz / 2 - detectionPad;
+          const by = sy - detectionPad;
+          const bw = sz + detectionPad * 2;
+          const bh = sz + detectionPad * 2;
+          camCtx.strokeStyle = '#22d3ee';
+          camCtx.lineWidth = 1;
+          camCtx.strokeRect(bx, by, bw, bh);
+
+          // Label
+          const label = b.shape.charAt(0).toUpperCase() + b.shape.slice(1);
+          camCtx.fillStyle = '#22d3ee';
+          camCtx.font = 'bold 6px monospace';
+          const ly = by - 1;
+          camCtx.fillText(label, bx, ly > 6 ? ly : by + bh + 7);
+        });
+
+        // Render humans with detection bounding boxes (orange)
+        humans.forEach((h) => {
+          const proj = project(h.x, h.y);
+          if (!proj) return;
+          const { screenX, screenY, sz } = proj;
+          const sy = Math.max(5, screenY);
+          const hw = Math.max(6, sz * 0.7);
+          const headR = hw / 3;
+          const bodyH = Math.max(4, sz * 0.6);
+
+          // Silhouette: head + body
+          camCtx.fillStyle = '#94a3b8';
+          camCtx.beginPath();
+          camCtx.arc(screenX, sy, headR, 0, Math.PI * 2);
+          camCtx.fill();
+          camCtx.fillRect(screenX - hw / 3, sy, (hw * 2) / 3, bodyH);
+
+          // Detection bounding box (orange)
+          const bx = screenX - hw / 2 - detectionPad;
+          const by = sy - headR - detectionPad;
+          const bw = hw + detectionPad * 2;
+          const bh = headR + bodyH + detectionPad * 2;
+          camCtx.strokeStyle = '#fb923c';
+          camCtx.lineWidth = 1;
+          camCtx.strokeRect(bx, by, bw, bh);
+
+          // Label
+          camCtx.fillStyle = '#fb923c';
+          camCtx.font = 'bold 6px monospace';
+          const ly = by - 1;
+          camCtx.fillText('Human', bx, ly > 6 ? ly : by + bh + 7);
         });
 
         // Crosshair
@@ -729,11 +819,46 @@
         camCtx.stroke();
       }
 
+      function drawHumans() {
+        humans.forEach((h) => {
+          ctx.save();
+          ctx.translate(h.x, h.y);
+          ctx.rotate(h.angle);
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.fillStyle = '#e2e8f0';
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          // Head
+          ctx.beginPath();
+          ctx.arc(0, -14, 5, 0, Math.PI * 2);
+          ctx.fill();
+          // Body
+          ctx.beginPath();
+          ctx.moveTo(0, -9);
+          ctx.lineTo(0, 4);
+          ctx.stroke();
+          // Arms
+          ctx.beginPath();
+          ctx.moveTo(-8, -4);
+          ctx.lineTo(8, -4);
+          ctx.stroke();
+          // Legs
+          ctx.beginPath();
+          ctx.moveTo(0, 4);
+          ctx.lineTo(-6, 14);
+          ctx.moveTo(0, 4);
+          ctx.lineTo(6, 14);
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
       function render() {
         ctx.fillStyle = '#0a0a0a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         drawGrid();
         drawBlocks();
+        drawHumans();
         drawRobot();
         drawCameraView();
       }
@@ -800,7 +925,7 @@
       }
 
       function getLidarDetection() {
-        if (!robot.parts.lidar || blocks.length === 0) return null;
+        if (!robot.parts.lidar || (blocks.length === 0 && humans.length === 0)) return null;
         const sw = (((Date.now() / 15) % 360) * Math.PI) / 180;
         // Lidar center in world coordinates (local offset: 0, -32)
         const lidarX = robot.x + 32 * Math.sin(robot.angle);
@@ -812,7 +937,12 @@
         const beamEndY = lidarY + Math.sin(worldBeamAngle) * beamRange;
         for (const b of blocks) {
           if (b.held) continue;
-          if (beamIntersectsBlock(lidarX, lidarY, beamEndX, beamEndY, b)) return b;
+          if (beamIntersectsBlock(lidarX, lidarY, beamEndX, beamEndY, b)) return { ...b, type: 'block' };
+        }
+        for (const h of humans) {
+          if (pointToSegmentDist(h.x, h.y, lidarX, lidarY, beamEndX, beamEndY) < h.size / 2) {
+            return { ...h, type: 'human' };
+          }
         }
         return null;
       }
@@ -836,13 +966,19 @@
         const el = document.getElementById('detection-info');
         const indicator = document.getElementById('detection-indicator');
         if (detected) {
-          const colorName = getColorName(detected.color);
-          const shapeName = detected.shape.charAt(0).toUpperCase() + detected.shape.slice(1);
-          el.innerHTML =
-            '<div class="text-green-400 font-semibold">● OBJECT DETECTED</div>' +
-            '<div class="text-gray-300 mt-0.5">Shape: <span class="text-yellow-300">' + shapeName + '</span></div>' +
-            '<div class="text-gray-300">Color: <span style="color:' + detected.color + ';font-weight:600">' + colorName + '</span></div>';
           indicator.classList.remove('hidden');
+          if (detected.type === 'human') {
+            el.innerHTML =
+              '<div class="text-orange-400 font-semibold">● HUMAN DETECTED</div>' +
+              '<div class="text-gray-300 mt-0.5">Type: <span class="text-orange-300">Human</span></div>';
+          } else {
+            const colorName = getColorName(detected.color);
+            const shapeName = detected.shape.charAt(0).toUpperCase() + detected.shape.slice(1);
+            el.innerHTML =
+              '<div class="text-green-400 font-semibold">● OBJECT DETECTED</div>' +
+              '<div class="text-gray-300 mt-0.5">Shape: <span class="text-yellow-300">' + shapeName + '</span></div>' +
+              '<div class="text-gray-300">Color: <span style="color:' + detected.color + ';font-weight:600">' + colorName + '</span></div>';
+          }
         } else {
           el.innerHTML = '<div class="text-gray-500">No objects detected</div>';
           indicator.classList.add('hidden');
