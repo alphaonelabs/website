@@ -78,6 +78,8 @@ from .forms import (
     FeedbackForm,
     ForumCategoryForm,
     ForumTopicForm,
+    GatheringAnnouncementForm,
+    GatheringForm,
     GoodsForm,
     GradeableLinkForm,
     InviteStudentForm,
@@ -134,6 +136,8 @@ from .models import (
     ForumReply,
     ForumTopic,
     ForumVote,
+    Gathering,
+    GatheringRegistration,
     Goods,
     GradeableLink,
     LearningStreak,
@@ -8839,3 +8843,208 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+# ---------------------------------------------------------------------------
+# Gathering views (generic event / meetup / class / workshop)
+# ---------------------------------------------------------------------------
+
+
+def gathering_list(request):
+    """Public list of published gatherings with optional filtering."""
+    gatherings = Gathering.objects.filter(status="published", visibility="public").select_related("organizer")
+
+    gathering_type = request.GET.get("type", "")
+    if gathering_type:
+        gatherings = gatherings.filter(gathering_type=gathering_type)
+
+    query = request.GET.get("q", "").strip()
+    if query:
+        gatherings = gatherings.filter(Q(title__icontains=query) | Q(description__icontains=query))
+
+    is_virtual = request.GET.get("virtual", "")
+    if is_virtual == "1":
+        gatherings = gatherings.filter(is_virtual=True)
+    elif is_virtual == "0":
+        gatherings = gatherings.filter(is_virtual=False)
+
+    paginator = Paginator(gatherings, 12)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "gathering_type": gathering_type,
+        "query": query,
+        "is_virtual": is_virtual,
+        "gathering_type_choices": Gathering.GATHERING_TYPE_CHOICES,
+    }
+    return render(request, "gatherings/list.html", context)
+
+
+def gathering_detail(request, slug):
+    """Detail page for a single gathering."""
+    gathering = get_object_or_404(Gathering, slug=slug)
+
+    # Enforce visibility
+    if gathering.visibility == "private" and (not request.user.is_authenticated or request.user != gathering.organizer):
+        raise Http404
+
+    user_registration = None
+    if request.user.is_authenticated:
+        user_registration = GatheringRegistration.objects.filter(gathering=gathering, attendee=request.user).first()
+
+    announcements = gathering.announcements.all()
+
+    context = {
+        "gathering": gathering,
+        "user_registration": user_registration,
+        "announcements": announcements,
+    }
+    return render(request, "gatherings/detail.html", context)
+
+
+@login_required
+def create_gathering(request):
+    """Create a new gathering."""
+    if request.method == "POST":
+        form = GatheringForm(request.POST, request.FILES)
+        if form.is_valid():
+            gathering = form.save(commit=False)
+            gathering.organizer = request.user
+            gathering.save()
+            messages.success(request, _("Gathering created successfully!"))
+            return redirect("gathering_detail", slug=gathering.slug)
+    else:
+        form = GatheringForm()
+
+    return render(request, "gatherings/create.html", {"form": form})
+
+
+@login_required
+def edit_gathering(request, slug):
+    """Edit an existing gathering (organizer only)."""
+    gathering = get_object_or_404(Gathering, slug=slug)
+    if request.user != gathering.organizer:
+        messages.error(request, _("You are not authorized to edit this gathering."))
+        return redirect("gathering_detail", slug=slug)
+
+    if request.method == "POST":
+        form = GatheringForm(request.POST, request.FILES, instance=gathering)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _("Gathering updated successfully!"))
+            return redirect("gathering_detail", slug=gathering.slug)
+    else:
+        form = GatheringForm(instance=gathering)
+
+    return render(request, "gatherings/create.html", {"form": form, "gathering": gathering, "editing": True})
+
+
+@login_required
+@require_POST
+def delete_gathering(request, slug):
+    """Delete a gathering (organizer only)."""
+    gathering = get_object_or_404(Gathering, slug=slug)
+    if request.user != gathering.organizer:
+        messages.error(request, _("You are not authorized to delete this gathering."))
+        return redirect("gathering_detail", slug=slug)
+
+    gathering.delete()
+    messages.success(request, _("Gathering deleted."))
+    return redirect("gathering_list")
+
+
+@login_required
+@require_POST
+def register_for_gathering(request, slug):
+    """Register the current user for a gathering."""
+    gathering = get_object_or_404(Gathering, slug=slug, status="published")
+
+    if not gathering.registration_required:
+        messages.info(request, _("Registration is not required for this gathering."))
+        return redirect("gathering_detail", slug=slug)
+
+    if GatheringRegistration.objects.filter(gathering=gathering, attendee=request.user).exists():
+        messages.info(request, _("You are already registered for this gathering."))
+        return redirect("gathering_detail", slug=slug)
+
+    if gathering.is_full:
+        # Place on waitlist
+        GatheringRegistration.objects.create(gathering=gathering, attendee=request.user, status="waitlisted")
+        messages.info(request, _("The gathering is full. You have been added to the waitlist."))
+        return redirect("gathering_detail", slug=slug)
+
+    notes = request.POST.get("notes", "")
+    reg_status = "confirmed" if gathering.is_free else "pending"
+    GatheringRegistration.objects.create(gathering=gathering, attendee=request.user, status=reg_status, notes=notes)
+    if reg_status == "confirmed":
+        messages.success(request, _("You have successfully registered for this gathering!"))
+    else:
+        messages.success(request, _("Registration submitted. Awaiting confirmation from the organizer."))
+
+    return redirect("gathering_detail", slug=slug)
+
+
+@login_required
+@require_POST
+def cancel_gathering_registration(request, slug):
+    """Cancel the current user's registration for a gathering."""
+    gathering = get_object_or_404(Gathering, slug=slug)
+    registration = get_object_or_404(GatheringRegistration, gathering=gathering, attendee=request.user)
+    registration.delete()
+    messages.success(request, _("Your registration has been cancelled."))
+    return redirect("gathering_detail", slug=slug)
+
+
+@login_required
+def manage_gathering(request, slug):
+    """Organizer view to manage attendees and post announcements."""
+    gathering = get_object_or_404(Gathering, slug=slug)
+    if request.user != gathering.organizer:
+        messages.error(request, _("You are not authorized to manage this gathering."))
+        return redirect("gathering_detail", slug=slug)
+
+    registrations = gathering.registrations.select_related("attendee").order_by("registered_at")
+    announcements = gathering.announcements.all()
+    announcement_form = GatheringAnnouncementForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "announce":
+            announcement_form = GatheringAnnouncementForm(request.POST)
+            if announcement_form.is_valid():
+                announcement = announcement_form.save(commit=False)
+                announcement.gathering = gathering
+                announcement.author = request.user
+                announcement.save()
+                messages.success(request, _("Announcement posted."))
+                return redirect("manage_gathering", slug=slug)
+
+        elif action == "update_status":
+            registration_id = request.POST.get("registration_id")
+            new_status = request.POST.get("status")
+            if registration_id and new_status in dict(GatheringRegistration.STATUS_CHOICES):
+                GatheringRegistration.objects.filter(pk=registration_id, gathering=gathering).update(status=new_status)
+                messages.success(request, _("Registration status updated."))
+                return redirect("manage_gathering", slug=slug)
+
+    context = {
+        "gathering": gathering,
+        "registrations": registrations,
+        "announcements": announcements,
+        "announcement_form": announcement_form,
+        "registration_status_choices": GatheringRegistration.STATUS_CHOICES,
+    }
+    return render(request, "gatherings/manage.html", context)
+
+
+@login_required
+def my_gatherings(request):
+    """View all gatherings organized by the current user."""
+    gatherings = Gathering.objects.filter(organizer=request.user).order_by("-created_at")
+    paginator = Paginator(gatherings, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(request, "gatherings/my_gatherings.html", {"page_obj": page_obj})

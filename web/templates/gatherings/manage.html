@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Manage" %} — {{ gathering.title }}
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-5xl mx-auto px-4 md:px-6 py-8">
+    <nav class="mb-6 text-sm text-gray-500 dark:text-gray-400"
+         aria-label="{% trans 'Breadcrumb' %}">
+      <a href="{% url 'gathering_list' %}"
+         class="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{% trans "Gatherings" %}</a>
+      <span class="mx-2">/</span>
+      <a href="{% url 'gathering_detail' slug=gathering.slug %}"
+         class="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{{ gathering.title }}</a>
+      <span class="mx-2">/</span>
+      <span class="text-gray-700 dark:text-gray-300">{% trans "Manage" %}</span>
+    </nav>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <i class="fas fa-users-cog text-teal-500" aria-hidden="true"></i>
+        {% trans "Manage Gathering" %}
+      </h1>
+      <a href="{% url 'gathering_detail' slug=gathering.slug %}"
+         class="text-sm text-teal-600 dark:text-teal-400 hover:underline">
+        <i class="fas fa-arrow-left mr-1" aria-hidden="true"></i>{% trans "Back to Gathering" %}
+      </a>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {# Registrations #}
+      <div class="space-y-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+          {% trans "Registrations" %}
+          <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">({{ registrations.count }})</span>
+        </h2>
+        {% if registrations %}
+          <div class="space-y-3">
+            {% for reg in registrations %}
+              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-300 font-bold text-sm">
+                      {{ reg.attendee.username|first|upper }}
+                    </div>
+                    <div>
+                      <div class="font-medium text-gray-900 dark:text-white text-sm">
+                        {{ reg.attendee.get_full_name|default:reg.attendee.username }}
+                      </div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                        {% trans "Registered" %} {{ reg.registered_at|date:"M j, Y" }}
+                      </div>
+                      {% if reg.notes %}
+                        <div class="mt-1 text-xs text-gray-600 dark:text-gray-400 italic">"{{ reg.notes|truncatewords:15 }}"</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 {% if reg.status == 'confirmed' %}bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 {% elif reg.status == 'waitlisted' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 {% elif reg.status == 'attended' %}bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 {% elif reg.status == 'cancelled' %}bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 {% else %}bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300{% endif %}">
+                    {{ reg.get_status_display }}
+                  </span>
+                </div>
+                {# Status update form #}
+                <form method="post" class="mt-3 flex items-center gap-2">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="update_status" />
+                  <input type="hidden" name="registration_id" value="{{ reg.pk }}" />
+                  <select name="status"
+                          class="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                    {% for val, label in registration_status_choices %}
+                      <option value="{{ val }}" {% if reg.status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit"
+                          class="px-3 py-1 text-xs bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
+                    {% trans "Update" %}
+                  </button>
+                </form>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-10 text-gray-500 dark:text-gray-400">
+            <i class="fas fa-user-slash text-3xl mb-2" aria-hidden="true"></i>
+            <p>{% trans "No registrations yet." %}</p>
+          </div>
+        {% endif %}
+      </div>
+      {# Announcements #}
+      <div class="space-y-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Post Announcement" %}</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="announce" />
+            {% if announcement_form.non_field_errors %}
+              <div class="text-sm text-red-600 dark:text-red-400">
+                {% for error in announcement_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+              </div>
+            {% endif %}
+            <div>
+              <label for="{{ announcement_form.title.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ announcement_form.title.label }}
+              </label>
+              {{ announcement_form.title }}
+              {% if announcement_form.title.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ announcement_form.title.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ announcement_form.content.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ announcement_form.content.label }}
+              </label>
+              {{ announcement_form.content }}
+              {% if announcement_form.content.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ announcement_form.content.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <button type="submit"
+                    class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-lg transition-colors">
+              <i class="fas fa-bullhorn mr-1.5" aria-hidden="true"></i>{% trans "Post Announcement" %}
+            </button>
+          </form>
+        </div>
+        {% if announcements %}
+          <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mt-6">
+            {% trans "Previous Announcements" %}
+          </h3>
+          <div class="space-y-3">
+            {% for ann in announcements %}
+              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 border-l-4 border-l-teal-400">
+                <div class="font-medium text-gray-900 dark:text-white text-sm">{{ ann.title }}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ ann.content|linebreaks }}</div>
+                <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ ann.created_at|date:"M j, Y g:i A" }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </main>
+{% endblock content %}
