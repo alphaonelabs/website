@@ -106,7 +106,6 @@ class StateManager {
         };
 
         page.elements.push(newElement);
-        this.selectedElementId = newElement.id;
         this.saveHistory();
         this.notify();
     }
@@ -142,7 +141,6 @@ class StateManager {
         };
 
         page.elements.push(newElement);
-        this.selectedElementId = newElement.id;
         this.saveHistory();
         this.notify();
     }
