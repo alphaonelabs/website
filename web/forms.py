@@ -29,6 +29,9 @@ from .models import (
     CourseMaterial,
     EducationalVideo,
     ForumCategory,
+    Gathering,
+    GatheringAnnouncement,
+    GatheringRegistration,
     Goods,
     GradeableLink,
     LinkGrade,
@@ -112,6 +115,9 @@ __all__ = [
     "SurveyForm",
     "VirtualClassroomForm",
     "VirtualClassroomCustomizationForm",
+    "GatheringForm",
+    "GatheringRegistrationForm",
+    "GatheringAnnouncementForm",
 ]
 
 fernet = Fernet(settings.SECURE_MESSAGE_KEY)
@@ -2084,3 +2090,96 @@ class VirtualClassroomCustomizationForm(forms.ModelForm):
         if value is None or value < 1 or value > 8:
             raise forms.ValidationError("Desks per row must be between 1 and 8.")
         return value
+
+
+class GatheringForm(forms.ModelForm):
+    """Form for creating and editing a Gathering (event, meetup, class, etc.)."""
+
+    class Meta:
+        model = Gathering
+        fields = [
+            "title",
+            "description",
+            "gathering_type",
+            "start_datetime",
+            "end_datetime",
+            "is_virtual",
+            "meeting_link",
+            "location",
+            "max_attendees",
+            "registration_required",
+            "price",
+            "visibility",
+            "status",
+            "image",
+            "tags",
+        ]
+        widgets = {
+            "title": TailwindInput(),
+            "description": TailwindTextarea(attrs={"rows": 5}),
+            "gathering_type": TailwindSelect(),
+            "start_datetime": TailwindDateTimeInput(),
+            "end_datetime": TailwindDateTimeInput(),
+            "meeting_link": URLInput(
+                attrs={
+                    "class": (
+                        "w-full px-4 py-2 border border-gray-300 dark:border-gray-600 "
+                        "rounded-lg focus:ring-2 focus:ring-teal-400 "
+                        "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    ),
+                    "placeholder": "https://meet.example.com/...",
+                }
+            ),
+            "location": TailwindInput(attrs={"placeholder": "Address or venue name"}),
+            "max_attendees": TailwindNumberInput(attrs={"min": "1", "placeholder": "Leave blank for unlimited"}),
+            "price": TailwindNumberInput(attrs={"min": "0", "step": "0.01"}),
+            "visibility": TailwindSelect(),
+            "status": TailwindSelect(),
+            "tags": TailwindInput(attrs={"placeholder": "python, django, web (comma separated)"}),
+            "is_virtual": TailwindCheckboxInput(),
+            "registration_required": TailwindCheckboxInput(),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start = cleaned_data.get("start_datetime")
+        end = cleaned_data.get("end_datetime")
+        is_virtual = cleaned_data.get("is_virtual")
+        meeting_link = cleaned_data.get("meeting_link")
+        location = cleaned_data.get("location")
+
+        if start and end and end <= start:
+            raise forms.ValidationError("End date/time must be after the start date/time.")
+
+        if is_virtual and not meeting_link:
+            self.add_error("meeting_link", "A meeting link is required for virtual gatherings.")
+
+        if not is_virtual and not location:
+            self.add_error("location", "A location is required for in-person gatherings.")
+
+        return cleaned_data
+
+
+class GatheringRegistrationForm(forms.ModelForm):
+    """Form for attendees to register for a Gathering."""
+
+    class Meta:
+        model = GatheringRegistration
+        fields = ["notes"]
+        widgets = {
+            "notes": TailwindTextarea(
+                attrs={"rows": 3, "placeholder": "Any notes or questions for the organizer (optional)"}
+            ),
+        }
+
+
+class GatheringAnnouncementForm(forms.ModelForm):
+    """Form for organizers to post announcements to gathering attendees."""
+
+    class Meta:
+        model = GatheringAnnouncement
+        fields = ["title", "content"]
+        widgets = {
+            "title": TailwindInput(attrs={"placeholder": "Announcement title"}),
+            "content": TailwindTextarea(attrs={"rows": 4, "placeholder": "Write your announcement here..."}),
+        }

@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {{ gathering.title }}
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-5xl mx-auto px-4 md:px-6 py-8">
+    {# Breadcrumb #}
+    <nav class="mb-6 text-sm text-gray-500 dark:text-gray-400"
+         aria-label="{% trans 'Breadcrumb' %}">
+      <a href="{% url 'gathering_list' %}"
+         class="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{% trans "Gatherings" %}</a>
+      <span class="mx-2">/</span>
+      <span class="text-gray-700 dark:text-gray-300">{{ gathering.title }}</span>
+    </nav>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {# Main content #}
+      <div class="lg:col-span-2 space-y-6">
+        {# Header #}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {% if gathering.image %}
+            <img src="{{ gathering.image.url }}"
+                 alt="{{ gathering.title }}"
+                 class="w-full h-56 object-cover" />
+          {% else %}
+            <div class="w-full h-56 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+              <i class="fas fa-users text-white text-6xl opacity-50"
+                 aria-hidden="true"></i>
+            </div>
+          {% endif %}
+          <div class="p-6">
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+              <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300">
+                {{ gathering.get_gathering_type_display }}
+              </span>
+              {% if gathering.is_virtual %}
+                <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                  <i class="fas fa-video mr-1" aria-hidden="true"></i>{% trans "Virtual" %}
+                </span>
+              {% else %}
+                <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300">
+                  <i class="fas fa-map-marker-alt mr-1" aria-hidden="true"></i>{% trans "In-Person" %}
+                </span>
+              {% endif %}
+              {% if gathering.is_free %}
+                <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                  <i class="fas fa-tag mr-1" aria-hidden="true"></i>{% trans "Free" %}
+                </span>
+              {% endif %}
+              <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold {% if gathering.status == 'published' %}bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 {% elif gathering.status == 'cancelled' %}bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 {% elif gathering.status == 'completed' %}bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 {% else %}bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300{% endif %}">
+                {{ gathering.get_status_display }}
+              </span>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">{{ gathering.title }}</h1>
+            <div class="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+              {{ gathering.description|linebreaks }}
+            </div>
+            {% if gathering.tag_list %}
+              <div class="mt-4 flex flex-wrap gap-2">
+                {% for tag in gathering.tag_list %}
+                  <span class="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    #{{ tag }}
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {# Announcements #}
+        {% if announcements %}
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+              <i class="fas fa-bullhorn text-teal-500 mr-2" aria-hidden="true"></i>{% trans "Announcements" %}
+            </h2>
+            <div class="space-y-4">
+              {% for ann in announcements %}
+                <div class="border-l-4 border-teal-400 pl-4">
+                  <h3 class="font-semibold text-gray-900 dark:text-white">{{ ann.title }}</h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ ann.content|linebreaks }}</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ ann.created_at|date:"M j, Y g:i A" }}</p>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {# Organizer actions #}
+        {% if user == gathering.organizer %}
+          <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-700 p-4 flex flex-wrap gap-3 items-center">
+            <span class="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+              <i class="fas fa-crown mr-1" aria-hidden="true"></i>{% trans "You are the organizer" %}
+            </span>
+            <a href="{% url 'edit_gathering' slug=gathering.slug %}"
+               class="inline-flex items-center text-sm px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors">
+              <i class="fas fa-edit mr-1.5" aria-hidden="true"></i>{% trans "Edit" %}
+            </a>
+            <a href="{% url 'manage_gathering' slug=gathering.slug %}"
+               class="inline-flex items-center text-sm px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
+              <i class="fas fa-users-cog mr-1.5" aria-hidden="true"></i>{% trans "Manage Attendees" %}
+            </a>
+            <form method="post"
+                  action="{% url 'delete_gathering' slug=gathering.slug %}"
+                  class="inline">
+              {% csrf_token %}
+              <button type="submit"
+                      onclick="return confirm('{% trans "Are you sure you want to delete this gathering?" %}')"
+                      class="inline-flex items-center text-sm px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
+                <i class="fas fa-trash mr-1.5" aria-hidden="true"></i>{% trans "Delete" %}
+              </button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+      {# Sidebar #}
+      <div class="space-y-5">
+        {# Date & Time #}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+          <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
+            {% trans "When & Where" %}
+          </h2>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-3">
+              <i class="fas fa-calendar-day text-teal-500 mt-0.5" aria-hidden="true"></i>
+              <div>
+                <div class="font-medium text-gray-900 dark:text-white">{{ gathering.start_datetime|date:"l, F j, Y" }}</div>
+                <div class="text-gray-500 dark:text-gray-400">
+                  {{ gathering.start_datetime|time:"g:i A" }}
+                  {% if gathering.end_datetime %}– {{ gathering.end_datetime|time:"g:i A" }}{% endif %}
+                </div>
+              </div>
+            </div>
+            {% if gathering.is_virtual %}
+              <div class="flex items-start gap-3">
+                <i class="fas fa-video text-blue-500 mt-0.5" aria-hidden="true"></i>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white">{% trans "Virtual Event" %}</div>
+                  {% if user_registration and user_registration.status == "confirmed" and gathering.meeting_link %}
+                    <a href="{{ gathering.meeting_link }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="text-teal-600 dark:text-teal-400 hover:underline break-all">
+                      {% trans "Join Meeting" %} <i class="fas fa-external-link-alt text-xs ml-1" aria-hidden="true"></i>
+                    </a>
+                  {% else %}
+                    <span class="text-gray-400 dark:text-gray-500 text-xs">{% trans "Link available after confirmation" %}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% elif gathering.location %}
+              <div class="flex items-start gap-3">
+                <i class="fas fa-map-marker-alt text-orange-500 mt-0.5"
+                   aria-hidden="true"></i>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white">{% trans "In Person" %}</div>
+                  <div class="text-gray-500 dark:text-gray-400">{{ gathering.location }}</div>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {# Organizer #}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+          <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            {% trans "Organizer" %}
+          </h2>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-300 font-bold">
+              {{ gathering.organizer.username|first|upper }}
+            </div>
+            <div>
+              <div class="font-medium text-gray-900 dark:text-white">
+                {{ gathering.organizer.get_full_name|default:gathering.organizer.username }}
+              </div>
+              <a href="{% url 'public_profile' username=gathering.organizer.username %}"
+                 class="text-xs text-teal-600 dark:text-teal-400 hover:underline">{% trans "View Profile" %}</a>
+            </div>
+          </div>
+        </div>
+        {# Attendance & Registration #}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+          <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            {% trans "Attendance" %}
+          </h2>
+          <div class="flex items-center gap-3 mb-4">
+            <i class="fas fa-users text-teal-500 text-lg" aria-hidden="true"></i>
+            <div>
+              <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ gathering.attendee_count }}</span>
+              {% if gathering.max_attendees %}
+                <span class="text-gray-500 dark:text-gray-400 text-sm">/ {{ gathering.max_attendees }}</span>
+              {% endif %}
+              <div class="text-xs text-gray-500 dark:text-gray-400">{% trans "confirmed" %}</div>
+            </div>
+          </div>
+          {% if gathering.max_attendees %}
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+              <div class="bg-teal-500 h-2 rounded-full"
+                   style="width: {% widthratio gathering.attendee_count gathering.max_attendees 100 %}%"></div>
+            </div>
+            {% if gathering.spots_remaining == 0 %}
+              <p class="text-sm text-red-600 dark:text-red-400 mb-3">{% trans "This gathering is full." %}</p>
+            {% elif gathering.spots_remaining is not None %}
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                {{ gathering.spots_remaining }} {% trans "spot(s) remaining" %}
+              </p>
+            {% endif %}
+          {% endif %}
+          {# Registration button #}
+          {% if not gathering.registration_required %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "No registration required — just show up!" %}</p>
+          {% elif user.is_authenticated %}
+            {% if user == gathering.organizer %}
+              <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "You are the organizer of this gathering." %}</p>
+            {% elif user_registration %}
+              <div class="rounded-lg p-3 text-sm {% if user_registration.status == 'confirmed' %}bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 {% elif user_registration.status == 'waitlisted' %}bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 {% elif user_registration.status == 'cancelled' %}bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 {% else %}bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300{% endif %}">
+                <i class="fas {% if user_registration.status == 'confirmed' %}fa-check-circle {% elif user_registration.status == 'waitlisted' %}fa-clock {% elif user_registration.status == 'cancelled' %}fa-times-circle {% else %}fa-hourglass-half{% endif %} mr-1.5"
+                   aria-hidden="true"></i>
+                {% if user_registration.status == 'confirmed' %}
+                  {% trans "You are registered!" %}
+                {% elif user_registration.status == 'waitlisted' %}
+                  {% trans "You are on the waitlist." %}
+                {% elif user_registration.status == 'cancelled' %}
+                  {% trans "Registration cancelled." %}
+                {% else %}
+                  {% trans "Awaiting confirmation." %}
+                {% endif %}
+              </div>
+              {% if user_registration.status != 'cancelled' %}
+                <form method="post"
+                      action="{% url 'cancel_gathering_registration' slug=gathering.slug %}"
+                      class="mt-3">
+                  {% csrf_token %}
+                  <button type="submit"
+                          onclick="return confirm('{% trans "Cancel your registration?" %}')"
+                          class="w-full text-sm px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                    {% trans "Cancel Registration" %}
+                  </button>
+                </form>
+              {% endif %}
+            {% elif gathering.status == 'published' %}
+              <form method="post"
+                    action="{% url 'register_for_gathering' slug=gathering.slug %}">
+                {% csrf_token %}
+                <textarea name="notes"
+                          rows="2"
+                          placeholder="{% trans 'Optional message to organizer…' %}"
+                          class="w-full px-3 py-2 mb-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"></textarea>
+                <button type="submit"
+                        {% if gathering.is_full %}disabled{% endif %}
+                        class="w-full px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors {% if gathering.is_full %}bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed {% else %}bg-teal-500 hover:bg-teal-600 text-white{% endif %}">
+                  {% if gathering.is_full %}
+                    {% trans "Join Waitlist" %}
+                  {% else %}
+                    {% trans "Register Now" %}
+                  {% endif %}
+                </button>
+              </form>
+            {% endif %}
+          {% else %}
+            <a href="{% url 'account_login' %}?next={{ request.path }}"
+               class="block w-full text-center px-4 py-2.5 text-sm font-semibold bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
+              {% trans "Sign in to Register" %}
+            </a>
+          {% endif %}
+        </div>
+        {# Price #}
+        {% if not gathering.is_free %}
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              {% trans "Price" %}
+            </h2>
+            <div class="text-2xl font-bold text-gray-900 dark:text-white">${{ gathering.price }}</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </main>
+{% endblock content %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "My Gatherings" %}
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-5xl mx-auto px-4 md:px-6 py-8">
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <i class="fas fa-calendar-alt text-teal-500" aria-hidden="true"></i>{% trans "My Gatherings" %}
+        </h1>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{% trans "Gatherings you have organized." %}</p>
+      </div>
+      <a href="{% url 'create_gathering' %}"
+         class="inline-flex items-center bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm">
+        <i class="fas fa-plus mr-2" aria-hidden="true"></i>{% trans "Create Gathering" %}
+      </a>
+    </div>
+    {% if page_obj %}
+      <div class="space-y-4">
+        {% for gathering in page_obj %}
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 flex flex-col md:flex-row md:items-center gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2 mb-1">
+                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300">
+                  {{ gathering.get_gathering_type_display }}
+                </span>
+                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold {% if gathering.status == 'published' %}bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 {% elif gathering.status == 'cancelled' %}bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 {% elif gathering.status == 'completed' %}bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 {% else %}bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300{% endif %}">
+                  {{ gathering.get_status_display }}
+                </span>
+                {% if gathering.is_virtual %}
+                  <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                    {% trans "Virtual" %}
+                  </span>
+                {% endif %}
+              </div>
+              <h2 class="font-semibold text-gray-900 dark:text-white truncate">
+                <a href="{% url 'gathering_detail' slug=gathering.slug %}"
+                   class="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{{ gathering.title }}</a>
+              </h2>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <i class="fas fa-calendar mr-1" aria-hidden="true"></i>
+                {{ gathering.start_datetime|date:"M j, Y g:i A" }}
+                <span class="mx-2">·</span>
+                <i class="fas fa-users mr-1" aria-hidden="true"></i>
+                {{ gathering.attendee_count }}
+                {% if gathering.max_attendees %}/ {{ gathering.max_attendees }}{% endif %}
+                {% trans "attending" %}
+              </div>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <a href="{% url 'manage_gathering' slug=gathering.slug %}"
+                 class="text-xs px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors">
+                {% trans "Manage" %}
+              </a>
+              <a href="{% url 'edit_gathering' slug=gathering.slug %}"
+                 class="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors">
+                {% trans "Edit" %}
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      {# Pagination #}
+      {% if page_obj.has_other_pages %}
+        <nav class="mt-6 flex justify-center"
+             aria-label="{% trans 'Pagination' %}">
+          <div class="flex gap-1">
+            {% if page_obj.has_previous %}
+              <a href="?page={{ page_obj.previous_page_number }}"
+                 class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+              </a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <span class="px-3 py-2 rounded-lg bg-teal-500 text-white font-medium">{{ num }}</span>
+              {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                <a href="?page={{ num }}"
+                   class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  {{ num }}
+                </a>
+              {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+              <a href="?page={{ page_obj.next_page_number }}"
+                 class="px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+              </a>
+            {% endif %}
+          </div>
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="text-center py-20">
+        <i class="fas fa-calendar-plus text-5xl text-gray-300 dark:text-gray-600 mb-4"
+           aria-hidden="true"></i>
+        <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">{% trans "No gatherings yet" %}</h3>
+        <p class="text-gray-500 dark:text-gray-400 mb-6">{% trans "Start by creating your first gathering." %}</p>
+        <a href="{% url 'create_gathering' %}"
+           class="inline-flex items-center bg-teal-500 hover:bg-teal-600 text-white px-5 py-2.5 rounded-lg transition-colors font-medium">
+          <i class="fas fa-plus mr-2" aria-hidden="true"></i>{% trans "Create Gathering" %}
+        </a>
+      </div>
+    {% endif %}
+  </main>
+{% endblock content %}

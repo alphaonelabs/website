@@ -3176,3 +3176,178 @@ class VirtualClassroomWhiteboard(models.Model):
         ordering = ["-last_updated"]
         verbose_name = "Virtual Classroom Whiteboard"
         verbose_name_plural = "Virtual Classroom Whiteboards"
+
+
+class Gathering(models.Model):
+    """Generic model for any type of event, meetup, class, or gathering.
+
+    Designed to be flexible enough to handle in-person meetups, online webinars,
+    workshops, club meetings, classes, or any other type of gathering.
+    """
+
+    GATHERING_TYPE_CHOICES = [
+        ("meetup", "Meetup"),
+        ("workshop", "Workshop"),
+        ("class", "Class"),
+        ("webinar", "Webinar"),
+        ("conference", "Conference"),
+        ("study_group", "Study Group"),
+        ("networking", "Networking"),
+        ("hackathon", "Hackathon"),
+        ("club_meeting", "Club Meeting"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("published", "Published"),
+        ("cancelled", "Cancelled"),
+        ("completed", "Completed"),
+    ]
+
+    VISIBILITY_CHOICES = [
+        ("public", "Public"),
+        ("private", "Private"),
+        ("invite_only", "Invite Only"),
+    ]
+
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
+    description = models.TextField()
+    gathering_type = models.CharField(max_length=50, choices=GATHERING_TYPE_CHOICES, default="meetup")
+    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_gatherings")
+
+    start_datetime = models.DateTimeField()
+    end_datetime = models.DateTimeField()
+
+    is_virtual = models.BooleanField(default=False)
+    meeting_link = models.URLField(blank=True)
+    location = models.CharField(max_length=255, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    max_attendees = models.PositiveIntegerField(null=True, blank=True, help_text="Leave blank for unlimited")
+    registration_required = models.BooleanField(default=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default="public")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+
+    image = models.ImageField(upload_to="gatherings/", blank=True)
+    tags = models.CharField(max_length=255, blank=True, help_text="Comma-separated tags")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["start_datetime"]
+        verbose_name = "Gathering"
+        verbose_name_plural = "Gatherings"
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while Gathering.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("gathering_detail", kwargs={"slug": self.slug})
+
+    @property
+    def is_full(self):
+        """Return True if the gathering has reached max attendees."""
+        if self.max_attendees is None:
+            return False
+        return self.registrations.filter(status="confirmed").count() >= self.max_attendees
+
+    @property
+    def attendee_count(self):
+        """Return the number of confirmed attendees."""
+        return self.registrations.filter(status="confirmed").count()
+
+    @property
+    def is_free(self):
+        """Return True if the gathering is free."""
+        return self.price == 0
+
+    @property
+    def spots_remaining(self):
+        """Return the number of spots remaining, or None if unlimited."""
+        if self.max_attendees is None:
+            return None
+        return max(0, self.max_attendees - self.attendee_count)
+
+    @property
+    def is_upcoming(self):
+        """Return True if the gathering has not yet started."""
+        return self.start_datetime > timezone.now()
+
+    @property
+    def is_past(self):
+        """Return True if the gathering has ended."""
+        return self.end_datetime < timezone.now()
+
+    @property
+    def tag_list(self):
+        """Return a list of tags."""
+        return [t.strip() for t in self.tags.split(",") if t.strip()]
+
+
+class GatheringRegistration(models.Model):
+    """Tracks attendee registrations for a Gathering.
+
+    Supports pending, confirmed, cancelled, and waitlisted states.
+    """
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("confirmed", "Confirmed"),
+        ("cancelled", "Cancelled"),
+        ("waitlisted", "Waitlisted"),
+        ("attended", "Attended"),
+    ]
+
+    gathering = models.ForeignKey(Gathering, on_delete=models.CASCADE, related_name="registrations")
+    attendee = models.ForeignKey(User, on_delete=models.CASCADE, related_name="gathering_registrations")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    notes = models.TextField(blank=True, help_text="Optional notes from the attendee")
+    registered_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("gathering", "attendee")
+        ordering = ["registered_at"]
+        verbose_name = "Gathering Registration"
+        verbose_name_plural = "Gathering Registrations"
+
+    def __str__(self):
+        return f"{self.attendee.username} - {self.gathering.title} ({self.status})"
+
+
+class GatheringAnnouncement(models.Model):
+    """Announcements posted by organizers to gathering attendees."""
+
+    gathering = models.ForeignKey(Gathering, on_delete=models.CASCADE, related_name="announcements")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="gathering_announcements")
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Gathering Announcement"
+        verbose_name_plural = "Gathering Announcements"
+
+    def __str__(self):
+        return f"{self.gathering.title} — {self.title}"
