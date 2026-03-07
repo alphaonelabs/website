@@ -60,7 +60,7 @@
         <div class="h-full">
           <div class="bg-gray-900 flex flex-col lg:flex-row h-full">
             <div class="w-full lg:w-52 bg-gray-800 border-b lg:border-b-0 lg:border-r border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
-              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-sm">🧰 Toolbox</div>
+              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-xs lg:text-sm">🧰 Toolbox</div>
               <div class="grid grid-cols-3 gap-1 lg:flex lg:flex-col lg:gap-2 flex-1">
                 <button onclick="addPart('chassis')"
                         class="w-full bg-teal-700 hover:bg-teal-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
@@ -109,7 +109,7 @@
                       class="bg-gray-900 w-full h-full"
                       role="img"
                       aria-label="Robot simulation canvas where you can control and view your robot"></canvas>
-              <div class="absolute top-3 right-3 bg-black/80 text-green-400 font-mono text-xs p-2 rounded-lg border border-green-900">
+              <div class="absolute top-2 right-2 lg:top-3 lg:right-3 bg-black/80 text-green-400 font-mono text-[9px] lg:text-xs p-1.5 lg:p-2 rounded-lg border border-green-900">
                 <div>
                   <span class="text-gray-500">POS:</span> <span id="pos-display">0, 0</span>
                 </div>
@@ -147,28 +147,28 @@
                 </div>
               </div>
               <!-- Touch Controls - mobile only -->
-              <div class="lg:hidden absolute bottom-4 inset-x-4 flex justify-between items-end pointer-events-none">
+              <div class="lg:hidden absolute bottom-3 inset-x-3 flex justify-between items-end pointer-events-none">
                 <!-- D-pad -->
-                <div class="grid grid-cols-3 gap-1 pointer-events-auto select-none" style="width:112px">
+                <div class="grid grid-cols-3 gap-1 pointer-events-auto select-none" style="width:92px">
                   <div></div>
-                  <button id="btn-up"    aria-label="Move forward"  class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-up text-xs"></i></button>
+                  <button id="btn-up"    aria-label="Move forward"  class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-up text-[10px]"></i></button>
                   <div></div>
-                  <button id="btn-left"  aria-label="Turn left"     class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-left text-xs"></i></button>
-                  <div class="w-9 h-9 bg-gray-900/50 rounded"></div>
-                  <button id="btn-right" aria-label="Turn right"    class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-right text-xs"></i></button>
+                  <button id="btn-left"  aria-label="Turn left"     class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-left text-[10px]"></i></button>
+                  <div class="w-7 h-7 bg-gray-900/50 rounded"></div>
+                  <button id="btn-right" aria-label="Turn right"    class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-right text-[10px]"></i></button>
                   <div></div>
-                  <button id="btn-down"  aria-label="Move backward" class="w-9 h-9 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-down text-xs"></i></button>
+                  <button id="btn-down"  aria-label="Move backward" class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-down text-[10px]"></i></button>
                   <div></div>
                 </div>
                 <!-- Pick/Drop button -->
-                <button id="btn-space" aria-label="Pick or drop object" class="w-14 h-14 bg-purple-700/80 active:bg-purple-500 rounded-full text-white flex items-center justify-center pointer-events-auto select-none">
-                  <i class="fas fa-hand-paper text-lg"></i>
+                <button id="btn-space" aria-label="Pick or drop object" class="w-11 h-11 bg-purple-700/80 active:bg-purple-500 rounded-full text-white flex items-center justify-center pointer-events-auto select-none">
+                  <i class="fas fa-hand-paper text-sm"></i>
                 </button>
               </div>
             </div>
             <!-- Right Sidebar: Properties -->
             <div class="w-full lg:w-52 bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
-              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-sm">⚙️ Settings</div>
+              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-xs lg:text-sm">⚙️ Settings</div>
               <div class="grid grid-cols-2 gap-x-3 gap-y-1 lg:block lg:space-y-3 flex-1">
                 <div>
                   <label class="text-gray-400 text-xs flex justify-between">
@@ -260,6 +260,7 @@
         speed: 0,
         color: '#0d9488',
         holdingBlock: null,
+        gripAnim: 0, // 0 = open, 1 = closed; animated smoothly
         parts: {
           chassis: false,
           wheels: false,
@@ -350,8 +351,8 @@
       function handlePickDrop() {
         if (!robot.parts.arm || !robot.parts.chassis) return;
 
-        const gripX = robot.x + Math.sin(robot.angle) * 65;
-        const gripY = robot.y - Math.cos(robot.angle) * 65;
+        const gripX = robot.x + Math.sin(robot.angle) * 68;
+        const gripY = robot.y - Math.cos(robot.angle) * 68;
 
         if (robot.holdingBlock !== null) {
           // DROP
@@ -441,8 +442,8 @@
         if (type === 'arm' && robot.holdingBlock !== null) {
           const b = blocks.find((bl) => bl.id === robot.holdingBlock);
           if (b) {
-            b.x = robot.x + Math.sin(robot.angle) * 65 - b.size / 2;
-            b.y = robot.y - Math.cos(robot.angle) * 65 - b.size / 2;
+            b.x = robot.x + Math.sin(robot.angle) * 68 - b.size / 2;
+            b.y = robot.y - Math.cos(robot.angle) * 68 - b.size / 2;
             b.held = false;
           }
           robot.holdingBlock = null;
@@ -473,6 +474,7 @@
           speed: 0,
           color: document.getElementById('color-picker').value,
           holdingBlock: null,
+          gripAnim: 0,
           parts: {
             chassis: false,
             wheels: false,
@@ -534,13 +536,21 @@
         robot.x = Math.max(35, Math.min(canvas.width - 35, robot.x));
         robot.y = Math.max(35, Math.min(canvas.height - 35, robot.y));
 
-        // Move held block
+        // Move held block (arm now extends 68 units forward)
         if (robot.holdingBlock !== null) {
           const b = blocks.find((bl) => bl.id === robot.holdingBlock);
           if (b) {
-            b.x = robot.x + Math.sin(robot.angle) * 65 - b.size / 2;
-            b.y = robot.y - Math.cos(robot.angle) * 65 - b.size / 2;
+            b.x = robot.x + Math.sin(robot.angle) * 68 - b.size / 2;
+            b.y = robot.y - Math.cos(robot.angle) * 68 - b.size / 2;
           }
+        }
+
+        // Animate robotic gripper smoothly
+        if (robot.parts.arm) {
+          const targetGrip = robot.holdingBlock !== null ? 1 : 0;
+          const gripSpeed = 0.1;
+          if (robot.gripAnim < targetGrip) robot.gripAnim = Math.min(robot.gripAnim + gripSpeed, targetGrip);
+          else if (robot.gripAnim > targetGrip) robot.gripAnim = Math.max(robot.gripAnim - gripSpeed, targetGrip);
         }
 
         document.getElementById('pos-display').textContent = `${Math.round(robot.x)}, ${Math.round(robot.y)}`;
@@ -604,8 +614,8 @@
 
           // Glow if near gripper and arm attached
           if (robot.parts.arm && robot.holdingBlock === null) {
-            const gx = robot.x + Math.sin(robot.angle) * 65;
-            const gy = robot.y - Math.cos(robot.angle) * 65;
+            const gx = robot.x + Math.sin(robot.angle) * 68;
+            const gy = robot.y - Math.cos(robot.angle) * 68;
             if (Math.hypot(gx - (b.x + b.size / 2), gy - (b.y + b.size / 2)) < 45) {
               ctx.shadowColor = '#fff';
               ctx.shadowBlur = 12;
@@ -641,6 +651,117 @@
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.strokeRect(-22, -28, 44, 56);
+
+        // Arm – drawn at the FRONT of the robot (before lidar/camera so sensors render on top)
+        if (robot.parts.arm) {
+          ctx.save();
+
+          // Mount bracket at chassis front
+          ctx.fillStyle = '#7c3aed';
+          ctx.fillRect(-8, -31, 16, 7);
+
+          // Upper arm segment (shoulder → elbow)
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, -28);
+          ctx.lineTo(0, -44);
+          ctx.stroke();
+
+          // Elbow joint
+          ctx.fillStyle = '#c084fc';
+          ctx.beginPath();
+          ctx.arc(0, -44, 4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Lower arm segment (elbow → wrist)
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(0, -44);
+          ctx.lineTo(0, -60);
+          ctx.stroke();
+
+          // Wrist joint
+          ctx.fillStyle = '#c084fc';
+          ctx.beginPath();
+          ctx.arc(0, -60, 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Robotic gripper fingers (animated via gripAnim: 0=open, 1=closed)
+          const openSpread = 0.55;
+          const closedSpread = 0.08;
+          const spread = openSpread - (openSpread - closedSpread) * robot.gripAnim;
+          const fingerLen = 16;
+
+          // Left finger
+          ctx.save();
+          ctx.translate(0, -60);
+          ctx.rotate(-spread);
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -fingerLen);
+          ctx.stroke();
+          ctx.strokeStyle = '#e9d5ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, -fingerLen);
+          ctx.lineTo(-4, -fingerLen - 4);
+          ctx.stroke();
+          ctx.restore();
+
+          // Right finger
+          ctx.save();
+          ctx.translate(0, -60);
+          ctx.rotate(spread);
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -fingerLen);
+          ctx.stroke();
+          ctx.strokeStyle = '#e9d5ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, -fingerLen);
+          ctx.lineTo(4, -fingerLen - 4);
+          ctx.stroke();
+          ctx.restore();
+
+          // Draw held block between the gripper fingers
+          if (robot.holdingBlock !== null) {
+            const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+            if (b) {
+              ctx.fillStyle = b.color;
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2;
+              if (b.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(0, -68, b.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+              } else if (b.shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(0, -68 - b.size / 2);
+                ctx.lineTo(-b.size / 2, -68 + b.size / 2);
+                ctx.lineTo(b.size / 2, -68 + b.size / 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+              } else {
+                ctx.fillRect(-b.size / 2, -68 - b.size / 2, b.size, b.size);
+                ctx.strokeRect(-b.size / 2, -68 - b.size / 2, b.size, b.size);
+              }
+            }
+          }
+
+          ctx.restore();
+        }
 
         // Wheels
         if (robot.parts.wheels) {
@@ -686,53 +807,6 @@
           ctx.beginPath();
           ctx.arc(0, -18, 4, 0, Math.PI * 2);
           ctx.fill();
-        }
-
-        // Arm
-        if (robot.parts.arm) {
-          ctx.strokeStyle = '#a855f7';
-          ctx.lineWidth = 6;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(0, 24);
-          ctx.lineTo(0, 45);
-          ctx.lineTo(0, 65);
-          ctx.stroke();
-
-          const grip = robot.holdingBlock === null ? 10 : 5;
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(-grip, 65);
-          ctx.lineTo(0, 72);
-          ctx.lineTo(grip, 65);
-          ctx.stroke();
-
-          // Draw held block
-          if (robot.holdingBlock !== null) {
-            const b = blocks.find((bl) => bl.id === robot.holdingBlock);
-            if (b) {
-              ctx.fillStyle = b.color;
-              ctx.strokeStyle = '#fff';
-              ctx.lineWidth = 2;
-              if (b.shape === 'circle') {
-                ctx.beginPath();
-                ctx.arc(0, 55 + b.size / 2, b.size / 2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-              } else if (b.shape === 'triangle') {
-                ctx.beginPath();
-                ctx.moveTo(0, 55);
-                ctx.lineTo(-b.size / 2, 55 + b.size);
-                ctx.lineTo(b.size / 2, 55 + b.size);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-              } else {
-                ctx.fillRect(-b.size / 2, 55, b.size, b.size);
-                ctx.strokeRect(-b.size / 2, 55, b.size, b.size);
-              }
-            }
-          }
         }
 
         ctx.restore();
