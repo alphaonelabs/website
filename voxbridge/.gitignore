@@ -1,0 +1,21 @@
+# Cloudflare Workers build output
+.wrangler/
+dist/
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+*.swp
