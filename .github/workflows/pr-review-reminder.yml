@@ -89,9 +89,12 @@ jobs:
                   per_page: 100
                 });
 
-                // Check if we already posted a notification
+                // Check if we already posted a notification (only trust our bot)
                 const alreadyNotified = issueComments.some(
-                  comment => comment.body && comment.body.includes(notificationMarker)
+                  comment => comment.user &&
+                            comment.user.login === 'github-actions[bot]' &&
+                            comment.body &&
+                            comment.body.includes(notificationMarker)
                 );
 
                 if (alreadyNotified) {
@@ -134,11 +137,12 @@ jobs:
                   }
                 });
 
-                // Add issue comment authors (excluding PR author and our bot)
+                // Add issue comment authors (excluding PR author and bot notification comments)
                 issueComments.forEach(comment => {
                   if (comment.user && comment.user.login &&
                       comment.user.login !== pr.user.login &&
-                      comment.body && !comment.body.includes(notificationMarker)) {
+                      !(comment.user.login === 'github-actions[bot]' &&
+                        comment.body && comment.body.includes(notificationMarker))) {
                     allReviewers.add(comment.user.login);
                   }
                 });
@@ -159,7 +163,7 @@ jobs:
 
               } catch (error) {
                 console.error(`Error checking PR #${pr.number}:`, error);
-                return false;
+                throw error; // Propagate error to be tracked in main loop
               }
             }
 
@@ -230,8 +234,10 @@ jobs:
 
             console.log(`Found ${pulls.length} open PRs`);
 
-            // Track how many PRs we notified about
+            // Track results
             let notifiedCount = 0;
+            let errorCount = 0;
+            const failedPRs = [];
 
             // Check each PR
             for (const pr of pulls) {
@@ -243,24 +249,36 @@ jobs:
                 continue;
               }
 
-              const shouldNotify = await shouldNotifyPR(pr);
+              try {
+                const shouldNotify = await shouldNotifyPR(pr);
 
-              if (shouldNotify) {
-                try {
+                if (shouldNotify) {
                   await notifyMaintainers(pr);
                   notifiedCount++;
-                } catch (error) {
-                  core.error(`Failed to notify maintainers for PR #${pr.number}: ${error}`);
                 }
+              } catch (error) {
+                errorCount++;
+                failedPRs.push(pr.number);
+                core.error(`Failed to process PR #${pr.number}: ${error.message}`);
               }
             }
 
             console.log(`\n=== Summary ===`);
             console.log(`Total open PRs: ${pulls.length}`);
             console.log(`PRs notified: ${notifiedCount}`);
+            console.log(`PRs with errors: ${errorCount}`);
+
+            if (errorCount > 0) {
+              core.warning(`⚠️ Failed to process ${errorCount} PR(s): #${failedPRs.join(', #')}`);
+            }
 
             if (notifiedCount > 0) {
               core.notice(`✅ Notified maintainers about ${notifiedCount} PR(s) awaiting human review`);
-            } else {
+            } else if (errorCount === 0) {
               core.notice(`✅ All PRs have human reviewers or are too recent`);
+            }
+
+            // Fail the workflow if there were errors
+            if (errorCount > 0) {
+              core.setFailed(`Workflow completed with ${errorCount} error(s). Check logs for details.`);
             }

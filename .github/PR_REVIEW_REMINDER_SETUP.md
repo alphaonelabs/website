@@ -8,8 +8,8 @@ The complete documentation for the PR Review Reminder workflow has been consolid
 
 ## Quick Links
 
-- [How It Works](WORKFLOWS.md#how-it-works-2)
-- [Configuration](WORKFLOWS.md#configuration-1)
+- [How It Works](WORKFLOWS.md#how-it-works-1)
+- [Configuration](WORKFLOWS.md#configuration)
 - [Manual Testing](WORKFLOWS.md#manual-testing)
 - [Customization](WORKFLOWS.md#customization)
 
