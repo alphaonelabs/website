@@ -1,0 +1,14 @@
+{
+  "name": "scholarai",
+  "version": "1.0.0",
+  "description": "AI-powered research assistant using Cloudflare Workers AI",
+  "private": true,
+  "scripts": {
+    "deploy": "uv run pywrangler deploy",
+    "dev": "uv run pywrangler dev",
+    "start": "uv run pywrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.46.0"
+  }
+}

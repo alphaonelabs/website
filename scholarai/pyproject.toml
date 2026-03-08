@@ -1,0 +1,19 @@
+[project]
+name = "scholarai"
+version = "1.0.0"
+description = "AI-powered research assistant using Cloudflare Workers AI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "webtypy>=0.1.7",
+    "fastapi",
+    "markupsafe",
+]
+
+[dependency-groups]
+dev = [
+    "workers-py",
+    "workers-runtime-sdk",
+    "pytest",
+    "httpx",
+]
