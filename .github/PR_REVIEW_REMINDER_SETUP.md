@@ -1,116 +1,18 @@
-# PR Review Reminder Workflow Setup
+# PR Review Reminder Workflow
 
-## Overview
+## 📚 Documentation Moved
 
-This workflow automatically notifies maintainers when a PR has only been reviewed by CodeRabbit AI and no human review has occurred within 24 hours.
+The complete documentation for the PR Review Reminder workflow has been consolidated into the main workflows documentation file.
 
-## Features
+**👉 [View Full Documentation in WORKFLOWS.md](WORKFLOWS.md#pr-review-reminder-workflow)**
 
-✅ Detects PRs with only CodeRabbit reviews
-✅ Automatically requests maintainer reviews
-✅ Posts notification comments tagging maintainers
-✅ Runs every 6 hours + on PR review events
-✅ **No labels required** - uses comment tracking instead
-✅ **Zero setup required** - works out of the box
+## Quick Links
 
-## Maintainer Action Required
-
-🎉 **NONE!** This workflow is ready to use immediately. No label creation or setup needed
-
-## Configuration
-
-Current settings in the workflow:
-
-- **Maintainers:** A1L13N
-- **Time threshold:** 24 hours
-- **Check frequency:** Every 6 hours
-- **Tracking method:** Comment history (no labels needed)
-
-### To Add More Maintainers
-
-Edit the `MAINTAINERS` environment variable in `.github/workflows/pr-review-reminder.yml` (under the `env:` section):
-
-```yaml
-MAINTAINERS: "A1L13N,maintainer2,maintainer3"
-```
-
-### To Change Time Threshold
-
-Edit the `DEFAULT_HOURS_THRESHOLD` environment variable in `.github/workflows/pr-review-reminder.yml` (under the `env:` section):
-
-```yaml
-DEFAULT_HOURS_THRESHOLD: 48 # Change to 48 hours
-```
-
-## How It Works
-
-1. **Triggers:**
-   - When any PR review is submitted
-   - Every 6 hours via cron schedule
-   - Manual trigger from Actions tab
-
-2. **For each open PR, checks:**
-   - Is it older than 24 hours?
-   - Has it only been reviewed by CodeRabbit?
-   - Have we already posted a notification? (checks comment history)
-
-3. **If yes to all above:**
-   - Posts comment mentioning maintainers (with hidden tracking marker)
-   - Requests reviews from maintainers
-
-4. **Prevents spam:**
-   - Won't notify same PR twice (detects previous notification comments)
-   - Skips PRs with human comments/reviews
-
-## Testing
-
-### Manual Test
-
-1. Go to: Actions → PR Review Reminder → Run workflow
-2. Set "hours_threshold" to `0` (for immediate testing)
-3. Click "Run workflow"
-4. Check logs in Actions tab
-
-### Live Test
-
-1. Create a test PR
-2. Wait for CodeRabbit to review
-3. Wait for scheduled run (or trigger manually)
-4. Verify notification comment appears
-
-## Monitoring
-
-Check workflow runs in the **Actions** tab:
-
-- ✅ Green check = workflow ran successfully
-- ❌ Red X = check logs for errors
-- 🟡 Yellow dot = workflow is running
-
-Common issues:
-
-- **No PRs notified:** All PRs have human reviewers or are too recent
-- **Permission denied:** Repository needs to grant Actions write permissions
-- **Duplicate notifications:** Shouldn't happen (comment tracking prevents this)
-
-## Permissions
-
-The workflow requires:
-
-- `pull-requests: write` - To request reviews
-- `issues: write` - To post comments
-- `contents: read` - To read repository data
-
-These are configured in the workflow file and should work with default `GITHUB_TOKEN`.
-
-## Support
-
-If you encounter issues:
-
-1. Check the workflow logs in Actions tab
-2. Ensure maintainer usernames are correct
-3. Check repository permissions for GitHub Actions
-4. Verify CodeRabbit bot username is correct (`coderabbitai[bot]`)
+- [How It Works](WORKFLOWS.md#how-it-works-2)
+- [Configuration](WORKFLOWS.md#configuration-1)
+- [Manual Testing](WORKFLOWS.md#manual-testing)
+- [Customization](WORKFLOWS.md#customization)
 
 ---
 
-**Ready to merge!** 🚀 The workflow requires zero setup and will work immediately upon merge.
+**TL;DR:** This workflow automatically notifies maintainers when a PR has received no human reviews or comments within 24 hours. Zero setup required! 🚀

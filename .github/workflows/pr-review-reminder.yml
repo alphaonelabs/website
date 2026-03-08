@@ -72,6 +72,15 @@ jobs:
             // Helper function to check if PR should be notified
             async function shouldNotifyPR(pr) {
               try {
+                // Check if PR is old enough (do this first to avoid unnecessary API calls)
+                const prAge = Date.now() - new Date(pr.created_at).getTime();
+                const prAgeHours = prAge / (1000 * 60 * 60);
+
+                if (prAgeHours < hoursThreshold) {
+                  console.log(`PR #${pr.number}: Too recent (${prAgeHours.toFixed(2)} hours old), skipping`);
+                  return false;
+                }
+
                 // Get all comments to check if we already notified (with pagination)
                 const issueComments = await github.paginate(github.rest.issues.listComments, {
                   owner: context.repo.owner,
@@ -87,15 +96,6 @@ jobs:
 
                 if (alreadyNotified) {
                   console.log(`PR #${pr.number}: Already notified, skipping`);
-                  return false;
-                }
-
-                // Check if PR is old enough
-                const prAge = Date.now() - new Date(pr.created_at).getTime();
-                const prAgeHours = prAge / (1000 * 60 * 60);
-
-                if (prAgeHours < hoursThreshold) {
-                  console.log(`PR #${pr.number}: Too recent (${prAgeHours.toFixed(2)} hours old), skipping`);
                   return false;
                 }
 

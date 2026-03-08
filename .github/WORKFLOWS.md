@@ -202,7 +202,7 @@ Current settings in the workflow:
 2. **For each open PR, checks:**
    - Is it older than the time threshold (default 24 hours)?
    - Is it not a draft PR?
-   - Has it only been reviewed by bots?
+   - Has it received no human reviews or comments?
    - Have we already posted a notification? (checks comment history)
 
 3. **If yes to all above:**
