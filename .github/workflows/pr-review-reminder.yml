@@ -246,8 +246,12 @@ jobs:
               const shouldNotify = await shouldNotifyPR(pr);
 
               if (shouldNotify) {
-                await notifyMaintainers(pr);
-                notifiedCount++;
+                try {
+                  await notifyMaintainers(pr);
+                  notifiedCount++;
+                } catch (error) {
+                  core.error(`Failed to notify maintainers for PR #${pr.number}: ${error}`);
+                }
               }
             }
 
