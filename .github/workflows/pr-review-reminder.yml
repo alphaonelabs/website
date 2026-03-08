@@ -26,9 +26,6 @@ env:
   # Default time threshold in hours before notifying maintainers
   DEFAULT_HOURS_THRESHOLD: 24
 
-  # CodeRabbit bot username
-  CODERABBIT_BOT: "coderabbitai[bot]"
-
   # Notification identifier (used to detect if we already commented)
   NOTIFICATION_MARKER: "<!-- pr-review-reminder-bot -->"
 
