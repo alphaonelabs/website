@@ -2,9 +2,6 @@ name: PR Review Reminder
 
 # This workflow ensures PRs reviewed only by CodeRabbit AI are automatically
 # brought to maintainers' attention if no human review occurs within a certain time.
-#
-# NO SETUP REQUIRED - This workflow is ready to use!
-# It tracks notifications via comment history, so no labels needed.
 
 on:
   pull_request_review:
@@ -60,6 +57,13 @@ jobs:
               input && input !== 'undefined' && input !== '' ? input : process.env.DEFAULT_HOURS_THRESHOLD,
               10
             );
+
+            // Validate hoursThreshold
+            if (isNaN(hoursThreshold) || hoursThreshold < 0) {
+              core.setFailed(`Invalid hours_threshold: ${hoursThreshold}. Must be a non-negative number.`);
+              return;
+            }
+
             const maintainers = process.env.MAINTAINERS.split(',').map(m => m.trim());
             const coderabbitBot = process.env.CODERABBIT_BOT;
             const notificationMarker = process.env.NOTIFICATION_MARKER;
@@ -72,8 +76,8 @@ jobs:
             // Helper function to check if PR should be notified
             async function shouldNotifyPR(pr) {
               try {
-                // Get all comments to check if we already notified
-                const issueComments = await github.rest.issues.listComments({
+                // Get all comments to check if we already notified (with pagination)
+                const issueComments = await github.paginate(github.rest.issues.listComments, {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: pr.number,
@@ -81,7 +85,7 @@ jobs:
                 });
 
                 // Check if we already posted a notification
-                const alreadyNotified = issueComments.data.some(
+                const alreadyNotified = issueComments.some(
                   comment => comment.body && comment.body.includes(notificationMarker)
                 );
 
@@ -99,18 +103,18 @@ jobs:
                   return false;
                 }
 
-                // Get all reviews for this PR
-                const reviews = await github.rest.pulls.listReviews({
+                // Get all reviews for this PR (with pagination)
+                const reviews = await github.paginate(github.rest.pulls.listReviews, {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   pull_number: pr.number,
                   per_page: 100
                 });
 
-                console.log(`PR #${pr.number}: Found ${reviews.data.length} reviews`);
+                console.log(`PR #${pr.number}: Found ${reviews.length} reviews`);
 
-                // Get all comments on the PR (review comments)
-                const reviewComments = await github.rest.pulls.listReviewComments({
+                // Get all comments on the PR (review comments with pagination)
+                const reviewComments = await github.paginate(github.rest.pulls.listReviewComments, {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   pull_number: pr.number,
@@ -123,22 +127,22 @@ jobs:
                 // Combine all reviewers and commenters
                 const allReviewers = new Set();
 
-                // Add review submitters
-                reviews.data.forEach(review => {
-                  if (review.user && review.user.login) {
+                // Add review submitters (excluding PR author)
+                reviews.forEach(review => {
+                  if (review.user && review.user.login && review.user.login !== pr.user.login) {
                     allReviewers.add(review.user.login);
                   }
                 });
 
-                // Add review comment authors
-                reviewComments.data.forEach(comment => {
-                  if (comment.user && comment.user.login) {
+                // Add review comment authors (excluding PR author)
+                reviewComments.forEach(comment => {
+                  if (comment.user && comment.user.login && comment.user.login !== pr.user.login) {
                     allReviewers.add(comment.user.login);
                   }
                 });
 
                 // Add issue comment authors (excluding PR author and our bot)
-                allIssueComments.data.forEach(comment => {
+                allIssueComments.forEach(comment => {
                   if (comment.user && comment.user.login &&
                       comment.user.login !== pr.user.login &&
                       comment.body && !comment.body.includes(notificationMarker)) {
@@ -175,8 +179,8 @@ jobs:
                 const maintainerMentions = maintainers.map(m => `@${m}`).join(' ');
 
                 // Post a comment tagging maintainers
-                // Sanitize PR title to prevent markdown injection
-                const sanitizedTitle = pr.title.replace(/[`*_~\[\]()#]/g, '\\$&');
+                // Sanitize PR title to prevent markdown injection and @mentions
+                const sanitizedTitle = pr.title.replace(/[@`*_~\[\]()#]/g, '\\$&');
                 const commentBody = `${notificationMarker}\n` +
                   `👋 ${maintainerMentions}\n\n` +
                   `This PR has been reviewed by bots but is awaiting human review.\n\n` +
