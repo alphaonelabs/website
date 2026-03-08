@@ -1,0 +1,31 @@
+name = "earthmind"
+main = "src/index.py"
+compatibility_date = "2024-09-02"
+compatibility_flags = ["python_workers"]
+workers_dev = true
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "ENV_CACHE"
+id = "replace_with_your_kv_namespace_id"
+preview_id = "replace_with_your_preview_kv_namespace_id"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "earthmind"
+database_id = "replace_with_your_d1_database_id"
+
+[vars]
+ANOMALY_ZSCORE_THRESHOLD = "2.5"
+ALERT_CHECK_INTERVAL_MINUTES = "15"
+MAX_READINGS_PER_QUERY = "1000"
+
+[env.staging]
+name = "earthmind-staging"
+vars = { ANOMALY_ZSCORE_THRESHOLD = "3.0" }
+
+[env.production]
+name = "earthmind-production"
+workers_dev = false
