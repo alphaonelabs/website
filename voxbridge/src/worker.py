@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import json
+import traceback
 
 from workers import Response, WorkerEntrypoint
 
@@ -42,6 +43,12 @@ def _json(data: dict, *, status: int = 200) -> Response:
 def _options() -> Response:
     """Return a CORS pre-flight response."""
     return Response("", status=204, headers=_CORS)
+
+
+def _server_error(exc: Exception) -> Response:
+    """Log exception details server-side and return a generic 500 response."""
+    traceback.print_exc()
+    return _json({"error": "An internal error occurred. Please try again."}, status=500)
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +83,7 @@ async def _caption(request: object, env: object) -> Response:
 
         return _json({"text": transcript, "model": MODEL_WHISPER})
     except Exception as exc:  # noqa: BLE001
-        return _json({"error": str(exc)}, status=500)
+        return _server_error(exc)
 
 
 async def _speech_to_sign(request: object, env: object) -> Response:
@@ -115,7 +122,7 @@ async def _speech_to_sign(request: object, env: object) -> Response:
                     {
                         "role": "system",
                         "content": (
-                            f"You are an expert {language} (American Sign Language) interpreter. "
+                            f"You are an expert {language} interpreter. "
                             "Convert spoken text into clear, step-by-step hand-sign descriptions. "
                             "For each key word provide the hand shape, palm orientation, location, and movement."
                         ),
@@ -144,7 +151,7 @@ async def _speech_to_sign(request: object, env: object) -> Response:
             }
         )
     except Exception as exc:  # noqa: BLE001
-        return _json({"error": str(exc)}, status=500)
+        return _server_error(exc)
 
 
 async def _sign_to_speech(request: object, env: object) -> Response:
@@ -222,7 +229,7 @@ async def _sign_to_speech(request: object, env: object) -> Response:
             }
         )
     except Exception as exc:  # noqa: BLE001
-        return _json({"error": str(exc)}, status=500)
+        return _server_error(exc)
 
 
 async def _visual_scene(request: object, env: object) -> Response:
@@ -280,7 +287,7 @@ async def _visual_scene(request: object, env: object) -> Response:
             }
         )
     except Exception as exc:  # noqa: BLE001
-        return _json({"error": str(exc)}, status=500)
+        return _server_error(exc)
 
 
 # ---------------------------------------------------------------------------

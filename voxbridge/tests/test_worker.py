@@ -9,12 +9,11 @@ full handler code-paths can be validated without deploying the worker.
 from __future__ import annotations
 
 import base64
-import importlib
 import json
 import sys
 import types
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 
 # ---------------------------------------------------------------------------
@@ -48,10 +47,9 @@ def _install_cf_stubs() -> None:
 _install_cf_stubs()
 
 # ---------------------------------------------------------------------------
-# Import module under test
+# Import module under test (pytest.ini adds src/ to sys.path automatically)
 # ---------------------------------------------------------------------------
 
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "src"))
 import worker  # noqa: E402  (side-effect import after stubs)
 
 Response = sys.modules["workers"].Response
