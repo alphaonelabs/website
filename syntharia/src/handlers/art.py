@@ -4,8 +4,6 @@ Art generation handler — text-to-image using Cloudflare Workers AI.
 Model: @cf/stabilityai/stable-diffusion-xl-base-1.0
 """
 
-import json
-
 from workers import Response
 
 # Stable Diffusion XL for high-quality image generation
