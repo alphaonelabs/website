@@ -33,7 +33,7 @@ env:
   NOTIFICATION_MARKER: "<!-- pr-review-reminder-bot -->"
 
   # Exempt bot accounts (comma-separated)
-  EXEMPT_BOTS: "coderabbitai[bot],github-actions[bot],dependabot[bot],copilot[bot],copilot-swe-agent[bot]"
+  EXEMPT_BOTS: "coderabbitai[bot],github-actions[bot],dependabot[bot],copilot[bot],github-copilot[bot],copilot-swe-agent[bot]"
 
 jobs:
   check-pr-reviews:
@@ -65,7 +65,6 @@ jobs:
             }
 
             const maintainers = process.env.MAINTAINERS.split(',').map(m => m.trim());
-            const coderabbitBot = process.env.CODERABBIT_BOT;
             const notificationMarker = process.env.NOTIFICATION_MARKER;
             const exemptBots = new Set(process.env.EXEMPT_BOTS.split(',').map(b => b.trim()));
 
@@ -121,9 +120,6 @@ jobs:
                   per_page: 100
                 });
 
-                // Reuse previously fetched issueComments to avoid duplicate API call
-                const allIssueComments = issueComments;
-
                 // Combine all reviewers and commenters
                 const allReviewers = new Set();
 
@@ -142,7 +138,7 @@ jobs:
                 });
 
                 // Add issue comment authors (excluding PR author and our bot)
-                allIssueComments.forEach(comment => {
+                issueComments.forEach(comment => {
                   if (comment.user && comment.user.login &&
                       comment.user.login !== pr.user.login &&
                       comment.body && !comment.body.includes(notificationMarker)) {
@@ -181,14 +177,15 @@ jobs:
                 // Post a comment tagging maintainers
                 // Sanitize PR title to prevent markdown injection and @mentions
                 const sanitizedTitle = pr.title.replace(/[@`*_~\[\]()#]/g, '\\$&');
-                const commentBody = `${notificationMarker}\n` +
+                const commentBody =
                   `👋 ${maintainerMentions}\n\n` +
                   `This PR has been reviewed by bots but is awaiting human review.\n\n` +
                   `**PR Details:**\n` +
                   `- Created: ${new Date(pr.created_at).toISOString()}\n` +
                   `- Author: @${pr.user.login}\n` +
                   `- Title: ${sanitizedTitle}\n\n` +
-                  `Please review this PR when you have a chance. Thank you! 🙏`;
+                  `Please review this PR when you have a chance. Thank you! 🙏\n\n` +
+                  `${notificationMarker}`;
 
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
@@ -242,6 +239,12 @@ jobs:
             // Check each PR
             for (const pr of pulls) {
               console.log(`\n--- Checking PR #${pr.number}: ${pr.title} ---`);
+
+              // Skip draft PRs
+              if (pr.draft) {
+                console.log(`PR #${pr.number}: Skipping draft PR`);
+                continue;
+              }
 
               const shouldNotify = await shouldNotifyPR(pr);
 
