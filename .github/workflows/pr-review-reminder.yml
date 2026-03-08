@@ -1,0 +1,284 @@
+name: PR Review Reminder
+
+# This workflow ensures PRs reviewed only by CodeRabbit AI are automatically
+# brought to maintainers' attention if no human review occurs within a certain time.
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+  schedule:
+    - cron: "0 */6 * * *"
+
+  # Allow manual triggering for testing
+  workflow_dispatch:
+    inputs:
+      hours_threshold:
+        description: "Hours to wait before notifying maintainers"
+        required: false
+        default: "24"
+        type: string
+
+env:
+  # List of maintainer GitHub usernames (comma-separated)
+  MAINTAINERS: "A1L13N"
+
+  # Default time threshold in hours before notifying maintainers
+  DEFAULT_HOURS_THRESHOLD: 24
+
+  # Notification identifier (used to detect if we already commented)
+  NOTIFICATION_MARKER: "<!-- pr-review-reminder-bot -->"
+
+  # Exempt bot accounts (comma-separated)
+  EXEMPT_BOTS: "coderabbitai[bot],github-actions[bot],dependabot[bot],copilot[bot],github-copilot[bot],copilot-swe-agent[bot]"
+
+jobs:
+  check-pr-reviews:
+    name: Check PR Reviews and Notify Maintainers
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+
+    steps:
+      - name: Check PR Reviews
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Configuration
+            const input = '${{ github.event.inputs.hours_threshold }}'.trim();
+            const hoursThreshold = parseInt(
+              input && input !== 'undefined' && input !== '' ? input : process.env.DEFAULT_HOURS_THRESHOLD,
+              10
+            );
+
+            // Validate hoursThreshold
+            if (isNaN(hoursThreshold) || hoursThreshold < 0) {
+              core.setFailed(`Invalid hours_threshold: ${hoursThreshold}. Must be a non-negative number.`);
+              return;
+            }
+
+            const maintainers = process.env.MAINTAINERS.split(',').map(m => m.trim());
+            const notificationMarker = process.env.NOTIFICATION_MARKER;
+            const exemptBots = new Set(process.env.EXEMPT_BOTS.split(',').map(b => b.trim()));
+
+            console.log(`Configuration:`);
+            console.log(`- Hours threshold: ${hoursThreshold}`);
+            console.log(`- Maintainers: ${maintainers.join(', ')}`);
+            console.log(`- Exempt bots: ${Array.from(exemptBots).join(', ')}`);
+            // Helper function to check if PR should be notified
+            async function shouldNotifyPR(pr) {
+              try {
+                // Check if PR is old enough (do this first to avoid unnecessary API calls)
+                const prAge = Date.now() - new Date(pr.created_at).getTime();
+                const prAgeHours = prAge / (1000 * 60 * 60);
+
+                if (prAgeHours < hoursThreshold) {
+                  console.log(`PR #${pr.number}: Too recent (${prAgeHours.toFixed(2)} hours old), skipping`);
+                  return false;
+                }
+
+                // Get all comments to check if we already notified (with pagination)
+                const issueComments = await github.paginate(github.rest.issues.listComments, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  per_page: 100
+                });
+
+                // Check if we already posted a notification (only trust our bot)
+                const alreadyNotified = issueComments.some(
+                  comment => comment.user &&
+                            comment.user.login === 'github-actions[bot]' &&
+                            comment.body &&
+                            comment.body.includes(notificationMarker)
+                );
+
+                if (alreadyNotified) {
+                  console.log(`PR #${pr.number}: Already notified, skipping`);
+                  return false;
+                }
+
+                // Get all reviews for this PR (with pagination)
+                const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  per_page: 100
+                });
+
+                console.log(`PR #${pr.number}: Found ${reviews.length} reviews`);
+
+                // Get all comments on the PR (review comments with pagination)
+                const reviewComments = await github.paginate(github.rest.pulls.listReviewComments, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  per_page: 100
+                });
+
+                // Combine all reviewers and commenters
+                const allReviewers = new Set();
+
+                // Add review submitters (excluding PR author)
+                reviews.forEach(review => {
+                  if (review.user && review.user.login && review.user.login !== pr.user.login) {
+                    allReviewers.add(review.user.login);
+                  }
+                });
+
+                // Add review comment authors (excluding PR author)
+                reviewComments.forEach(comment => {
+                  if (comment.user && comment.user.login && comment.user.login !== pr.user.login) {
+                    allReviewers.add(comment.user.login);
+                  }
+                });
+
+                // Add issue comment authors (excluding PR author and bot notification comments)
+                issueComments.forEach(comment => {
+                  if (comment.user && comment.user.login &&
+                      comment.user.login !== pr.user.login &&
+                      !(comment.user.login === 'github-actions[bot]' &&
+                        comment.body && comment.body.includes(notificationMarker))) {
+                    allReviewers.add(comment.user.login);
+                  }
+                });
+
+                console.log(`PR #${pr.number}: Reviewers/Commenters: ${Array.from(allReviewers).join(', ')}`);
+
+                // Remove all bot accounts from the set
+                exemptBots.forEach(bot => allReviewers.delete(bot));
+
+                // Check if there are any human reviewers left
+                if (allReviewers.size === 0) {
+                  console.log(`PR #${pr.number}: Only bots have reviewed, needs maintainer attention`);
+                  return true;
+                }
+
+                console.log(`PR #${pr.number}: Has human reviewers, skipping`);
+                return false;
+
+              } catch (error) {
+                console.error(`Error checking PR #${pr.number}:`, error);
+                throw error; // Propagate error to be tracked in main loop
+              }
+            }
+
+            // Helper function to notify maintainers about a PR
+            async function notifyMaintainers(pr) {
+              try {
+                console.log(`Notifying maintainers about PR #${pr.number}`);
+
+                // Create maintainer mentions
+                const maintainerMentions = maintainers.map(m => `@${m}`).join(' ');
+
+                // Post a comment tagging maintainers
+                // Sanitize PR title to prevent markdown injection and @mentions
+                const sanitizedTitle = pr.title.replace(/[@`*_~\[\]()#]/g, '\\$&');
+                const commentBody =
+                  `👋 ${maintainerMentions}\n\n` +
+                  `This PR has been reviewed by bots but is awaiting human review.\n\n` +
+                  `**PR Details:**\n` +
+                  `- Created: ${new Date(pr.created_at).toISOString()}\n` +
+                  `- Author: @${pr.user.login}\n` +
+                  `- Title: ${sanitizedTitle}\n\n` +
+                  `Please review this PR when you have a chance. Thank you! 🙏\n\n` +
+                  `${notificationMarker}`;
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: commentBody
+                });
+
+                // Request reviews from maintainers
+                // Filter out maintainers who are the PR author
+                const reviewersToRequest = maintainers.filter(m => m !== pr.user.login);
+
+                if (reviewersToRequest.length > 0) {
+                  try {
+                    await github.rest.pulls.requestReviewers({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_number: pr.number,
+                      reviewers: reviewersToRequest
+                    });
+                    console.log(`PR #${pr.number}: Requested reviews from ${reviewersToRequest.join(', ')}`);
+                  } catch (reviewError) {
+                    console.warn(`PR #${pr.number}: Could not request reviews:`, reviewError.message);
+                    // This is not critical, the comment with mentions is enough
+                  }
+                }
+
+                console.log(`PR #${pr.number}: Successfully notified maintainers`);
+
+              } catch (error) {
+                console.error(`Error notifying maintainers for PR #${pr.number}:`, error);
+              }
+            }
+
+            // Main execution
+            console.log('Starting PR review check...');
+
+            // Get all open pull requests with pagination
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            console.log(`Found ${pulls.length} open PRs`);
+
+            // Track results
+            let notifiedCount = 0;
+            let errorCount = 0;
+            const failedPRs = [];
+
+            // Check each PR
+            for (const pr of pulls) {
+              console.log(`\n--- Checking PR #${pr.number}: ${pr.title} ---`);
+
+              // Skip draft PRs
+              if (pr.draft) {
+                console.log(`PR #${pr.number}: Skipping draft PR`);
+                continue;
+              }
+
+              try {
+                const shouldNotify = await shouldNotifyPR(pr);
+
+                if (shouldNotify) {
+                  await notifyMaintainers(pr);
+                  notifiedCount++;
+                }
+              } catch (error) {
+                errorCount++;
+                failedPRs.push(pr.number);
+                core.error(`Failed to process PR #${pr.number}: ${error.message}`);
+              }
+            }
+
+            console.log(`\n=== Summary ===`);
+            console.log(`Total open PRs: ${pulls.length}`);
+            console.log(`PRs notified: ${notifiedCount}`);
+            console.log(`PRs with errors: ${errorCount}`);
+
+            if (errorCount > 0) {
+              core.warning(`⚠️ Failed to process ${errorCount} PR(s): #${failedPRs.join(', #')}`);
+            }
+
+            if (notifiedCount > 0) {
+              core.notice(`✅ Notified maintainers about ${notifiedCount} PR(s) awaiting human review`);
+            } else if (errorCount === 0) {
+              core.notice(`✅ All PRs have human reviewers or are too recent`);
+            }
+
+            // Fail the workflow if there were errors
+            if (errorCount > 0) {
+              core.setFailed(`Workflow completed with ${errorCount} error(s). Check logs for details.`);
+            }
