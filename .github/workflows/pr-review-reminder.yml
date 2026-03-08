@@ -35,6 +35,9 @@ env:
   # Notification identifier (used to detect if we already commented)
   NOTIFICATION_MARKER: "<!-- pr-review-reminder-bot -->"
 
+  # Exempt bot accounts (comma-separated)
+  EXEMPT_BOTS: "coderabbitai[bot],github-actions[bot],dependabot[bot],copilot[bot],copilot-swe-agent[bot]"
+
 jobs:
   check-pr-reviews:
     name: Check PR Reviews and Notify Maintainers
@@ -52,18 +55,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             // Configuration
+            const input = '${{ github.event.inputs.hours_threshold }}'.trim();
             const hoursThreshold = parseInt(
-              '${{ github.event.inputs.hours_threshold }}' ||
-              process.env.DEFAULT_HOURS_THRESHOLD
+              input && input !== 'undefined' && input !== '' ? input : process.env.DEFAULT_HOURS_THRESHOLD,
+              10
             );
             const maintainers = process.env.MAINTAINERS.split(',').map(m => m.trim());
             const coderabbitBot = process.env.CODERABBIT_BOT;
             const notificationMarker = process.env.NOTIFICATION_MARKER;
+            const exemptBots = new Set(process.env.EXEMPT_BOTS.split(',').map(b => b.trim()));
 
             console.log(`Configuration:`);
             console.log(`- Hours threshold: ${hoursThreshold}`);
             console.log(`- Maintainers: ${maintainers.join(', ')}`);
-            console.log(`- CodeRabbit bot: ${coderabbitBot}`);
+            console.log(`- Exempt bots: ${Array.from(exemptBots).join(', ')}`);
             // Helper function to check if PR should be notified
             async function shouldNotifyPR(pr) {
               try {
@@ -71,7 +76,8 @@ jobs:
                 const issueComments = await github.rest.issues.listComments({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  issue_number: pr.number
+                  issue_number: pr.number,
+                  per_page: 100
                 });
 
                 // Check if we already posted a notification
@@ -97,23 +103,22 @@ jobs:
                 const reviews = await github.rest.pulls.listReviews({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  pull_number: pr.number
+                  pull_number: pr.number,
+                  per_page: 100
                 });
 
                 console.log(`PR #${pr.number}: Found ${reviews.data.length} reviews`);
 
-                // Get all comments on the PR (review comments + issue comments)
+                // Get all comments on the PR (review comments)
                 const reviewComments = await github.rest.pulls.listReviewComments({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  pull_number: pr.number
+                  pull_number: pr.number,
+                  per_page: 100
                 });
 
-                const allIssueComments = await github.rest.issues.listComments({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number
-                });
+                // Reuse previously fetched issueComments to avoid duplicate API call
+                const allIssueComments = issueComments;
 
                 // Combine all reviewers and commenters
                 const allReviewers = new Set();
@@ -136,19 +141,19 @@ jobs:
                 allIssueComments.data.forEach(comment => {
                   if (comment.user && comment.user.login &&
                       comment.user.login !== pr.user.login &&
-                      !comment.body.includes(notificationMarker)) {
+                      comment.body && !comment.body.includes(notificationMarker)) {
                     allReviewers.add(comment.user.login);
                   }
                 });
 
                 console.log(`PR #${pr.number}: Reviewers/Commenters: ${Array.from(allReviewers).join(', ')}`);
 
-                // Remove CodeRabbit bot from the set
-                allReviewers.delete(coderabbitBot);
+                // Remove all bot accounts from the set
+                exemptBots.forEach(bot => allReviewers.delete(bot));
 
                 // Check if there are any human reviewers left
                 if (allReviewers.size === 0) {
-                  console.log(`PR #${pr.number}: Only CodeRabbit has reviewed, needs maintainer attention`);
+                  console.log(`PR #${pr.number}: Only bots have reviewed, needs maintainer attention`);
                   return true;
                 }
 
@@ -170,13 +175,15 @@ jobs:
                 const maintainerMentions = maintainers.map(m => `@${m}`).join(' ');
 
                 // Post a comment tagging maintainers
+                // Sanitize PR title to prevent markdown injection
+                const sanitizedTitle = pr.title.replace(/[`*_~\[\]()#]/g, '\\$&');
                 const commentBody = `${notificationMarker}\n` +
                   `👋 ${maintainerMentions}\n\n` +
-                  `This PR has been reviewed by CodeRabbit AI but is awaiting human review.\n\n` +
+                  `This PR has been reviewed by bots but is awaiting human review.\n\n` +
                   `**PR Details:**\n` +
-                  `- Created: ${new Date(pr.created_at).toLocaleString()}\n` +
+                  `- Created: ${new Date(pr.created_at).toISOString()}\n` +
                   `- Author: @${pr.user.login}\n` +
-                  `- Title: ${pr.title}\n\n` +
+                  `- Title: ${sanitizedTitle}\n\n` +
                   `Please review this PR when you have a chance. Thank you! 🙏`;
 
                 await github.rest.issues.createComment({
@@ -215,21 +222,21 @@ jobs:
             // Main execution
             console.log('Starting PR review check...');
 
-            // Get all open pull requests
-            const pulls = await github.rest.pulls.list({
+            // Get all open pull requests with pagination
+            const pulls = await github.paginate(github.rest.pulls.list, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
               per_page: 100
             });
 
-            console.log(`Found ${pulls.data.length} open PRs`);
+            console.log(`Found ${pulls.length} open PRs`);
 
             // Track how many PRs we notified about
             let notifiedCount = 0;
 
             // Check each PR
-            for (const pr of pulls.data) {
+            for (const pr of pulls) {
               console.log(`\n--- Checking PR #${pr.number}: ${pr.title} ---`);
 
               const shouldNotify = await shouldNotifyPR(pr);
@@ -241,7 +248,7 @@ jobs:
             }
 
             console.log(`\n=== Summary ===`);
-            console.log(`Total open PRs: ${pulls.data.length}`);
+            console.log(`Total open PRs: ${pulls.length}`);
             console.log(`PRs notified: ${notifiedCount}`);
 
             if (notifiedCount > 0) {

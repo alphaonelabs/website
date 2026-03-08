@@ -28,7 +28,7 @@ Current settings in the workflow:
 
 ### To Add More Maintainers
 
-Edit `.github/workflows/pr-review-reminder.yml` line 26:
+Edit the `MAINTAINERS` environment variable in `.github/workflows/pr-review-reminder.yml` (under the `env:` section):
 
 ```yaml
 MAINTAINERS: "A1L13N,maintainer2,maintainer3"
@@ -36,7 +36,7 @@ MAINTAINERS: "A1L13N,maintainer2,maintainer3"
 
 ### To Change Time Threshold
 
-Edit `.github/workflows/pr-review-reminder.yml` line 29:
+Edit the `DEFAULT_HOURS_THRESHOLD` environment variable in `.github/workflows/pr-review-reminder.yml` (under the `env:` section):
 
 ```yaml
 DEFAULT_HOURS_THRESHOLD: 48 # Change to 48 hours
