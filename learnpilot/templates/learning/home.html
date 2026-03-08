@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="text-center py-20">
+  <span class="text-6xl">🚀</span>
+  <h1 class="mt-4 text-5xl font-extrabold text-indigo-700 tracking-tight">LearnPilot</h1>
+  <p class="mt-4 text-xl text-gray-600 max-w-2xl mx-auto">
+    An AI-powered personalised learning lab that adapts to <em>you</em> in real time.
+    Powered by <strong>Cloudflare Workers AI</strong>.
+  </p>
+  <div class="mt-8 flex justify-center gap-4">
+    <a href="{% url 'register' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl text-lg transition shadow">
+      Start Learning Free
+    </a>
+    <a href="{% url 'login' %}" class="border border-indigo-300 hover:bg-indigo-50 text-indigo-700 font-semibold px-6 py-3 rounded-xl text-lg transition">
+      Sign In
+    </a>
+  </div>
+</div>
+
+<!-- Feature cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+  <div class="bg-white rounded-2xl shadow p-6 text-center">
+    <div class="text-4xl mb-3">🧠</div>
+    <h3 class="font-bold text-lg text-gray-800">Adaptive Curricula</h3>
+    <p class="mt-2 text-sm text-gray-500">AI generates a personalised learning path based on your skill level and goals.</p>
+  </div>
+  <div class="bg-white rounded-2xl shadow p-6 text-center">
+    <div class="text-4xl mb-3">💬</div>
+    <h3 class="font-bold text-lg text-gray-800">Intelligent Tutoring</h3>
+    <p class="mt-2 text-sm text-gray-500">Chat with your AI tutor 24/7 for instant explanations, hints, and feedback.</p>
+  </div>
+  <div class="bg-white rounded-2xl shadow p-6 text-center">
+    <div class="text-4xl mb-3">📈</div>
+    <h3 class="font-bold text-lg text-gray-800">Progress Tracking</h3>
+    <p class="mt-2 text-sm text-gray-500">Monitor your XP, streaks, and completion rates across every topic.</p>
+  </div>
+  <div class="bg-white rounded-2xl shadow p-6 text-center">
+    <div class="text-4xl mb-3">✏️</div>
+    <h3 class="font-bold text-lg text-gray-800">Guided Practice</h3>
+    <p class="mt-2 text-sm text-gray-500">AI-generated practice questions with instant evaluation and personalised feedback.</p>
+  </div>
+</div>
+{% endblock %}

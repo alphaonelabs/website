@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Courses{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-3xl font-bold text-gray-900">Courses</h1>
+</div>
+
+<!-- Filters -->
+<form method="get" class="flex flex-wrap gap-3 mb-8">
+  <select name="topic" onchange="this.form.submit()"
+          class="border border-gray-200 rounded-xl px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+    <option value="">All Topics</option>
+    {% for topic in topics %}
+      <option value="{{ topic.pk }}" {% if selected_topic == topic.pk|stringformat:"s" %}selected{% endif %}>
+        {{ topic.icon }} {{ topic.name }}
+      </option>
+    {% endfor %}
+  </select>
+  <select name="difficulty" onchange="this.form.submit()"
+          class="border border-gray-200 rounded-xl px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+    <option value="">All Levels</option>
+    <option value="beginner" {% if selected_difficulty == "beginner" %}selected{% endif %}>Beginner</option>
+    <option value="intermediate" {% if selected_difficulty == "intermediate" %}selected{% endif %}>Intermediate</option>
+    <option value="advanced" {% if selected_difficulty == "advanced" %}selected{% endif %}>Advanced</option>
+  </select>
+</form>
+
+<!-- Course grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {% for course in courses %}
+  <a href="{% url 'course_detail' course.pk %}"
+     class="bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden group">
+    <div class="bg-indigo-600 px-5 py-4 flex items-center gap-3">
+      <span class="text-3xl">{{ course.topic.icon }}</span>
+      <div>
+        <div class="text-white font-semibold text-lg leading-tight">{{ course.title }}</div>
+        <div class="text-indigo-200 text-xs mt-0.5">{{ course.topic.name }}</div>
+      </div>
+    </div>
+    <div class="px-5 py-4">
+      <p class="text-gray-500 text-sm line-clamp-2">{{ course.description }}</p>
+      <div class="mt-4 flex items-center justify-between text-xs text-gray-400">
+        <span class="capitalize bg-gray-100 px-2 py-1 rounded-full">{{ course.difficulty }}</span>
+        <span>⏱ {{ course.estimated_hours }}h &bull; {{ course.total_lessons }} lessons</span>
+      </div>
+    </div>
+  </a>
+  {% empty %}
+  <div class="col-span-3 text-center text-gray-400 py-16">
+    <div class="text-4xl mb-4">📭</div>
+    <p>No courses found. Try different filters or run <code class="bg-gray-100 px-1 rounded">python manage.py seed_data</code>.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
