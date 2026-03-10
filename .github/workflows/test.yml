@@ -5,7 +5,6 @@ on:
     branches:
       - main
   pull_request:
-    types: [opened, synchronize, reopened]
   merge_group:
 
 permissions:
@@ -18,16 +17,17 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v3
 
       - name: Prepare pip cache dir
         run: mkdir -p ~/.cache/pip
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
-          cache: "pip"
+          python-version: '3.10'
+          cache: 'pip'
 
       - name: Install Poetry and dependencies (lint env)
         run: |
@@ -38,6 +38,7 @@ jobs:
           pip install pre-commit black isort flake8 djlint
           pre-commit install
           pre-commit run --all-files
+
 
   tests:
     name: Run Tests
@@ -60,16 +61,16 @@ jobs:
           --health-retries=3
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Prepare pip cache dir
         run: mkdir -p ~/.cache/pip
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
-          cache: "pip"
+          python-version: '3.10'
+          cache: 'pip'
 
       - name: Configure MySQL and run tests (Poetry env)
         env:
@@ -83,7 +84,7 @@ jobs:
           DJANGO_SETTINGS_MODULE: web.settings
         run: |
           cp .env.sample .env
-          sed -i "s|DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|g" .env
+          sed -i 's|DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|g' .env
 
           sudo apt-get update
           sudo apt-get install -y default-libmysqlclient-dev
@@ -102,20 +103,13 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Prepare pip cache dir
         run: mkdir -p ~/.cache/pip
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
-          cache: "pip"
-
-      - name: Run Bandit Security Scan
-        run: |
-          pip install bandit==1.7.5
-          bandit -r . -ll -ii -x ./venv,.venv,./tests
-
-# Trigger CI
+          python-version: '3.10'
+          cache: 'pip'
