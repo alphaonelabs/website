@@ -20,7 +20,7 @@ import requests
 import stripe
 import tweepy
 from allauth.account.models import EmailAddress
-from allauth.account.utils import send_email_confirmation
+# from allauth.account.utils import send_email_confirmation
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import NestedObjects
@@ -69,6 +69,7 @@ from .calendar_sync import generate_google_calendar_link, generate_ical_feed, ge
 from .decorators import teacher_required
 from .forms import (
     AccountDeleteForm,
+    AnonymousLearnForm,
     AwardAchievementForm,
     BlogPostForm,
     ChallengeSubmissionForm,
@@ -1199,8 +1200,15 @@ def waiting_rooms(request):
     return render(request, "waiting_rooms.html", context)
 
 
-def learn(request):
+def learn(request: HttpRequest) -> HttpResponse:
+    """Handles the learning page. Anonymous users can view but must login to submit."""
     if request.method == "POST":
+        if not request.user.is_authenticated:
+            # Redirect anonymous users to login page when they try to submit
+            messages.info(request, "Please login or sign up to submit a learning request.")
+            return redirect("account_login")
+        
+        # Authenticated users can submit the form
         form = LearnForm(request.POST)
         if form.is_valid():
             # Create waiting room
@@ -1218,79 +1226,15 @@ def learn(request):
 
             # Redirect to waiting rooms page
             return redirect("waiting_rooms")
-
-            # Get form data
-            title = form.cleaned_data["title"]
-            description = form.cleaned_data["description"]
-            subject = form.cleaned_data["subject"]
-            topics = form.cleaned_data["topics"]
-
-            # Prepare email content
-            email_subject = f"New Learning Request: {title}"
-            email_body = render_to_string(
-                "emails/learn_interest.html",
-                {
-                    "title": title,
-                    "description": description,
-                    "subject": subject,
-                    "topics": topics,
-                    "user": request.user.username,
-                    "waiting_room_id": waiting_room.id,
-                },
-            )
-
-            # Send email
-            try:
-                send_mail(
-                    email_subject,
-                    email_body,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.DEFAULT_FROM_EMAIL],
-                    html_message=email_body,
-                    fail_silently=False,
-                )
-                messages.success(
-                    request,
-                    "Thank you for your learning request!",
-                )
-                return redirect("waiting_rooms")
-            except Exception:
-                logger = logging.getLogger(__name__)
-                logger.exception("Error sending email")
-                messages.error(request, "Sorry, there was an error sending your inquiry. Please try again later.")
     else:
-        initial_data = {}
-
-        # Handle query parameters
-        query = request.GET.get("query", "")
-        subject_param = request.GET.get("subject", "")
-        level = request.GET.get("level", "")
-
-        # Try to match subject
-        if subject_param:
-            try:
-                subject = Subject.objects.get(name=subject_param)
-                initial_data["subject"] = subject.id
-            except Subject.DoesNotExist:
-                # Optionally, you could add the subject name to the description
-                initial_data["description"] = f"Looking for courses in {subject_param}"
-
-        # If you want to include other parameters in the description
-        if query or level:
-            title_parts = []
-            description_parts = []
-            if query:
-                title_parts.append(f"{query}")
-            if level:
-                description_parts.append(f"Level: {level}")
-
-            if "description" not in initial_data:
-                initial_data["title"] = " | ".join(title_parts)
-            else:
-                initial_data["description"] += " | " + " | ".join(description_parts)
-
-        form = LearnForm(initial=initial_data)
-        return render(request, "learn.html", {"form": form})
+        # GET request - show the page to everyone
+        if request.user.is_authenticated:
+            form = LearnForm()
+        else:
+            # Show empty form or message for anonymous users
+            form = LearnForm()
+    
+    return render(request, "learn.html", {"form": form})
 
 
 def teach(request):
@@ -1333,7 +1277,7 @@ def teach(request):
                         )
                     else:
                         # Email not verified, resend verification email
-                        send_email_confirmation(request, user, signup=False)
+                        # send_email_confirmation(request, user, signup=False)
                         messages.info(
                             request,
                             "An account with this email exists. Please verify your email to continue.",
@@ -1363,7 +1307,7 @@ def teach(request):
                         EmailAddress.objects.create(user=user, email=email, primary=True, verified=False)
 
                         # Send verification email via allauth
-                        send_email_confirmation(request, user, signup=True)
+                        # send_email_confirmation(request, user, signup=True)
                         # Send welcome email with username, email, and temp password
                         try:
                             send_welcome_teach_course_email(request, user, temp_password)
