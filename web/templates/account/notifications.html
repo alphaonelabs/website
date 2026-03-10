@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Notifications{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <i class="fas fa-bell mr-2 text-teal-500"></i> Notifications
+      {% if unread_count %}
+        <span class="ml-2 text-sm font-medium bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 px-2 py-0.5 rounded-full">
+          {{ unread_count }} unread
+        </span>
+      {% endif %}
+    </h1>
+    {% if unread_count %}
+      <form method="post" action="{% url 'mark_notifications_read' %}">
+        {% csrf_token %}
+        <input type="hidden" name="filter_type" value="{{ filter_type }}">
+        <input type="hidden" name="page" value="{{ page_obj.number }}">
+        <button type="submit"
+                class="text-sm px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors duration-200">
+          Mark all as read
+        </button>
+      </form>
+    {% endif %}
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="flex gap-2 mb-6 flex-wrap">
+    <a href="{% url 'notification_list' %}"
+       class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200
+              {% if not filter_type %}bg-teal-600 text-white{% else %}bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600{% endif %}">
+      All
+    </a>
+    {% for type, label in notification_types %}
+      <a href="{% url 'notification_list' %}?type={{ type }}"
+         class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200
+                {% if filter_type == type %}bg-teal-600 text-white{% else %}bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600{% endif %}">
+        {{ label }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- Notification List -->
+  <div class="space-y-3">
+    {% for notification in page_obj %}
+      <div class="flex items-start gap-4 p-4 rounded-lg border transition-colors duration-200
+                  {% if not notification.read %}bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800{% else %}bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700{% endif %}">
+        <!-- Icon -->
+        <div class="flex-shrink-0 mt-0.5">
+          {% if notification.notification_type == "success" %}
+            <i class="fas fa-check-circle text-green-500 text-lg"></i>
+          {% elif notification.notification_type == "warning" %}
+            <i class="fas fa-exclamation-triangle text-yellow-500 text-lg"></i>
+          {% elif notification.notification_type == "error" %}
+            <i class="fas fa-times-circle text-red-500 text-lg"></i>
+          {% else %}
+            <i class="fas fa-info-circle text-teal-500 text-lg"></i>
+          {% endif %}
+        </div>
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <p class="font-semibold text-gray-900 dark:text-white text-sm">{{ notification.title }}</p>
+            <span class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+              {{ notification.created_at|timesince }} ago
+            </span>
+          </div>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ notification.message }}</p>
+        </div>
+        <!-- Mark as read -->
+        {% if not notification.read %}
+          <form method="post" action="{% url 'mark_single_notification_read' notification.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="filter_type" value="{{ filter_type }}">
+            <input type="hidden" name="page" value="{{ page_obj.number }}">
+            <button type="submit"
+                    title="Mark as read"
+                    aria-label="Mark notification as read"
+                    class="flex-shrink-0 text-teal-500 hover:text-teal-700 transition-colors duration-200">
+              <i class="fas fa-check text-sm"></i>
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    {% empty %}
+      <div class="text-center py-16 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <i class="fas fa-bell-slash text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
+        <p class="text-gray-500 dark:text-gray-400 font-medium">No notifications yet</p>
+        <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">You're all caught up!</p>
+      </div>
+    {% endfor %}
+  </div>
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+    <div class="flex justify-center gap-2 mt-6">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if filter_type %}&type={{ filter_type }}{% endif %}"
+           class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-300">
+          Previous
+        </a>
+      {% endif %}
+      <span class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if filter_type %}&type={{ filter_type }}{% endif %}"
+           class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-300">
+          Next
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock content %}

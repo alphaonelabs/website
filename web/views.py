@@ -46,6 +46,7 @@ from django.http import (
     JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.template.loader import render_to_string
 from django.urls import NoReverseMatch, reverse, reverse_lazy
 from django.utils import timezone
@@ -6946,6 +6947,84 @@ def award_badge(request):
     except Exception as e:
         logger.exception("Error awarding badge: %s", str(e))
         return JsonResponse({"success": False, "message": "An internal error occurred"}, status=500)
+
+
+@login_required
+def notification_list(request):
+    """Display all notifications for the current user.
+
+    Args:
+        request: HttpRequest object.
+
+    Returns:
+        Rendered notification center page with notifications.
+    """
+    from django.core.paginator import Paginator
+    filter_type = request.GET.get("type", "")
+    notifications = request.user.notifications.all()
+    valid_types = [t[0] for t in Notification.NOTIFICATION_TYPES]
+    if filter_type in valid_types:
+        notifications = notifications.filter(notification_type=filter_type)
+    paginator = Paginator(notifications, 20)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    context = {
+        "page_obj": page_obj,
+        "filter_type": filter_type,
+        "unread_count": request.user.notifications.filter(read=False).count(),
+        "notification_types": Notification.NOTIFICATION_TYPES,
+    }
+    return render(request, "account/notifications.html", context)
+
+
+@login_required
+@require_POST
+def mark_notifications_read(request):
+    """Mark all notifications as read for the current user.
+
+    Args:
+        request: HttpRequest object.
+
+    Returns:
+        Redirect back to notification center.
+    """
+    from django.utils import timezone
+    request.user.notifications.filter(read=False).update(read=True, updated_at=timezone.now())
+    filter_type = request.POST.get("filter_type", "")
+    page = request.POST.get("page", "")
+    params = []
+    if filter_type:
+        params.append(f"type={filter_type}")
+    if page:
+        params.append(f"page={page}")
+    query = f"?{'&'.join(params)}" if params else ""
+    return redirect(f"{reverse('notification_list')}{query}")
+
+
+@login_required
+@require_POST
+def mark_single_notification_read(request, notification_id):
+    """Mark a single notification as read.
+
+    Args:
+        request: HttpRequest object.
+        notification_id: ID of the notification to mark as read.
+
+    Returns:
+        Redirect back to notification center.
+    """
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notification.read = True
+    notification.save()
+    filter_type = request.POST.get("filter_type", "")
+    page = request.POST.get("page", "")
+    params = []
+    if filter_type:
+        params.append(f"type={filter_type}")
+    if page:
+        params.append(f"page={page}")
+    query = f"?{'&'.join(params)}" if params else ""
+    return redirect(f"{reverse('notification_list')}{query}")
 
 
 def notification_preferences(request):
