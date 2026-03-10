@@ -160,6 +160,10 @@ Alpha One Labs is an education platform designed to facilitate both learning and
 - **Email:** `admin@example.com`
 - **Password:** `adminpassword`
 
+### 🔧 Local Development Tip
+For smoother local development, set the following in settings.py to skip email verification:`settings.py`:
+ACCOUNT_EMAIL_VERIFICATION = "optional"
+
 ## Environment Variables Configuration
 
 Copy `.env.sample` to `.env` and configure the variables.
