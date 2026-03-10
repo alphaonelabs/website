@@ -1206,7 +1206,8 @@ def learn(request):
             # Create waiting room
             waiting_room = form.save(commit=False)
             waiting_room.status = "open"  # Set initial status
-            waiting_room.creator = request.user  # Set the creator
+            if request.user.is_authenticated:
+    waiting_room.creator = request.user
 
             # Get topics from form and save as comma-separated string
             topics = form.cleaned_data.get("topics", "")
