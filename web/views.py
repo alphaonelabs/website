@@ -1115,7 +1115,37 @@ def github_update(request):
             break
 
     # Always attempt a reload so code changes take effect (application systemd unit)
-    subprocess.run(["/bin/systemctl", "restart", "education-website"], capture_output=True)
+    # Only attempt systemctl restart on Linux systems where it's available
+    import platform
+    import shutil
+
+    if platform.system() == "Linux":
+        trusted_systemctl_paths = ("/bin/systemctl", "/usr/bin/systemctl")
+        systemctl_path = next(
+            (p for p in trusted_systemctl_paths if os.path.isfile(p) and os.access(p, os.X_OK)),
+            None,
+        )
+        if not systemctl_path:
+            log_lines.append("Service restart failed: systemctl not found in trusted paths")
+            ok = False
+        else:
+            try:
+                proc = subprocess.run(
+                    [systemctl_path, "restart", "education-website"],
+                    capture_output=True,
+                    check=False,
+                    timeout=30,
+                    text=True,
+                )
+                log_lines.append(f"systemctl restart rc={proc.returncode}")
+                if proc.returncode != 0:
+                    log_lines.append(f"Service restart failed: {proc.stderr[:200] if proc.stderr else 'non-zero exit'}")
+                    ok = False
+            except (OSError, subprocess.TimeoutExpired) as e:
+                log_lines.append(f"Service restart failed: {e}")
+                ok = False
+    else:
+        log_lines.append("Skipped service restart (not on Linux system)")
 
     # Slack summary (truncate to avoid long messages)
     slack_msg = (
