@@ -33,6 +33,9 @@ from .views import (
     features_page,
     grade_link,
     notification_preferences,
+    notification_list,
+    mark_notifications_read,
+    mark_single_notification_read,
     sales_analytics,
     sales_data,
     streak_detail,
@@ -91,6 +94,13 @@ urlpatterns += i18n_patterns(
     path("accounts/signup/", views.signup_view, name="account_signup"),  # Our custom signup view
     path("accounts/", include("allauth.urls")),
     path("account/notification-preferences/", notification_preferences, name="notification_preferences"),
+    path("account/notifications/", notification_list, name="notification_list"),
+    path("account/notifications/mark-all-read/", mark_notifications_read, name="mark_notifications_read"),
+    path(
+        "account/notifications/<int:notification_id>/read/",
+        mark_single_notification_read,
+        name="mark_single_notification_read",
+    ),
     path("profile/", views.profile, name="profile"),
     path("accounts/profile/", views.profile, name="accounts_profile"),
     path("accounts/delete/", views.delete_account, name="delete_account"),
