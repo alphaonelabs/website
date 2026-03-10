@@ -74,5 +74,18 @@
   </div>
 {% endblock %}
 {% block extra_scripts %}
+  {% translate "Acidic" as acidic_label %}
+  {% translate "Neutral" as neutral_label %}
+  {% translate "Basic" as basic_label %}
+  {% translate "Solution is" as solution_is_label %}
+  <script>
+      // Pass translated strings to JavaScript (addressing CodeRabbit and Copilot security concerns)
+      window.translations = {
+          'acidic': '{{ acidic_label|escapejs }}',
+          'neutral': '{{ neutral_label|escapejs }}',
+          'basic': '{{ basic_label|escapejs }}',
+          'solution_is': '{{ solution_is_label|escapejs }}'
+      };
+  </script>
   <script src="{% static 'virtual_lab/js/chemistry/titration.js' %}"></script>
 {% endblock %}

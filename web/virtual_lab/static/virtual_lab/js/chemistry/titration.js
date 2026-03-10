@@ -50,11 +50,17 @@ function updateHint(pH) {
 // Display final property
 function displayProperty(pH) {
   const propEl = document.getElementById('property');
+  if (!propEl) return; // Defensive check
+
   let prop;
-  if (pH < 7)      prop = '{% trans "Acidic" %}';
-  else if (pH === 7) prop = '{% trans "Neutral" %}';
-  else              prop = '{% trans "Basic" %}';
-  propEl.innerText = `{% trans "Solution is" %} ` + prop;
+  const translations = window.translations || {}; // More robust null handling
+
+  if (pH < 7)      prop = translations.acidic || 'Acidic';
+  else if (pH === 7) prop = translations.neutral || 'Neutral';
+  else              prop = translations.basic || 'Basic';
+
+  const solutionIs = translations.solution_is || 'Solution is';
+  propEl.innerText = solutionIs + ' ' + prop;
 }
 
 // Animate one drop
