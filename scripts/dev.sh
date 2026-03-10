@@ -108,5 +108,5 @@ echo ""
 
 # Start Django dev server — filter out startup noise so the banner above
 # stays as the last visible output. Request logs still pass through.
-"${PYTHON}" manage.py runserver 0.0.0.0:8000 2>&1 \
-    | grep --line-buffered -v -E "^(Watching for file changes|Performing system checks|System check identified|Django version|Starting development server|Quit the server with|$)"
+"${PYTHON}" manage.py runserver 0.0.0.0:8000 2> >(cat >&2) \
+    | grep --line-buffered -v -E "^(Watching for file changes with StatReloader|Performing system checks\.\.\.|System check identified no issues|Django version [0-9]|Starting development server at|Quit the server with CONTROL-C\.|$)"
