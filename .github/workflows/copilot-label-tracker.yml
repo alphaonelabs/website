@@ -1,0 +1,176 @@
+name: Copilot PR Label Tracker
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions:
+  issues: write
+  pull-requests: write
+
+env:
+  COPILOT_USERS: "copilot-swe-agent[bot],copilot[bot],github-copilot[bot],Copilot,copilot"
+
+jobs:
+  handle-copilot-comment:
+    if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update labels when Copilot comments or reviews
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const copilotUsers = process.env.COPILOT_USERS.split(',');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            let commenter;
+            let prNumber;
+
+            if (context.eventName === 'issue_comment') {
+              if (!context.payload.issue.pull_request) {
+                core.info('Not a PR comment, skipping.');
+                return;
+              }
+              commenter = context.payload.comment.user.login;
+              prNumber = context.payload.issue.number;
+            } else if (context.eventName === 'pull_request_review') {
+              commenter = context.payload.review.user.login;
+              prNumber = context.payload.pull_request.number;
+            }
+
+            if (!copilotUsers.includes(commenter)) {
+              core.info(`Commenter ${commenter} is not Copilot, skipping.`);
+              return;
+            }
+
+            async function ensureLabel(name, color, description) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (e) {
+                if (e.status === 404) {
+                  await github.rest.issues.createLabel({ owner, repo, name, color, description });
+                  core.info(`Created label: ${name}`);
+                } else {
+                  throw e;
+                }
+              }
+            }
+
+            await ensureLabel('copilot-working', 'fbca04', 'Copilot is working on this PR');
+            await ensureLabel('copilot-finished', '0e8a16', 'Copilot has finished working on this PR');
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: prNumber,
+                name: 'copilot-working',
+              });
+              core.info('Removed copilot-working label');
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner,
+              repo,
+              issue_number: prNumber,
+            });
+            if (!currentLabels.find(l => l.name === 'copilot-finished')) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: prNumber,
+                labels: ['copilot-finished'],
+              });
+              core.info(`Added copilot-finished label to PR #${prNumber}`);
+            } else {
+              core.info(`copilot-finished already present on PR #${prNumber}`);
+            }
+
+  check-copilot-reactions:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for Copilot eyes reactions on PR comments
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const copilotUsers = process.env.COPILOT_USERS.split(',');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            async function ensureLabel(name, color, description) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (e) {
+                if (e.status === 404) {
+                  await github.rest.issues.createLabel({ owner, repo, name, color, description });
+                  core.info(`Created label: ${name}`);
+                } else {
+                  throw e;
+                }
+              }
+            }
+
+            const openPRs = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            for (const pr of openPRs) {
+              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+                owner,
+                repo,
+                issue_number: pr.number,
+              });
+              const labelNames = labels.map(l => l.name);
+
+              if (labelNames.includes('copilot-finished') || labelNames.includes('copilot-working')) {
+                continue;
+              }
+
+              // Limit to the 20 most recent comments to reduce API calls
+              const { data: comments } = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number: pr.number,
+                per_page: 20,
+              });
+
+              let copilotReacted = false;
+
+              for (const comment of comments) {
+                if (copilotReacted) break;
+                const { data: reactions } = await github.rest.reactions.listForIssueComment({
+                  owner,
+                  repo,
+                  comment_id: comment.id,
+                });
+                const eyesReaction = reactions.find(
+                  r => r.content === 'eyes' && copilotUsers.includes(r.user.login),
+                );
+                if (eyesReaction) {
+                  copilotReacted = true;
+                }
+              }
+
+              if (copilotReacted) {
+                await ensureLabel('copilot-working', 'fbca04', 'Copilot is working on this PR');
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: pr.number,
+                  labels: ['copilot-working'],
+                });
+                core.info(`Added copilot-working label to PR #${pr.number}`);
+              }
+            }
