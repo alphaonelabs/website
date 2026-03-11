@@ -1318,6 +1318,9 @@ class Goods(models.Model):
             self.slug = slug
         super().save(*args, **kwargs)
 
+    class Meta:
+        ordering = ["-created_at"]
+
     def __str__(self):
         return f"{self.name} (${self.price})"
 
@@ -1635,6 +1638,9 @@ class Order(models.Model):
 
     def generate_tracking_number(self):
         return f"TRACK-{self.pk}-{int(time.time())}-{uuid.uuid4().hex[:6].upper()}"
+
+    class Meta:
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Order #{self.id} ({self.user.email})"
