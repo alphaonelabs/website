@@ -1159,8 +1159,12 @@ class SuccessStory(models.Model):
 
 @receiver(user_signed_up)
 def set_user_type(sender, request, user, **kwargs):
-    """Set the user type (teacher/student) when they sign up."""
-    is_teacher = request.POST.get("is_teacher") == "on"
+    """Set the user type (teacher/student) when they sign up.
+
+    For social signups (OAuth), is_teacher defaults to False since
+    the OAuth flow doesn't collect this field.
+    """
+    is_teacher = request.POST.get("is_teacher") == "on" if request else False
     profile = user.profile
     profile.is_teacher = is_teacher
     profile.save()
