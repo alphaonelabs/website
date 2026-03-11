@@ -8,6 +8,10 @@ from django.utils import timezone
 from .forms import PeerChallengeForm, PeerChallengeInvitationForm
 from .models import PeerChallenge, PeerChallengeInvitation, UserQuiz
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def challenge_list(request):
@@ -34,9 +38,9 @@ def challenge_list(request):
     )
 
     # Debug logging
-    print(f"Total completed challenges: {completed_challenges.count()}")
+    logger.debug(f"Total completed challenges: {completed_challenges.count()}")
     for challenge in completed_challenges:
-        print(
+        logger.debug(
             f"Challenge: {challenge.challenge.title}, "
             f"Updated at: {challenge.updated_at}, "
             f"User Quiz: {challenge.user_quiz_id}"
@@ -177,7 +181,7 @@ def take_challenge(request, invitation_id):
     challenge = invitation.challenge
 
     # Debug logging
-    print(f"User {request.user.username} taking challenge {challenge.id}: {challenge.title}")
+    logger.debug(f"User {request.user.username} taking challenge {challenge.id}: {challenge.title}")
 
     # Check if the challenge is still active
     if challenge.status != "active" and not challenge.is_expired:
@@ -214,8 +218,8 @@ def complete_challenge(request, user_quiz_id):
     user_quiz = get_object_or_404(UserQuiz, id=user_quiz_id, user=request.user)
 
     # Debug logging
-    print(f"Completing challenge for user quiz {user_quiz_id}")
-    print(f"User quiz details: completed={user_quiz.completed}, score={user_quiz.score}")
+    logger.debug(f"Completing challenge for user quiz {user_quiz_id}")
+    logger.debug(f"User quiz details: completed={user_quiz.completed}, score={user_quiz.score}")
 
     # Find the invitation associated with this quiz
     invitation = PeerChallengeInvitation.objects.filter(
@@ -226,19 +230,19 @@ def complete_challenge(request, user_quiz_id):
 
     # Debug logging
     if not invitation:
-        print(f"No invitation found for user {request.user} and quiz {user_quiz.quiz}")
+        logger.warning(f"No invitation found for user {request.user} and quiz {user_quiz.quiz}")
         # Try to find by any status just for debugging
         all_invitations = PeerChallengeInvitation.objects.filter(
             participant=request.user, challenge__quiz=user_quiz.quiz
         )
         if all_invitations.exists():
-            print(f"Found invitations with different statuses: {[inv.status for inv in all_invitations]}")
+            logger.warning(f"Found invitations with different statuses: {[inv.status for inv in all_invitations]}")
 
         messages.error(request, "No associated challenge found for this quiz attempt.")
         return redirect("quiz_results", user_quiz_id=user_quiz.id)
 
     # Debug logging
-    print(f"Found invitation: {invitation.id}, current status: {invitation.status}")
+    logger.debug(f"Found invitation: {invitation.id}, current status: {invitation.status}")
 
     # Update the invitation with the quiz results
     invitation.user_quiz = user_quiz
@@ -252,7 +256,7 @@ def complete_challenge(request, user_quiz_id):
     ).exists()
 
     # Debug logging
-    print(f"Pending invitations for challenge {challenge.id}: {pending_invitations}")
+    logger.debug(f"Pending invitations for challenge {challenge.id}: {pending_invitations}")
 
     if not pending_invitations:
         challenge.status = "completed"
