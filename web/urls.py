@@ -43,6 +43,7 @@ from .views import (
 
 # Non-prefixed URLs
 urlpatterns = [
+    path("i18n/setlang/", views.custom_set_language, name="set_language"),
     path("i18n/", include("django.conf.urls.i18n")),  # Language selection URLs
     path("captcha/", include("captcha.urls")),  # CAPTCHA URLs should not be language-prefixed
     path("markdownx/", include("markdownx.urls")),
