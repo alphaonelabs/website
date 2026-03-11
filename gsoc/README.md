@@ -4,7 +4,7 @@ Welcome to the Alpha One Labs Google Summer of Code (GSoC) 2026 page! This repos
 
 ## 🌐 Live Page
 
-Visit our GSoC page at: [https://alphaonelabs.github.io/alphaonelabs-gsoc/](https://alphaonelabs.github.io/alphaonelabs-gsoc/)
+Visit our GSoC page at: [https://alphaonelabs.github.io/gsoc/](https://alphaonelabs.github.io/gsoc/)
 
 ## 📖 About
 
@@ -25,6 +25,7 @@ The site is built with vanilla HTML and Tailwind CSS (loaded via CDN), making it
 This repository is configured to automatically deploy to GitHub Pages when changes are pushed to the `main` or `master` branch. The deployment is handled by a GitHub Actions workflow (`.github/workflows/deploy.yml`).
 
 **To enable GitHub Pages:**
+
 1. Go to your repository settings
 2. Navigate to "Pages" in the left sidebar
 3. Under "Build and deployment", select "GitHub Actions" as the source
@@ -95,6 +96,7 @@ This project is licensed under the GNU Affero General Public License v3.0 - see 
 ## 🤝 Support
 
 If you have questions or need help:
+
 - Join our [Slack community](https://t.co/Uskb6jkZKz)
 - Open an issue in this repository
 - Check out our [main repository](https://github.com/alphaonelabs/alphaonelabs-education-website)
