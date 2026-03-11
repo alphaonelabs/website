@@ -69,6 +69,11 @@
                   <i class="fas fa-camera mr-2"></i>
                   Change Avatar
                 </span>
+                <button type="button"
+        id="takePhotoBtn"
+        class="mt-2 text-sm bg-teal-600 text-white px-3 py-1 rounded">
+  📷 Take Photo
+</button>
                 <input type="file"
                        id="avatar-upload"
                        name="avatar"
@@ -566,4 +571,64 @@
       </ul>
     </div>
   {% endif %}
+  <!-- Camera Modal -->
+<div id="cameraModal"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:999; align-items:center; justify-content:center;">
+
+  <div style="background:white; padding:20px; border-radius:10px; text-align:center;">
+    <video id="video" autoplay style="width:300px;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <div style="margin-top:10px;">
+      <button id="captureBtn">Capture</button>
+      <button id="retakeBtn">Retake</button>
+      <button id="closeCamera">Close</button>
+    </div>
+  </div>
+</div>
+<script>
+let stream;
+const takePhotoBtn = document.getElementById("takePhotoBtn");
+const modal = document.getElementById("cameraModal");
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const fileInput = document.getElementById("avatar-upload");
+
+takePhotoBtn.onclick = async () => {
+  modal.style.display = "flex";
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+  } catch (err) {
+    alert("Camera permission denied");
+  }
+};
+
+document.getElementById("captureBtn").onclick = () => {
+  canvas.style.display = "block";
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  canvas.toBlob(function(blob) {
+    const file = new File([blob], "avatar.png", { type: "image/png" });
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+    fileInput.form.submit();
+  });
+};
+
+document.getElementById("retakeBtn").onclick = () => {
+  canvas.style.display = "none";
+};
+
+document.getElementById("closeCamera").onclick = () => {
+  modal.style.display = "none";
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+};
+</script>
 {% endblock content %}
