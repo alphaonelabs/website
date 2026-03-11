@@ -6277,7 +6277,7 @@ def waiting_room_detail(request, waiting_room_id):
         "is_participant": is_participant,
         "is_creator": is_creator,
         "is_teacher": is_teacher,
-        "participant_count": waiting_room.participants.count() + 1,  # Add 1 to include the creator
+       "participant_count": waiting_room.participants.count() + (1 if waiting_room.creator_id else 0),
         "topic_list": [topic.strip() for topic in waiting_room.topics.split(",") if topic.strip()],
     }
     return render(request, "waiting_room/detail.html", context)
