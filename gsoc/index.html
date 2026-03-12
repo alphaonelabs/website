@@ -6,20 +6,13 @@
   <title>Alpha One Labs - Google Summer of Code 2026</title>
   <meta name="description" content="Join Alpha One Labs for Google Summer of Code 2026. Contribute to open-source education projects and grow your skills.">
   <meta name="keywords" content="GSoC 2026, Alpha One Labs, open source, contributors, leaderboard, merged pull requests">
-  
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- Custom Styles -->
   <style>
     html {
       scroll-behavior: smooth;
     }
     
-    /* Card hover effect */
     .card-hover {
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
@@ -29,7 +22,6 @@
       box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
     }
     
-    /* Mobile menu animation */
     #mobile-menu {
       max-height: 0;
       overflow: hidden;
@@ -40,14 +32,12 @@
       max-height: 500px;
     }
     
-    /* Smooth transitions */
     * {
       transition-property: background-color, border-color, color;
       transition-timing-function: ease;
       transition-duration: 200ms;
     }
     
-    /* Custom scrollbar */
     ::-webkit-scrollbar {
       width: 10px;
     }
@@ -71,7 +61,6 @@
       }
     }
     
-    /* Animations */
     @keyframes fade-in {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -286,8 +275,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Stats Summary Row -->
       <div id="stats-summary" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
           <div id="stat-contributors" class="text-4xl font-bold text-teal-600 dark:text-teal-400 mb-2">0</div>
@@ -307,7 +294,6 @@
         </div>
       </div>
 
-      <!-- Season Tabs -->
       <div class="text-center mb-6">
         <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" role="tablist" aria-label="Leaderboard seasons">
           <button id="leaderboard-tab-2026" type="button" data-season="2026" role="tab" aria-selected="true" class="leaderboard-tab px-6 py-3 text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors">
@@ -1008,7 +994,8 @@
       
       try {
         const filePath = LEADERBOARD_FILES[season] || LEADERBOARD_FILES['2026'];
-        const response = await fetch(filePath, { cache: 'no-store' });
+        const urlWithTimestamp = `${filePath}?t=${new Date().getTime()}`;
+        const response = await fetch(urlWithTimestamp, { cache: 'no-store' });
         
         if (!response.ok) {
           throw new Error(`Failed to load leaderboard data: ${response.status}`);
