@@ -51,6 +51,30 @@
           </div>
         </div>
       </div>
+      <!-- Total Points -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Total Points</p>
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_points }}</h3>
+          </div>
+          <div class="bg-yellow-100 dark:bg-yellow-900 rounded-full p-3">
+            <i class="fas fa-star text-yellow-500 dark:text-yellow-300 text-xl"></i>
+          </div>
+        </div>
+      </div>
+      <!-- Badges Earned -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Badges Earned</p>
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_badges }}</h3>
+          </div>
+          <div class="bg-yellow-100 dark:bg-yellow-900 rounded-full p-3">
+            <i class="fas fa-medal text-yellow-500 dark:text-yellow-300 text-xl"></i>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <!-- Course Progress -->
@@ -209,5 +233,65 @@
         {% endfor %}
       </div>
     </div>
+    <!-- Points Chart -->
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-chart-bar text-teal-500 dark:text-teal-300 mr-2"></i> Points Earned (Last 30 Days)
+      </h2>
+      <canvas id="pointsChart" height="80" role="img" aria-label="Bar chart showing points earned per day over the last 30 days"></canvas>
+    </div>
+
+    <!-- Badges Section -->
+    {% if recent_badges %}
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-award text-yellow-500 dark:text-yellow-300 mr-2"></i> Recent Badges
+      </h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {% for ub in recent_badges %}
+          <div class="flex flex-col items-center text-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+            {% if ub.badge.image %}
+              <img src="{{ ub.badge.image.url }}" alt="" class="w-12 h-12 rounded-full object-cover mb-2">
+            {% else %}
+              <i class="fas fa-award text-3xl text-yellow-500 dark:text-yellow-300 mb-2"></i>
+            {% endif %}
+            <p class="text-sm font-medium text-gray-800 dark:text-white">{{ ub.badge.name }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ ub.awarded_at|date:"M d, Y" }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
+
+  {{ chart_labels|json_script:"points-chart-labels" }}
+  {{ chart_data|json_script:"points-chart-data" }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+  const labels = JSON.parse(document.getElementById('points-chart-labels').textContent);
+  const pointsData = JSON.parse(document.getElementById('points-chart-data').textContent);
+  const ctx = document.getElementById('pointsChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Points',
+        data: pointsData,
+        backgroundColor: 'rgba(20, 184, 166, 0.5)',
+        borderColor: 'rgba(20, 184, 166, 1)',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+        x: { ticks: { maxTicksLimit: 10 } }
+      }
+    }
+  });
+</script>
 {% endblock content %}

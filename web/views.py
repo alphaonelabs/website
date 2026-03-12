@@ -35,7 +35,7 @@ from django.core.management import call_command
 from django.core.paginator import Paginator
 from django.db import IntegrityError, models, router, transaction
 from django.db.models import Avg, Count, Q, Sum
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate
 from django.http import (
     FileResponse,
     Http404,
@@ -149,6 +149,7 @@ from .models import (
     Payment,
     PeerConnection,
     PeerMessage,
+    Points,
     ProductImage,
     Profile,
     ProgressTracker,
@@ -2621,6 +2622,33 @@ def student_dashboard(request):
     # Query achievements for the user.
     achievements = Achievement.objects.filter(student=request.user).order_by("-awarded_at")
 
+    # Points data
+    total_points = Points.objects.filter(user=request.user).aggregate(total=Sum("amount"))["total"] or 0
+
+    # Points over last 30 days for chart
+    today = timezone.now().date()
+    thirty_days_ago = today - timedelta(days=29)
+    start_datetime = timezone.make_aware(timezone.datetime.combine(thirty_days_ago, timezone.datetime.min.time()))
+    points_qs = (
+        Points.objects.filter(user=request.user, awarded_at__gte=start_datetime)
+        .annotate(day=TruncDate("awarded_at"))
+        .values("day")
+        .annotate(total=Sum("amount"))
+        .order_by("day")
+    )
+    points_by_date = {entry["day"].strftime("%b %d"): entry["total"] for entry in points_qs}
+    chart_labels = []
+    chart_data = []
+    for i in range(30):
+        day = thirty_days_ago + timedelta(days=i)
+        label = day.strftime("%b %d")
+        chart_labels.append(label)
+        chart_data.append(points_by_date.get(label, 0))
+
+    # Badges
+    recent_badges = UserBadge.objects.filter(user=request.user).select_related("badge").order_by("-awarded_at", "-id")[:6]
+    total_badges = UserBadge.objects.filter(user=request.user).count()
+
     context = {
         "enrollments": enrollments,
         "upcoming_sessions": upcoming_sessions,
@@ -2628,6 +2656,11 @@ def student_dashboard(request):
         "avg_progress": avg_progress,
         "streak": streak,
         "achievements": achievements,
+        "total_points": total_points,
+        "chart_labels": chart_labels,
+        "chart_data": chart_data,
+        "recent_badges": recent_badges,
+        "total_badges": total_badges,
     }
     return render(request, "dashboard/student.html", context)
 
