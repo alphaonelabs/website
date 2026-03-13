@@ -38,7 +38,7 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      background: #050505;/Users/lakshyagupta/Desktop/new_osl/hh.html
+      background: #050505;
       overflow-x: hidden;
       scroll-behavior: smooth;
     }
@@ -540,9 +540,29 @@
       return (
         <div ref={containerRef} className="content-layer system-font w-full">
           <CanvasSystem />
+
+          <header className="fixed top-0 inset-x-0 z-30 border-b border-[#1f1f1f] bg-black/70 backdrop-blur">
+           <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
+             <a
+              href="https://github.com/alphaonelabs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 hover:opacity-90 transition"
+               >
+            <img src="/assets/logo.png" alt="Alpha One Labs logo" className="w-7 h-7" />
+            <span className="text-sm tracking-widest uppercase text-sys-accent">Alpha One Labs</span>
+             </a>
+
+            <nav className="text-xs text-sys-muted flex items-center gap-4 uppercase tracking-wider">
+            <a href="https://github.com/alphaonelabs/botlab" target="_blank" rel="noopener noreferrer" className="hover:text-white">Repo</a>
+            <a href="https://github.com/alphaonelabs/botlab/issues" target="_blank" rel="noopener noreferrer" className="hover:text-white">Issues</a>
+           <a href="https://github.com/alphaonelabs/botlab/discussions" target="_blank" rel="noopener noreferrer" className="hover:text-white">Discussions</a>
+        </nav>
+      </div>
+     </header>
           
           {/* SECTION 1: PRESENCE */}
-          <section className="h-screen flex flex-col justify-center px-12 md:px-24">
+          <section className="min-h-screen flex flex-col justify-center px-12 md:px-24 pt-24">
             <div className="text-xs text-sys-muted uppercase tracking-widest mb-4">OPEN SCIENCE LABS // ALPHA ONE LABS</div>
             <h1 className="text-5xl md:text-8xl font-medium tracking-tighter leading-none mb-6 text-sys-accent">
               <StaggerText text="VIRTUAL ROBOTICS" />
@@ -570,7 +590,7 @@
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </a>
-              <a href="https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground" target="_blank" rel="noopener noreferrer" className="tech-btn">
+              <a href="https://github.com/alphaonelabs/botlab" target="_blank" rel="noopener noreferrer" className="tech-btn">
                 <span className="btn-corner tl"></span>
                 <span className="btn-corner tr"></span>
                 <span className="btn-corner bl"></span>
@@ -772,7 +792,7 @@
                 <a href="#" className="hover:text-white">Terms & Conditions</a>
                 <a href="#" className="hover:text-white">Privacy Policy</a>
                 <a href="#" className="hover:text-white">Cookie Policy</a>
-                <a href="https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground" target="_blank" rel="noopener noreferrer" className="hover:text-white">Contribute</a>
+                <a href="https://github.com/alphaonelabs/botlab" target="_blank" rel="noopener noreferrer" className="hover:text-white">Contribute</a>
               </div>
             </footer>
           </section>
