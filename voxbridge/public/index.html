@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxBridge – AI Accessibility Toolkit</title>
+  <style>
+    /* ---------- design tokens ---------- */
+    :root {
+      --clr-bg:      #0f1117;
+      --clr-surface: #1a1d27;
+      --clr-border:  #2e3347;
+      --clr-accent:  #6c63ff;
+      --clr-accent2: #00d4aa;
+      --clr-text:    #e2e8f0;
+      --clr-muted:   #8892a4;
+      --clr-error:   #ff6b6b;
+      --clr-success: #51cf66;
+      --radius:      12px;
+      --shadow:      0 4px 24px rgba(0,0,0,.45);
+    }
+
+    /* ---------- reset / base ---------- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    a { color: var(--clr-accent); }
+
+    /* ---------- header ---------- */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--clr-border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .logo {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    header h1 { font-size: 1.6rem; font-weight: 700; }
+    header p  { color: var(--clr-muted); font-size: 0.9rem; margin-top: 0.1rem; }
+
+    /* ---------- nav tabs ---------- */
+    nav {
+      display: flex;
+      gap: 0.25rem;
+      padding: 1rem 2rem 0;
+      border-bottom: 1px solid var(--clr-border);
+      overflow-x: auto;
+    }
+    nav button {
+      background: none;
+      border: none;
+      color: var(--clr-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.6rem 1.2rem;
+      border-radius: var(--radius) var(--radius) 0 0;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    nav button:hover { color: var(--clr-text); background: var(--clr-surface); }
+    nav button.active {
+      color: var(--clr-accent);
+      border-bottom-color: var(--clr-accent);
+      background: var(--clr-surface);
+    }
+
+    /* ---------- main layout ---------- */
+    main { padding: 2rem; max-width: 860px; margin: 0 auto; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ---------- cards ---------- */
+    .card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .card .subtitle { color: var(--clr-muted); font-size: 0.875rem; margin-bottom: 1.25rem; }
+
+    /* ---------- inputs ---------- */
+    label { font-size: 0.875rem; font-weight: 500; color: var(--clr-muted); display: block; margin-bottom: 0.35rem; }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: var(--clr-bg);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      color: var(--clr-text);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    select {
+      padding: 0.5rem 0.75rem;
+      background: var(--clr-bg);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      color: var(--clr-text);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    /* ---------- buttons ---------- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary { background: var(--clr-accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+    .btn-danger  { background: var(--clr-error); color: #fff; }
+    .btn-danger:hover:not(:disabled) { opacity: 0.9; }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--clr-text);
+      border: 1px solid var(--clr-border);
+    }
+    .btn-outline:hover:not(:disabled) { border-color: var(--clr-accent); color: var(--clr-accent); }
+
+    .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
+    /* ---------- recording indicator ---------- */
+    .rec-dot {
+      width: 10px; height: 10px;
+      background: var(--clr-error);
+      border-radius: 50%;
+      animation: pulse 1s ease infinite;
+      display: none;
+    }
+    .recording .rec-dot { display: inline-block; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.3; }
+    }
+
+    /* ---------- image preview ---------- */
+    .img-preview {
+      width: 100%;
+      max-height: 220px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--clr-border);
+      margin-top: 0.75rem;
+      display: none;
+    }
+    .img-preview.visible { display: block; }
+
+    /* ---------- result box ---------- */
+    .result-box {
+      background: var(--clr-bg);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      min-height: 60px;
+      white-space: pre-wrap;
+      display: none;
+    }
+    .result-box.visible  { display: block; }
+    .result-box.error    { border-color: var(--clr-error); color: var(--clr-error); }
+    .result-box.success  { border-color: var(--clr-success); }
+
+    .result-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--clr-muted);
+      margin-top: 1rem;
+      margin-bottom: 0.3rem;
+    }
+    .result-label:first-child { margin-top: 0; }
+
+    /* ---------- spinner ---------- */
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2px solid var(--clr-border);
+      border-top-color: var(--clr-accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .loading .spinner { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- badge ---------- */
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      background: rgba(108,99,255,.2);
+      color: var(--clr-accent);
+      border: 1px solid rgba(108,99,255,.4);
+    }
+
+    /* ---------- speak button ---------- */
+    .speak-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--clr-accent2);
+      font-size: 1.1rem;
+      padding: 0.1rem 0.3rem;
+      vertical-align: middle;
+    }
+    .speak-btn:hover { opacity: 0.75; }
+
+    /* ---------- footer ---------- */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--clr-muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--clr-border);
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo" aria-hidden="true">🌉</div>
+  <div>
+    <h1>VoxBridge</h1>
+    <p>AI-powered accessibility &amp; communication toolkit</p>
+  </div>
+</header>
+
+<nav role="tablist" aria-label="Features">
+  <button role="tab" aria-selected="true"  aria-controls="tab-caption"      id="btn-caption"      class="active">🎤 Captioning</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-s2sign"       id="btn-s2sign"                     >🗣️ Speech → Sign</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-sign2s"       id="btn-sign2s"                     >🤟 Sign → Speech</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-scene"        id="btn-scene"                      >🖼️ Scene Description</button>
+</nav>
+
+<main>
+
+  <!-- ==================== CAPTIONING ==================== -->
+  <section id="tab-caption" class="tab-panel active" role="tabpanel" aria-labelledby="btn-caption">
+    <div class="card">
+      <h2>🎤 Real-time Captioning <span class="badge">Whisper</span></h2>
+      <p class="subtitle">Record or upload audio to generate an instant text transcript.</p>
+
+      <label for="caption-file">Upload audio file (WAV / MP3 / WebM)</label>
+      <input type="file" id="caption-file" accept="audio/*" />
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="caption-record-btn" aria-label="Start recording">
+          <span class="rec-dot"></span> Record
+        </button>
+        <div class="spinner" id="caption-spinner" aria-label="Processing"></div>
+        <button class="btn btn-primary" id="caption-submit-btn" disabled>Transcribe ▶</button>
+      </div>
+
+      <audio id="caption-audio-preview" controls style="display:none; margin-top:.75rem; width:100%;"></audio>
+      <div id="caption-result" class="result-box" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ==================== SPEECH → SIGN ==================== -->
+  <section id="tab-s2sign" class="tab-panel" role="tabpanel" aria-labelledby="btn-s2sign">
+    <div class="card">
+      <h2>🗣️ Speech → Sign Language <span class="badge">Whisper + LLaMA</span></h2>
+      <p class="subtitle">Speak or upload audio; receive step-by-step sign-language instructions.</p>
+
+      <label for="s2sign-file">Upload audio file (WAV / MP3 / WebM)</label>
+      <input type="file" id="s2sign-file" accept="audio/*" />
+
+      <div style="margin-top:.75rem;">
+        <label for="s2sign-lang">Sign language variant</label>
+        <select id="s2sign-lang">
+          <option value="ASL">ASL – American Sign Language</option>
+          <option value="BSL">BSL – British Sign Language</option>
+          <option value="ISL">ISL – International Sign Language</option>
+        </select>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="s2sign-record-btn" aria-label="Start recording">
+          <span class="rec-dot"></span> Record
+        </button>
+        <div class="spinner" id="s2sign-spinner" aria-label="Processing"></div>
+        <button class="btn btn-primary" id="s2sign-submit-btn" disabled>Generate Signs ▶</button>
+      </div>
+
+      <audio id="s2sign-audio-preview" controls style="display:none; margin-top:.75rem; width:100%;"></audio>
+
+      <div id="s2sign-result" class="result-box" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ==================== SIGN → SPEECH ==================== -->
+  <section id="tab-sign2s" class="tab-panel" role="tabpanel" aria-labelledby="btn-sign2s">
+    <div class="card">
+      <h2>🤟 Sign → Speech <span class="badge">Vision + LLaMA</span></h2>
+      <p class="subtitle">Upload or capture an image of a sign-language gesture; receive the spoken equivalent.</p>
+
+      <label for="sign2s-file">Upload image (JPEG / PNG / WebP)</label>
+      <input type="file" id="sign2s-file" accept="image/*" />
+
+      <div class="btn-group">
+        <button class="btn btn-outline" id="sign2s-camera-btn" aria-label="Capture from camera">📷 Use Camera</button>
+        <div class="spinner" id="sign2s-spinner" aria-label="Processing"></div>
+        <button class="btn btn-primary" id="sign2s-submit-btn" disabled>Interpret Sign ▶</button>
+      </div>
+
+      <video id="sign2s-video" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
+      <button class="btn btn-outline" id="sign2s-snap-btn" style="display:none; margin-top:.5rem;">📸 Capture Frame</button>
+      <img id="sign2s-preview" class="img-preview" alt="Selected sign-language image preview" />
+
+      <div id="sign2s-result" class="result-box" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ==================== SCENE DESCRIPTION ==================== -->
+  <section id="tab-scene" class="tab-panel" role="tabpanel" aria-labelledby="btn-scene">
+    <div class="card">
+      <h2>🖼️ Visual Scene Description <span class="badge">Vision AI</span></h2>
+      <p class="subtitle">Upload or capture an image; receive an accessible description for visually impaired users.</p>
+
+      <label for="scene-file">Upload image (JPEG / PNG / WebP)</label>
+      <input type="file" id="scene-file" accept="image/*" />
+
+      <div style="margin-top:.75rem;">
+        <label for="scene-detail">Detail level</label>
+        <select id="scene-detail">
+          <option value="brief">Brief – one sentence</option>
+          <option value="standard" selected>Standard – key details</option>
+          <option value="detailed">Detailed – full description</option>
+        </select>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-outline" id="scene-camera-btn" aria-label="Capture from camera">📷 Use Camera</button>
+        <div class="spinner" id="scene-spinner" aria-label="Processing"></div>
+        <button class="btn btn-primary" id="scene-submit-btn" disabled>Describe Scene ▶</button>
+      </div>
+
+      <video id="scene-video" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
+      <button class="btn btn-outline" id="scene-snap-btn" style="display:none; margin-top:.5rem;">📸 Capture Frame</button>
+      <img id="scene-preview" class="img-preview" alt="Selected scene image preview" />
+
+      <div id="scene-result" class="result-box" aria-live="polite"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  VoxBridge &mdash; built with <a href="https://developers.cloudflare.com/workers/languages/python/" target="_blank" rel="noopener">Cloudflare Python Workers</a>
+  &amp; <a href="https://developers.cloudflare.com/workers-ai/" target="_blank" rel="noopener">Workers AI</a>
+</footer>
+
+<canvas id="hidden-canvas" style="display:none;"></canvas>
+
+<script>
+"use strict";
+
+/* ─────────────────────────────────────────────
+   Helpers
+   ───────────────────────────────────────────── */
+function toBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(",")[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+function speak(text) {
+  if (!window.speechSynthesis || !text) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  window.speechSynthesis.speak(utt);
+}
+
+function setLoading(spinnerId, on) {
+  const el = document.getElementById(spinnerId);
+  if (on) el.style.display = "inline-block";
+  else     el.style.display = "none";
+}
+
+function showResult(boxId, content, isError = false) {
+  const box = document.getElementById(boxId);
+  box.textContent = content;
+  box.className = "result-box visible" + (isError ? " error" : " success");
+}
+
+function showResultHTML(boxId, html) {
+  const box = document.getElementById(boxId);
+  box.innerHTML = html;
+  box.className = "result-box visible success";
+}
+
+/* ─────────────────────────────────────────────
+   Tab navigation
+   ───────────────────────────────────────────── */
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(b => {
+      b.classList.remove("active");
+      b.setAttribute("aria-selected", "false");
+    });
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+
+    btn.classList.add("active");
+    btn.setAttribute("aria-selected", "true");
+    document.getElementById(btn.getAttribute("aria-controls")).classList.add("active");
+  });
+});
+
+/* ─────────────────────────────────────────────
+   Audio recording helper
+   ───────────────────────────────────────────── */
+function makeAudioRecorder({ recordBtn, audioPreview, submitBtn }) {
+  let mediaRecorder = null;
+  let chunks = [];
+  let blob = null;
+  let recording = false;
+
+  recordBtn.addEventListener("click", async () => {
+    if (!recording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        chunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          blob = new Blob(chunks, { type: "audio/webm" });
+          audioPreview.src = URL.createObjectURL(blob);
+          audioPreview.style.display = "block";
+          submitBtn.disabled = false;
+        };
+        mediaRecorder.start();
+        recording = true;
+        recordBtn.classList.add("recording");
+        recordBtn.innerHTML = '<span class="rec-dot"></span> Stop';
+        recordBtn.classList.remove("btn-primary");
+        recordBtn.classList.add("btn-danger");
+      } catch (err) {
+        alert("Microphone access denied: " + err.message);
+      }
+    } else {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      recording = false;
+      recordBtn.classList.remove("recording", "btn-danger");
+      recordBtn.classList.add("btn-primary");
+      recordBtn.innerHTML = '<span class="rec-dot"></span> Record';
+    }
+  });
+
+  return {
+    getBlob: () => blob,
+  };
+}
+
+/* ─────────────────────────────────────────────
+   Camera helper
+   ───────────────────────────────────────────── */
+function makeCamera({ cameraBtn, video, snapBtn, preview, submitBtn }) {
+  let stream = null;
+  let imageBlob = null;
+  const canvas = document.getElementById("hidden-canvas");
+
+  cameraBtn.addEventListener("click", async () => {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+      video.style.display = "none";
+      snapBtn.style.display = "none";
+      cameraBtn.textContent = "📷 Use Camera";
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      video.srcObject = stream;
+      video.style.display = "block";
+      snapBtn.style.display = "inline-flex";
+      cameraBtn.textContent = "✖ Stop Camera";
+    } catch (err) {
+      alert("Camera access denied: " + err.message);
+    }
+  });
+
+  snapBtn.addEventListener("click", () => {
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    canvas.toBlob(b => {
+      imageBlob = b;
+      preview.src = URL.createObjectURL(b);
+      preview.classList.add("visible");
+      submitBtn.disabled = false;
+    }, "image/jpeg", 0.9);
+
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    video.style.display = "none";
+    snapBtn.style.display = "none";
+    cameraBtn.textContent = "📷 Use Camera";
+  });
+
+  return { getBlob: () => imageBlob };
+}
+
+/* ─────────────────────────────────────────────
+   1. CAPTIONING
+   ───────────────────────────────────────────── */
+(function() {
+  const fileInput  = document.getElementById("caption-file");
+  const recordBtn  = document.getElementById("caption-record-btn");
+  const submitBtn  = document.getElementById("caption-submit-btn");
+  const preview    = document.getElementById("caption-audio-preview");
+
+  const recorder = makeAudioRecorder({ recordBtn, audioPreview: preview, submitBtn });
+
+  let fileBlob = null;
+  fileInput.addEventListener("change", () => {
+    fileBlob = fileInput.files[0];
+    if (fileBlob) {
+      preview.src = URL.createObjectURL(fileBlob);
+      preview.style.display = "block";
+      submitBtn.disabled = false;
+    }
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    const blob = fileBlob || recorder.getBlob();
+    if (!blob) return;
+    submitBtn.disabled = true;
+    setLoading("caption-spinner", true);
+    try {
+      const audio = await toBase64(blob);
+      const res = await fetch("/api/caption", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      showResultHTML("caption-result",
+        `<div class="result-label">Transcript</div>` +
+        `<span>${escapeHtml(data.text)}</span>` +
+        `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(data.text)})">🔊</button>`
+      );
+    } catch (err) {
+      showResult("caption-result", "Error: " + err.message, true);
+    } finally {
+      setLoading("caption-spinner", false);
+      submitBtn.disabled = false;
+    }
+  });
+})();
+
+/* ─────────────────────────────────────────────
+   2. SPEECH → SIGN
+   ───────────────────────────────────────────── */
+(function() {
+  const fileInput  = document.getElementById("s2sign-file");
+  const recordBtn  = document.getElementById("s2sign-record-btn");
+  const submitBtn  = document.getElementById("s2sign-submit-btn");
+  const preview    = document.getElementById("s2sign-audio-preview");
+  const langSel    = document.getElementById("s2sign-lang");
+
+  const recorder = makeAudioRecorder({ recordBtn, audioPreview: preview, submitBtn });
+
+  let fileBlob = null;
+  fileInput.addEventListener("change", () => {
+    fileBlob = fileInput.files[0];
+    if (fileBlob) {
+      preview.src = URL.createObjectURL(fileBlob);
+      preview.style.display = "block";
+      submitBtn.disabled = false;
+    }
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    const blob = fileBlob || recorder.getBlob();
+    if (!blob) return;
+    submitBtn.disabled = true;
+    setLoading("s2sign-spinner", true);
+    try {
+      const audio = await toBase64(blob);
+      const res = await fetch("/api/speech-to-sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio, language: langSel.value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      showResultHTML("s2sign-result",
+        `<div class="result-label">Transcript</div>${escapeHtml(data.transcript)}` +
+        `<div class="result-label">Sign Instructions (${escapeHtml(data.sign_language)})</div>` +
+        `<pre style="white-space:pre-wrap; font-family:inherit;">${escapeHtml(data.instructions)}</pre>`
+      );
+    } catch (err) {
+      showResult("s2sign-result", "Error: " + err.message, true);
+    } finally {
+      setLoading("s2sign-spinner", false);
+      submitBtn.disabled = false;
+    }
+  });
+})();
+
+/* ─────────────────────────────────────────────
+   3. SIGN → SPEECH
+   ───────────────────────────────────────────── */
+(function() {
+  const fileInput  = document.getElementById("sign2s-file");
+  const cameraBtn  = document.getElementById("sign2s-camera-btn");
+  const video      = document.getElementById("sign2s-video");
+  const snapBtn    = document.getElementById("sign2s-snap-btn");
+  const preview    = document.getElementById("sign2s-preview");
+  const submitBtn  = document.getElementById("sign2s-submit-btn");
+
+  const cam = makeCamera({ cameraBtn, video, snapBtn, preview, submitBtn });
+
+  let fileBlob = null;
+  fileInput.addEventListener("change", () => {
+    fileBlob = fileInput.files[0];
+    if (fileBlob) {
+      preview.src = URL.createObjectURL(fileBlob);
+      preview.classList.add("visible");
+      submitBtn.disabled = false;
+    }
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    const blob = fileBlob || cam.getBlob();
+    if (!blob) return;
+    submitBtn.disabled = true;
+    setLoading("sign2s-spinner", true);
+    try {
+      const image = await toBase64(blob);
+      const res = await fetch("/api/sign-to-speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      showResultHTML("sign2s-result",
+        `<div class="result-label">Interpreted Speech</div>` +
+        `<strong style="font-size:1.1rem;">${escapeHtml(data.speech_text)}</strong> ` +
+        `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(data.speech_text)})">🔊</button>` +
+        `<div class="result-label" style="margin-top:.8rem;">Gesture Analysis</div>` +
+        `<span style="color:var(--clr-muted);">${escapeHtml(data.gesture_description)}</span>`
+      );
+    } catch (err) {
+      showResult("sign2s-result", "Error: " + err.message, true);
+    } finally {
+      setLoading("sign2s-spinner", false);
+      submitBtn.disabled = false;
+    }
+  });
+})();
+
+/* ─────────────────────────────────────────────
+   4. SCENE DESCRIPTION
+   ───────────────────────────────────────────── */
+(function() {
+  const fileInput  = document.getElementById("scene-file");
+  const cameraBtn  = document.getElementById("scene-camera-btn");
+  const video      = document.getElementById("scene-video");
+  const snapBtn    = document.getElementById("scene-snap-btn");
+  const preview    = document.getElementById("scene-preview");
+  const submitBtn  = document.getElementById("scene-submit-btn");
+  const detailSel  = document.getElementById("scene-detail");
+
+  const cam = makeCamera({ cameraBtn, video, snapBtn, preview, submitBtn });
+
+  let fileBlob = null;
+  fileInput.addEventListener("change", () => {
+    fileBlob = fileInput.files[0];
+    if (fileBlob) {
+      preview.src = URL.createObjectURL(fileBlob);
+      preview.classList.add("visible");
+      submitBtn.disabled = false;
+    }
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    const blob = fileBlob || cam.getBlob();
+    if (!blob) return;
+    submitBtn.disabled = true;
+    setLoading("scene-spinner", true);
+    try {
+      const image = await toBase64(blob);
+      const res = await fetch("/api/visual-scene", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image, detail_level: detailSel.value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      showResultHTML("scene-result",
+        `<div class="result-label">Scene Description</div>` +
+        `${escapeHtml(data.description)} ` +
+        `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(data.description)})">🔊</button>`
+      );
+    } catch (err) {
+      showResult("scene-result", "Error: " + err.message, true);
+    } finally {
+      setLoading("scene-spinner", false);
+      submitBtn.disabled = false;
+    }
+  });
+})();
+
+/* ─────────────────────────────────────────────
+   Utility
+   ───────────────────────────────────────────── */
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+</script>
+</body>
+</html>
