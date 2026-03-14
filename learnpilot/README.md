@@ -1,106 +1,207 @@
-# learnpilot
-AI-powered personalized learning lab that adapts to each learner in real time. Combines natural language processing, adaptive curricula, intelligent tutoring, and progress tracking to create a dynamic educational experience with interactive explanations, guided practice, and continuous feedback. Uses Cloudflare AI Python workers
+# LearnPilot
 
-## Features
+AI-powered personalised learning lab that adapts to each learner in real time.
+Combines natural language processing, adaptive curricula, intelligent tutoring,
+and progress tracking to create a dynamic educational experience with interactive
+explanations, guided practice, and continuous feedback.
 
-- 🧠 **Adaptive Curricula** – Cloudflare Workers AI generates a personalised learning path based on each learner's skill level, learning style, and goals.
-- 💬 **Intelligent Tutoring** – Real-time AI tutor chat powered by `@cf/meta/llama-3.1-8b-instruct` explains concepts, answers questions, and adapts to the learner.
-- 📈 **Progress Tracking** – XP system, day streaks, per-lesson scores, and AI-generated progress insights.
-- ✏️ **Guided Practice** – AI-generated practice questions with instant evaluation and constructive feedback.
-- 🗺️ **Personalised Paths** – Each learner gets a unique ordered learning path tailored to their knowledge gaps and goals.
+Uses **Cloudflare AI Python Workers** (`@cf/meta/llama-3.1-8b-instruct`).
+
+---
 
 ## Architecture
 
 ```
-LearnPilot Django app  (web UI + REST API)
-        │
-        │  HTTP (when CLOUDFLARE_WORKER_URL is configured)
-        ▼
-Cloudflare Python Worker  (workers/src/worker.py)
-        │
-        │  Workers AI binding (env.AI)
-        ▼
-Cloudflare Workers AI  (@cf/meta/llama-3.1-8b-instruct)
+Client  ──POST──▶  Cloudflare Python Worker (src/worker.py)
+                         │
+                         │  env.AI  (Workers AI binding)
+                         ▼
+              @cf/meta/llama-3.1-8b-instruct
 ```
 
-When `CLOUDFLARE_WORKER_URL` is **not** set, the Django app calls the
-[Cloudflare Workers AI REST API](https://developers.cloudflare.com/workers-ai/get-started/rest-api/)
-directly using your `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
+The entire application runs at the edge as a single Cloudflare Python Worker.
+No server infrastructure, no databases, no external dependencies.
 
-## Quick Start
+---
 
-### 1. Clone & install dependencies
+## API Endpoints
 
-```bash
-git clone https://github.com/alphaonelabs/learnpilot.git
-cd learnpilot
-pip install -r requirements.txt
+| Method | Path            | Description                                            |
+|--------|-----------------|--------------------------------------------------------|
+| POST   | `/ai/chat`      | Continue a real-time tutoring conversation             |
+| POST   | `/ai/explain`   | Explain a concept (adapts to skill level + style)      |
+| POST   | `/ai/practice`  | Generate a practice question                           |
+| POST   | `/ai/evaluate`  | Evaluate a learner's answer (returns score 0–1)        |
+| POST   | `/ai/path`      | Generate a personalised ordered learning path          |
+| POST   | `/ai/progress`  | Produce AI-driven progress insights                    |
+| POST   | `/ai/adapt`     | Recommend a difficulty adjustment from recent scores   |
+| POST   | `/ai/summary`   | Summarise a completed tutoring session                 |
+| GET    | `/health`       | Liveness check                                         |
+
+All endpoints return JSON and support CORS.
+
+---
+
+## Request / Response Examples
+
+### `POST /ai/explain`
+
+```json
+// Request
+{
+  "concept": "recursion",
+  "skill_level": "beginner",
+  "learning_style": "visual",
+  "context": "We are studying Python functions."
+}
+
+// Response
+{
+  "explanation": "1. **Core Explanation** – Recursion is when a function calls itself…"
+}
 ```
 
-### 2. Configure environment
+### `POST /ai/evaluate`
 
-```bash
-cp .env.example .env
-# Edit .env and set:
-#   SECRET_KEY, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN
+```json
+// Request
+{
+  "question": "What is a Python decorator?",
+  "answer": "A function that wraps another function to add behaviour.",
+  "topic": "Python Functions"
+}
+
+// Response
+{
+  "score": 0.85,
+  "feedback": "Excellent! You captured the core concept. Consider also mentioning…",
+  "correct_answer": "A decorator is a higher-order function that takes a function…"
+}
 ```
 
-### 3. Initialise the database
+### `POST /ai/path`
 
-```bash
-python manage.py migrate
-python manage.py seed_data      # Loads sample topics, courses, and lessons
-python manage.py createsuperuser
+```json
+// Request
+{
+  "topic": "Python Programming",
+  "skill_level": "beginner",
+  "learning_style": "kinesthetic",
+  "goals": "I want to build web apps",
+  "available_lessons": [
+    {"id": 1, "title": "Variables",  "type": "theory",   "difficulty": "beginner"},
+    {"id": 2, "title": "Functions",  "type": "theory",   "difficulty": "beginner"},
+    {"id": 3, "title": "Mini-project", "type": "project", "difficulty": "beginner"}
+  ]
+}
+
+// Response
+{
+  "ordered_lesson_ids": [1, 2, 3],
+  "rationale": "Start with variables to build a foundation, then functions for reuse, then apply both in a mini-project."
+}
 ```
 
-### 4. Run the development server
+### `POST /ai/adapt`
 
-```bash
-python manage.py runserver
+```json
+// Request
+{
+  "topic": "Python",
+  "current_difficulty": "beginner",
+  "recent_scores": [0.9, 0.95, 0.88]
+}
+
+// Response
+{
+  "new_difficulty": "intermediate",
+  "action": "increase",
+  "reasoning": "Consistently high scores indicate readiness for more complex material."
+}
 ```
 
-Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
-
-## Deploy Cloudflare Python Worker (optional)
-
-See [`workers/README.md`](workers/README.md) for step-by-step deployment instructions.
-
-Once deployed, set `CLOUDFLARE_WORKER_URL` in your `.env` to route AI
-requests through the edge worker for lower latency.
-
-## Running Tests
-
-```bash
-python manage.py test tests
-```
+---
 
 ## Project Structure
 
 ```
 learnpilot/
-├── manage.py
-├── requirements.txt
-├── .env.example
-├── learnpilot/            # Django project settings & root URLs
-├── learning/              # Main Django app
-│   ├── models.py          # Topic, Course, Lesson, LearnerProfile, Progress, …
-│   ├── views.py           # Dashboard, course list, tutoring session, progress
-│   ├── urls.py
-│   ├── admin.py
-│   ├── ai/
-│   │   ├── cloudflare_ai.py   # Cloudflare Workers AI HTTP client
-│   │   ├── tutor.py           # IntelligentTutor – explain, practice, evaluate
-│   │   └── adaptive.py        # AdaptiveCurriculum – path generation, difficulty
-│   └── management/commands/
-│       └── seed_data.py       # Sample topics, courses, and lessons
-├── templates/             # Django HTML templates (Tailwind CSS via CDN)
-├── static/
-│   ├── css/main.css
-│   └── js/tutor.js        # Real-time tutor chat UI
-├── tests/                 # Unit & integration tests
-└── workers/               # Cloudflare Python Worker
-    ├── wrangler.toml
-    ├── src/worker.py      # Edge worker with Cloudflare AI bindings
-    └── README.md
+├── src/
+│   └── worker.py          # Cloudflare Python Worker (all logic lives here)
+├── tests/
+│   └── test_worker.py     # Unit tests (pytest, no Cloudflare runtime needed)
+├── wrangler.toml          # Cloudflare Workers deployment config
+├── requirements-dev.txt   # Dev/test dependencies (pytest only)
+├── .env.example           # Example environment variables for Wrangler CLI
+├── LICENSE
+└── README.md
 ```
 
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) ≥ 18 (for the Wrangler CLI)
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up) with Workers AI enabled
+
+### Deploy
+
+```bash
+# Install Wrangler CLI
+npm install -g wrangler
+
+# Authenticate with Cloudflare
+wrangler login
+
+# Deploy the worker to the edge
+npx wrangler deploy
+```
+
+Wrangler will print the live URL, e.g.
+`https://learnpilot-ai.<your-subdomain>.workers.dev`.
+
+### Local Development
+
+```bash
+npx wrangler dev
+```
+
+The worker starts on `http://localhost:8787`. All AI calls are proxied to
+Cloudflare's remote AI service automatically during development.
+
+---
+
+## Running Tests
+
+The tests use only the Python standard library and `pytest`. No Cloudflare
+runtime is required – a minimal `Response` shim is injected before importing
+`worker.py`.
+
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run tests
+pytest tests/ -v
+```
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in your credentials. These are only
+needed by the **Wrangler CLI** on your local machine; they are never bundled
+into the deployed worker.
+
+| Variable                  | Description                              |
+|---------------------------|------------------------------------------|
+| `CLOUDFLARE_ACCOUNT_ID`   | Your Cloudflare account ID               |
+| `CLOUDFLARE_API_TOKEN`    | API token with Workers AI permission     |
+
+---
+
+## License
+
+GNU General Public License v2 – see [LICENSE](LICENSE).

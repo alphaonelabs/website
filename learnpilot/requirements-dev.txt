@@ -1,0 +1,4 @@
+# Development / testing dependencies only.
+# The worker itself runs on Cloudflare's edge runtime and has no pip deps.
+pytest>=8.0
+pytest-asyncio>=0.23

@@ -3,10 +3,19 @@
 # A Cloudflare Python Worker that exposes an AI tutoring API backed
 # by Cloudflare Workers AI. Deploy with:
 #
-#   cd workers && npx wrangler deploy
+#   npx wrangler deploy
 #
 # The worker uses the Workers AI binding (env.AI) to run inference
 # on Cloudflare's global edge network, providing low-latency responses.
+#
+# Endpoints:
+#   POST /ai/chat       – continue a tutoring conversation
+#   POST /ai/explain    – explain a concept at the learner's level
+#   POST /ai/practice   – generate a practice question
+#   POST /ai/evaluate   – evaluate a learner's answer
+#   POST /ai/path       – generate a personalised learning path
+#   POST /ai/progress   – produce personalised progress insights
+#   GET  /health        – liveness check
 
 import json
 
@@ -35,6 +44,15 @@ async def on_fetch(request, env):
 
     if "/ai/path" in url and method == "POST":
         return await _handle_generate_path(request, env)
+
+    if "/ai/progress" in url and method == "POST":
+        return await _handle_progress_insights(request, env)
+
+    if "/ai/adapt" in url and method == "POST":
+        return await _handle_adapt_difficulty(request, env)
+
+    if "/ai/summary" in url and method == "POST":
+        return await _handle_session_summary(request, env)
 
     if "/health" in url:
         return _cors_response(json.dumps({"status": "ok", "service": "learnpilot-ai"}), 200)
@@ -304,6 +322,200 @@ async def _handle_generate_path(request, env):
             pass
 
     return _cors_response(json.dumps({"ordered_lesson_ids": [], "rationale": raw}), 200)
+
+
+async def _handle_progress_insights(request, env):
+    """
+    Generate personalised progress insights for a learner.
+
+    Request body:
+        {
+          "learner_name": "Alice",
+          "topic": "Python Programming",
+          "progress_data": [
+            {"lesson": "Variables", "score": 0.9, "completed": true, "attempts": 1},
+            …
+          ]
+        }
+
+    Returns:
+        {"insights": "<4-6 sentence progress report>"}
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return _error("Invalid JSON", 400)
+
+    learner_name = body.get("learner_name", "the learner")
+    topic = body.get("topic", "").strip()
+    progress_data = body.get("progress_data", [])
+
+    if not topic:
+        return _error("topic is required", 400)
+    if not progress_data:
+        return _error("progress_data is required", 400)
+
+    prompt = (
+        f"Analyse {learner_name}'s learning progress in \"{topic}\":\n\n"
+        f"{json.dumps(progress_data, indent=2)}\n\n"
+        "Write a concise progress report (4–6 sentences) that:\n"
+        "1. Summarises overall performance.\n"
+        "2. Identifies strengths.\n"
+        "3. Pinpoints areas needing improvement.\n"
+        "4. Recommends a concrete next action."
+    )
+
+    result = await env.AI.run(
+        "@cf/meta/llama-3.1-8b-instruct",
+        {
+            "messages": [
+                {"role": "system", "content": _curriculum_system_prompt()},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 512,
+        },
+    )
+    text = result.get("response", "") if isinstance(result, dict) else ""
+    return _cors_response(json.dumps({"insights": text}), 200)
+
+
+async def _handle_adapt_difficulty(request, env):
+    """
+    Recommend a difficulty adjustment based on recent performance.
+
+    Request body:
+        {
+          "topic": "Python Programming",
+          "current_difficulty": "beginner",
+          "recent_scores": [0.9, 0.85, 0.95],
+          "struggles": ["recursion", "decorators"]   // optional
+        }
+
+    Returns:
+        {"new_difficulty": "intermediate", "action": "increase", "reasoning": "…"}
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return _error("Invalid JSON", 400)
+
+    topic = body.get("topic", "").strip()
+    current_difficulty = body.get("current_difficulty", "beginner")
+    recent_scores = body.get("recent_scores", [])
+    struggles = body.get("struggles", [])
+
+    if not topic:
+        return _error("topic is required", 400)
+    if not recent_scores:
+        return _error("recent_scores is required", 400)
+
+    avg = sum(recent_scores) / len(recent_scores)
+    struggle_text = ""
+    if struggles:
+        struggle_text = f"\nTopics the learner struggled with: {', '.join(struggles)}"
+
+    prompt = (
+        f"A learner studying \"{topic}\" at {current_difficulty} difficulty "
+        f"has achieved an average score of {avg:.0%} over their last "
+        f"{len(recent_scores)} attempt(s).{struggle_text}\n\n"
+        "Should the difficulty change? Respond with JSON:\n"
+        "{\n"
+        '  "new_difficulty": "<beginner | intermediate | advanced>",\n'
+        '  "action": "<maintain | increase | decrease>",\n'
+        '  "reasoning": "<one sentence>"\n'
+        "}"
+    )
+
+    result = await env.AI.run(
+        "@cf/meta/llama-3.1-8b-instruct",
+        {
+            "messages": [
+                {"role": "system", "content": _curriculum_system_prompt()},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 256,
+        },
+    )
+    raw = result.get("response", "") if isinstance(result, dict) else ""
+
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end > start:
+        try:
+            adapt_data = json.loads(raw[start : end + 1])
+            return _cors_response(json.dumps(adapt_data), 200)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    return _cors_response(
+        json.dumps(
+            {
+                "new_difficulty": current_difficulty,
+                "action": "maintain",
+                "reasoning": raw,
+            }
+        ),
+        200,
+    )
+
+
+async def _handle_session_summary(request, env):
+    """
+    Summarise a completed tutoring session.
+
+    Request body:
+        {
+          "lesson_title": "Python Variables",
+          "conversation": [
+            {"role": "user", "content": "…"},
+            {"role": "assistant", "content": "…"},
+            …
+          ]
+        }
+
+    Returns:
+        {"summary": "<3-5 sentence session summary with takeaways and next steps>"}
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return _error("Invalid JSON", 400)
+
+    lesson_title = body.get("lesson_title", "").strip()
+    conversation = body.get("conversation", [])
+
+    if not lesson_title:
+        return _error("lesson_title is required", 400)
+    if not conversation:
+        return _error("conversation is required", 400)
+
+    dialogue = "\n".join(
+        f"{m.get('role', 'user').upper()}: {m.get('content', '')}"
+        for m in conversation
+        if m.get("role") != "system"
+    )
+
+    prompt = (
+        f"A tutoring session on \"{lesson_title}\" just ended.\n"
+        f"Conversation:\n{dialogue}\n\n"
+        "Write a concise session summary (3–5 sentences) that:\n"
+        "1. Highlights the key concepts covered.\n"
+        "2. Notes any misconceptions that were corrected.\n"
+        "3. Suggests 1–2 concrete next steps for the learner."
+    )
+
+    result = await env.AI.run(
+        "@cf/meta/llama-3.1-8b-instruct",
+        {
+            "messages": [
+                {"role": "system", "content": _tutor_system_prompt()},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 512,
+        },
+    )
+    text = result.get("response", "") if isinstance(result, dict) else ""
+    return _cors_response(json.dumps({"summary": text}), 200)
 
 
 # ---------------------------------------------------------------------------
