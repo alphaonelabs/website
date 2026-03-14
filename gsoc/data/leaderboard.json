@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-02T03:05:19Z",
+  "generated_at": "2026-03-14T19:14:33Z",
   "start_date": "2025-09-01T00:00:00Z",
   "contributors": [
     {
@@ -8,19 +8,39 @@
       "profile_url": "https://github.com/Ananya44444",
       "merged_pr_count": 13,
       "closed_pr_count": 2,
-      "open_pr_count": 5,
-      "total_pr_count": 20,
+      "open_pr_count": 6,
+      "total_pr_count": 21,
       "smart_score": 130
     },
     {
       "username": "chinnu8055",
       "avatar_url": "https://avatars.githubusercontent.com/u/116548450?v=4",
       "profile_url": "https://github.com/chinnu8055",
-      "merged_pr_count": 8,
+      "merged_pr_count": 9,
       "closed_pr_count": 2,
       "open_pr_count": 2,
-      "total_pr_count": 12,
-      "smart_score": 80
+      "total_pr_count": 13,
+      "smart_score": 90
+    },
+    {
+      "username": "ghanshyam2005singh",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56252619?v=4",
+      "profile_url": "https://github.com/ghanshyam2005singh",
+      "merged_pr_count": 4,
+      "closed_pr_count": 2,
+      "open_pr_count": 7,
+      "total_pr_count": 13,
+      "smart_score": 37
+    },
+    {
+      "username": "Lakshya-2440",
+      "avatar_url": "https://avatars.githubusercontent.com/u/98229279?v=4",
+      "profile_url": "https://github.com/Lakshya-2440",
+      "merged_pr_count": 4,
+      "closed_pr_count": 6,
+      "open_pr_count": 3,
+      "total_pr_count": 13,
+      "smart_score": 32.0
     },
     {
       "username": "Shrey1006",
@@ -28,8 +48,8 @@
       "profile_url": "https://github.com/Shrey1006",
       "merged_pr_count": 3,
       "closed_pr_count": 1,
-      "open_pr_count": 2,
-      "total_pr_count": 6,
+      "open_pr_count": 3,
+      "total_pr_count": 7,
       "smart_score": 30
     },
     {
@@ -41,6 +61,26 @@
       "open_pr_count": 3,
       "total_pr_count": 5,
       "smart_score": 19
+    },
+    {
+      "username": "Shubhashish-Chakraborty",
+      "avatar_url": "https://avatars.githubusercontent.com/u/164302071?v=4",
+      "profile_url": "https://github.com/Shubhashish-Chakraborty",
+      "merged_pr_count": 2,
+      "closed_pr_count": 3,
+      "open_pr_count": 5,
+      "total_pr_count": 10,
+      "smart_score": 13.0
+    },
+    {
+      "username": "dpx9",
+      "avatar_url": "https://avatars.githubusercontent.com/u/263519110?v=4",
+      "profile_url": "https://github.com/dpx9",
+      "merged_pr_count": 1,
+      "closed_pr_count": 0,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": 10
     },
     {
       "username": "PranavGadge01",
@@ -103,14 +143,44 @@
       "smart_score": 4.0
     },
     {
-      "username": "Shubhashish-Chakraborty",
-      "avatar_url": "https://avatars.githubusercontent.com/u/164302071?v=4",
-      "profile_url": "https://github.com/Shubhashish-Chakraborty",
-      "merged_pr_count": 1,
-      "closed_pr_count": 2,
-      "open_pr_count": 5,
-      "total_pr_count": 8,
-      "smart_score": 3.0
+      "username": "Diegomed11",
+      "avatar_url": "https://avatars.githubusercontent.com/u/204741475?v=4",
+      "profile_url": "https://github.com/Diegomed11",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 1,
+      "total_pr_count": 1,
+      "smart_score": -1
+    },
+    {
+      "username": "Rupendra0",
+      "avatar_url": "https://avatars.githubusercontent.com/u/166535250?v=4",
+      "profile_url": "https://github.com/Rupendra0",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 1,
+      "total_pr_count": 1,
+      "smart_score": -1
+    },
+    {
+      "username": "kritikamangal4",
+      "avatar_url": "https://avatars.githubusercontent.com/u/226588207?v=4",
+      "profile_url": "https://github.com/kritikamangal4",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 1,
+      "total_pr_count": 1,
+      "smart_score": -1
+    },
+    {
+      "username": "TarekMGamal",
+      "avatar_url": "https://avatars.githubusercontent.com/u/85802665?v=4",
+      "profile_url": "https://github.com/TarekMGamal",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 1,
+      "total_pr_count": 1,
+      "smart_score": -1
     },
     {
       "username": "hk2166",
@@ -223,16 +293,6 @@
       "smart_score": -1
     },
     {
-      "username": "georgeibrahim1",
-      "avatar_url": "https://avatars.githubusercontent.com/u/103423847?v=4",
-      "profile_url": "https://github.com/georgeibrahim1",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 1,
-      "total_pr_count": 1,
-      "smart_score": -1
-    },
-    {
       "username": "ProgrammingPirates",
       "avatar_url": "https://avatars.githubusercontent.com/u/78801686?v=4",
       "profile_url": "https://github.com/ProgrammingPirates",
@@ -276,6 +336,16 @@
       "username": "dipankarchettri",
       "avatar_url": "https://avatars.githubusercontent.com/u/71317043?v=4",
       "profile_url": "https://github.com/dipankarchettri",
+      "merged_pr_count": 0,
+      "closed_pr_count": 1,
+      "open_pr_count": 0,
+      "total_pr_count": 1,
+      "smart_score": -2.0
+    },
+    {
+      "username": "georgeibrahim1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/103423847?v=4",
+      "profile_url": "https://github.com/georgeibrahim1",
       "merged_pr_count": 0,
       "closed_pr_count": 1,
       "open_pr_count": 0,
@@ -373,39 +443,9 @@
       "smart_score": -2.0
     },
     {
-      "username": "ankushchk",
-      "avatar_url": "https://avatars.githubusercontent.com/u/67872399?v=4",
-      "profile_url": "https://github.com/ankushchk",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 2,
-      "total_pr_count": 2,
-      "smart_score": -2
-    },
-    {
-      "username": "Premkumar-2004",
-      "avatar_url": "https://avatars.githubusercontent.com/u/116860762?v=4",
-      "profile_url": "https://github.com/Premkumar-2004",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 2,
-      "total_pr_count": 2,
-      "smart_score": -2
-    },
-    {
       "username": "gopikrishna-20",
       "avatar_url": "https://avatars.githubusercontent.com/u/173124505?v=4",
       "profile_url": "https://github.com/gopikrishna-20",
-      "merged_pr_count": 0,
-      "closed_pr_count": 0,
-      "open_pr_count": 2,
-      "total_pr_count": 2,
-      "smart_score": -2
-    },
-    {
-      "username": "ghanshyam2005singh",
-      "avatar_url": "https://avatars.githubusercontent.com/u/56252619?v=4",
-      "profile_url": "https://github.com/ghanshyam2005singh",
       "merged_pr_count": 0,
       "closed_pr_count": 0,
       "open_pr_count": 2,
@@ -443,6 +483,16 @@
       "smart_score": -3.0
     },
     {
+      "username": "Premkumar-2004",
+      "avatar_url": "https://avatars.githubusercontent.com/u/116860762?v=4",
+      "profile_url": "https://github.com/Premkumar-2004",
+      "merged_pr_count": 0,
+      "closed_pr_count": 0,
+      "open_pr_count": 3,
+      "total_pr_count": 3,
+      "smart_score": -3
+    },
+    {
       "username": "SGNayak12",
       "avatar_url": "https://avatars.githubusercontent.com/u/152470982?v=4",
       "profile_url": "https://github.com/SGNayak12",
@@ -451,26 +501,6 @@
       "open_pr_count": 3,
       "total_pr_count": 3,
       "smart_score": -3
-    },
-    {
-      "username": "Flashl3opard",
-      "avatar_url": "https://avatars.githubusercontent.com/u/69573060?v=4",
-      "profile_url": "https://github.com/Flashl3opard",
-      "merged_pr_count": 0,
-      "closed_pr_count": 2,
-      "open_pr_count": 0,
-      "total_pr_count": 2,
-      "smart_score": -4.0
-    },
-    {
-      "username": "Lakshya-2440",
-      "avatar_url": "https://avatars.githubusercontent.com/u/98229279?v=4",
-      "profile_url": "https://github.com/Lakshya-2440",
-      "merged_pr_count": 0,
-      "closed_pr_count": 1,
-      "open_pr_count": 2,
-      "total_pr_count": 3,
-      "smart_score": -4.0
     },
     {
       "username": "Riya379",
@@ -511,6 +541,36 @@
       "open_pr_count": 2,
       "total_pr_count": 12,
       "smart_score": -8.0
+    },
+    {
+      "username": "ankushchk",
+      "avatar_url": "https://avatars.githubusercontent.com/u/67872399?v=4",
+      "profile_url": "https://github.com/ankushchk",
+      "merged_pr_count": 0,
+      "closed_pr_count": 3,
+      "open_pr_count": 2,
+      "total_pr_count": 5,
+      "smart_score": -8.0
+    },
+    {
+      "username": "Flashl3opard",
+      "avatar_url": "https://avatars.githubusercontent.com/u/69573060?v=4",
+      "profile_url": "https://github.com/Flashl3opard",
+      "merged_pr_count": 0,
+      "closed_pr_count": 2,
+      "open_pr_count": 4,
+      "total_pr_count": 6,
+      "smart_score": -8.0
+    },
+    {
+      "username": "ayesha1145",
+      "avatar_url": "https://avatars.githubusercontent.com/u/130880100?v=4",
+      "profile_url": "https://github.com/ayesha1145",
+      "merged_pr_count": 0,
+      "closed_pr_count": 2,
+      "open_pr_count": 6,
+      "total_pr_count": 8,
+      "smart_score": -10.0
     }
   ]
 }
