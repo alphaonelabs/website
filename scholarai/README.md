@@ -1,8 +1,8 @@
 # ScholarAI
 
-AI-powered research assistant designed to help students and scientists navigate large volumes of academic literature. Supports paper discovery, summarization, citation exploration, and question answering across research papers. Helps organise knowledge, identify trends, and accelerate literature review workflows.
+AI-powered research assistant designed to help students and scientists navigate large volumes of academic literature. Supports paper discovery, summarization, citation exploration, and question answering across research papers. Helps organize knowledge, identify trends, and accelerate literature review workflows.
 
-Built as a **Cloudflare Python Worker** powered by **Cloudflare Workers AI** (`@cf/meta/llama-3.1-8b-instruct`).
+Built as a **Cloudflare Python Worker** — using **only the `workers` module** (no third-party frameworks) — powered by **Cloudflare Workers AI** (`@cf/meta/llama-3.1-8b-instruct`).
 
 ---
 
@@ -11,10 +11,10 @@ Built as a **Cloudflare Python Worker** powered by **Cloudflare Workers AI** (`@
 | Feature | Endpoint | Description |
 |---------|----------|-------------|
 | Paper discovery | `POST /api/discover` | Find relevant papers for a query |
-| Summarisation | `POST /api/summarize` | Structured summary of a paper |
+| Summarization | `POST /api/summarize` | Structured summary of a paper |
 | Citation exploration | `POST /api/citations` | Explore a paper's citation network |
 | Question answering | `POST /api/qa` | Answer research questions from literature |
-| Knowledge organisation | `POST /api/organize` | Cluster and map a reading list |
+| Knowledge organization | `POST /api/organize` | Cluster and map a reading list |
 | Trend identification | `POST /api/trends` | Spot emerging and declining research trends |
 | Literature review | `POST /api/review` | Generate a full literature review section |
 
@@ -31,14 +31,14 @@ Built as a **Cloudflare Python Worker** powered by **Cloudflare Workers AI** (`@
 # Install Node dependencies (Wrangler CLI)
 npm install
 
-# Start the local development server (requires a free Cloudflare account)
+# Authenticate with Cloudflare (required for the Workers AI binding)
+npx wrangler login
+
+# Start the local development server
 npm run dev
 ```
 
 The local server starts at `http://localhost:8787`.
-
-> **Note:** A Cloudflare account is required for the Workers AI binding.
-> Run `npx wrangler login` before `npm run dev` to authenticate.
 
 ---
 
@@ -126,7 +126,7 @@ Answer a research question using the AI's knowledge and optional context.
 
 ### `POST /api/organize`
 
-Organise a reading list into thematic clusters and a knowledge map.
+Organize a reading list into thematic clusters and a knowledge map.
 
 **Request body:**
 ```json
@@ -202,12 +202,13 @@ uv run pytest tests/ -v
 ```
 scholarai/
 ├── src/
-│   └── entry.py          # FastAPI app + WorkerEntrypoint
+│   └── entry.py          # Handler functions + WorkerEntrypoint router
 ├── tests/
-│   └── test_entry.py     # Pytest tests with mocked AI binding
-├── wrangler.jsonc         # Cloudflare Workers configuration
+│   └── test_entry.py     # Async pytest tests with mocked AI binding
+├── wrangler.toml          # Cloudflare Workers configuration
 ├── pyproject.toml         # Python project + dependencies
 ├── package.json           # npm scripts for Wrangler CLI
+├── conftest.py            # Workers SDK stub for local testing
 └── README.md
 ```
 
@@ -219,18 +220,15 @@ scholarai/
 HTTP Request
      │
      ▼
-WorkerEntrypoint.fetch()   ← Cloudflare Workers runtime
-     │  (via asgi bridge)
+Default.fetch()           ← Cloudflare Workers runtime (WorkerEntrypoint)
+     │  manual URL routing
      ▼
-FastAPI app                ← routing, validation, error handling
+handle_*() functions      ← pure async business logic
      │
      ▼
-Depends(get_env)           ← injects Cloudflare env into each handler
+env.AI.run(model, params) ← Cloudflare Workers AI (@cf/meta/llama-3.1-8b-instruct)
      │
      ▼
-env.AI.run(model, params)  ← Cloudflare Workers AI (@cf/meta/llama-3.1-8b-instruct)
-     │
-     ▼
-JSON Response
+Response(json, status)    ← workers.Response
 ```
 

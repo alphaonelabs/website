@@ -1,90 +1,31 @@
 import json
-from typing import Optional
+from urllib.parse import urlparse
 
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from workers import WorkerEntrypoint
+from workers import Response, WorkerEntrypoint
 
 # ---------------------------------------------------------------------------
-# App setup
+# Constants
 # ---------------------------------------------------------------------------
-
-app = FastAPI(
-    title="ScholarAI",
-    description=(
-        "AI-powered research assistant for students and scientists. "
-        "Supports paper discovery, summarization, citation exploration, "
-        "question answering, knowledge organization, trend identification, "
-        "and literature review generation."
-    ),
-    version="1.0.0",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 AI_MODEL = "@cf/meta/llama-3.1-8b-instruct"
 
 # ---------------------------------------------------------------------------
-# Dependency: AI environment
+# HTTP helpers
 # ---------------------------------------------------------------------------
 
 
-def get_env(request: Request):
-    """Return the Cloudflare env object injected by the Workers runtime."""
-    return request.scope.get("env")
+def _json_response(data: dict, status: int = 200) -> Response:
+    """Return a JSON Response with the correct Content-Type header."""
+    return Response(
+        json.dumps(data),
+        status=status,
+        headers={"Content-Type": "application/json"},
+    )
 
 
-# ---------------------------------------------------------------------------
-# Request models
-# ---------------------------------------------------------------------------
-
-
-class DiscoverRequest(BaseModel):
-    query: str
-    fields: list[str] = []
-    limit: int = 10
-
-
-class SummarizeRequest(BaseModel):
-    title: str = ""
-    abstract: str = ""
-    content: str = ""
-
-
-class CitationsRequest(BaseModel):
-    paper: str
-    type: str = "related"
-
-
-class QARequest(BaseModel):
-    question: str
-    context: str = ""
-    papers: list[dict] = []
-
-
-class OrganizeRequest(BaseModel):
-    papers: list[dict]
-    organize_by: str = "topic"
-
-
-class TrendsRequest(BaseModel):
-    field: str = ""
-    papers: list[dict] = []
-    time_range: str = ""
-
-
-class ReviewRequest(BaseModel):
-    topic: str
-    papers: list[dict] = []
-    style: str = "comprehensive"
-    audience: str = "researchers"
+def _error(message: str, status: int) -> Response:
+    """Return a JSON error response."""
+    return _json_response({"error": message}, status)
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +33,7 @@ class ReviewRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _try_parse_json(text: str) -> dict | str:
+def _try_parse_json(text: str):
     """Attempt to extract and parse a JSON object from a text response."""
     start = text.find("{")
     end = text.rfind("}") + 1
@@ -115,20 +56,18 @@ async def run_ai(env, system_prompt: str, user_prompt: str) -> str:
             ]
         },
     )
-    # The llama-3.1 model returns a dict with a "response" key
     if isinstance(result, dict):
         return result.get("response", "")
-    # Newer model objects may expose an attribute
     return getattr(result, "response", str(result))
 
 
 # ---------------------------------------------------------------------------
-# Routes
+# Business-logic handlers (pure async functions, easy to unit-test)
 # ---------------------------------------------------------------------------
 
 
-@app.get("/", summary="API information and usage guide")
-async def api_info():
+def handle_info() -> dict:
+    """Return API metadata."""
     return {
         "name": "ScholarAI",
         "version": "1.0.0",
@@ -206,18 +145,16 @@ async def api_info():
     }
 
 
-@app.post("/api/discover", summary="Discover relevant academic papers")
-async def discover_papers(body: DiscoverRequest, env=Depends(get_env)):
-    """
-    Discover relevant academic papers for a research query.
-    Returns suggested papers, research directions, key concepts, and related queries.
-    """
-    if env is None:
-        raise HTTPException(status_code=503, detail="AI binding not available")
+async def handle_discover(body: dict, env) -> tuple[dict, int]:
+    """Discover relevant academic papers for a research query."""
+    query = body.get("query", "").strip()
+    if not query:
+        return {"error": "query is required"}, 400
 
-    field_context = (
-        f" in the fields of {', '.join(body.fields)}" if body.fields else ""
-    )
+    fields = body.get("fields", [])
+    limit = int(body.get("limit", 10))
+    field_context = f" in the fields of {', '.join(fields)}" if fields else ""
+
     system_prompt = (
         "You are ScholarAI, an expert academic research assistant. "
         "You help researchers discover relevant academic papers and literature. "
@@ -227,38 +164,32 @@ async def discover_papers(body: DiscoverRequest, env=Depends(get_env)):
     )
     user_prompt = (
         f"Discover academic papers for the following research query{field_context}:\n\n"
-        f"Query: {body.query}\n"
-        f"Requested limit: {body.limit} papers\n\n"
+        f"Query: {query}\n"
+        f"Requested limit: {limit} papers\n\n"
         "Return a JSON object with keys: papers (list with title, authors, year, venue, "
         "abstract_summary, relevance_score, key_topics), research_directions (list), "
         "key_concepts (list), related_queries (list)."
     )
     response_text = await run_ai(env, system_prompt, user_prompt)
-    return {"query": body.query, "results": _try_parse_json(response_text)}
+    return {"query": query, "results": _try_parse_json(response_text)}, 200
 
 
-@app.post("/api/summarize", summary="Summarize a research paper")
-async def summarize_paper(body: SummarizeRequest, env=Depends(get_env)):
-    """
-    Generate a structured summary of a research paper from its title, abstract, or full content.
-    """
-    if env is None:
-        raise HTTPException(status_code=503, detail="AI binding not available")
+async def handle_summarize(body: dict, env) -> tuple[dict, int]:
+    """Generate a structured summary of a research paper."""
+    title = body.get("title", "").strip()
+    abstract = body.get("abstract", "").strip()
+    content = body.get("content", "").strip()
 
-    if not (body.title or body.abstract or body.content):
-        raise HTTPException(
-            status_code=400,
-            detail="At least one of title, abstract, or content is required",
-        )
+    if not (title or abstract or content):
+        return {"error": "At least one of title, abstract, or content is required"}, 400
 
     parts = []
-    if body.title:
-        parts.append(f"Title: {body.title}")
-    if body.abstract:
-        parts.append(f"Abstract: {body.abstract}")
-    if body.content:
-        # Limit content to avoid exceeding context window
-        parts.append(f"Content:\n{body.content[:4000]}")
+    if title:
+        parts.append(f"Title: {title}")
+    if abstract:
+        parts.append(f"Abstract: {abstract}")
+    if content:
+        parts.append(f"Content:\n{content[:4000]}")
 
     system_prompt = (
         "You are ScholarAI, an expert academic research assistant specialized in "
@@ -266,7 +197,7 @@ async def summarize_paper(body: SummarizeRequest, env=Depends(get_env)):
         "that capture the key contributions, methodology, results, and implications."
     )
     user_prompt = (
-        f"Summarise the following research paper:\n\n{chr(10).join(parts)}\n\n"
+        f"Summarize the following research paper:\n\n{chr(10).join(parts)}\n\n"
         "Structure your summary with these sections:\n"
         "1. Main contribution\n"
         "2. Problem being solved\n"
@@ -277,17 +208,16 @@ async def summarize_paper(body: SummarizeRequest, env=Depends(get_env)):
         "7. Impact and significance"
     )
     summary = await run_ai(env, system_prompt, user_prompt)
-    return {"title": body.title, "summary": summary}
+    return {"title": title, "summary": summary}, 200
 
 
-@app.post("/api/citations", summary="Explore paper citations and related work")
-async def explore_citations(body: CitationsRequest, env=Depends(get_env)):
-    """
-    Analyse the citation network around a paper: foundational works, citing papers,
-    and related research.
-    """
-    if env is None:
-        raise HTTPException(status_code=503, detail="AI binding not available")
+async def handle_citations(body: dict, env) -> tuple[dict, int]:
+    """Explore the citation network around a paper."""
+    paper = body.get("paper", "").strip()
+    if not paper:
+        return {"error": "paper is required"}, 400
+
+    citation_type = body.get("type", "related")
 
     system_prompt = (
         "You are ScholarAI, an expert academic research assistant specializing in "
@@ -297,8 +227,8 @@ async def explore_citations(body: CitationsRequest, env=Depends(get_env)):
     )
     user_prompt = (
         f"Explore citations and related work for the following paper:\n\n"
-        f"Paper: {body.paper}\n"
-        f"Citation type requested: {body.type}\n\n"
+        f"Paper: {paper}\n"
+        f"Citation type requested: {citation_type}\n\n"
         "Please provide:\n"
         "1. Key foundational papers (seminal works this paper builds upon)\n"
         "2. Papers that cite this work (if applicable)\n"
@@ -308,25 +238,23 @@ async def explore_citations(body: CitationsRequest, env=Depends(get_env)):
         "6. Connections to adjacent research fields"
     )
     result = await run_ai(env, system_prompt, user_prompt)
-    return {"paper": body.paper, "citation_type": body.type, "exploration": result}
+    return {"paper": paper, "citation_type": citation_type, "exploration": result}, 200
 
 
-@app.post("/api/qa", summary="Question answering about research topics")
-async def question_answering(body: QARequest, env=Depends(get_env)):
-    """
-    Answer a research question, drawing on provided context or papers and the
-    model's knowledge of the scientific literature.
-    """
-    if env is None:
-        raise HTTPException(status_code=503, detail="AI binding not available")
+async def handle_qa(body: dict, env) -> tuple[dict, int]:
+    """Answer a research question using the AI."""
+    question = body.get("question", "").strip()
+    if not question:
+        return {"error": "question is required"}, 400
+
+    context = body.get("context", "")
+    papers = body.get("papers", [])
 
     context_parts = []
-    if body.context:
-        context_parts.append(f"Context:\n{body.context}")
-    if body.papers:
-        context_parts.append(
-            f"Available papers:\n{json.dumps(body.papers[:5], indent=2)}"
-        )
+    if context:
+        context_parts.append(f"Context:\n{context}")
+    if papers:
+        context_parts.append(f"Available papers:\n{json.dumps(papers[:5], indent=2)}")
 
     system_prompt = (
         "You are ScholarAI, an expert academic research assistant with deep knowledge "
@@ -337,7 +265,7 @@ async def question_answering(body: QARequest, env=Depends(get_env)):
     extra = ("\n\n" + "\n\n".join(context_parts)) if context_parts else ""
     user_prompt = (
         f"Please answer the following research question:\n\n"
-        f"Question: {body.question}{extra}\n\n"
+        f"Question: {question}{extra}\n\n"
         "Provide:\n"
         "1. A comprehensive answer\n"
         "2. Key evidence and findings from the literature\n"
@@ -346,29 +274,28 @@ async def question_answering(body: QARequest, env=Depends(get_env)):
         "5. Areas of ongoing debate or uncertainty"
     )
     answer = await run_ai(env, system_prompt, user_prompt)
-    return {"question": body.question, "answer": answer}
+    return {"question": question, "answer": answer}, 200
 
 
-@app.post("/api/organize", summary="Organise a collection of papers")
-async def organize_knowledge(body: OrganizeRequest, env=Depends(get_env)):
-    """
-    Organise a list of papers into thematic clusters, a knowledge map, and a
-    recommended reading order.
-    """
-    if env is None:
-        raise HTTPException(status_code=503, detail="AI binding not available")
+async def handle_organize(body: dict, env) -> tuple[dict, int]:
+    """Organize a collection of papers into thematic clusters."""
+    papers = body.get("papers")
+    if not papers:
+        return {"error": "papers is required"}, 400
+
+    organize_by = body.get("organize_by", "topic")
 
     system_prompt = (
         "You are ScholarAI, an expert academic research assistant specialized in "
         "knowledge organization and taxonomy. Help researchers organize and structure "
         "their literature collection for better understanding and navigation."
     )
-    papers_json = json.dumps(body.papers[:20], indent=2)
+    papers_json = json.dumps(papers[:20], indent=2)
     user_prompt = (
-        f"Organise the following research papers by {body.organize_by}:\n\n"
+        f"Organize the following research papers by {organize_by}:\n\n"
         f"Papers:\n{papers_json}\n\n"
         "Please provide:\n"
-        "1. Organised groupings / clusters\n"
+        "1. Organized groupings / clusters\n"
         "2. Key themes and relationships between papers\n"
         "3. A knowledge map showing connections\n"
         "4. Recommended reading order\n"
@@ -376,32 +303,25 @@ async def organize_knowledge(body: OrganizeRequest, env=Depends(get_env)):
         "6. Cross-cutting themes and methodologies"
     )
     result = await run_ai(env, system_prompt, user_prompt)
-    return {"organize_by": body.organize_by, "organization": result}
+    return {"organize_by": organize_by, "organization": result}, 200
 
 
-@app.post("/api/trends", summary="Identify research trends in a field")
-async def identify_trends(body: TrendsRequest, env=Depends(get_env)):
-    """
-    Identify emerging trends, hot topics, declining areas, and future directions
-    in a research field or from a set of papers.
-    """
-    if env is None:
-        raise HTTPException(status_code=503, detail="AI binding not available")
+async def handle_trends(body: dict, env) -> tuple[dict, int]:
+    """Identify research trends in a field or from a set of papers."""
+    field = body.get("field", "").strip()
+    papers = body.get("papers", [])
 
-    if not (body.field or body.papers):
-        raise HTTPException(
-            status_code=400, detail="At least one of field or papers is required"
-        )
+    if not field and not papers:
+        return {"error": "At least one of field or papers is required"}, 400
 
+    time_range = body.get("time_range", "")
     context_parts = []
-    if body.field:
-        context_parts.append(f"Research field: {body.field}")
-    if body.time_range:
-        context_parts.append(f"Time range: {body.time_range}")
-    if body.papers:
-        context_parts.append(
-            f"Papers:\n{json.dumps(body.papers[:20], indent=2)}"
-        )
+    if field:
+        context_parts.append(f"Research field: {field}")
+    if time_range:
+        context_parts.append(f"Time range: {time_range}")
+    if papers:
+        context_parts.append(f"Papers:\n{json.dumps(papers[:20], indent=2)}")
 
     system_prompt = (
         "You are ScholarAI, an expert academic research assistant specialized in "
@@ -421,27 +341,26 @@ async def identify_trends(body: TrendsRequest, env=Depends(get_env)):
         "7. Technology / tool adoption trends"
     )
     result = await run_ai(env, system_prompt, user_prompt)
-    return {"field": body.field, "trends": result}
+    return {"field": field, "trends": result}, 200
 
 
-@app.post("/api/review", summary="Generate a literature review")
-async def generate_review(body: ReviewRequest, env=Depends(get_env)):
-    """
-    Generate a structured, academically rigorous literature review section on
-    a given topic, incorporating provided papers if supplied.
-    """
-    if env is None:
-        raise HTTPException(status_code=503, detail="AI binding not available")
+async def handle_review(body: dict, env) -> tuple[dict, int]:
+    """Generate a structured literature review."""
+    topic = body.get("topic", "").strip()
+    if not topic:
+        return {"error": "topic is required"}, 400
+
+    papers = body.get("papers", [])
+    style = body.get("style", "comprehensive")
+    audience = body.get("audience", "researchers")
 
     context_parts = [
-        f"Topic: {body.topic}",
-        f"Review style: {body.style}",
-        f"Target audience: {body.audience}",
+        f"Topic: {topic}",
+        f"Review style: {style}",
+        f"Target audience: {audience}",
     ]
-    if body.papers:
-        context_parts.append(
-            f"Papers to include:\n{json.dumps(body.papers[:15], indent=2)}"
-        )
+    if papers:
+        context_parts.append(f"Papers to include:\n{json.dumps(papers[:15], indent=2)}")
 
     system_prompt = (
         "You are ScholarAI, an expert academic research assistant specialized in "
@@ -452,7 +371,7 @@ async def generate_review(body: ReviewRequest, env=Depends(get_env)):
     user_prompt = (
         f"Generate a literature review for the following:\n\n"
         f"{chr(10).join(context_parts)}\n\n"
-        f"Write a {body.style} literature review for {body.audience} that includes:\n"
+        f"Write a {style} literature review for {audience} that includes:\n"
         "1. Introduction to the research area\n"
         "2. Historical background and development\n"
         "3. Current state of the art\n"
@@ -463,8 +382,22 @@ async def generate_review(body: ReviewRequest, env=Depends(get_env)):
         "8. Conclusion"
     )
     review = await run_ai(env, system_prompt, user_prompt)
-    return {"topic": body.topic, "style": body.style, "review": review}
+    return {"topic": topic, "style": style, "review": review}, 200
 
+
+# ---------------------------------------------------------------------------
+# Route table
+# ---------------------------------------------------------------------------
+
+_POST_ROUTES = {
+    "/api/discover": handle_discover,
+    "/api/summarize": handle_summarize,
+    "/api/citations": handle_citations,
+    "/api/qa": handle_qa,
+    "/api/organize": handle_organize,
+    "/api/trends": handle_trends,
+    "/api/review": handle_review,
+}
 
 # ---------------------------------------------------------------------------
 # Cloudflare Workers entrypoint
@@ -473,6 +406,23 @@ async def generate_review(body: ReviewRequest, env=Depends(get_env)):
 
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
-        import asgi
+        path = urlparse(request.url).path.rstrip("/") or "/"
+        method = request.method.upper()
 
-        return await asgi.fetch(app, request.js_object, self.env)
+        if method == "GET" and path == "/":
+            return _json_response(handle_info())
+
+        if method == "POST":
+            handler = _POST_ROUTES.get(path)
+            if handler is None:
+                return _error("Not found", 404)
+
+            try:
+                body = await request.json()
+            except Exception:
+                return _error("Invalid JSON body", 400)
+
+            data, status = await handler(body, self.env)
+            return _json_response(data, status)
+
+        return _error("Not found", 404)
