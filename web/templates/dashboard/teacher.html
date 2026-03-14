@@ -239,4 +239,142 @@
       </div>
     {% endif %}
   </div>
+
+    <!-- Analytics Charts -->
+    <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Enrollment Trend -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          <i class="fas fa-user-plus text-teal-500 dark:text-teal-300 mr-2"></i> Enrollments (Last 30 Days)
+        </h2>
+        <canvas id="enrollmentChart" height="120" role="img" aria-label="Line chart showing daily enrollments over the last 30 days"></canvas>
+      </div>
+      <!-- Revenue Trend -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          <i class="fas fa-dollar-sign text-green-500 dark:text-green-300 mr-2"></i> Revenue (Last 12 Weeks)
+        </h2>
+        <canvas id="revenueChart" height="120" role="img" aria-label="Bar chart showing weekly revenue over the last 12 weeks"></canvas>
+      </div>
+    </div>
+
+    <!-- Top Students -->
+    {% if top_students %}
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+        <i class="fas fa-trophy text-yellow-500 dark:text-yellow-300 mr-2"></i> Top Performing Students
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700">
+              <th class="pb-3 text-gray-500 dark:text-gray-400 font-medium">Rank</th>
+              <th class="pb-3 text-gray-500 dark:text-gray-400 font-medium">Student</th>
+              <th class="pb-3 text-gray-500 dark:text-gray-400 font-medium">Courses</th>
+              <th class="pb-3 text-gray-500 dark:text-gray-400 font-medium">Avg. Progress</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in top_students %}
+            <tr class="border-b border-gray-100 dark:border-gray-700 last:border-0">
+              <td class="py-3 text-gray-900 dark:text-white font-semibold">
+                {% if forloop.counter == 1 %}
+                  <i class="fas fa-medal text-yellow-500"></i>
+                {% elif forloop.counter == 2 %}
+                  <i class="fas fa-medal text-gray-400"></i>
+                {% elif forloop.counter == 3 %}
+                  <i class="fas fa-medal text-amber-600"></i>
+                {% else %}
+                  {{ forloop.counter }}
+                {% endif %}
+              </td>
+              <td class="py-3">
+                <div class="flex items-center space-x-3">
+                  {% if entry.student.profile.avatar %}
+                    <img src="{{ entry.student.profile.avatar.url }}" alt="" class="w-8 h-8 rounded-full object-cover">
+                  {% else %}
+                    <div class="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center">
+                      <i class="fas fa-user text-teal-500 dark:text-teal-300 text-xs"></i>
+                    </div>
+                  {% endif %}
+                  <span class="font-medium text-gray-900 dark:text-white">{{ entry.student.get_full_name|default:entry.student.username }}</span>
+                </div>
+              </td>
+              <td class="py-3 text-gray-600 dark:text-gray-400">{{ entry.courses }}</td>
+              <td class="py-3">
+                <div class="flex items-center space-x-2">
+                  <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 w-24">
+                    <div class="bg-teal-500 h-2 rounded-full" style="width: {{ entry.avg_progress }}%"></div>
+                  </div>
+                  <span class="text-gray-900 dark:text-white font-medium">{{ entry.avg_progress }}%</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  {{ enroll_labels|json_script:"enroll-labels" }}
+  {{ enroll_data|json_script:"enroll-data" }}
+  {{ revenue_labels|json_script:"revenue-labels" }}
+  {{ revenue_data|json_script:"revenue-data" }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    const enrollLabels = JSON.parse(document.getElementById('enroll-labels').textContent);
+    const enrollData = JSON.parse(document.getElementById('enroll-data').textContent);
+    const revenueLabels = JSON.parse(document.getElementById('revenue-labels').textContent);
+    const revenueData = JSON.parse(document.getElementById('revenue-data').textContent);
+
+    new Chart(document.getElementById('enrollmentChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: enrollLabels,
+        datasets: [{
+          label: 'Enrollments',
+          data: enrollData,
+          borderColor: 'rgba(20, 184, 166, 1)',
+          backgroundColor: 'rgba(20, 184, 166, 0.1)',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 3,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 } },
+          x: { ticks: { maxTicksLimit: 8 } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('revenueChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: revenueLabels,
+        datasets: [{
+          label: 'Revenue ($)',
+          data: revenueData,
+          backgroundColor: 'rgba(34, 197, 94, 0.5)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true },
+          x: { ticks: { maxTicksLimit: 8 } }
+        }
+      }
+    });
+  </script>
+
 {% endblock content %}
