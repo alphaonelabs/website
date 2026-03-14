@@ -22,7 +22,7 @@ Built on **[Cloudflare Python Workers](https://developers.cloudflare.com/workers
 
 ```
 syntharia/
-├── wrangler.jsonc              # Cloudflare Worker configuration
+├── wrangler.toml               # Cloudflare Worker configuration
 ├── requirements-dev.txt        # Dev/test dependencies
 ├── src/
 │   ├── entry.py                # Worker entry point & URL router
