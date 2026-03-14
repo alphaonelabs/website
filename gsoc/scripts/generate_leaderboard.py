@@ -4,9 +4,12 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
 
 DEFAULT_START_DATE = datetime(2025, 9, 1, tzinfo=timezone.utc)
@@ -14,10 +17,43 @@ DEFAULT_OUTPUT_PATH = "data/leaderboard.json"
 # One-time 2025 generation command:
 # python scripts/generate_leaderboard.py --start-date 2024-09-01 \
 # --end-date 2025-06-01 --output data/leaderboard-2025.json
-REPO_CANDIDATES = [
-    ("alphaonelabs", "alphaonelabs-education-website"),
-    ("AlphaOneLabs", "education-website"),
-]
+GITHUB_ORG = "alphaonelabs"
+
+
+def fetch_search_pulls(org: str, state: str, page: int):
+    query = urllib.parse.urlencode(
+        {
+            "q": f"org:{org} is:pr state:{state}",
+            "per_page": PER_PAGE,
+            "page": page,
+        }
+    )
+    url = f"https://api.github.com/search/issues?{query}"
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "alphaonelabs-leaderboard-generator",
+    }
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+    request = urllib.request.Request(url, headers=headers)
+
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            return data.get("items", [])
+    except urllib.error.HTTPError as error:
+        if error.code == 403:
+            remaining = (
+                error.headers.get("x-ratelimit-remaining")
+                if error.headers
+                else None
+            )
+            if remaining == "0":
+                raise RuntimeError("GitHub API rate limit reached. Please try later.")
+            raise RuntimeError("GitHub API access is temporarily restricted (403).") from error
+        raise RuntimeError(f"GitHub API error: {error.code}") from error
+    except urllib.error.URLError as error:
+        raise RuntimeError(f"Unable to fetch contributor data.") from error
 MAX_CLOSED_PAGES = 10
 MAX_OPEN_PAGES = 5
 PER_PAGE = 100
@@ -97,54 +133,7 @@ def calculate_smart_score(item: dict) -> float:
     return smart_score
 
 
-def fetch_pull_page(state: str, page: int):
-    not_found_count = 0
 
-    for owner, repo in REPO_CANDIDATES:
-        query = urllib.parse.urlencode(
-            {
-                "state": state,
-                "per_page": PER_PAGE,
-                "page": page,
-            }
-        )
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls?{query}"
-        request = urllib.request.Request(
-            url,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "alphaonelabs-leaderboard-generator",
-            },
-        )
-
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as error:
-            if error.code == 404:
-                not_found_count += 1
-                continue
-
-            if error.code == 403:
-                remaining = (
-                    error.headers.get("x-ratelimit-remaining")
-                    if error.headers
-                    else None
-                )
-                if remaining == "0":
-                    raise RuntimeError(
-                        "GitHub API rate limit reached. Please try later."
-                    )
-                raise RuntimeError(
-                    "GitHub API access is temporarily restricted (403)."
-                ) from error
-
-            raise RuntimeError(f"GitHub API error: {error.code}") from error
-        except urllib.error.URLError as error:
-            raise RuntimeError("Unable to fetch contributor data.") from error
-
-    if not_found_count == len(REPO_CANDIDATES):
-        raise RuntimeError("Configured GitHub repository not found.")
 
 
 def ensure_contributor(stats: dict, user: dict):
@@ -163,9 +152,9 @@ def ensure_contributor(stats: dict, user: dict):
 
 
 def is_within_date_range(
-    value: datetime, start_date: datetime, end_date: Optional[datetime]
+    value: Optional[datetime], start_date: datetime, end_date: Optional[datetime]
 ):
-    if not value or value < start_date:
+    if value is None or value < start_date:
         return False
     if end_date and value >= end_date:
         return False
@@ -177,7 +166,7 @@ def build_leaderboard(start_date: datetime, end_date: datetime):
 
     closed_prs = []
     for page in range(1, MAX_CLOSED_PAGES + 1):
-        rows = fetch_pull_page("closed", page)
+        rows = fetch_search_pulls(GITHUB_ORG, "closed", page)
         if not isinstance(rows, list) or len(rows) == 0:
             break
         closed_prs.extend(rows)
@@ -192,7 +181,7 @@ def build_leaderboard(start_date: datetime, end_date: datetime):
         ):
             continue
 
-        merged_at = parse_github_date(pr.get("merged_at"))
+        merged_at = parse_github_date(pr.get("pull_request", {}).get("merged_at"))
         closed_at = parse_github_date(pr.get("closed_at"))
         relevant_date = merged_at or closed_at
         if not is_within_date_range(relevant_date, start_date, end_date):
@@ -206,7 +195,7 @@ def build_leaderboard(start_date: datetime, end_date: datetime):
 
     open_prs = []
     for page in range(1, MAX_OPEN_PAGES + 1):
-        rows = fetch_pull_page("open", page)
+        rows = fetch_search_pulls(GITHUB_ORG, "open", page)
         if not isinstance(rows, list) or len(rows) == 0:
             break
         open_prs.extend(rows)
