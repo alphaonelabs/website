@@ -1,0 +1,4 @@
+# Runtime dependencies for Cloudflare Python Workers are provided by the platform.
+# The packages below are used for local testing only.
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
