@@ -14,9 +14,14 @@ Routes
   POST /api/lessons     – create lesson  [teacher]
   POST /api/progress    – update lesson progress [student]
 
-All course descriptions and lesson content are stored AES-XOR encrypted.
-Passwords are stored as PBKDF2-SHA-256 hashes.
-Auth tokens are HMAC-SHA-256 signed.
+Security model
+  • Course descriptions and lesson content are stored XOR-stream-cipher-encrypted
+    at rest.  The key is SHA-256 derived from the ENCRYPTION_KEY env variable.
+    ⚠️  XOR stream cipher is used here for demonstration; for production replace
+    encrypt()/decrypt() with AES-GCM calls via `js.crypto.subtle`.
+  • Passwords are stored as PBKDF2-SHA256 hashes with a unique per-user salt
+    derived from the username and a global pepper.
+  • Auth tokens are HMAC-SHA256 signed (stateless "JWT-lite").
 
 Static HTML pages (public/) are served via the Workers KV site binding.
 """
@@ -47,7 +52,8 @@ def encrypt(plaintext: str, secret: str) -> str:
     each byte is XOR'd.  The result is Base64-encoded so it is safe to
     store as TEXT in D1.
 
-    Note: for a production deployment replace this with AES-GCM via the
+    ⚠️  XOR stream cipher – demonstration only.
+    For a production deployment replace this with AES-GCM via the
     Web Crypto API (available through `js.crypto.subtle`).
     """
     if not plaintext:
@@ -75,17 +81,26 @@ def decrypt(ciphertext: str, secret: str) -> str:
 # Password hashing
 # ---------------------------------------------------------------------------
 
-_PBKDF2_SALT = b"edu-platform-cf-salt-2024"
+# Global pepper mixed into every per-user salt to frustrate offline attacks
+# even if the DB is leaked without the application secrets.
+_PEPPER = b"edu-platform-cf-pepper-2024"
 _PBKDF2_ITERS = 100_000
 
 
-def hash_password(password: str) -> str:
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), _PBKDF2_SALT, _PBKDF2_ITERS)
+def _user_salt(username: str) -> bytes:
+    """Derive a unique per-user salt from username + global pepper."""
+    return hashlib.sha256(_PEPPER + username.encode("utf-8")).digest()
+
+
+def hash_password(password: str, username: str) -> str:
+    """Hash password with PBKDF2-SHA256 and a per-user derived salt."""
+    salt = _user_salt(username)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, _PBKDF2_ITERS)
     return base64.b64encode(dk).decode("ascii")
 
 
-def verify_password(password: str, stored_hash: str) -> bool:
-    return hash_password(password) == stored_hash
+def verify_password(password: str, stored_hash: str, username: str) -> bool:
+    return hash_password(password, username) == stored_hash
 
 
 # ---------------------------------------------------------------------------
@@ -191,10 +206,10 @@ _DDL = [
         order_num  INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )""",
-    "CREATE INDEX IF NOT EXISTS idx_courses_teacher ON courses(teacher_id)",
-    "CREATE INDEX IF NOT EXISTS idx_enroll_student  ON enrollments(student_id)",
-    "CREATE INDEX IF NOT EXISTS idx_enroll_course   ON enrollments(course_id)",
-    "CREATE INDEX IF NOT EXISTS idx_lessons_course  ON lessons(course_id)",
+    "CREATE INDEX IF NOT EXISTS idx_courses_teacher      ON courses(teacher_id)",
+    "CREATE INDEX IF NOT EXISTS idx_enrollments_student  ON enrollments(student_id)",
+    "CREATE INDEX IF NOT EXISTS idx_enrollments_course   ON enrollments(course_id)",
+    "CREATE INDEX IF NOT EXISTS idx_lessons_course       ON lessons(course_id)",
 ]
 
 
@@ -219,7 +234,7 @@ async def seed_db(env, enc_key: str):
         try:
             await env.DB.prepare(
                 "INSERT INTO users (username, email, password_hash, role) VALUES (?,?,?,?)"
-            ).bind(uname, email, hash_password(pw), role).run()
+            ).bind(uname, email, hash_password(pw, uname), role).run()
         except Exception:
             pass  # already exists
 
@@ -377,7 +392,7 @@ async def api_register(req, env):
     try:
         await env.DB.prepare(
             "INSERT INTO users (username, email, password_hash, role) VALUES (?,?,?,?)"
-        ).bind(username, email, hash_password(password), role).run()
+        ).bind(username, email, hash_password(password, username), role).run()
     except Exception as e:
         if "UNIQUE" in str(e):
             return err("Username already exists", 409)
@@ -410,7 +425,7 @@ async def api_login(req, env):
         "SELECT id, username, password_hash, role FROM users WHERE username=?"
     ).bind(username).first()
 
-    if not row or not verify_password(password, row["password_hash"]):
+    if not row or not verify_password(password, row["password_hash"], row["username"]):
         return err("Invalid username or password", 401)
 
     token = create_token(row["id"], row["username"], row["role"], env.JWT_SECRET)

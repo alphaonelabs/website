@@ -61,7 +61,7 @@
   <div id="empty-state" class="hidden text-center py-20 text-slate-400">
     <p class="text-5xl mb-4">📭</p>
     <p class="text-lg font-medium" id="empty-msg">Nothing here yet.</p>
-    <a id="empty-action-link" href="/" class="mt-4 inline-block text-brand font-semibold hover:underline" id="empty-action">Browse courses</a>
+    <a id="empty-action-link" href="/" class="mt-4 inline-block text-brand font-semibold hover:underline" id="empty-action-text">Browse courses</a>
   </div>
 
 </main>
@@ -146,7 +146,7 @@
       document.getElementById('empty-state').classList.remove('hidden');
       document.getElementById('empty-msg').textContent = "You haven't created any courses yet.";
       document.getElementById('empty-action-link').href = '/teach.html';
-      document.getElementById('empty-action').textContent = 'Create your first course →';
+      document.getElementById('empty-action-text').textContent = 'Create your first course →';
       return;
     }
 
@@ -211,7 +211,7 @@
       document.getElementById('empty-state').classList.remove('hidden');
       document.getElementById('empty-msg').textContent = "You haven't enrolled in any courses yet.";
       document.getElementById('empty-action-link').href = '/';
-      document.getElementById('empty-action').textContent = 'Browse courses →';
+      document.getElementById('empty-action-text').textContent = 'Browse courses →';
       return;
     }
 
