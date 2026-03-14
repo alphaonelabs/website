@@ -220,6 +220,191 @@ If you encounter any issues or need support, please:
 3. Join us on [Slack](https://join.slack.com/t/alphaonelabs/shared_invite/zt-7dvtocfr-1dYWOL0XZwEEPUeWXxrB1A)
 4. Join us on [Discord](https://discord.gg/HJtuzTJN3h)
 
+## Homepage Design Philosophy
+
+This section documents the principles guiding the homepage and overall platform design toward a **secure, focused, and trustworthy** online education experience.
+
+### Core Goal
+
+The homepage should answer three questions immediately:
+
+1. **What can I learn here?**
+2. **How do I start learning?**
+3. **Why should I trust this platform?**
+
+Everything else is secondary.
+
+---
+
+### ✅ Keep on Homepage (Vital Elements)
+
+These are the **minimum essential elements** for an online education platform:
+
+#### Primary Actions (Above the Fold)
+
+```
+Alpha One Labs
+Secure Open Education Platform
+
+[Start Learning]   [Start Teaching]
+
+Browse Courses | Join Live Class
+```
+
+#### Learning Content
+
+- Courses
+- Live Classes
+- Subjects
+- Study Groups
+
+#### Platform Features
+
+- Virtual Classroom
+- Collaborative Whiteboard
+- Progress Tracking
+- Secure Payments
+- Encrypted Communication
+
+#### For Teachers
+
+- Create Courses
+- Manage Students
+- Earn from Teaching
+- Analytics
+
+#### Trust & Security Indicators
+
+```
+🔐 End-to-End Encrypted Classes
+🛡️  Open Source Transparency
+📚 Community Driven Learning
+```
+
+#### Progress & Achievements
+
+Visible under the learner dashboard:
+
+- Progress trackers
+- Achievements
+- Grade tracking
+
+---
+
+### 🔀 Move Off Homepage (Secondary Features)
+
+These are valid features but should **not** appear on the main landing page:
+
+| Feature | Move To |
+|---|---|
+| Blog | `Resources → Blog` |
+| Forum | `Community → Forum` |
+| Success Stories | Separate marketing page |
+| Waiting Rooms | `Teach → Open Requests` |
+| Contributions / Open Source | `About → Open Source` |
+
+---
+
+### ❌ Remove or Defer (Security & Clarity)
+
+These items increase attack surface, payment complexity, or cognitive load:
+
+| Item | Reason to Remove |
+|---|---|
+| Edu Memes | Removes professionalism |
+| Storefronts / Merch Shop | Mixes payment systems; increases fraud surface |
+| Referral Program | Major abuse vector: bot accounts, spam, fake referrals |
+| Leaderboard | Gamification promotes cheating, botting, and API abuse |
+| Challenges | Only relevant if the platform focuses on coding education (e.g., like LeetCode) |
+| Duplicate navigation items | Simplify — avoid the same page appearing multiple times |
+
+---
+
+### 🧭 Navigation Simplification
+
+The current navigation has **40+ menu items**. Good platforms use **5–7 items max** (counting Login/Signup as a single grouped action).
+
+**Target navigation structure (6 items):**
+
+```
+Learn | Teach | Community | Resources | About | Login / Signup
+```
+
+Each top-level item may contain a focused dropdown:
+
+- **Learn** → Courses, Live Classes, Subjects, Study Groups
+- **Teach** → Create Course, Manage Students, Analytics, Open Requests
+- **Community** → Forum, Study Groups, Learning Requests
+- **Resources** → Blog, Documentation, API
+- **About** → About Us, Open Source, Security, Privacy Policy
+
+---
+
+### 🔐 Security Considerations
+
+The current feature set introduces several potential risk areas:
+
+#### Payment Surface
+Mixing courses, a store, donations, and referrals increases **payment fraud surface**. The platform should funnel all payments through **one system** (Stripe).
+
+#### User-Generated Content
+Allowing forum posts, blog posts, memes, requests, and arbitrary uploads increases:
+- Spam risk
+- XSS vulnerability surface
+- Moderation burden
+
+Limit UGC scope early and apply strict input sanitization.
+
+#### Real-Time Rooms
+Live classrooms and waiting rooms require:
+- Strong authentication
+- Rate limiting
+- Session protection
+
+Without these controls, real-time features are vulnerable to abuse.
+
+---
+
+### 🏠 Ideal Homepage Structure
+
+```
+Hero
+├── Alpha One Labs — Secure Open Education Platform
+├── [Start Learning]   [Start Teaching]
+└── Browse Courses | Join Live Class
+
+Browse Learning
+├── Courses
+├── Live Classes
+├── Subjects
+└── Study Groups
+
+Platform Features
+├── Virtual Classroom
+├── Collaborative Whiteboard
+├── Progress Tracking
+├── Secure Payments
+└── Encrypted Communication
+
+For Teachers
+├── Create Courses
+├── Manage Students
+├── Earn from Teaching
+└── Analytics
+
+Community
+├── Forum
+├── Study Groups
+└── Learning Requests
+
+Trust Section
+├── Open Source
+├── Privacy First
+└── End-to-End Encryption
+```
+
+---
+
 ## Acknowledgments
 
 - Thanks to all contributors who have helped shape this project
