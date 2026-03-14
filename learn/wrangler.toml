@@ -1,0 +1,16 @@
+name = "education-platform"
+main = "src/worker.py"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["python_workers"]
+
+[site]
+bucket = "./public"
+
+[vars]
+ENCRYPTION_KEY = "edu-platform-secret-key-2024-cf01"
+JWT_SECRET = "jwt-secret-education-platform-2024"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "education_db"
+database_id = "00000000-0000-0000-0000-000000000000"

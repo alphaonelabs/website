@@ -1,0 +1,28 @@
+# Node / Wrangler
+node_modules/
+.wrangler/
+dist/
+*.tgz
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+
+# Environment & secrets
+.env
+.env.local
+.dev.vars
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

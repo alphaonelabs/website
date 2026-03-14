@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Course – EduPlatform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#4F46E5', dark: '#3730A3' } } } } };</script>
+  <style>
+    .hidden { display: none !important; }
+    .gradient-hero { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #2563EB 100%); }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: .75rem; font-weight: 600; }
+    .progress-bar { background: linear-gradient(90deg, #4F46E5, #7C3AED); border-radius: 9999px; height: 6px; transition: width .6s ease; }
+    /* Lesson content styles */
+    #lesson-content h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: .75rem; color: #1E293B; }
+    #lesson-content h2 { font-size: 1.2rem; font-weight: 700; margin: 1.25rem 0 .5rem; color: #334155; }
+    #lesson-content h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 .4rem; color: #475569; }
+    #lesson-content p  { margin-bottom: .75rem; line-height: 1.7; color: #475569; }
+    #lesson-content pre { background: #1E293B; color: #E2E8F0; padding: 1rem; border-radius: .75rem; overflow-x: auto; margin: 1rem 0; font-size: .85rem; line-height: 1.6; }
+    #lesson-content code { font-family: 'Courier New', monospace; font-size: .875em; background: #F1F5F9; padding: 2px 5px; border-radius: 4px; }
+    #lesson-content pre code { background: transparent; padding: 0; }
+    #lesson-content ul { list-style: disc; padding-left: 1.5rem; margin-bottom: .75rem; color: #475569; }
+    #lesson-content ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: .75rem; color: #475569; }
+    #lesson-content li { margin-bottom: .25rem; line-height: 1.6; }
+    #lesson-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .875rem; }
+    #lesson-content th { background: #F1F5F9; font-weight: 600; padding: .5rem .75rem; border: 1px solid #E2E8F0; }
+    #lesson-content td { padding: .5rem .75rem; border: 1px solid #E2E8F0; }
+    #lesson-content strong { font-weight: 700; color: #1E293B; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+<!-- ── Navbar ─────────────────────────────────────────────────────────── -->
+<nav class="bg-white shadow-sm sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+    <a href="/" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center text-white font-bold text-sm">E</div>
+      <span class="font-bold text-xl text-slate-800">EduPlatform</span>
+    </a>
+    <div id="nav-auth" class="flex items-center gap-3"></div>
+  </div>
+</nav>
+
+<!-- ── Course header ───────────────────────────────────────────────────── -->
+<div class="gradient-hero text-white py-12 px-4">
+  <div class="max-w-7xl mx-auto">
+    <div id="breadcrumb" class="text-indigo-200 text-sm mb-3">
+      <a href="/" class="hover:text-white">Courses</a> &rsaquo; <span id="crumb-title">Loading…</span>
+    </div>
+    <h1 id="course-title" class="text-3xl font-extrabold mb-2">Loading…</h1>
+    <p class="text-indigo-200 text-sm mb-3" id="course-meta"></p>
+    <div id="course-badges" class="flex flex-wrap gap-2 mb-5"></div>
+    <div id="course-actions"></div>
+  </div>
+</div>
+
+<!-- ── Content ────────────────────────────────────────────────────────── -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex flex-col lg:flex-row gap-8">
+
+    <!-- Sidebar: lessons list -->
+    <aside class="lg:w-72 shrink-0">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden sticky top-20">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="font-bold text-slate-800 text-sm">Course Lessons</h2>
+          <span id="lesson-count" class="text-xs text-slate-400"></span>
+        </div>
+        <ul id="lesson-list" class="divide-y divide-slate-50 max-h-[60vh] overflow-y-auto">
+          <li class="px-5 py-3 text-sm text-slate-400 animate-pulse">Loading…</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main: lesson content -->
+    <div class="flex-1 min-w-0">
+      <!-- Not enrolled CTA -->
+      <div id="enroll-cta" class="hidden bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-8 text-center mb-6">
+        <p class="text-4xl mb-3">🔐</p>
+        <h3 class="font-bold text-slate-800 text-lg mb-2">Enrol to unlock content</h3>
+        <p class="text-slate-500 text-sm mb-4">Lesson content is encrypted and only accessible to enrolled students.</p>
+        <button id="btn-enroll" onclick="enroll()"
+          class="bg-brand text-white font-bold px-8 py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">
+          Enrol Now — Free
+        </button>
+      </div>
+
+      <!-- Lesson viewer -->
+      <div id="lesson-viewer" class="hidden">
+        <!-- Progress -->
+        <div id="progress-section" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-5 hidden">
+          <div class="flex items-center justify-between mb-2 text-sm">
+            <span class="font-medium text-slate-700">Your Progress</span>
+            <span id="progress-pct" class="text-brand font-bold">0%</span>
+          </div>
+          <div class="bg-slate-100 rounded-full overflow-hidden">
+            <div id="progress-fill" class="progress-bar" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- Content card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="lesson-title" class="text-xl font-bold text-slate-800"></h2>
+            <span id="lesson-badge" class="text-xs text-slate-400"></span>
+          </div>
+          <div id="lesson-content" class="prose max-w-none"></div>
+
+          <!-- Navigation -->
+          <div class="flex justify-between mt-8 pt-6 border-t border-slate-100">
+            <button id="btn-prev" onclick="navigateLesson(-1)"
+              class="text-sm font-semibold text-slate-500 hover:text-brand flex items-center gap-1 disabled:opacity-30" disabled>
+              ← Previous
+            </button>
+            <button id="btn-mark" onclick="markComplete()"
+              class="hidden text-sm font-semibold bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-lg hover:bg-emerald-200 transition">
+              ✓ Mark Complete
+            </button>
+            <button id="btn-next" onclick="navigateLesson(1)"
+              class="text-sm font-semibold text-brand hover:text-brand-dark flex items-center gap-1">
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Course description (when no lesson selected) -->
+      <div id="course-desc-card" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+        <h2 class="font-bold text-slate-800 text-lg mb-3">About this Course</h2>
+        <p id="course-description" class="text-slate-500 leading-relaxed text-sm">Loading…</p>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────── -->
+<footer class="bg-slate-800 text-slate-400 py-6 text-center text-sm mt-8">
+  <p>© 2024 EduPlatform · All lesson content encrypted at rest · <a href="/" class="hover:text-white">Home</a></p>
+</footer>
+
+<script>
+  const API = '';
+  const token = localStorage.getItem('edu_token');
+  const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
+
+  // Navbar
+  const nav = document.getElementById('nav-auth');
+  if (token && user) {
+    nav.innerHTML = `
+      <span class="text-slate-600 text-sm hidden sm:block">👋 ${esc(user.username)}</span>
+      <a href="/dashboard.html" class="bg-brand text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-brand-dark transition">Dashboard</a>
+      <button onclick="logout()" class="text-slate-400 text-sm hover:text-red-500">Logout</button>`;
+  } else {
+    nav.innerHTML = `
+      <a href="/login.html" class="text-slate-600 text-sm font-medium hover:text-brand">Login</a>
+      <a href="/login.html?tab=register" class="bg-brand text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-brand-dark transition">Register</a>`;
+  }
+  function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ── Parse markdown-ish to HTML (simple subset)
+  function md2html(text) {
+    return text
+      .replace(/```(\w*)\n?([\s\S]*?)```/g, (_,lang,code) => `<pre><code>${esc(code)}</code></pre>`)
+      .replace(/`([^`]+)`/g,     (_,c) => `<code>${esc(c)}</code>`)
+      .replace(/^#{3} (.+)$/gm,  (_,t) => `<h3>${t}</h3>`)
+      .replace(/^#{2} (.+)$/gm,  (_,t) => `<h2>${t}</h2>`)
+      .replace(/^# (.+)$/gm,     (_,t) => `<h1>${t}</h1>`)
+      .replace(/\*\*([^*]+)\*\*/g, (_,t) => `<strong>${t}</strong>`)
+      .replace(/^- (.+)$/gm,     (_,t) => `<li>${t}</li>`)
+      .replace(/(<li>.*<\/li>\n?)+/g, items => `<ul>${items}</ul>`)
+      .replace(/^\|(.+)\|$/gm, row => {
+        const cells = row.split('|').filter(Boolean);
+        const tag = cells[0].trim().startsWith('---') ? null : 'td';
+        if (!tag) return '';
+        return `<tr>${cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('')}</tr>`;
+      })
+      .replace(/(<tr>.*<\/tr>\n?)+/g, rows => `<table>${rows}</table>`)
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^(?!<[a-z])(.+)$/gm, line => line ? `<p>${line}</p>` : '')
+      .replace(/<p><\/p>/g, '');
+  }
+
+  const params    = new URLSearchParams(location.search);
+  const courseId  = parseInt(params.get('id') || '0');
+
+  let lessons   = [];
+  let curIdx    = 0;
+  let isEnrolled = false;
+  let currentProgress = 0;
+
+  const diffColour = { Beginner: 'bg-emerald-100 text-emerald-700', Intermediate: 'bg-amber-100 text-amber-700', Advanced: 'bg-red-100 text-red-700' };
+
+  async function loadCourse() {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res     = await fetch(`${API}/api/courses/${courseId}`, { headers });
+    const data    = await res.json();
+
+    if (!res.ok) {
+      document.getElementById('course-title').textContent = 'Course not found';
+      return;
+    }
+
+    const c = data.course;
+    lessons       = data.lessons || [];
+    isEnrolled    = data.is_enrolled;
+    currentProgress = data.progress || 0;
+
+    document.title = `${c.title} – EduPlatform`;
+    document.getElementById('crumb-title').textContent   = c.title;
+    document.getElementById('course-title').textContent  = c.title;
+    document.getElementById('course-meta').textContent   = `by ${c.teacher_name}  ·  ${lessons.length} lessons  ·  👥 ${c.enrolled_count} students`;
+    document.getElementById('course-description').textContent = c.description;
+
+    const diff = diffColour[c.difficulty] || 'bg-slate-100 text-slate-600';
+    document.getElementById('course-badges').innerHTML =
+      `<span class="badge bg-indigo-200/60 text-indigo-800">${esc(c.category)}</span>
+       <span class="badge ${diff}">${esc(c.difficulty)}</span>`;
+
+    // Actions
+    if (token && !isEnrolled && (!user || user.role !== 'teacher')) {
+      document.getElementById('course-actions').innerHTML = `
+        <button onclick="enroll()" id="btn-enroll-hero"
+          class="bg-white text-brand font-bold px-6 py-2.5 rounded-xl shadow hover:bg-indigo-50 transition text-sm">
+          Enrol Now — Free
+        </button>`;
+    } else if (!token) {
+      document.getElementById('course-actions').innerHTML = `
+        <a href="/login.html" class="bg-white text-brand font-bold px-6 py-2.5 rounded-xl shadow hover:bg-indigo-50 transition text-sm">
+          Login to Enrol
+        </a>`;
+    } else if (isEnrolled) {
+      document.getElementById('course-actions').innerHTML = `<span class="text-indigo-200 text-sm font-medium">✅ Enrolled</span>`;
+    }
+
+    // Lesson list
+    document.getElementById('lesson-count').textContent = `${lessons.length} lessons`;
+    const ul = document.getElementById('lesson-list');
+    if (lessons.length === 0) {
+      ul.innerHTML = '<li class="px-5 py-4 text-sm text-slate-400">No lessons yet.</li>';
+    } else {
+      ul.innerHTML = lessons.map((l, i) => {
+        const locked = !isEnrolled && (!user || user.role !== 'teacher') && l.content === null;
+        return `
+          <li>
+            <button onclick="selectLesson(${i})" id="lesson-item-${i}"
+              class="w-full text-left px-5 py-3 text-sm hover:bg-indigo-50 transition flex items-center gap-3
+                     ${locked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}">
+              <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold shrink-0">
+                ${locked ? '🔒' : i + 1}
+              </span>
+              <span class="truncate ${locked ? '' : 'text-slate-700'}">${esc(l.title)}</span>
+            </button>
+          </li>`;
+      }).join('');
+    }
+
+    // If enrolled, show progress
+    if (isEnrolled || (user && user.role === 'teacher')) {
+      document.getElementById('lesson-viewer').classList.remove('hidden');
+      document.getElementById('enroll-cta').classList.add('hidden');
+      if (isEnrolled) {
+        document.getElementById('progress-section').classList.remove('hidden');
+        updateProgressUI(currentProgress);
+        document.getElementById('btn-mark').classList.remove('hidden');
+      }
+      if (lessons.length > 0) selectLesson(0);
+    } else {
+      document.getElementById('enroll-cta').classList.remove('hidden');
+      document.getElementById('lesson-viewer').classList.add('hidden');
+    }
+  }
+
+  function updateProgressUI(pct) {
+    document.getElementById('progress-pct').textContent  = `${pct}%`;
+    document.getElementById('progress-fill').style.width = `${pct}%`;
+  }
+
+  function selectLesson(idx) {
+    const lesson = lessons[idx];
+    if (!lesson) return;
+    if (lesson.content === null) return;  // locked
+
+    curIdx = idx;
+
+    // Highlight active
+    lessons.forEach((_, i) => {
+      const el = document.getElementById(`lesson-item-${i}`);
+      if (el) el.classList.toggle('bg-indigo-50 font-semibold text-brand', i === idx);
+    });
+
+    document.getElementById('course-desc-card').classList.add('hidden');
+    document.getElementById('lesson-viewer').classList.remove('hidden');
+    document.getElementById('lesson-title').textContent  = lesson.title;
+    document.getElementById('lesson-badge').textContent  = `Lesson ${idx + 1} of ${lessons.length}`;
+    document.getElementById('lesson-content').innerHTML  = md2html(lesson.content);
+
+    document.getElementById('btn-prev').disabled = idx === 0;
+    document.getElementById('btn-next').style.display = idx === lessons.length - 1 ? 'none' : '';
+  }
+
+  function navigateLesson(delta) {
+    const next = curIdx + delta;
+    if (next >= 0 && next < lessons.length) selectLesson(next);
+  }
+
+  async function markComplete() {
+    if (!token) return;
+    const pct = Math.round(((curIdx + 1) / lessons.length) * 100);
+    try {
+      await fetch(`${API}/api/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ course_id: courseId, progress: pct }),
+      });
+      currentProgress = pct;
+      updateProgressUI(pct);
+    } catch (e) { /* silent */ }
+  }
+
+  async function enroll() {
+    if (!token) { window.location.href = '/login.html'; return; }
+    const btns = ['btn-enroll', 'btn-enroll-hero'].map(id => document.getElementById(id)).filter(Boolean);
+    btns.forEach(b => { b.disabled = true; b.textContent = 'Enrolling…'; });
+    try {
+      const res  = await fetch(`${API}/api/enroll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ course_id: courseId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Enrollment failed');
+      window.location.reload();
+    } catch (e) {
+      alert(e.message);
+      btns.forEach(b => { b.disabled = false; b.textContent = 'Enrol Now — Free'; });
+    }
+  }
+
+  if (!courseId) {
+    document.getElementById('course-title').textContent = 'Invalid course';
+  } else {
+    loadCourse().catch(e => {
+      document.getElementById('course-title').textContent = 'Error loading course';
+      console.error(e);
+    });
+  }
+</script>
+</body>
+</html>
