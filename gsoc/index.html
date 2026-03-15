@@ -1040,6 +1040,7 @@
 
         const payload = await response.json();
         const seasonStartDate = toDateOnly(payload?.start_date);
+        // end_date is optional so the default leaderboard can operate as a rolling window.
         const seasonEndDate = toDateOnly(payload?.end_date);
         const contributors = (Array.isArray(payload?.contributors) ? payload.contributors : [])
           .sort((a, b) => {

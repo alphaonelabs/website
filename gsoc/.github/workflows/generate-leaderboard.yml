@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   generate:
+    if: github.repository == 'alphaonelabs/alphaonelabs-gsoc'
     runs-on: ubuntu-latest
 
     steps:

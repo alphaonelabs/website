@@ -12,6 +12,12 @@ from typing import Optional
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
 
+# Safety limits for GitHub Search pagination.
+# GitHub Search API caps results at 1000 (10 pages at 100 per page).
+MAX_CLOSED_PAGES = 10
+MAX_OPEN_PAGES = 5
+
+
 DEFAULT_START_DATE = datetime(2025, 9, 1, tzinfo=timezone.utc)
 DEFAULT_OUTPUT_PATH = "data/leaderboard.json"
 GITHUB_ORG = "alphaonelabs"
@@ -78,7 +84,7 @@ def fetch_search_pulls(query_text: str, page: int):
             ) from error
         raise RuntimeError(f"GitHub API error: {error.code}") from error
     except urllib.error.URLError as error:
-        raise RuntimeError(f"Unable to fetch contributor data.") from error
+        raise RuntimeError("Unable to fetch contributor data.") from error
 
 
 PER_PAGE = 100
@@ -199,7 +205,7 @@ def build_leaderboard(start_date: datetime, end_date: Optional[datetime]):
 
     closed_prs = []
     page = 1
-    while True:
+    while page <= MAX_CLOSED_PAGES:
         rows = fetch_search_pulls(closed_query, page)
         if not isinstance(rows, list) or len(rows) == 0:
             break
@@ -240,7 +246,7 @@ def build_leaderboard(start_date: datetime, end_date: Optional[datetime]):
 
     open_prs = []
     page = 1
-    while True:
+    while page <= MAX_OPEN_PAGES:
         rows = fetch_search_pulls(open_query, page)
         if not isinstance(rows, list) or len(rows) == 0:
             break
