@@ -578,8 +578,6 @@ class SessionForm(forms.ModelForm):
 
 
 class ReviewForm(forms.ModelForm):
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
-
     class Meta:
         model = Review
         fields = ("rating", "comment")
@@ -912,7 +910,6 @@ class SuccessStoryForm(forms.ModelForm):
     content = MarkdownxFormField(
         label="Content", help_text="Use markdown for formatting. You can use **bold**, *italic*, lists, etc."
     )
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
     class Meta:
         model = SuccessStory
@@ -1259,7 +1256,6 @@ class ForumTopicForm(forms.Form):
         widget=TailwindURLInput(attrs={"placeholder": "https://github.com/your-org/your-repo/milestone/1"}),
         help_text="Link to a related GitHub milestone (optional)",
     )
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
     def clean_github_issue_url(self):
         url = self.cleaned_data.get("github_issue_url")
@@ -1313,8 +1309,6 @@ class AvatarForm(forms.ModelForm):
 
 class BlogPostForm(forms.ModelForm):
     """Form for creating and editing blog posts."""
-
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
     class Meta:
         model = BlogPost
@@ -1672,7 +1666,6 @@ class MemeForm(forms.ModelForm):
         ),
         help_text="If your subject isn't listed, enter a new one here",
     )
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
     class Meta:
         model = Meme
@@ -1911,8 +1904,6 @@ class NotificationPreferencesForm(forms.ModelForm):
 
 
 class StudyGroupForm(forms.ModelForm):
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
-
     class Meta:
         model = StudyGroup
         fields = ["name", "description", "course", "max_members", "is_private"]
@@ -1926,7 +1917,6 @@ class VideoRequestForm(forms.ModelForm):
         # Only allow href, title and target attributes on anchor tags for security
         "a": ["href", "title", "target"],
     }
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
     class Meta:
         model = VideoRequest
@@ -1977,7 +1967,6 @@ class SurveyForm(forms.ModelForm):
         widget=TailwindInput(attrs={"placeholder": "Enter survey title"}),
         help_text="Give your survey a clear and descriptive title",
     )
-    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
     class Meta:
         model = Survey

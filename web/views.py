@@ -192,7 +192,6 @@ from .notifications import (
 from .referrals import send_referral_reward_email
 from .social import get_social_stats
 from .utils import (
-    can_access_classroom,
     cancel_subscription,
     create_leaderboard_context,
     create_subscription,
@@ -1134,7 +1133,7 @@ def github_update(request):
 def send_slack_message(message):
     webhook_url = os.getenv("SLACK_WEBHOOK_URL")
     if not webhook_url:
-        print("Warning: SLACK_WEBHOOK_URL not configured")
+        logger.warning("SLACK_WEBHOOK_URL not configured")
         return
 
     payload = {"text": f"```{message}```"}
@@ -3254,7 +3253,7 @@ def create_forum_category(request):
             messages.success(request, f"Forum category '{category.name}' created successfully!")
             return redirect("forum_category", slug=category.slug)
         else:
-            print(form.errors)
+            logger.error(f"Form errors: {form.errors}")
     else:
         form = ForumCategoryForm()
 
@@ -3497,11 +3496,7 @@ def system_status(request):
             status["sendgrid"]["message"] = f"API Error: {str(e)}"
     else:
         status["sendgrid"]["status"] = "error"
-
-        if settings.DEBUG:
-            status["sendgrid"]["message"] = "SendGrid API key not configured"
-        else:
-            status["sendgrid"]["message"] = "Email service unavailable"
+        status["sendgrid"]["message"] = "SendGrid API key not configured"
 
     # Check disk space
     try:
@@ -4889,7 +4884,7 @@ def virtual_classroom_list(request):
     return render(
         request,
         "virtual_classroom/list.html",
-        {"classrooms": classrooms},
+        {"classrooms": classrooms, "user": request.user},  # Pass the user object which includes the profile
     )
 
 
@@ -4897,6 +4892,7 @@ def virtual_classroom_list(request):
 @require_POST
 def join_global_virtual_classroom(request):
     """Join (or create) the global virtual classroom and redirect to it."""
+
     teacher = User.objects.filter(is_staff=True, is_active=True).order_by("-is_superuser", "date_joined").first()
 
     if not teacher:
@@ -4991,12 +4987,21 @@ def virtual_classroom_detail(request, classroom_id):
 
     # Check if user is teacher or enrolled student
     is_teacher = request.user == classroom.teacher
-    is_enrolled = can_access_classroom(request.user, classroom)
-    if not is_enrolled:
+    is_enrolled = False
+
+    if classroom.course:
+        # For classrooms with a course, check course enrollments
+        is_enrolled = classroom.course.enrollments.filter(student=request.user, status="approved").exists()
+    else:
+        # For standalone classrooms, check VirtualClassroomParticipant table
+        is_enrolled = VirtualClassroomParticipant.objects.filter(classroom=classroom, user=request.user).exists()
+
+    if not (is_teacher or is_enrolled):
         messages.error(request, "You do not have access to this virtual classroom.")
         if classroom.course:
             return redirect("course_detail", slug=classroom.course.slug)
-        return redirect("virtual_classroom_list")
+        else:
+            return redirect("virtual_classroom_list")
 
     # Get or create customization settings to prevent DoesNotExist errors
     customization, created = VirtualClassroomCustomization.objects.get_or_create(

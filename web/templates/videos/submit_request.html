@@ -44,14 +44,6 @@
               <p class="mt-2 text-sm text-red-600 dark:text-red-500">{{ form.description.errors.0 }}</p>
             {% endif %}
           </div>
-          <div class="mb-6">
-            <label for="{{ form.captcha.id_for_label }}"
-                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CAPTCHA</label>
-            {{ form.captcha }}
-            {% if form.captcha.errors %}
-              <p class="mt-2 text-sm text-red-600 dark:text-red-500">{{ form.captcha.errors.0 }}</p>
-            {% endif %}
-          </div>
           <div class="flex justify-end">
             <a href="{% url 'video_request_list' %}"
                class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-semibold py-2 px-4 rounded mr-4">

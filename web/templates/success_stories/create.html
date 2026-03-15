@@ -106,15 +106,6 @@
               Draft: Save but don't publish yet. Published: Make visible to everyone.
             </p>
           </div>
-          <!-- CAPTCHA -->
-          <div>
-            <label for="{{ form.captcha.id_for_label }}"
-                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CAPTCHA</label>
-            {{ form.captcha }}
-            {% if form.captcha.errors %}
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.captcha.errors }}</p>
-            {% endif %}
-          </div>
         </div>
         <div class="pt-6 flex justify-end space-x-3">
           <a href="{% if is_edit %}{% url 'success_story_detail' slug=success_story.slug %}{% else %}{% url 'success_story_list' %}{% endif %}"
