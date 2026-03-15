@@ -192,6 +192,7 @@ from .notifications import (
 from .referrals import send_referral_reward_email
 from .social import get_social_stats
 from .utils import (
+    can_access_classroom,
     cancel_subscription,
     create_leaderboard_context,
     create_subscription,
@@ -3253,7 +3254,7 @@ def create_forum_category(request):
             messages.success(request, f"Forum category '{category.name}' created successfully!")
             return redirect("forum_category", slug=category.slug)
         else:
-            logger.error(f"Form errors: {form.errors}")
+            logger.warning("Forum category form validation failed: %s", form.errors)
     else:
         form = ForumCategoryForm()
 
@@ -4985,18 +4986,12 @@ def virtual_classroom_detail(request, classroom_id):
     """View to display a virtual classroom."""
     classroom = get_object_or_404(VirtualClassroom, id=classroom_id)
 
-    # Check if user is teacher or enrolled student
     is_teacher = request.user == classroom.teacher
-    is_enrolled = False
+    can_access = can_access_classroom(request.user, classroom)
+    is_enrolled = can_access and not is_teacher
 
-    if classroom.course:
-        # For classrooms with a course, check course enrollments
-        is_enrolled = classroom.course.enrollments.filter(student=request.user, status="approved").exists()
-    else:
-        # For standalone classrooms, check VirtualClassroomParticipant table
-        is_enrolled = VirtualClassroomParticipant.objects.filter(classroom=classroom, user=request.user).exists()
-
-    if not (is_teacher or is_enrolled):
+    # Check if user is teacher or enrolled student
+    if not can_access:
         messages.error(request, "You do not have access to this virtual classroom.")
         if classroom.course:
             return redirect("course_detail", slug=classroom.course.slug)
