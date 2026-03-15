@@ -15,7 +15,6 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    if: github.repository == 'alphaonelabs/alphaonelabs-gsoc' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository
@@ -31,6 +30,7 @@ jobs:
 
       - name: Commit and push if changed
         run: |
+          BRANCH="${GITHUB_REF_NAME:-main}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git diff --quiet -- data/leaderboard.json; then
@@ -39,5 +39,5 @@ jobs:
           fi
           git add data/leaderboard.json
           git commit -m "chore: update leaderboard data"
-          git pull --rebase --autostash origin main || (echo "Rebase failed due to conflicts" && exit 1)
-          git push
+          git pull --rebase --autostash origin "$BRANCH" || (echo "Rebase failed due to conflicts" && exit 1)
+          git push origin "HEAD:$BRANCH"
