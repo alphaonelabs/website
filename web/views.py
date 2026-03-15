@@ -4995,8 +4995,7 @@ def virtual_classroom_detail(request, classroom_id):
         messages.error(request, "You do not have access to this virtual classroom.")
         if classroom.course:
             return redirect("course_detail", slug=classroom.course.slug)
-        else:
-            return redirect("virtual_classroom_list")
+        return redirect("virtual_classroom_list")
 
     # Get or create customization settings to prevent DoesNotExist errors
     customization, created = VirtualClassroomCustomization.objects.get_or_create(
