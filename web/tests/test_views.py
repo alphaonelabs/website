@@ -1,9 +1,12 @@
+import hashlib
+import hmac
 from decimal import Decimal
 from unittest.mock import patch
 
 from allauth.account.models import EmailAddress
 from django.contrib.auth.models import User
 from django.core import mail
+from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -118,6 +121,31 @@ class AuthenticationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["user"].is_authenticated)
         self.assertEqual(response.context["user"].email, self.email)
+
+
+@override_settings(GITHUB_WEBHOOK_SECRET="test-secret")
+class GitHubWebhookTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        cache.set("contributors_context_v3", {"stale": True}, timeout=600)
+        cache.set("gsoc_landing_page_context_v2", {"stale": True}, timeout=600)
+
+    def test_pull_request_webhook_invalidates_contributor_caches(self):
+        payload = b'{"action":"closed"}'
+        signature = "sha256=" + hmac.new(b"test-secret", payload, hashlib.sha256).hexdigest()
+
+        response = self.client.post(
+            reverse("github_update"),
+            data=payload,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_HUB_SIGNATURE_256=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.decode(), "Contributor caches cleared")
+        self.assertIsNone(cache.get("contributors_context_v3"))
+        self.assertIsNone(cache.get("gsoc_landing_page_context_v2"))
 
 
 @override_settings(

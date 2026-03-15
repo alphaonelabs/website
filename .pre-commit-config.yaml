@@ -83,7 +83,7 @@ repos:
     hooks:
       - id: django-collectstatic
         name: Django Collect Static
-        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && poetry run python manage.py collectstatic --noinput; fi'
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && PYTHON_BIN="${VIRTUAL_ENV:+$VIRTUAL_ENV/bin/python}" && PYTHON_BIN="${PYTHON_BIN:-$(command -v python3 || command -v python)}" && "$PYTHON_BIN" manage.py collectstatic --noinput; fi'
         language: system
         types: [python]
         pass_filenames: false
@@ -92,7 +92,7 @@ repos:
         stages: [pre-commit]
       - id: django-test
         name: Django Tests
-        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && poetry run python manage.py test --verbosity=2 --timing --parallel=4 --failfast; fi'
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && PYTHON_BIN="${VIRTUAL_ENV:+$VIRTUAL_ENV/bin/python}" && PYTHON_BIN="${PYTHON_BIN:-$(command -v python3 || command -v python)}" && "$PYTHON_BIN" manage.py test --verbosity=2 --timing --parallel=4 --failfast; fi'
         language: system
         types: [python]
         pass_filenames: false

@@ -70,13 +70,11 @@ class AdminTests(TestCase):
 
         # Build the admin URL using the settings
         admin_add_user_url = f"/en/{settings.ADMIN_URL}/auth/user/add/"
-        response = self.client.post(admin_add_user_url, initial_data, follow=True)
+        response = self.client.post(admin_add_user_url, initial_data)
 
-        # Check if we got redirected to the user change page
-        self.assertTrue(
-            any(redirect[0].endswith("/change/") for redirect in response.redirect_chain),
-            "Expected redirect to change page not found",
-        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNotNone(response.get("Location"))
+        self.assertTrue(response.get("Location").endswith("/change/"), "Expected redirect to change page not found")
 
         # Verify the user was created
         try:

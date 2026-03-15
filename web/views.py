@@ -11,7 +11,7 @@ import socket
 import string
 import subprocess
 import time
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timedelta
 from decimal import Decimal
 from urllib.parse import urlparse
@@ -1038,7 +1038,7 @@ def github_update(request):
     Hardening applied:
     - Require POST.
     - Validate X-Hub-Signature-256 using shared secret env var GITHUB_WEBHOOK_SECRET.
-    - Ignore unsupported events (only push by default).
+    - Handle supported events explicitly.
     - Run a safe pull + dependency install + migrate + collectstatic via a minimal bash snippet.
     - Send concise status updates to Slack; avoid leaking secrets.
 
@@ -1065,7 +1065,19 @@ def github_update(request):
         return HttpResponseForbidden("Webhook secret not configured")
 
     event = request.META.get("HTTP_X_GITHUB_EVENT", "")
-    if event not in {"push"}:
+    if event == "pull_request":
+        try:
+            payload = json.loads(body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest("Invalid JSON payload")
+
+        if payload.get("action") in {"opened", "reopened", "closed"}:
+            _invalidate_contributor_caches()
+            return HttpResponse("Contributor caches cleared")
+
+        return HttpResponse("Ignored pull request action", status=202)
+
+    if event != "push":
         return HttpResponse("Ignored event", status=202)
 
     repo_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1127,8 +1139,15 @@ def github_update(request):
     send_slack_message(slack_msg[:3500])
 
     if ok:
+        _invalidate_contributor_caches()
         return HttpResponse("OK")
     return HttpResponse(status=500, content="Deploy failed; see logs")
+
+
+def _invalidate_contributor_caches():
+    """Clear cached contributor leaderboard views so GitHub PR counts refresh."""
+    cache.delete("contributors_context_v3")
+    cache.delete("gsoc_landing_page_context_v2")
 
 
 def send_slack_message(message):
@@ -4498,90 +4517,41 @@ def delete_success_story(request, slug):
 def gsoc_landing_page(request):
     """
     Renders the GSOC landing page with top GitHub contributors
-    based on merged pull requests
+    based on the unified organization leaderboard.
     """
     import logging
 
-    import requests
-    from django.conf import settings
+    from django.core.cache import cache
 
-    # Initialize an empty list for contributors in case the GitHub API call fails
+    # Initialize an empty list for contributors
     top_contributors = []
 
-    # GitHub API URL for the education-website repository
-    github_repo_url = "https://api.github.com/repos/alphaonelabs/education-website"
-
-    # Users to exclude from the contributor list (bots and automated users)
-    excluded_users = ["A1L13N", "dependabot[bot]"]
-
     try:
-        # Fetch contributors from GitHub API
-        headers = {}
-        # Check if GitHub token is configured
-        if hasattr(settings, "GITHUB_TOKEN") and settings.GITHUB_TOKEN:
-            headers["Authorization"] = f"token {settings.GITHUB_TOKEN}"
+        # Check cache first to avoid rate limits
+        cached_context = cache.get("gsoc_landing_page_context_v2")
+        if cached_context:
+            return render(request, "gsoc_landing_page.html", cached_context)
 
-        # Get all closed pull requests - we'll filter for merged ones in code
-        # The GitHub API doesn't have a direct 'merged' filter in the query params
-        # so we get all closed PRs and then check the 'merged_at' field
-        pull_requests_response = requests.get(
-            f"{github_repo_url}/pulls",
-            params={
-                "state": "closed",  # closed PRs could be either merged or just closed
-                "sort": "updated",
-                "direction": "desc",
-                "per_page": 100,
-            },
-            headers=headers,
-            timeout=5,
-        )
+        # Build leaderboard for the current GSoC year (2026)
+        # This mirrors the logic in contributors_list_view for consistency
+        all_contributors = _build_leaderboard_for_year(2026)
 
-        # Check for rate limiting
-        if pull_requests_response.status_code == 403 and "X-RateLimit-Remaining" in pull_requests_response.headers:
-            remaining = pull_requests_response.headers.get("X-RateLimit-Remaining")
-            if remaining == "0":
-                reset_time = int(pull_requests_response.headers.get("X-RateLimit-Reset", 0))
-                reset_datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(reset_time))
-                logging.warning(f"GitHub API rate limit exceeded. Resets at {reset_datetime}")
+        # We only need the top 10 for the landing page
+        # The _build_leaderboard_for_year function already sorts by smart_score and merged_pr_count
+        top_contributors = all_contributors[:10]
 
-        if pull_requests_response.status_code == 200:
-            pull_requests = pull_requests_response.json()
+        context = {"top_contributors": top_contributors}
 
-            # Create a map of contributors with their PR count
-            contributor_stats = defaultdict(
-                lambda: {"merged_pr_count": 0, "avatar_url": "", "profile_url": "", "prs_url": ""}
-            )
-
-            # Process each pull request
-            for pr in pull_requests:
-                # Check if the PR was merged
-                if pr.get("merged_at"):
-                    username = pr["user"]["login"]
-
-                    # Skip excluded users
-                    if username in excluded_users:
-                        continue
-
-                    contributor_stats[username]["merged_pr_count"] += 1
-                    contributor_stats[username]["avatar_url"] = pr["user"]["avatar_url"]
-                    contributor_stats[username]["profile_url"] = pr["user"]["html_url"]
-                    # Add a direct link to the user's PRs for this repository
-                    base_url = "https://github.com/alphaonelabs/education-website/pulls"
-                    query = f"?q=is:pr+author:{username}+is:merged"
-                    contributor_stats[username]["prs_url"] = base_url + query
-                    contributor_stats[username]["username"] = username
-
-            # Convert to list and sort by PR count
-            top_contributors = [v for k, v in contributor_stats.items()]
-            top_contributors.sort(key=lambda x: x["merged_pr_count"], reverse=True)
-
-            # Get top 10 contributors
-            top_contributors = top_contributors[:10]
+        # Cache for 12 hours like the contributors list
+        cache.set("gsoc_landing_page_context_v2", context, 12 * 60 * 60)
+        return render(request, "gsoc_landing_page.html", context)
 
     except Exception as e:
-        logging.error(f"Error fetching GitHub contributors: {str(e)}")
+        logging.error(f"Error fetching GitHub contributors for GSoC landing page: {str(e)}")
+        import traceback
 
-    context = {"top_contributors": top_contributors}
+        traceback.print_exc()
+        context = {"top_contributors": []}
 
     return render(request, "gsoc_landing_page.html", context)
 
@@ -8354,140 +8324,235 @@ def topic_detail(request, pk):
     return render(request, "web/forum/topic.html", context)
 
 
-def contributors_list_view(request):
-    # Check if cached data is available
-    cached_context = cache.get("contributors_context")
-    if cached_context:
-        return render(request, "web/contributors_list.html", cached_context)
+def _should_exclude_contributor(username):
+    """Check if a contributor should be excluded (bots, org owners, etc.)."""
+    normalized = str(username or "").lower()
+    return "[bot]" in normalized or "dependabot" in normalized or "copilot" in normalized or normalized == "a1l13n"
 
-    # Initialize a dictionary to track contributor stats
+
+def _parse_github_date(value):
+    """Parse a GitHub API date string into a datetime object."""
+    if not value:
+        return None
+    try:
+        from datetime import datetime as dt
+        from datetime import timezone as tz
+
+        parsed = dt.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+        return parsed.replace(tzinfo=tz.utc)
+    except ValueError:
+        return None
+
+
+def _is_within_date_range(value, start_date, end_date):
+    """Check if a datetime falls within the given date range [start, end)."""
+    if value is None or value < start_date:
+        return False
+    if end_date and value >= end_date:
+        return False
+    return True
+
+
+def _fetch_search_pulls(org, state, page):
+    """
+    Fetch PRs from GitHub Search API using state:open or state:closed.
+    This matches the GSoC generate_leaderboard.py approach exactly.
+    """
+    import urllib.parse
+
+    query = urllib.parse.urlencode(
+        {
+            "q": f"org:{org} is:pr state:{state}",
+            "sort": "updated",
+            "order": "desc",
+            "per_page": 100,
+            "page": page,
+        }
+    )
+    url = f"https://api.github.com/search/issues?{query}"
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "alphaonelabs-leaderboard",
+    }
+    token = getattr(settings, "GITHUB_TOKEN", None) or os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code == 200:
+            return response.json().get("items", [])
+        elif response.status_code == 403:
+            print(f"GitHub API rate limit or access issue (403) for state={state} page={page}")
+            return []
+        else:
+            print(f"GitHub API error {response.status_code} for state={state} page={page}")
+            return []
+    except Exception as e:
+        print(f"Error fetching search pulls: {e}")
+        return []
+
+
+MAX_CLOSED_PAGES = 10
+MAX_OPEN_PAGES = 5
+SEARCH_PER_PAGE = 100
+SEARCH_DELAY_SECONDS = 0.35
+
+
+def _build_leaderboard_for_year(year):
+    """
+    Build contributor leaderboard for a given year across all alphaonelabs repos.
+    This directly mirrors the GSoC generate_leaderboard.py build_leaderboard() function.
+    Uses state:closed + state:open queries, then checks pull_request.merged_at
+    to distinguish merged from closed-unmerged.
+    """
+    from datetime import datetime as dt
+    from datetime import timezone as tz
+
+    # GSoC cycle typically starts tracking from September 1st of the previous year
+    start_date = dt(year - 1, 9, 1, tzinfo=tz.utc)
+    # End date is optional, but we can set it to Sept 1st of the current year
+    end_date = dt(year, 9, 1, tzinfo=tz.utc)
+
     contributor_stats = {}
 
-    # Function to add a contributor to our stats dictionary
-    def add_contributor(username, avatar_url, profile_url):
-        if username not in contributor_stats:
-            contributor_stats[username] = {
+    def ensure_contributor(stats, user):
+        username = user["login"]
+        if username not in stats:
+            stats[username] = {
                 "username": username,
-                "avatar_url": avatar_url,
-                "profile_url": profile_url,
+                "avatar_url": user.get("avatar_url"),
+                "profile_url": user.get("html_url"),
                 "merged_pr_count": 0,
                 "closed_pr_count": 0,
                 "open_pr_count": 0,
                 "total_pr_count": 0,
-                "prs_url": f"https://github.com/AlphaOneLabs/education-website/pulls?q=is:pr+author:{username}",
+                "smart_score": 0,
             }
 
+    # ---- Fetch ALL closed PRs (includes merged + closed-unmerged) ----
+    closed_prs = []
+    for page in range(1, MAX_CLOSED_PAGES + 1):
+        rows = _fetch_search_pulls("alphaonelabs", "closed", page)
+        if not isinstance(rows, list) or len(rows) == 0:
+            break
+        closed_prs.extend(rows)
+        time.sleep(SEARCH_DELAY_SECONDS)
+
+    for pr in closed_prs:
+        user = pr.get("user")
+        if not user or not user.get("login") or _should_exclude_contributor(user.get("login")):
+            continue
+
+        merged_at = _parse_github_date(pr.get("pull_request", {}).get("merged_at"))
+        closed_at = _parse_github_date(pr.get("closed_at"))
+        relevant_date = merged_at or closed_at
+        if not _is_within_date_range(relevant_date, start_date, end_date):
+            continue
+
+        ensure_contributor(contributor_stats, user)
+        if merged_at:
+            contributor_stats[user["login"]]["merged_pr_count"] += 1
+        else:
+            contributor_stats[user["login"]]["closed_pr_count"] += 1
+
+    # ---- Fetch ALL open PRs ----
+    open_prs = []
+    for page in range(1, MAX_OPEN_PAGES + 1):
+        rows = _fetch_search_pulls("alphaonelabs", "open", page)
+        if not isinstance(rows, list) or len(rows) == 0:
+            break
+        open_prs.extend(rows)
+        time.sleep(SEARCH_DELAY_SECONDS)
+
+    for pr in open_prs:
+        user = pr.get("user")
+        if not user or not user.get("login") or _should_exclude_contributor(user.get("login")):
+            continue
+
+        created_at = _parse_github_date(pr.get("created_at"))
+        if not _is_within_date_range(created_at, start_date, end_date):
+            continue
+
+        ensure_contributor(contributor_stats, user)
+        contributor_stats[user["login"]]["open_pr_count"] += 1
+
+    # ---- Calculate scores and build final list ----
+    contributors = []
+    for item in contributor_stats.values():
+        total_pr_count = item["merged_pr_count"] + item["closed_pr_count"] + item["open_pr_count"]
+        item["total_pr_count"] = total_pr_count
+
+        # Smart score (same formula as GSoC script)
+        smart_score = item["merged_pr_count"] * 10
+        if item["closed_pr_count"] > (item["merged_pr_count"] / 2):
+            smart_score -= (item["closed_pr_count"] - (item["merged_pr_count"] / 2)) * 2
+        if item["open_pr_count"] > item["merged_pr_count"]:
+            smart_score -= item["open_pr_count"] - item["merged_pr_count"]
+
+        item["smart_score"] = smart_score
+        item["contribution_ratio"] = item["merged_pr_count"] / total_pr_count if total_pr_count > 0 else 0
+        base_query = f"org%3Aalphaonelabs+author%3A{item['username']}" f"+is%3Apr+created%3A{year}-01-01..{year}-12-31"
+        item["prs_url"] = f"https://github.com/search?q={base_query}&type=pullrequests"
+        item["merged_prs_url"] = f"https://github.com/search?q={base_query}+is%3Amerged&type=pullrequests"
+        item["open_prs_url"] = f"https://github.com/search?q={base_query}+is%3Aopen&type=pullrequests"
+        item["closed_prs_url"] = f"https://github.com/search?q={base_query}+is%3Aunmerged+is%3Aclosed&type=pullrequests"
+        item["year"] = year
+        contributors.append(item)
+
+    contributors.sort(
+        key=lambda x: (x["smart_score"], x["merged_pr_count"]),
+        reverse=True,
+    )
+    return contributors
+
+
+def contributors_list_view(request):
+    # Check if cached data is available
+    cached_context = cache.get("contributors_context_v3")
+    if cached_context:
+        return render(request, "web/contributors_list.html", cached_context)
+
     try:
-        # Fetch closed PRs first (includes both merged and non-merged closed PRs)
-        closed_prs = []
-        for page in range(1, 11):  # Limit to 10 pages to prevent hitting API rate limits
-            response = github_api_request(
-                f"{GITHUB_API_BASE}/repos/AlphaOneLabs/education-website/pulls",
-                params={"state": "closed", "per_page": 100, "page": page},
-            )
-            if not response or len(response) == 0:
-                break
+        contributors_2026 = _build_leaderboard_for_year(2026)
+        contributors_2025 = _build_leaderboard_for_year(2025)
 
-            closed_prs.extend(response)
-            time.sleep(0.5)  # Add delay to avoid hitting rate limits
+        # Pre-compute summary stats since Django templates can't accumulate in loops
+        def _compute_stats(contributors):
+            return {
+                "total_merged": sum(c["merged_pr_count"] for c in contributors),
+                "total_open": sum(c["open_pr_count"] for c in contributors),
+                "total_closed": sum(c["closed_pr_count"] for c in contributors),
+            }
 
-        # Process closed PRs
-        for pr in closed_prs:
-            username = pr["user"]["login"]
+        context = {
+            "contributors_2026": contributors_2026,
+            "contributors_2025": contributors_2025,
+            "stats_2026": _compute_stats(contributors_2026),
+            "stats_2025": _compute_stats(contributors_2025),
+        }
 
-            # Skip bots and specific users
-            if "[bot]" in username or "dependabot" in username or username == "A1L13N":
-                continue
-
-            avatar_url = pr["user"]["avatar_url"]
-            profile_url = pr["user"]["html_url"]
-
-            # Add to our tracking
-            add_contributor(username, avatar_url, profile_url)
-
-            # Update the appropriate count based on whether it was merged
-            if pr["merged_at"]:
-                contributor_stats[username]["merged_pr_count"] += 1
-            else:
-                contributor_stats[username]["closed_pr_count"] += 1
-
-        # Now fetch open PRs
-        open_prs = []
-        for page in range(1, 6):  # Limit to 5 pages for open PRs
-            response = github_api_request(
-                f"{GITHUB_API_BASE}/repos/AlphaOneLabs/education-website/pulls",
-                params={"state": "open", "per_page": 100, "page": page},
-            )
-            if not response or len(response) == 0:
-                break
-
-            open_prs.extend(response)
-            time.sleep(0.5)  # Add delay to avoid hitting rate limits
-
-        # Process open PRs
-        for pr in open_prs:
-            username = pr["user"]["login"]
-
-            # Skip bots and specific users
-            if "[bot]" in username or "dependabot" in username or username == "A1L13N":
-                continue
-
-            avatar_url = pr["user"]["avatar_url"]
-            profile_url = pr["user"]["html_url"]
-
-            # Add to our tracking
-            add_contributor(username, avatar_url, profile_url)
-
-            # Update open PR count
-            contributor_stats[username]["open_pr_count"] += 1
-
-        # Calculate total PR count and filter out users with no merged PRs
-        contributors = []
-        for username, stats in contributor_stats.items():
-            # Skip contributors with no merged PRs
-            if stats["merged_pr_count"] == 0:
-                continue
-
-            # Calculate total PR count
-            stats["total_pr_count"] = stats["merged_pr_count"] + stats["closed_pr_count"] + stats["open_pr_count"]
-
-            # Calculate a smart score that prioritizes merged PRs but penalizes imbalances
-            # Formula: (merged_pr_count * 10) - penalties for imbalanced contributions
-            smart_score = stats["merged_pr_count"] * 10
-
-            # Penalize if closed PRs are more than half of merged PRs (could indicate issues with code quality)
-            if stats["closed_pr_count"] > (stats["merged_pr_count"] / 2):
-                smart_score -= (stats["closed_pr_count"] - (stats["merged_pr_count"] / 2)) * 2
-
-            # Penalize if open PRs are more than merged PRs (could indicate abandonment issues)
-            if stats["open_pr_count"] > stats["merged_pr_count"]:
-                smart_score -= stats["open_pr_count"] - stats["merged_pr_count"]
-
-            # Calculate a contribution ratio: merged/(total) - higher is better
-            if stats["total_pr_count"] > 0:
-                stats["contribution_ratio"] = stats["merged_pr_count"] / stats["total_pr_count"]
-            else:
-                stats["contribution_ratio"] = 0
-
-            # Store the smart score
-            stats["smart_score"] = smart_score
-
-            contributors.append(stats)
-
-        # Sort by smart score (primary) and then by merged PR count (secondary)
-        contributors.sort(key=lambda x: (x["smart_score"], x["merged_pr_count"]), reverse=True)
-
-        # Store the context in cache for 12 hours
-        context = {"contributors": contributors}
-        cache.set("contributors_context", context, 12 * 60 * 60)
+        # Cache for 12 hours
+        cache.set("contributors_context_v3", context, 12 * 60 * 60)
 
         return render(request, "web/contributors_list.html", context)
 
     except Exception as e:
-        # Log the error
         print(f"Error fetching contributors: {e}")
-        # Return an empty list in case of error
-        return render(request, "web/contributors_list.html", {"contributors": []})
+        import traceback
+
+        traceback.print_exc()
+        empty_stats = {"total_merged": 0, "total_open": 0, "total_closed": 0}
+        return render(
+            request,
+            "web/contributors_list.html",
+            {
+                "contributors_2026": [],
+                "contributors_2025": [],
+                "stats_2026": empty_stats,
+                "stats_2025": empty_stats,
+            },
+        )
 
 
 @login_required

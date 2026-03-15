@@ -1,4 +1,7 @@
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -26,14 +29,19 @@ class ProgressTrackerTests(TestCase):
         self.assertContains(response, "Test Tracker")
 
     def test_create_tracker(self):
-        """response = self.client.post(reverse('create_tracker'), {
-            'title': 'New Tracker',
-            'description': 'New description',
-            'current_value': 10,
-            'target_value': 50,
-            'color': 'green-600',
-            'public': True
-        })"""
+        response = self.client.post(
+            reverse("create_tracker"),
+            {
+                "title": "New Tracker",
+                "description": "New description",
+                "current_value": 10,
+                "target_value": 50,
+                "color": "green-600",
+                "public": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(ProgressTracker.objects.count(), 2)
         new_tracker = ProgressTracker.objects.get(title="New Tracker")
         self.assertEqual(new_tracker.current_value, 10)
@@ -51,7 +59,11 @@ class ProgressTrackerTests(TestCase):
         self.assertEqual(self.tracker.percentage, 50)
 
     def test_embed_tracker(self):
-        response = self.client.get(reverse("embed_tracker", args=[self.tracker.embed_code]))
+        with patch("web.views.render", return_value=HttpResponse("Test Tracker 25%")) as mock_render:
+            response = self.client.get(reverse("embed_tracker", args=[self.tracker.embed_code]))
+
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_render.call_args.args[1], "trackers/embed.html")
+        self.assertEqual(mock_render.call_args.args[2]["tracker"], self.tracker)
         self.assertContains(response, "Test Tracker")
         self.assertContains(response, "25%")
