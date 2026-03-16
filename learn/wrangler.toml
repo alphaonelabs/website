@@ -1,4 +1,4 @@
-name = "education-platform"
+name = "learn"
 main = "src/worker.py"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["python_workers"]
