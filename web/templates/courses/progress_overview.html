@@ -165,6 +165,10 @@
                        class="text-teal-600 hover:text-teal-900 dark:text-teal-400 dark:hover:text-teal-300">
                       View Details
                     </a>
+                    <a href="{% url 'student_progress_report' course.slug data.enrollment.student.id %}"
+                       class="ml-3 text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                      Full Report
+                    </a>
                   </td>
                 </tr>
               {% endfor %}

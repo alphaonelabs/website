@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Progress Report - {{ student.get_full_name|default:student.username }} - {{ course.title }}{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <!-- Breadcrumbs -->
+  <nav class="text-sm mb-6">
+    <a href="{% url 'course_detail' course.slug %}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">{{ course.title }}</a>
+    <span class="mx-2 text-gray-400">/</span>
+    {% if is_teacher %}
+      <a href="{% url 'course_progress_overview' course.slug %}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">Progress Overview</a>
+      <span class="mx-2 text-gray-400">/</span>
+    {% endif %}
+    <span class="text-gray-600 dark:text-gray-400">{{ student.get_full_name|default:student.username }}'s Report</span>
+  </nav>
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center space-x-4">
+      {% if student.profile.avatar %}
+        <img src="{{ student.profile.avatar.url }}" alt="{{ student.get_full_name|default:student.username }}" class="w-16 h-16 rounded-full object-cover">
+      {% else %}
+        <div class="w-16 h-16 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center">
+          <i class="fas fa-user text-teal-500 dark:text-teal-300 text-2xl"></i>
+        </div>
+      {% endif %}
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ student.get_full_name|default:student.username }}</h1>
+        <p class="text-gray-500 dark:text-gray-400">{{ course.title }}</p>
+        <span class="inline-block mt-1 px-2 py-1 text-xs rounded-full
+          {% if enrollment.status == 'approved' %}bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300
+          {% elif enrollment.status == 'completed' %}bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300
+          {% else %}bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+          {{ enrollment.get_status_display }}
+        </span>
+      </div>
+    </div>
+    <div class="text-sm text-gray-500 dark:text-gray-400">
+      Enrolled {{ enrollment.enrollment_date|date:"M d, Y" }}
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <!-- Completion -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Completion</p>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white">{{ progress.completion_percentage }}%</h3>
+        </div>
+        <div class="bg-teal-100 dark:bg-teal-900 rounded-full p-3">
+          <i class="fas fa-graduation-cap text-teal-500 dark:text-teal-300 text-xl"></i>
+        </div>
+      </div>
+      <div class="mt-3 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div class="bg-teal-500 h-2 rounded-full" style="--p: {{ progress.completion_percentage }}%; width: var(--p)"></div>
+      </div>
+    </div>
+    <!-- Attendance -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Attendance</p>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white">{{ attendance_rate }}%</h3>
+          <p class="text-xs text-gray-400 mt-1">{{ attended }}/{{ past_sessions }} sessions</p>
+        </div>
+        <div class="bg-orange-100 dark:bg-orange-900 rounded-full p-3">
+          <i class="fas fa-calendar-check text-orange-500 dark:text-orange-300 text-xl"></i>
+        </div>
+      </div>
+    </div>
+    <!-- Points -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Total Points</p>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_points }}</h3>
+        </div>
+        <div class="bg-yellow-100 dark:bg-yellow-900 rounded-full p-3">
+          <i class="fas fa-star text-yellow-500 dark:text-yellow-300 text-xl"></i>
+        </div>
+      </div>
+    </div>
+    <!-- Streak -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Learning Streak</p>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white">{{ streak.current_streak|default:0 }} days</h3>
+          <p class="text-xs text-gray-400 mt-1">Best: {{ streak.longest_streak|default:0 }} days</p>
+        </div>
+        <div class="bg-red-100 dark:bg-red-900 rounded-full p-3">
+          <i class="fas fa-fire text-red-500 dark:text-red-300 text-xl"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Left column -->
+    <div class="lg:col-span-2 space-y-8">
+
+      <!-- Quiz Performance -->
+      {% if quiz_attempts %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          <i class="fas fa-question-circle text-teal-500 dark:text-teal-300 mr-2"></i> Quiz Performance
+        </h2>
+        <div class="flex items-center mb-4">
+          <span class="text-gray-500 dark:text-gray-400 text-sm mr-2">Average Score:</span>
+          <span class="text-lg font-bold text-gray-900 dark:text-white">{{ avg_quiz_score }}%</span>
+        </div>
+        <div class="space-y-3">
+          {% for attempt in quiz_attempts %}
+          <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div>
+              <p class="font-medium text-gray-900 dark:text-white text-sm">{{ attempt.quiz.title }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ attempt.start_time|date:"M d, Y" }}</p>
+            </div>
+            <span class="font-bold {% if attempt.score >= 70 %}text-green-600 dark:text-green-400{% else %}text-red-500 dark:text-red-400{% endif %}">
+              {{ attempt.score }}%
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Recent Points -->
+      {% if recent_points %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          <i class="fas fa-star text-yellow-500 dark:text-yellow-300 mr-2"></i> Recent Points
+        </h2>
+        <div class="space-y-3">
+          {% for point in recent_points %}
+          <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div>
+              <p class="text-sm text-gray-900 dark:text-white">{{ point.reason }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ point.awarded_at|date:"M d, Y" }}</p>
+            </div>
+            <span class="font-bold text-yellow-600 dark:text-yellow-400">+{{ point.amount }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Teacher Notes -->
+      {% if is_teacher %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          <i class="fas fa-sticky-note text-teal-500 dark:text-teal-300 mr-2"></i> Teacher Notes
+        </h2>
+        <form method="post" class="mb-6">
+          {% csrf_token %}
+          <label for="note" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Note</label>
+          <textarea id="note" name="note" rows="3" placeholder="Add a note about this student..."
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+          ></textarea>
+          <button type="submit"
+            class="mt-2 bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-4 py-2 rounded-lg text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+            Add Note
+          </button>
+        </form>
+        {% if notes %}
+        <div class="space-y-3">
+          {% for note in notes %}
+          <div class="p-3 bg-teal-50 dark:bg-teal-900 rounded-lg border-l-4 border-teal-400">
+            <p class="text-sm text-gray-800 dark:text-gray-200">{{ note.content }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {{ note.created_by.get_full_name|default:note.created_by.username }} &mdash; {{ note.created_at|date:"M d, Y" }}
+            </p>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="text-gray-500 dark:text-gray-400 text-sm">No notes yet.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right column -->
+    <div class="space-y-8">
+      <!-- Badges -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          <i class="fas fa-award text-yellow-500 dark:text-yellow-300 mr-2"></i> Badges ({{ badges.count }})
+        </h2>
+        {% if badges %}
+        <div class="grid grid-cols-3 gap-3">
+          {% for ub in badges %}
+          <div class="flex flex-col items-center text-center p-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+            {% if ub.badge.image %}
+              <img src="{{ ub.badge.image.url }}" alt="{{ ub.badge.name }}" class="w-10 h-10 rounded-full object-cover mb-1">
+            {% else %}
+              <i class="fas fa-award text-2xl text-yellow-500 dark:text-yellow-300 mb-1"></i>
+            {% endif %}
+            <p class="text-xs font-medium text-gray-800 dark:text-white">{{ ub.badge.name }}</p>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="text-gray-500 dark:text-gray-400 text-sm">No badges earned yet.</p>
+        {% endif %}
+      </div>
+
+      <!-- Session Attendance Detail -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          <i class="fas fa-calendar text-orange-500 dark:text-orange-300 mr-2"></i> Sessions
+        </h2>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-gray-400">Total Sessions</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ total_sessions }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-gray-400">Sessions Held</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ past_sessions }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-gray-400">Attended</span>
+            <span class="font-medium text-green-600 dark:text-green-400">{{ attended }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-gray-400">Missed</span>
+            <span class="font-medium text-red-500 dark:text-red-400">{{ missed_sessions }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

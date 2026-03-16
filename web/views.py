@@ -147,6 +147,7 @@ from .models import (
     Order,
     OrderItem,
     Payment,
+    Points,
     PeerConnection,
     PeerMessage,
     ProductImage,
@@ -891,6 +892,7 @@ def course_detail(request, slug):
 
     # Get active virtual classroom for the course
     virtual_classroom = course.virtual_classrooms.filter(is_active=True).first()
+
 
     context = {
         "course": course,
@@ -1896,11 +1898,100 @@ def course_progress_overview(request, slug):
             }
         )
 
+
     context = {
         "course": course,
         "progress_data": progress_data,
     }
     return render(request, "courses/progress_overview.html", context)
+
+
+@login_required
+def student_progress_report(request: HttpRequest, slug: str, student_id: int) -> HttpResponse:
+    """Display a detailed progress report for a student in a specific course.
+
+    Accessible by the course teacher (full view with note-adding) or the student themselves (read-only).
+    """
+    course = get_object_or_404(Course, slug=slug)
+    student = get_object_or_404(User, id=student_id)
+
+    # Permission check
+    is_teacher = request.user == course.teacher
+    is_student = request.user == student
+    if not is_teacher and not is_student:
+        messages.error(request, "You do not have permission to view this report.")
+        return redirect("course_detail", slug=slug)
+
+    enrollment = get_object_or_404(Enrollment, student=student, course=course)
+    progress, _ = CourseProgress.objects.get_or_create(enrollment=enrollment)
+
+    # Attendance stats
+    total_sessions = course.sessions.count()
+    past_sessions = course.sessions.filter(start_time__lt=timezone.now()).count()
+    attended = SessionAttendance.objects.filter(
+        student=student,
+        session__course=course,
+        session__start_time__lt=timezone.now(),
+        status__in=["present", "late"],
+    ).count()
+    attendance_rate = round((attended / past_sessions * 100)) if past_sessions > 0 else 0
+
+    # Quiz stats
+    quiz_attempts = UserQuiz.objects.filter(
+        user=student,
+        quiz__course=course,
+        completed=True,
+    ).order_by("-start_time")[:10]
+    avg_quiz_score = quiz_attempts.aggregate(avg=Avg("score"))["avg"] or 0
+
+    # Points stats
+    total_points = Points.objects.filter(user=student).aggregate(total=Sum("amount"))["total"] or 0
+    recent_points = Points.objects.filter(user=student).order_by("-awarded_at")[:5]
+
+    # Badges
+    badges = UserBadge.objects.filter(user=student).select_related("badge").order_by("-awarded_at")
+
+    # Learning streak
+    streak = LearningStreak.objects.filter(user=student).first()
+
+    # Note history
+    notes = NoteHistory.objects.filter(enrollment=enrollment).order_by("-created_at")
+
+    # Handle teacher adding a note
+    if is_teacher and request.method == "POST":
+        note_content = request.POST.get("note", "").strip()
+        if note_content:
+            NoteHistory.objects.create(
+                enrollment=enrollment,
+                content=note_content,
+                created_by=request.user,
+            )
+            messages.success(request, "Note added successfully.")
+            return redirect("student_progress_report", slug=slug, student_id=student_id)
+
+    missed_sessions = max(past_sessions - attended, 0)
+
+    context = {
+        "course": course,
+        "student": student,
+        "enrollment": enrollment,
+        "progress": progress,
+        "total_sessions": total_sessions,
+        "past_sessions": past_sessions,
+        "attended": attended,
+        "attendance_rate": attendance_rate,
+        "quiz_attempts": quiz_attempts,
+        "avg_quiz_score": round(avg_quiz_score, 1),
+        "total_points": total_points,
+        "recent_points": recent_points,
+        "badges": badges,
+        "streak": streak,
+        "notes": notes,
+        "is_teacher": is_teacher,
+        "missed_sessions": missed_sessions,
+    }
+    return render(request, "courses/student_progress_report.html", context)
+
 
 
 @login_required
@@ -1975,6 +2066,7 @@ def course_marketing(request, slug):
     analytics = get_course_analytics(course)
     recommendations = get_promotion_recommendations(course)
 
+
     context = {
         "course": course,
         "analytics": analytics,
@@ -1993,6 +2085,7 @@ def course_analytics(request, slug):
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"analytics": analytics})
+
 
     context = {
         "course": course,
@@ -3160,6 +3253,7 @@ Click here to view the course: {course_url}
                 messages.error(request, "Failed to send invitation email. Please try again.")
     else:
         form = InviteStudentForm()
+
 
     context = {
         "course": course,
@@ -6758,6 +6852,7 @@ def student_management(request, course_slug, student_id):
 
     # Get badges earned by this student
     user_badges = student.badges.all()
+
 
     context = {
         "course": course,
