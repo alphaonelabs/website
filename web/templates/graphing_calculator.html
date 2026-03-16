@@ -158,7 +158,9 @@
       window.addEventListener('resize', resizeCanvas);
 
       // Coordinate system settings
-      let scale = 40; // pixels per unit
+      let baseScale = 40; // zoom level in pixels per unit
+      let gridDensity = 1; // multiplier from the grid-size slider
+      let scale = baseScale * gridDensity; // effective scale used for drawing
       let origin = {
           x: canvas.width / 2,
           y: canvas.height / 2
@@ -220,10 +222,10 @@
           const mouseY = e.clientY - rect.top;
           const mousePos = toMathCoords(mouseX, mouseY);
           const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-          const newScale = scale * zoomFactor;
-          origin.x = mouseX - mousePos.x * newScale;
-          origin.y = mouseY + mousePos.y * newScale;
-          scale = newScale;
+          baseScale *= zoomFactor;
+          scale = baseScale * gridDensity;
+          origin.x = mouseX - mousePos.x * scale;
+          origin.y = mouseY + mousePos.y * scale;
           redraw();
       });
 
@@ -329,7 +331,9 @@
                   alert("Explicit equations cannot reference 'y' on the right-hand side.");
                   return;
               }
-          } catch (err) {}
+          } catch (err) {
+              console.warn("[plotExplicit] math.parse failed for expression:", exprStr, err);
+          }
           let compiled;
           try {
               compiled = math.compile(exprStr);
@@ -513,7 +517,10 @@
                   if (yNodes.length > 0) {
                       hasYVariable = true;
                   }
-              } catch (err) {}
+              } catch (err) {
+                  console.error("[plotEquation] Failed to parse expression:", equation, err);
+                  hasYVariable = true; // treat parse failure as invalid to prevent falling through to plotExplicit
+              }
 
               if (hasYVariable) {
                   alert("Invalid implicit equation format.");
@@ -612,19 +619,26 @@
 
       // Pan/Zoom and Control functions
       function zoomIn() {
-          scale *= 1.2;
+          baseScale *= 1.2;
+          scale = baseScale * gridDensity;
           redraw();
       }
 
       function zoomOut() {
-          scale *= 0.8;
+          baseScale *= 0.8;
+          scale = baseScale * gridDensity;
           redraw();
       }
 
       function resetView() {
-          scale = 40;
+          baseScale = 40;
+          gridDensity = 1;
+          scale = baseScale * gridDensity;
           origin.x = canvas.width / 2;
           origin.y = canvas.height / 2;
+          // Sync the slider UI back to neutral (value 40 = midpoint)
+          const slider = document.getElementById('gridSize');
+          if (slider) slider.value = 40;
           redraw();
       }
 
@@ -653,14 +667,11 @@
           redraw();
       }
 
-      // gridDensity is a separate multiplier so the slider doesn't override the zoom level
-      let gridDensity = 1;
-
       function updateGridSize(value) {
           // Map slider (20-80) to a density multiplier; 40 = 1x (neutral)
           gridDensity = parseInt(value) / 40;
-          // Re-derive scale from the current base zoom and density
-          scale = 40 * gridDensity;
+          // Recompute effective scale without touching baseScale (zoom)
+          scale = baseScale * gridDensity;
           redraw();
       }
 
