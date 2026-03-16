@@ -6,13 +6,13 @@ compatibility_flags = ["python_workers"]
 [site]
 bucket = "./public"
 
-# ⚠️  Replace ENCRYPTION_KEY and JWT_SECRET with strong random values.
-# For production, use `wrangler secret put ENCRYPTION_KEY` and
-# `wrangler secret put JWT_SECRET` instead of storing them here.
-# For local dev copy these values to a `.dev.vars` file (already in .gitignore).
+# ⚠️  REQUIRED before deployment – replace placeholder values:
+#     wrangler secret put ENCRYPTION_KEY
+#     wrangler secret put JWT_SECRET
+# For local dev, copy both to a `.dev.vars` file (already in .gitignore).
 [vars]
-ENCRYPTION_KEY = "REPLACE-WITH-32-CHAR-RANDOM-SECRET"
-JWT_SECRET = "REPLACE-WITH-ANOTHER-RANDOM-SECRET"
+ENCRYPTION_KEY = "MUST_BE_SET_BEFORE_DEPLOYMENT"
+JWT_SECRET = "MUST_BE_SET_BEFORE_DEPLOYMENT"
 
 # Run `wrangler d1 create education_db` and paste the returned UUID below.
 [[d1_databases]]

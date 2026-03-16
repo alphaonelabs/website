@@ -108,6 +108,9 @@ def blind_index(value: str, secret: str) -> str:
 # Password hashing
 # ---------------------------------------------------------------------------
 
+# ⚠️  For production, derive the pepper from a secret stored via
+#     `wrangler secret put PEPPER` and pass it to _user_salt() at runtime.
+#     Rotating the pepper requires re-hashing all stored passwords.
 _PEPPER    = b"edu-platform-cf-pepper-2024"
 _PBKDF2_IT = 100_000
 
@@ -483,8 +486,8 @@ async def api_register(req, env):
 
     if not username or not email or not password:
         return err("username, email, and password are required")
-    if len(password) < 6:
-        return err("Password must be at least 6 characters")
+    if len(password) < 8:
+        return err("Password must be at least 8 characters")
     if role not in ("member", "host"):
         role = "member"
 
@@ -508,7 +511,7 @@ async def api_register(req, env):
     except Exception as e:
         if "UNIQUE" in str(e):
             return err("Username or email already registered", 409)
-        return err(f"Registration failed: {e}", 500)
+        return err("Registration failed — please try again", 500)
 
     token = create_token(uid, username, role, env.JWT_SECRET)
     return ok(
@@ -667,7 +670,7 @@ async def api_create_activity(req, env):
             atype, fmt, schedule_type, user["id"]
         ).run()
     except Exception as e:
-        return err(f"Failed to create activity: {e}", 500)
+        return err("Failed to create activity — please try again", 500)
 
     for tag_name in (body.get("tags") or []):
         tag_name = tag_name.strip()
@@ -798,7 +801,7 @@ async def api_join(req, env):
             " VALUES (?,?,?,?)"
         ).bind(enr_id, act_id, user["id"], role).run()
     except Exception as e:
-        return err(f"Failed to join activity: {e}", 500)
+        return err("Failed to join activity — please try again", 500)
 
     return ok(None, "Joined activity successfully")
 
@@ -910,7 +913,7 @@ async def api_create_session(req, env):
             encrypt(location, enc) if location else "",
         ).run()
     except Exception as e:
-        return err(f"Failed to create session: {e}", 500)
+        return err("Failed to create session — please try again", 500)
 
     return ok({"id": sid}, "Session created")
 
@@ -1033,7 +1036,7 @@ async def on_fetch(request, env):
                 await init_db(env)
                 return ok(None, "Database initialised")
             except Exception as e:
-                return err(f"Init failed: {e}", 500)
+                return err("Database init failed — check D1 binding", 500)
 
         if path == "/api/seed" and method == "POST":
             try:
@@ -1041,7 +1044,7 @@ async def on_fetch(request, env):
                 await seed_db(env, env.ENCRYPTION_KEY)
                 return ok(None, "Sample data seeded")
             except Exception as e:
-                return err(f"Seed failed: {e}", 500)
+                return err("Seed failed — check D1 binding and schema", 500)
 
         if path == "/api/register" and method == "POST":
             return await api_register(request, env)
