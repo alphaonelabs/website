@@ -1,138 +1,165 @@
 """
-Education Platform – Cloudflare Python Worker
-=============================================
-Routes
-  POST /api/init        – initialise DB schema
-  POST /api/seed        – seed sample data
-  POST /api/register    – register a new user
-  POST /api/login       – authenticate, return signed token
-  GET  /api/courses     – list courses (?category=&q=)
-  POST /api/courses     – create course  [teacher]
-  GET  /api/courses/:id – course + lessons (content gated behind enrolment)
-  POST /api/enroll      – enrol in a course [student]
-  GET  /api/dashboard   – personal dashboard
-  POST /api/lessons     – create lesson  [teacher]
-  POST /api/progress    – update lesson progress [student]
+EduPlatform – Cloudflare Python Worker (Activities Model)
+=========================================================
+API Routes
+  POST /api/init              – initialise DB schema
+  POST /api/seed              – seed sample data
+  POST /api/register          – register a new user
+  POST /api/login             – authenticate -> signed token
+  GET  /api/activities        – list activities (?type=&format=&q=&tag=)
+  POST /api/activities        – create activity              [host]
+  GET  /api/activities/:id    – activity + sessions + state
+  POST /api/join              – join an activity
+  GET  /api/dashboard         – personal dashboard
+  POST /api/sessions          – add a session to activity    [host]
+  GET  /api/tags              – list all tags
+  POST /api/activity-tags     – add tags to an activity      [host]
 
 Security model
-  • Course descriptions and lesson content are stored XOR-stream-cipher-encrypted
-    at rest.  The key is SHA-256 derived from the ENCRYPTION_KEY env variable.
-    ⚠️  XOR stream cipher is used here for demonstration; for production replace
-    encrypt()/decrypt() with AES-GCM calls via `js.crypto.subtle`.
-  • Passwords are stored as PBKDF2-SHA256 hashes with a unique per-user salt
-    derived from the username and a global pepper.
-  • Auth tokens are HMAC-SHA256 signed (stateless "JWT-lite").
+  * ALL user PII (username, email, display name, role) is encrypted with a
+    XOR stream-cipher (SHA-256 key expansion) before storage.
+  * HMAC-SHA256 blind indexes (username_hash, email_hash) allow O(1) row
+    lookups without ever storing plaintext PII in an indexed column.
+  * Activity descriptions and session locations/descriptions are encrypted.
+  * Passwords: PBKDF2-SHA256, per-user derived salt (username + global pepper).
+  * Auth tokens: HMAC-SHA256 signed, stateless (JWT-lite).
+  XOR stream cipher - demonstration only.  Replace encrypt()/decrypt()
+    with AES-GCM via js.crypto.subtle for a production deployment.
 
-Static HTML pages (public/) are served via the Workers KV site binding.
+Static HTML pages (public/) are served via Workers Sites (KV binding).
 """
 
 import base64
 import hashlib
 import hmac as _hmac
 import json
+import os
 import re
 from urllib.parse import urlparse, parse_qs
 
 from workers import Response
+
+
+# ---------------------------------------------------------------------------
+# ID generation
+# ---------------------------------------------------------------------------
+
+def new_id() -> str:
+    """Generate a random UUID v4 using os.urandom."""
+    b = bytearray(os.urandom(16))
+    b[6] = (b[6] & 0x0F) | 0x40   # version 4
+    b[8] = (b[8] & 0x3F) | 0x80   # RFC 4122 variant
+    h = b.hex()
+    return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}"
+
 
 # ---------------------------------------------------------------------------
 # Encryption helpers
 # ---------------------------------------------------------------------------
 
 def _derive_key(secret: str) -> bytes:
-    """Derive a 32-byte key from an arbitrary secret using SHA-256."""
+    """Derive a 32-byte key from an arbitrary secret string via SHA-256."""
     return hashlib.sha256(secret.encode("utf-8")).digest()
 
 
 def encrypt(plaintext: str, secret: str) -> str:
     """
-    Encrypt *plaintext* with a XOR stream-cipher (SHA-256 key expansion).
+    XOR stream-cipher encryption.
 
-    The key is expanded into a keystream the same length as the data and
-    each byte is XOR'd.  The result is Base64-encoded so it is safe to
-    store as TEXT in D1.
+    Key is SHA-256 of secret, XOR'd byte-by-byte against plaintext.
+    Result is Base64-encoded for safe TEXT storage in D1.
 
-    ⚠️  XOR stream cipher – demonstration only.
-    For a production deployment replace this with AES-GCM via the
-    Web Crypto API (available through `js.crypto.subtle`).
+    XOR stream cipher - demonstration only. Replace with AES-GCM for production.
     """
     if not plaintext:
         return ""
-    key = _derive_key(secret)
+    key  = _derive_key(secret)
     data = plaintext.encode("utf-8")
-    ks = (key * (len(data) // len(key) + 1))[: len(data)]
+    ks   = (key * (len(data) // len(key) + 1))[: len(data)]
     return base64.b64encode(bytes(a ^ b for a, b in zip(data, ks))).decode("ascii")
 
 
 def decrypt(ciphertext: str, secret: str) -> str:
-    """Reverse of encrypt().  XOR is self-inverse so the algorithm is identical."""
+    """Reverse of encrypt(). XOR is self-inverse."""
     if not ciphertext:
         return ""
     try:
         key = _derive_key(secret)
         raw = base64.b64decode(ciphertext)
-        ks = (key * (len(raw) // len(key) + 1))[: len(raw)]
+        ks  = (key * (len(raw) // len(key) + 1))[: len(raw)]
         return bytes(a ^ b for a, b in zip(raw, ks)).decode("utf-8")
     except Exception:
         return "[decryption error]"
+
+
+def blind_index(value: str, secret: str) -> str:
+    """
+    HMAC-SHA256 deterministic hash of value used as a blind index.
+
+    Allows finding a row by plaintext value without decrypting every row.
+    The value is lower-cased before hashing so lookups are case-insensitive.
+    """
+    return _hmac.new(
+        secret.encode("utf-8"), value.lower().encode("utf-8"), hashlib.sha256
+    ).hexdigest()
 
 
 # ---------------------------------------------------------------------------
 # Password hashing
 # ---------------------------------------------------------------------------
 
-# Global pepper mixed into every per-user salt to frustrate offline attacks
-# even if the DB is leaked without the application secrets.
-_PEPPER = b"edu-platform-cf-pepper-2024"
-_PBKDF2_ITERS = 100_000
+_PEPPER    = b"edu-platform-cf-pepper-2024"
+_PBKDF2_IT = 100_000
 
 
 def _user_salt(username: str) -> bytes:
-    """Derive a unique per-user salt from username + global pepper."""
+    """Per-user PBKDF2 salt = SHA-256(pepper || username)."""
     return hashlib.sha256(_PEPPER + username.encode("utf-8")).digest()
 
 
 def hash_password(password: str, username: str) -> str:
-    """Hash password with PBKDF2-SHA256 and a per-user derived salt."""
-    salt = _user_salt(username)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, _PBKDF2_ITERS)
+    """PBKDF2-SHA256 with per-user derived salt."""
+    dk = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), _user_salt(username), _PBKDF2_IT
+    )
     return base64.b64encode(dk).decode("ascii")
 
 
-def verify_password(password: str, stored_hash: str, username: str) -> bool:
-    return hash_password(password, username) == stored_hash
+def verify_password(password: str, stored: str, username: str) -> bool:
+    return hash_password(password, username) == stored
 
 
 # ---------------------------------------------------------------------------
-# HMAC-signed tokens (stateless "JWT-lite")
+# Auth tokens (HMAC-SHA256 signed, stateless JWT-lite)
 # ---------------------------------------------------------------------------
 
-def create_token(user_id: int, username: str, role: str, secret: str) -> str:
+def create_token(uid: str, username: str, role: str, secret: str) -> str:
     payload = base64.b64encode(
-        json.dumps({"id": user_id, "username": username, "role": role}).encode()
+        json.dumps({"id": uid, "username": username, "role": role}).encode()
     ).decode("ascii")
-    sig = _hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    sig = _hmac.new(
+        secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
     return f"{payload}.{sig}"
 
 
 def verify_token(raw: str, secret: str):
-    """Return the decoded payload dict or *None* if invalid."""
+    """Return decoded payload dict or None if invalid/missing."""
     if not raw:
         return None
     try:
         token = raw.removeprefix("Bearer ").strip()
-        dot = token.rfind(".")
+        dot   = token.rfind(".")
         if dot == -1:
             return None
-        payload_b64, sig = token[:dot], token[dot + 1 :]
-        expected = _hmac.new(
-            secret.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256
+        p, sig = token[:dot], token[dot + 1:]
+        exp = _hmac.new(
+            secret.encode("utf-8"), p.encode("utf-8"), hashlib.sha256
         ).hexdigest()
-        if not _hmac.compare_digest(sig, expected):
+        if not _hmac.compare_digest(sig, exp):
             return None
-        # Re-pad base64 if needed
-        padding = (4 - len(payload_b64) % 4) % 4
-        return json.loads(base64.b64decode(payload_b64 + "=" * padding).decode("utf-8"))
+        padding = (4 - len(p) % 4) % 4
+        return json.loads(base64.b64decode(p + "=" * padding).decode("utf-8"))
     except Exception:
         return None
 
@@ -142,7 +169,7 @@ def verify_token(raw: str, secret: str):
 # ---------------------------------------------------------------------------
 
 _CORS = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin":  "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
@@ -168,48 +195,90 @@ def err(msg: str, status: int = 400):
 
 
 # ---------------------------------------------------------------------------
-# DB initialisation
+# DDL - full schema (mirrors schema.sql)
 # ---------------------------------------------------------------------------
 
 _DDL = [
+    # Users - all PII encrypted; HMAC blind indexes for O(1) lookups
     """CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        email    TEXT NOT NULL,
+        id            TEXT PRIMARY KEY,
+        username_hash TEXT NOT NULL UNIQUE,
+        email_hash    TEXT NOT NULL UNIQUE,
+        name          TEXT NOT NULL,
+        username      TEXT NOT NULL,
+        email         TEXT NOT NULL,
         password_hash TEXT NOT NULL,
-        role     TEXT NOT NULL DEFAULT 'student',
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        role          TEXT NOT NULL,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     )""",
-    """CREATE TABLE IF NOT EXISTS courses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title        TEXT NOT NULL,
-        description  TEXT NOT NULL,
-        teacher_id   INTEGER NOT NULL,
-        category     TEXT NOT NULL DEFAULT 'General',
-        difficulty   TEXT NOT NULL DEFAULT 'Beginner',
-        enrolled_count INTEGER NOT NULL DEFAULT 0,
-        created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    # Activities
+    """CREATE TABLE IF NOT EXISTS activities (
+        id            TEXT PRIMARY KEY,
+        title         TEXT NOT NULL,
+        description   TEXT,
+        type          TEXT NOT NULL DEFAULT 'course',
+        format        TEXT NOT NULL DEFAULT 'self_paced',
+        schedule_type TEXT NOT NULL DEFAULT 'ongoing',
+        host_id       TEXT NOT NULL,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (host_id) REFERENCES users(id)
     )""",
+    # Sessions
+    """CREATE TABLE IF NOT EXISTS sessions (
+        id          TEXT PRIMARY KEY,
+        activity_id TEXT NOT NULL,
+        title       TEXT,
+        description TEXT,
+        start_time  TEXT,
+        end_time    TEXT,
+        location    TEXT,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (activity_id) REFERENCES activities(id)
+    )""",
+    # Enrollments
     """CREATE TABLE IF NOT EXISTS enrollments (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
-        course_id  INTEGER NOT NULL,
-        progress   INTEGER NOT NULL DEFAULT 0,
-        enrolled_at TEXT NOT NULL DEFAULT (datetime('now')),
-        UNIQUE(student_id, course_id)
+        id          TEXT PRIMARY KEY,
+        activity_id TEXT NOT NULL,
+        user_id     TEXT NOT NULL,
+        role        TEXT NOT NULL DEFAULT 'participant',
+        status      TEXT NOT NULL DEFAULT 'active',
+        created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (activity_id, user_id),
+        FOREIGN KEY (activity_id) REFERENCES activities(id),
+        FOREIGN KEY (user_id)     REFERENCES users(id)
     )""",
-    """CREATE TABLE IF NOT EXISTS lessons (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        course_id  INTEGER NOT NULL,
-        title      TEXT NOT NULL,
-        content    TEXT NOT NULL,
-        order_num  INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    # Session attendance
+    """CREATE TABLE IF NOT EXISTS session_attendance (
+        id         TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        user_id    TEXT NOT NULL,
+        status     TEXT NOT NULL DEFAULT 'registered',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (session_id, user_id),
+        FOREIGN KEY (session_id) REFERENCES sessions(id),
+        FOREIGN KEY (user_id)    REFERENCES users(id)
     )""",
-    "CREATE INDEX IF NOT EXISTS idx_courses_teacher      ON courses(teacher_id)",
-    "CREATE INDEX IF NOT EXISTS idx_enrollments_student  ON enrollments(student_id)",
-    "CREATE INDEX IF NOT EXISTS idx_enrollments_course   ON enrollments(course_id)",
-    "CREATE INDEX IF NOT EXISTS idx_lessons_course       ON lessons(course_id)",
+    # Tags
+    """CREATE TABLE IF NOT EXISTS tags (
+        id   TEXT PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+    )""",
+    # Activity-tag junction
+    """CREATE TABLE IF NOT EXISTS activity_tags (
+        activity_id TEXT NOT NULL,
+        tag_id      TEXT NOT NULL,
+        PRIMARY KEY (activity_id, tag_id),
+        FOREIGN KEY (activity_id) REFERENCES activities(id),
+        FOREIGN KEY (tag_id)      REFERENCES tags(id)
+    )""",
+    # Indexes
+    "CREATE INDEX IF NOT EXISTS idx_activities_host      ON activities(host_id)",
+    "CREATE INDEX IF NOT EXISTS idx_enrollments_activity ON enrollments(activity_id)",
+    "CREATE INDEX IF NOT EXISTS idx_enrollments_user     ON enrollments(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_sessions_activity    ON sessions(activity_id)",
+    "CREATE INDEX IF NOT EXISTS idx_sa_session           ON session_attendance(session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_sa_user              ON session_attendance(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_at_activity          ON activity_tags(activity_id)",
 ]
 
 
@@ -224,147 +293,176 @@ async def init_db(env):
 
 async def seed_db(env, enc_key: str):
     # ---- users ---------------------------------------------------------------
-    sample_users = [
-        ("alice",   "alice@example.com",   "password123", "teacher"),
-        ("bob",     "bob@example.com",     "password123", "teacher"),
-        ("charlie", "charlie@example.com", "password123", "student"),
-        ("diana",   "diana@example.com",   "password123", "student"),
+    seed_users = [
+        ("alice",   "alice@example.com",   "password123", "host",   "Alice Chen"),
+        ("bob",     "bob@example.com",     "password123", "host",   "Bob Martinez"),
+        ("charlie", "charlie@example.com", "password123", "member", "Charlie Kim"),
+        ("diana",   "diana@example.com",   "password123", "member", "Diana Patel"),
     ]
-    for uname, email, pw, role in sample_users:
+    uid_map = {}
+    for uname, email, pw, role, display in seed_users:
+        uid = f"usr-{uname}"
+        uid_map[uname] = uid
         try:
             await env.DB.prepare(
-                "INSERT INTO users (username, email, password_hash, role) VALUES (?,?,?,?)"
-            ).bind(uname, email, hash_password(pw, uname), role).run()
+                "INSERT INTO users "
+                "(id,username_hash,email_hash,name,username,email,password_hash,role)"
+                " VALUES (?,?,?,?,?,?,?,?)"
+            ).bind(
+                uid,
+                blind_index(uname, enc_key),
+                blind_index(email, enc_key),
+                encrypt(display,  enc_key),
+                encrypt(uname,    enc_key),
+                encrypt(email,    enc_key),
+                hash_password(pw, uname),
+                encrypt(role,     enc_key),
+            ).run()
         except Exception:
-            pass  # already exists
+            pass  # already seeded
 
-    alice = await env.DB.prepare("SELECT id FROM users WHERE username='alice'").first()
-    bob   = await env.DB.prepare("SELECT id FROM users WHERE username='bob'").first()
-    if not alice or not bob:
-        return
+    aid = uid_map["alice"]
+    bid = uid_map["bob"]
+    cid = uid_map["charlie"]
+    did = uid_map["diana"]
 
-    aid, bid = alice["id"], bob["id"]
-
-    # ---- courses -------------------------------------------------------------
-    raw_courses = [
-        (
-            "Python for Beginners",
-            "Learn Python programming from scratch. Master variables, loops, "
-            "functions, and object-oriented design in this hands-on course.",
-            aid, "Programming", "Beginner",
-        ),
-        (
-            "Web Development Fundamentals",
-            "Build modern, responsive websites with HTML5, CSS3, and JavaScript. "
-            "Covers Flexbox, Grid, fetch API, and accessible design.",
-            aid, "Web Development", "Beginner",
-        ),
-        (
-            "Data Science with Python",
-            "Explore data wrangling and visualisation with pandas and matplotlib, "
-            "then build predictive models with scikit-learn.",
-            bid, "Data Science", "Intermediate",
-        ),
-        (
-            "Advanced JavaScript",
-            "Master closures, the prototype chain, async/await, Promises, "
-            "ES2024 features, and modern front-end architecture patterns.",
-            bid, "Programming", "Advanced",
-        ),
-        (
-            "Machine Learning Basics",
-            "From linear regression to neural networks: understand the maths, "
-            "implement algorithms in Python, and evaluate real-world models.",
-            aid, "AI & ML", "Intermediate",
-        ),
-        (
-            "Database Design & SQL",
-            "Design normalised relational schemas, write complex SQL queries, "
-            "use indexes for speed, and understand transactions.",
-            bid, "Database", "Beginner",
-        ),
+    # ---- tags ----------------------------------------------------------------
+    tag_rows = [
+        ("tag-python", "Python"),
+        ("tag-js",     "JavaScript"),
+        ("tag-data",   "Data Science"),
+        ("tag-ml",     "Machine Learning"),
+        ("tag-webdev", "Web Development"),
+        ("tag-db",     "Databases"),
+        ("tag-cloud",  "Cloud"),
     ]
-
-    for title, desc, tid, cat, diff in raw_courses:
+    for tid, tname in tag_rows:
         try:
             await env.DB.prepare(
-                "INSERT INTO courses (title, description, teacher_id, category, difficulty)"
-                " VALUES (?,?,?,?,?)"
-            ).bind(title, encrypt(desc, enc_key), tid, cat, diff).run()
+                "INSERT INTO tags (id,name) VALUES (?,?)"
+            ).bind(tid, tname).run()
         except Exception:
             pass
 
-    # ---- lessons for "Python for Beginners" ----------------------------------
-    py_row = await env.DB.prepare(
-        "SELECT id FROM courses WHERE title='Python for Beginners' LIMIT 1"
-    ).first()
-    if py_row:
-        cid = py_row["id"]
-        raw_lessons = [
-            (
-                "Introduction to Python",
-                "# Welcome to Python\n\nPython is a high-level, dynamically typed language "
-                "celebrated for its clean syntax.\n\n## Why Python?\n"
-                "- Beginner-friendly\n- Huge ecosystem (PyPI has 500k+ packages)\n"
-                "- Powers web, data, AI, automation\n\n## Your First Program\n"
-                "```python\nprint('Hello, World!')\n```\n\n"
-                "Run it in your terminal and you'll see: **Hello, World!**",
-                1,
-            ),
-            (
-                "Variables & Data Types",
-                "# Variables and Data Types\n\nVariables are named containers for data.\n\n"
-                "## Core Types\n| Type | Example |\n|------|---------|\n"
-                "| int | `age = 25` |\n| float | `pi = 3.14` |\n"
-                "| str | `name = 'Alice'` |\n| bool | `active = True` |\n\n"
-                "```python\nname = 'Alice'\nage = 25\nprint(f'{name} is {age} years old')\n```",
-                2,
-            ),
-            (
-                "Control Flow",
-                "# Control Flow\n\nGuide your program with conditions and loops.\n\n"
-                "## if / elif / else\n```python\nscore = 85\n"
-                "if score >= 90:\n    grade = 'A'\nelif score >= 80:\n    grade = 'B'\n"
-                "else:\n    grade = 'C'\nprint(grade)  # B\n```\n\n"
-                "## for Loop\n```python\nfor i in range(1, 6):\n    print(i)\n```\n\n"
-                "## while Loop\n```python\ncount = 0\nwhile count < 3:\n    count += 1\n```",
-                3,
-            ),
-            (
-                "Functions",
-                "# Functions\n\nFunctions let you reuse code and keep things organised.\n\n"
-                "```python\ndef greet(name: str, loud: bool = False) -> str:\n"
-                "    msg = f'Hello, {name}!'\n    return msg.upper() if loud else msg\n\n"
-                "print(greet('Alice'))        # Hello, Alice!\n"
-                "print(greet('Bob', loud=True))  # HELLO, BOB!\n```\n\n"
-                "**Best practices**\n- One responsibility per function\n"
-                "- Use type hints\n- Write docstrings",
-                4,
-            ),
-        ]
-        for title, content, order in raw_lessons:
+    # ---- activities ----------------------------------------------------------
+    act_rows = [
+        (
+            "act-py-begin", "Python for Beginners",
+            "Learn Python programming from scratch. Master variables, loops, "
+            "functions, and object-oriented design in this hands-on course.",
+            "course", "self_paced", "ongoing", aid,
+            ["tag-python"],
+        ),
+        (
+            "act-js-meetup", "JavaScript Developers Meetup",
+            "Monthly meetup for JavaScript enthusiasts. Share projects, "
+            "discuss new frameworks, and network with fellow devs.",
+            "meetup", "live", "recurring", bid,
+            ["tag-js", "tag-webdev"],
+        ),
+        (
+            "act-ds-workshop", "Data Science Workshop",
+            "Hands-on workshop covering data wrangling with pandas, "
+            "visualisation with matplotlib, and intro to machine learning.",
+            "workshop", "live", "multi_session", aid,
+            ["tag-data", "tag-python"],
+        ),
+        (
+            "act-ml-study", "Machine Learning Study Group",
+            "Collaborative study group working through ML concepts, "
+            "reading papers, and implementing algorithms together.",
+            "course", "hybrid", "recurring", bid,
+            ["tag-ml", "tag-python"],
+        ),
+        (
+            "act-webdev", "Web Dev Fundamentals",
+            "Build modern responsive websites with HTML5, CSS3, and JavaScript. "
+            "Covers Flexbox, Grid, fetch API, and accessible design.",
+            "course", "self_paced", "ongoing", aid,
+            ["tag-webdev", "tag-js"],
+        ),
+        (
+            "act-db-design", "Database Design & SQL",
+            "Design normalised relational schemas, write complex SQL queries, "
+            "use indexes for speed, and understand transactions.",
+            "workshop", "live", "one_time", bid,
+            ["tag-db"],
+        ),
+    ]
+    for act_id, title, desc, atype, fmt, sched, host_id, tags in act_rows:
+        try:
+            await env.DB.prepare(
+                "INSERT INTO activities "
+                "(id,title,description,type,format,schedule_type,host_id)"
+                " VALUES (?,?,?,?,?,?,?)"
+            ).bind(
+                act_id, title, encrypt(desc, enc_key),
+                atype, fmt, sched, host_id
+            ).run()
+        except Exception:
+            pass
+        for tag_id in tags:
             try:
                 await env.DB.prepare(
-                    "INSERT INTO lessons (course_id, title, content, order_num) VALUES (?,?,?,?)"
-                ).bind(cid, title, encrypt(content, enc_key), order).run()
+                    "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id)"
+                    " VALUES (?,?)"
+                ).bind(act_id, tag_id).run()
             except Exception:
                 pass
 
-        # enrol charlie in Python course
-        charlie = await env.DB.prepare(
-            "SELECT id FROM users WHERE username='charlie'"
-        ).first()
-        if charlie:
-            try:
-                await env.DB.prepare(
-                    "INSERT OR IGNORE INTO enrollments (student_id, course_id, progress)"
-                    " VALUES (?,?,?)"
-                ).bind(charlie["id"], cid, 50).run()
-                await env.DB.prepare(
-                    "UPDATE courses SET enrolled_count=1 WHERE id=?"
-                ).bind(cid).run()
-            except Exception:
-                pass
+    # ---- sessions for live/recurring activities ------------------------------
+    ses_rows = [
+        ("ses-js-1", "act-js-meetup",
+         "April Meetup", "Q1 retro and React 19 deep-dive",
+         "2024-04-15 18:00", "2024-04-15 21:00", "Tech Hub, 123 Main St, SF"),
+        ("ses-js-2", "act-js-meetup",
+         "May Meetup", "TypeScript 5.4 and what's new in Node 22",
+         "2024-05-20 18:00", "2024-05-20 21:00", "Tech Hub, 123 Main St, SF"),
+        ("ses-ds-1", "act-ds-workshop",
+         "Session 1 - Data Wrangling",
+         "Introduction to pandas DataFrames and data cleaning",
+         "2024-06-01 10:00", "2024-06-01 14:00", "Online via Zoom"),
+        ("ses-ds-2", "act-ds-workshop",
+         "Session 2 - Visualisation",
+         "matplotlib, seaborn, and plotly for data storytelling",
+         "2024-06-08 10:00", "2024-06-08 14:00", "Online via Zoom"),
+        ("ses-ds-3", "act-ds-workshop",
+         "Session 3 - Intro to ML",
+         "scikit-learn: regression, classification, evaluation",
+         "2024-06-15 10:00", "2024-06-15 14:00", "Online via Zoom"),
+    ]
+    for sid, act_id, title, desc, start, end, loc in ses_rows:
+        try:
+            await env.DB.prepare(
+                "INSERT INTO sessions "
+                "(id,activity_id,title,description,start_time,end_time,location)"
+                " VALUES (?,?,?,?,?,?,?)"
+            ).bind(
+                sid, act_id, title,
+                encrypt(desc, enc_key),
+                start, end,
+                encrypt(loc, enc_key),
+            ).run()
+        except Exception:
+            pass
+
+    # ---- enrollments ---------------------------------------------------------
+    enr_rows = [
+        ("enr-c-py",     "act-py-begin",    cid, "participant"),
+        ("enr-c-js",     "act-js-meetup",   cid, "participant"),
+        ("enr-c-ds",     "act-ds-workshop", cid, "participant"),
+        ("enr-d-py",     "act-py-begin",    did, "participant"),
+        ("enr-d-webdev", "act-webdev",      did, "participant"),
+        ("enr-b-py",     "act-py-begin",    bid, "instructor"),
+    ]
+    for eid, act_id, uid, role in enr_rows:
+        try:
+            await env.DB.prepare(
+                "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role)"
+                " VALUES (?,?,?,?)"
+            ).bind(eid, act_id, uid, role).run()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -380,31 +478,42 @@ async def api_register(req, env):
     username = (body.get("username") or "").strip()
     email    = (body.get("email")    or "").strip()
     password = (body.get("password") or "")
-    role     = body.get("role", "student")
+    role     = (body.get("role")     or "member").strip()
+    name     = (body.get("name")     or username).strip()
 
     if not username or not email or not password:
         return err("username, email, and password are required")
     if len(password) < 6:
         return err("Password must be at least 6 characters")
-    if role not in ("student", "teacher"):
-        role = "student"
+    if role not in ("member", "host"):
+        role = "member"
 
+    enc = env.ENCRYPTION_KEY
+    uid = new_id()
     try:
         await env.DB.prepare(
-            "INSERT INTO users (username, email, password_hash, role) VALUES (?,?,?,?)"
-        ).bind(username, email, hash_password(password, username), role).run()
+            "INSERT INTO users "
+            "(id,username_hash,email_hash,name,username,email,password_hash,role)"
+            " VALUES (?,?,?,?,?,?,?,?)"
+        ).bind(
+            uid,
+            blind_index(username, enc),
+            blind_index(email,    enc),
+            encrypt(name,     enc),
+            encrypt(username, enc),
+            encrypt(email,    enc),
+            hash_password(password, username),
+            encrypt(role, enc),
+        ).run()
     except Exception as e:
         if "UNIQUE" in str(e):
-            return err("Username already exists", 409)
+            return err("Username or email already registered", 409)
         return err(f"Registration failed: {e}", 500)
 
-    row = await env.DB.prepare(
-        "SELECT id, username, role FROM users WHERE username=?"
-    ).bind(username).first()
-
-    token = create_token(row["id"], row["username"], row["role"], env.JWT_SECRET)
+    token = create_token(uid, username, role, env.JWT_SECRET)
     return ok(
-        {"token": token, "user": {"id": row["id"], "username": row["username"], "role": row["role"]}},
+        {"token": token,
+         "user": {"id": uid, "username": username, "name": name, "role": role}},
         "Registration successful",
     )
 
@@ -421,160 +530,244 @@ async def api_login(req, env):
     if not username or not password:
         return err("username and password are required")
 
-    row = await env.DB.prepare(
-        "SELECT id, username, password_hash, role FROM users WHERE username=?"
-    ).bind(username).first()
+    enc    = env.ENCRYPTION_KEY
+    u_hash = blind_index(username, enc)
+    row    = await env.DB.prepare(
+        "SELECT id,password_hash,role,name FROM users WHERE username_hash=?"
+    ).bind(u_hash).first()
 
-    if not row or not verify_password(password, row["password_hash"], row["username"]):
+    if not row or not verify_password(password, row["password_hash"], username):
         return err("Invalid username or password", 401)
 
-    token = create_token(row["id"], row["username"], row["role"], env.JWT_SECRET)
+    real_role = decrypt(row["role"], enc)
+    real_name = decrypt(row["name"], enc)
+    token     = create_token(row["id"], username, real_role, env.JWT_SECRET)
     return ok(
-        {"token": token, "user": {"id": row["id"], "username": row["username"], "role": row["role"]}},
+        {"token": token,
+         "user": {"id": row["id"], "username": username,
+                  "name": real_name, "role": real_role}},
         "Login successful",
     )
 
 
-async def api_list_courses(req, env):
+async def api_list_activities(req, env):
     parsed = urlparse(req.url)
     params = parse_qs(parsed.query)
-    category = (params.get("category") or [None])[0]
-    search   = (params.get("q")        or [None])[0]
+    atype  = (params.get("type")   or [None])[0]
+    fmt    = (params.get("format") or [None])[0]
+    search = (params.get("q")      or [None])[0]
+    tag    = (params.get("tag")    or [None])[0]
+    enc    = env.ENCRYPTION_KEY
 
-    if category:
+    base_q = (
+        "SELECT a.id,a.title,a.description,a.type,a.format,a.schedule_type,"
+        "a.created_at,u.name AS host_name_enc,"
+        "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
+        " AS participant_count,"
+        "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
+        " FROM activities a JOIN users u ON a.host_id=u.id"
+    )
+
+    if tag:
+        tag_row = await env.DB.prepare(
+            "SELECT id FROM tags WHERE name=?"
+        ).bind(tag).first()
+        if not tag_row:
+            return json_resp({"activities": []})
         res = await env.DB.prepare(
-            "SELECT c.id,c.title,c.description,c.category,c.difficulty,"
-            "c.enrolled_count,c.created_at,u.username AS teacher_name"
-            " FROM courses c JOIN users u ON c.teacher_id=u.id"
-            " WHERE c.category=? ORDER BY c.created_at DESC"
-        ).bind(category).all()
+            base_q
+            + " JOIN activity_tags at2 ON at2.activity_id=a.id"
+              " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
+        ).bind(tag_row["id"]).all()
+    elif atype and fmt:
+        res = await env.DB.prepare(
+            base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
+        ).bind(atype, fmt).all()
+    elif atype:
+        res = await env.DB.prepare(
+            base_q + " WHERE a.type=? ORDER BY a.created_at DESC"
+        ).bind(atype).all()
+    elif fmt:
+        res = await env.DB.prepare(
+            base_q + " WHERE a.format=? ORDER BY a.created_at DESC"
+        ).bind(fmt).all()
     else:
         res = await env.DB.prepare(
-            "SELECT c.id,c.title,c.description,c.category,c.difficulty,"
-            "c.enrolled_count,c.created_at,u.username AS teacher_name"
-            " FROM courses c JOIN users u ON c.teacher_id=u.id"
-            " ORDER BY c.created_at DESC"
+            base_q + " ORDER BY a.created_at DESC"
         ).all()
 
-    enc_key = env.ENCRYPTION_KEY
-    courses = []
+    activities = []
     for row in res.results or []:
-        desc = decrypt(row["description"], enc_key)
-        if search and search.lower() not in row["title"].lower() and search.lower() not in desc.lower():
+        desc      = decrypt(row["description"] or "", enc)
+        host_name = decrypt(row["host_name_enc"] or "", enc)
+        if search and (
+            search.lower() not in row["title"].lower()
+            and search.lower() not in desc.lower()
+        ):
             continue
-        courses.append(
-            {
-                "id": row["id"],
-                "title": row["title"],
-                "description": desc,
-                "category": row["category"],
-                "difficulty": row["difficulty"],
-                "enrolled_count": row["enrolled_count"],
-                "teacher_name": row["teacher_name"],
-                "created_at": row["created_at"],
-            }
-        )
 
-    return json_resp({"courses": courses})
+        t_res = await env.DB.prepare(
+            "SELECT t.name FROM tags t"
+            " JOIN activity_tags at2 ON at2.tag_id=t.id"
+            " WHERE at2.activity_id=?"
+        ).bind(row["id"]).all()
+
+        activities.append({
+            "id":                row["id"],
+            "title":             row["title"],
+            "description":       desc,
+            "type":              row["type"],
+            "format":            row["format"],
+            "schedule_type":     row["schedule_type"],
+            "host_name":         host_name,
+            "participant_count": row["participant_count"],
+            "session_count":     row["session_count"],
+            "tags":              [t["name"] for t in (t_res.results or [])],
+            "created_at":        row["created_at"],
+        })
+
+    return json_resp({"activities": activities})
 
 
-async def api_create_course(req, env):
+async def api_create_activity(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user or user.get("role") != "teacher":
-        return err("Teacher access required", 401)
+    if not user or user.get("role") != "host":
+        return err("Host access required", 401)
 
     try:
         body = await req.json()
     except Exception:
         return err("Invalid JSON body")
 
-    title      = (body.get("title")       or "").strip()
-    description = (body.get("description") or "").strip()
-    category   = (body.get("category")    or "General").strip()
-    difficulty  = (body.get("difficulty")  or "Beginner").strip()
+    title         = (body.get("title")         or "").strip()
+    description   = (body.get("description")   or "").strip()
+    atype         = (body.get("type")          or "course").strip()
+    fmt           = (body.get("format")        or "self_paced").strip()
+    schedule_type = (body.get("schedule_type") or "ongoing").strip()
 
-    if not title or not description:
-        return err("title and description are required")
+    if not title:
+        return err("title is required")
+    if atype not in ("course", "meetup", "workshop", "seminar", "other"):
+        atype = "course"
+    if fmt not in ("live", "self_paced", "hybrid"):
+        fmt = "self_paced"
+    if schedule_type not in ("one_time", "multi_session", "recurring", "ongoing"):
+        schedule_type = "ongoing"
 
+    enc    = env.ENCRYPTION_KEY
+    act_id = new_id()
     try:
         await env.DB.prepare(
-            "INSERT INTO courses (title,description,teacher_id,category,difficulty)"
-            " VALUES (?,?,?,?,?)"
-        ).bind(title, encrypt(description, env.ENCRYPTION_KEY), user["id"], category, difficulty).run()
+            "INSERT INTO activities "
+            "(id,title,description,type,format,schedule_type,host_id)"
+            " VALUES (?,?,?,?,?,?,?)"
+        ).bind(
+            act_id, title,
+            encrypt(description, enc) if description else "",
+            atype, fmt, schedule_type, user["id"]
+        ).run()
     except Exception as e:
-        return err(f"Failed to create course: {e}", 500)
+        return err(f"Failed to create activity: {e}", 500)
 
-    row = await env.DB.prepare(
-        "SELECT c.*,u.username AS teacher_name FROM courses c"
-        " JOIN users u ON c.teacher_id=u.id"
-        " WHERE c.teacher_id=? ORDER BY c.id DESC LIMIT 1"
-    ).bind(user["id"]).first()
+    for tag_name in (body.get("tags") or []):
+        tag_name = tag_name.strip()
+        if not tag_name:
+            continue
+        t_row = await env.DB.prepare(
+            "SELECT id FROM tags WHERE name=?"
+        ).bind(tag_name).first()
+        if not t_row:
+            tid = new_id()
+            try:
+                await env.DB.prepare(
+                    "INSERT INTO tags (id,name) VALUES (?,?)"
+                ).bind(tid, tag_name).run()
+                t_row = {"id": tid}
+            except Exception:
+                continue
+        try:
+            await env.DB.prepare(
+                "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
+            ).bind(act_id, t_row["id"]).run()
+        except Exception:
+            pass
 
-    return ok({"id": row["id"], "title": row["title"]}, "Course created")
+    return ok({"id": act_id, "title": title}, "Activity created")
 
 
-async def api_get_course(course_id: int, req, env):
-    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+async def api_get_activity(act_id: str, req, env):
+    user    = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    enc     = env.ENCRYPTION_KEY
 
-    course = await env.DB.prepare(
-        "SELECT c.*,u.username AS teacher_name"
-        " FROM courses c JOIN users u ON c.teacher_id=u.id WHERE c.id=?"
-    ).bind(course_id).first()
+    act = await env.DB.prepare(
+        "SELECT a.*,u.name AS host_name_enc,u.id AS host_uid"
+        " FROM activities a JOIN users u ON a.host_id=u.id"
+        " WHERE a.id=?"
+    ).bind(act_id).first()
+    if not act:
+        return err("Activity not found", 404)
 
-    if not course:
-        return err("Course not found", 404)
-
-    enc_key = env.ENCRYPTION_KEY
-
+    enrollment  = None
     is_enrolled = False
-    enrollment = None
     if user:
-        enrollment = await env.DB.prepare(
-            "SELECT id,progress FROM enrollments WHERE student_id=? AND course_id=?"
-        ).bind(user["id"], course_id).first()
+        enrollment  = await env.DB.prepare(
+            "SELECT id,role,status FROM enrollments"
+            " WHERE activity_id=? AND user_id=?"
+        ).bind(act_id, user["id"]).first()
         is_enrolled = enrollment is not None
 
-    is_teacher = user and (
-        user.get("role") == "teacher"
-        and await env.DB.prepare(
-            "SELECT id FROM courses WHERE id=? AND teacher_id=?"
-        ).bind(course_id, user["id"]).first() is not None
-    )
+    is_host = bool(user and act["host_uid"] == user["id"])
 
-    lessons_res = await env.DB.prepare(
-        "SELECT id,title,content,order_num FROM lessons"
-        " WHERE course_id=? ORDER BY order_num"
-    ).bind(course_id).all()
+    ses_res = await env.DB.prepare(
+        "SELECT id,title,description,start_time,end_time,location,created_at"
+        " FROM sessions WHERE activity_id=? ORDER BY start_time"
+    ).bind(act_id).all()
 
-    lessons = []
-    for row in lessons_res.results or []:
-        entry = {"id": row["id"], "title": row["title"], "order_num": row["order_num"]}
-        if is_enrolled or is_teacher:
-            entry["content"] = decrypt(row["content"], enc_key)
-        else:
-            entry["content"] = None
-        lessons.append(entry)
+    sessions = []
+    for s in ses_res.results or []:
+        sessions.append({
+            "id":          s["id"],
+            "title":       s["title"],
+            "description": decrypt(s["description"] or "", enc) if (is_enrolled or is_host) else None,
+            "start_time":  s["start_time"],
+            "end_time":    s["end_time"],
+            "location":    decrypt(s["location"] or "", enc) if (is_enrolled or is_host) else None,
+        })
 
-    return json_resp(
-        {
-            "course": {
-                "id": course["id"],
-                "title": course["title"],
-                "description": decrypt(course["description"], enc_key),
-                "category": course["category"],
-                "difficulty": course["difficulty"],
-                "enrolled_count": course["enrolled_count"],
-                "teacher_name": course["teacher_name"],
-                "created_at": course["created_at"],
-            },
-            "lessons": lessons,
-            "is_enrolled": is_enrolled,
-            "progress": enrollment["progress"] if enrollment else 0,
-        }
-    )
+    t_res = await env.DB.prepare(
+        "SELECT t.name FROM tags t"
+        " JOIN activity_tags at2 ON at2.tag_id=t.id"
+        " WHERE at2.activity_id=?"
+    ).bind(act_id).all()
+
+    count_row = await env.DB.prepare(
+        "SELECT COUNT(*) AS cnt FROM enrollments WHERE activity_id=? AND status='active'"
+    ).bind(act_id).first()
+
+    return json_resp({
+        "activity": {
+            "id":                act["id"],
+            "title":             act["title"],
+            "description":       decrypt(act["description"] or "", enc),
+            "type":              act["type"],
+            "format":            act["format"],
+            "schedule_type":     act["schedule_type"],
+            "host_name":         decrypt(act["host_name_enc"] or "", enc),
+            "participant_count": count_row["cnt"] if count_row else 0,
+            "tags":              [t["name"] for t in (t_res.results or [])],
+            "created_at":        act["created_at"],
+        },
+        "sessions":    sessions,
+        "is_enrolled": is_enrolled,
+        "is_host":     is_host,
+        "enrollment":  {
+            "role":   enrollment["role"],
+            "status": enrollment["status"],
+        } if enrollment else None,
+    })
 
 
-async def api_enroll(req, env):
+async def api_join(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
@@ -584,26 +777,30 @@ async def api_enroll(req, env):
     except Exception:
         return err("Invalid JSON body")
 
-    course_id = body.get("course_id")
-    if not course_id:
-        return err("course_id is required")
+    act_id = body.get("activity_id")
+    role   = (body.get("role") or "participant").strip()
 
-    course = await env.DB.prepare("SELECT id FROM courses WHERE id=?").bind(course_id).first()
-    if not course:
-        return err("Course not found", 404)
+    if not act_id:
+        return err("activity_id is required")
+    if role not in ("participant", "instructor", "organizer"):
+        role = "participant"
 
+    act = await env.DB.prepare(
+        "SELECT id FROM activities WHERE id=?"
+    ).bind(act_id).first()
+    if not act:
+        return err("Activity not found", 404)
+
+    enr_id = new_id()
     try:
         await env.DB.prepare(
-            "INSERT OR IGNORE INTO enrollments (student_id, course_id) VALUES (?,?)"
-        ).bind(user["id"], course_id).run()
-        await env.DB.prepare(
-            "UPDATE courses SET enrolled_count="
-            "(SELECT COUNT(*) FROM enrollments WHERE course_id=?) WHERE id=?"
-        ).bind(course_id, course_id).run()
+            "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role)"
+            " VALUES (?,?,?,?)"
+        ).bind(enr_id, act_id, user["id"], role).run()
     except Exception as e:
-        return err(f"Enrollment failed: {e}", 500)
+        return err(f"Failed to join activity: {e}", 500)
 
-    return ok(None, "Enrolled successfully")
+    return ok(None, "Joined activity successfully")
 
 
 async def api_dashboard(req, env):
@@ -611,111 +808,165 @@ async def api_dashboard(req, env):
     if not user:
         return err("Authentication required", 401)
 
-    if user.get("role") == "teacher":
+    enc = env.ENCRYPTION_KEY
+
+    if user.get("role") == "host":
         res = await env.DB.prepare(
-            "SELECT c.id,c.title,c.category,c.difficulty,c.enrolled_count,c.created_at,"
-            "(SELECT COUNT(*) FROM lessons WHERE course_id=c.id) AS lesson_count"
-            " FROM courses c WHERE c.teacher_id=? ORDER BY c.created_at DESC"
+            "SELECT a.id,a.title,a.type,a.format,a.schedule_type,a.created_at,"
+            "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
+            " AS participant_count,"
+            "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
+            " FROM activities a WHERE a.host_id=? ORDER BY a.created_at DESC"
         ).bind(user["id"]).all()
 
-        courses = [
-            {
-                "id": r["id"],
-                "title": r["title"],
-                "category": r["category"],
-                "difficulty": r["difficulty"],
-                "enrolled_count": r["enrolled_count"],
-                "lesson_count": r["lesson_count"],
-                "created_at": r["created_at"],
-            }
-            for r in (res.results or [])
-        ]
-        return json_resp({"user": user, "role": "teacher", "courses_taught": courses})
+        hosted = []
+        for r in res.results or []:
+            t_res = await env.DB.prepare(
+                "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
+                " WHERE at2.activity_id=?"
+            ).bind(r["id"]).all()
+            hosted.append({
+                "id":                r["id"],
+                "title":             r["title"],
+                "type":              r["type"],
+                "format":            r["format"],
+                "schedule_type":     r["schedule_type"],
+                "participant_count": r["participant_count"],
+                "session_count":     r["session_count"],
+                "tags":              [t["name"] for t in (t_res.results or [])],
+                "created_at":        r["created_at"],
+            })
+        return json_resp({"user": user, "role": "host", "hosted_activities": hosted})
 
     else:
         res = await env.DB.prepare(
-            "SELECT c.id,c.title,c.category,c.difficulty,e.progress,e.enrolled_at,"
-            "u.username AS teacher_name"
+            "SELECT a.id,a.title,a.type,a.format,a.schedule_type,"
+            "e.role AS enr_role,e.status AS enr_status,e.created_at AS joined_at,"
+            "u.name AS host_name_enc"
             " FROM enrollments e"
-            " JOIN courses c ON e.course_id=c.id"
-            " JOIN users u ON c.teacher_id=u.id"
-            " WHERE e.student_id=? ORDER BY e.enrolled_at DESC"
+            " JOIN activities a ON e.activity_id=a.id"
+            " JOIN users u ON a.host_id=u.id"
+            " WHERE e.user_id=? ORDER BY e.created_at DESC"
         ).bind(user["id"]).all()
 
-        courses = [
-            {
-                "id": r["id"],
-                "title": r["title"],
-                "category": r["category"],
-                "difficulty": r["difficulty"],
-                "progress": r["progress"],
-                "teacher_name": r["teacher_name"],
-                "enrolled_at": r["enrolled_at"],
-            }
-            for r in (res.results or [])
-        ]
-        return json_resp({"user": user, "role": "student", "enrolled_courses": courses})
+        joined = []
+        for r in res.results or []:
+            t_res = await env.DB.prepare(
+                "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
+                " WHERE at2.activity_id=?"
+            ).bind(r["id"]).all()
+            joined.append({
+                "id":            r["id"],
+                "title":         r["title"],
+                "type":          r["type"],
+                "format":        r["format"],
+                "schedule_type": r["schedule_type"],
+                "enr_role":      r["enr_role"],
+                "enr_status":    r["enr_status"],
+                "host_name":     decrypt(r["host_name_enc"] or "", enc),
+                "tags":          [t["name"] for t in (t_res.results or [])],
+                "joined_at":     r["joined_at"],
+            })
+        return json_resp({"user": user, "role": "member", "joined_activities": joined})
 
 
-async def api_create_lesson(req, env):
+async def api_create_session(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user or user.get("role") != "teacher":
-        return err("Teacher access required", 401)
+    if not user or user.get("role") != "host":
+        return err("Host access required", 401)
 
     try:
         body = await req.json()
     except Exception:
         return err("Invalid JSON body")
 
-    course_id = body.get("course_id")
-    title     = (body.get("title")   or "").strip()
-    content   = (body.get("content") or "").strip()
-    order_num = int(body.get("order_num") or 0)
+    act_id      = body.get("activity_id")
+    title       = (body.get("title")       or "").strip()
+    description = (body.get("description") or "").strip()
+    start_time  = (body.get("start_time")  or "").strip()
+    end_time    = (body.get("end_time")    or "").strip()
+    location    = (body.get("location")    or "").strip()
 
-    if not course_id or not title or not content:
-        return err("course_id, title, and content are required")
+    if not act_id or not title:
+        return err("activity_id and title are required")
 
     owned = await env.DB.prepare(
-        "SELECT id FROM courses WHERE id=? AND teacher_id=?"
-    ).bind(course_id, user["id"]).first()
+        "SELECT id FROM activities WHERE id=? AND host_id=?"
+    ).bind(act_id, user["id"]).first()
     if not owned:
-        return err("Course not found or access denied", 404)
+        return err("Activity not found or access denied", 404)
 
+    enc = env.ENCRYPTION_KEY
+    sid = new_id()
     try:
         await env.DB.prepare(
-            "INSERT INTO lessons (course_id,title,content,order_num) VALUES (?,?,?,?)"
-        ).bind(course_id, title, encrypt(content, env.ENCRYPTION_KEY), order_num).run()
+            "INSERT INTO sessions "
+            "(id,activity_id,title,description,start_time,end_time,location)"
+            " VALUES (?,?,?,?,?,?,?)"
+        ).bind(
+            sid, act_id, title,
+            encrypt(description, enc) if description else "",
+            start_time, end_time,
+            encrypt(location, enc) if location else "",
+        ).run()
     except Exception as e:
-        return err(f"Failed to create lesson: {e}", 500)
+        return err(f"Failed to create session: {e}", 500)
 
-    return ok(None, "Lesson created")
+    return ok({"id": sid}, "Session created")
 
 
-async def api_update_progress(req, env):
+async def api_list_tags(_req, env):
+    res  = await env.DB.prepare("SELECT id,name FROM tags ORDER BY name").all()
+    tags = [{"id": r["id"], "name": r["name"]} for r in (res.results or [])]
+    return json_resp({"tags": tags})
+
+
+async def api_add_activity_tags(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user:
-        return err("Authentication required", 401)
+    if not user or user.get("role") != "host":
+        return err("Host access required", 401)
 
     try:
         body = await req.json()
     except Exception:
         return err("Invalid JSON body")
 
-    course_id = body.get("course_id")
-    progress  = int(body.get("progress") or 0)
+    act_id = body.get("activity_id")
+    tags   = body.get("tags") or []
 
-    if not course_id:
-        return err("course_id is required")
+    if not act_id:
+        return err("activity_id is required")
 
-    progress = max(0, min(100, progress))
-    try:
-        await env.DB.prepare(
-            "UPDATE enrollments SET progress=? WHERE student_id=? AND course_id=?"
-        ).bind(progress, user["id"], course_id).run()
-    except Exception as e:
-        return err(f"Failed to update progress: {e}", 500)
+    owned = await env.DB.prepare(
+        "SELECT id FROM activities WHERE id=? AND host_id=?"
+    ).bind(act_id, user["id"]).first()
+    if not owned:
+        return err("Activity not found or access denied", 404)
 
-    return ok(None, "Progress updated")
+    for tag_name in tags:
+        tag_name = tag_name.strip()
+        if not tag_name:
+            continue
+        t_row = await env.DB.prepare(
+            "SELECT id FROM tags WHERE name=?"
+        ).bind(tag_name).first()
+        if not t_row:
+            tid = new_id()
+            try:
+                await env.DB.prepare(
+                    "INSERT INTO tags (id,name) VALUES (?,?)"
+                ).bind(tid, tag_name).run()
+                t_row = {"id": tid}
+            except Exception:
+                continue
+        try:
+            await env.DB.prepare(
+                "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
+            ).bind(act_id, t_row["id"]).run()
+        except Exception:
+            pass
+
+    return ok(None, "Tags updated")
 
 
 # ---------------------------------------------------------------------------
@@ -739,7 +990,6 @@ async def serve_static(path: str, env):
         key = "index.html"
     else:
         key = path.lstrip("/")
-        # add .html extension to bare page names (e.g. /dashboard → dashboard.html)
         if "." not in key.split("/")[-1]:
             key += ".html"
 
@@ -749,16 +999,19 @@ async def serve_static(path: str, env):
         content = None
 
     if content is None:
-        # fallback: serve index for unknown routes
         try:
             content = await env.__STATIC_CONTENT.get("index.html", "text")
         except Exception:
             content = None
 
     if content is None:
-        return Response("<h1>404 – Not Found</h1>", status=404, headers={"Content-Type": "text/html"})
+        return Response(
+            "<h1>404 - Not Found</h1>",
+            status=404,
+            headers={"Content-Type": "text/html"},
+        )
 
-    ext = key.rsplit(".", 1)[-1] if "." in key else "html"
+    ext  = key.rsplit(".", 1)[-1] if "." in key else "html"
     mime = _MIME.get(ext, "text/plain")
     return Response(content, headers={"Content-Type": mime, **_CORS})
 
@@ -771,11 +1024,9 @@ async def on_fetch(request, env):
     path   = urlparse(request.url).path
     method = request.method.upper()
 
-    # CORS pre-flight
     if method == "OPTIONS":
         return Response("", status=204, headers=_CORS)
 
-    # --- API routes ---
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
             try:
@@ -798,29 +1049,31 @@ async def on_fetch(request, env):
         if path == "/api/login" and method == "POST":
             return await api_login(request, env)
 
-        if path == "/api/courses" and method == "GET":
-            return await api_list_courses(request, env)
+        if path == "/api/activities" and method == "GET":
+            return await api_list_activities(request, env)
 
-        if path == "/api/courses" and method == "POST":
-            return await api_create_course(request, env)
+        if path == "/api/activities" and method == "POST":
+            return await api_create_activity(request, env)
 
-        m = re.fullmatch(r"/api/courses/(\d+)", path)
+        m = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)", path)
         if m and method == "GET":
-            return await api_get_course(int(m.group(1)), request, env)
+            return await api_get_activity(m.group(1), request, env)
 
-        if path == "/api/enroll" and method == "POST":
-            return await api_enroll(request, env)
+        if path == "/api/join" and method == "POST":
+            return await api_join(request, env)
 
         if path == "/api/dashboard" and method == "GET":
             return await api_dashboard(request, env)
 
-        if path == "/api/lessons" and method == "POST":
-            return await api_create_lesson(request, env)
+        if path == "/api/sessions" and method == "POST":
+            return await api_create_session(request, env)
 
-        if path == "/api/progress" and method == "POST":
-            return await api_update_progress(request, env)
+        if path == "/api/tags" and method == "GET":
+            return await api_list_tags(request, env)
+
+        if path == "/api/activity-tags" and method == "POST":
+            return await api_add_activity_tags(request, env)
 
         return err("API endpoint not found", 404)
 
-    # --- Static files ---
     return await serve_static(path, env)
