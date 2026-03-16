@@ -161,6 +161,8 @@
       let baseScale = 40; // zoom level in pixels per unit
       let gridDensity = 1; // multiplier from the grid-size slider
       let scale = baseScale * gridDensity; // effective scale used for drawing
+      const MIN_SCALE = 2; // prevent zooming out to nothing
+      const MAX_SCALE = 500; // prevent zooming in to the point of overdraw
       let origin = {
           x: canvas.width / 2,
           y: canvas.height / 2
@@ -222,7 +224,7 @@
           const mouseY = e.clientY - rect.top;
           const mousePos = toMathCoords(mouseX, mouseY);
           const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-          baseScale *= zoomFactor;
+          baseScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, baseScale * zoomFactor));
           scale = baseScale * gridDensity;
           origin.x = mouseX - mousePos.x * scale;
           origin.y = mouseY + mousePos.y * scale;
@@ -321,7 +323,12 @@
       function plotExplicit(equation, color) {
           let exprStr = equation;
           if (exprStr.includes("=")) {
-              exprStr = equation.split("=")[1].trim();
+              const eqParts = equation.split("=");
+              if (eqParts.length !== 2) {
+                  alert("Invalid equation: expected exactly one '=' sign.");
+                  return;
+              }
+              exprStr = eqParts[1].trim();
           }
           // Validate that the RHS does not reference 'y' (would be circular)
           try {
@@ -619,13 +626,13 @@
 
       // Pan/Zoom and Control functions
       function zoomIn() {
-          baseScale *= 1.2;
+          baseScale = Math.min(MAX_SCALE, baseScale * 1.2);
           scale = baseScale * gridDensity;
           redraw();
       }
 
       function zoomOut() {
-          baseScale *= 0.8;
+          baseScale = Math.max(MIN_SCALE, baseScale * 0.8);
           scale = baseScale * gridDensity;
           redraw();
       }
