@@ -18,4 +18,4 @@ JWT_SECRET = "MUST_BE_SET_BEFORE_DEPLOYMENT"
 [[d1_databases]]
 binding = "DB"
 database_name = "education_db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
