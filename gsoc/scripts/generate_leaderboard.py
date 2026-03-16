@@ -12,18 +12,45 @@ from typing import Optional
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
 
+# Safety limits for GitHub Search pagination.
+# GitHub Search API caps results at 1000 (10 pages at 100 per page).
+MAX_CLOSED_PAGES = 10
+MAX_OPEN_PAGES = 5
+
+
 DEFAULT_START_DATE = datetime(2025, 9, 1, tzinfo=timezone.utc)
 DEFAULT_OUTPUT_PATH = "data/leaderboard.json"
-# One-time 2025 generation command:
-# python scripts/generate_leaderboard.py --start-date 2024-09-01 \
-# --end-date 2025-06-01 --output data/leaderboard-2025.json
 GITHUB_ORG = "alphaonelabs"
 
 
-def fetch_search_pulls(org: str, state: str, page: int):
+def format_query_date(value: datetime) -> str:
+    return value.strftime("%Y-%m-%d")
+
+
+def build_search_query(
+    org: str,
+    state: str,
+    start_date: datetime,
+    end_date: Optional[datetime],
+    date_field: str,
+) -> str:
+    terms = [
+        f"org:{org}",
+        "is:pr",
+        f"state:{state}",
+        f"{date_field}:>={format_query_date(start_date)}",
+    ]
+    if end_date:
+        terms.append(f"{date_field}:<{format_query_date(end_date)}")
+    return " ".join(terms)
+
+
+def fetch_search_pulls(query_text: str, page: int):
     query = urllib.parse.urlencode(
         {
-            "q": f"org:{org} is:pr state:{state}",
+            "q": query_text,
+            "sort": "updated",
+            "order": "desc",
             "per_page": PER_PAGE,
             "page": page,
         }
@@ -51,11 +78,15 @@ def fetch_search_pulls(org: str, state: str, page: int):
             if remaining == "0":
                 raise RuntimeError("GitHub API rate limit reached. Please try later.")
             raise RuntimeError("GitHub API access is temporarily restricted (403).") from error
+        if error.code == 422:
+            raise RuntimeError(
+                "GitHub search query exceeded API limits. Narrow the date range."
+            ) from error
         raise RuntimeError(f"GitHub API error: {error.code}") from error
     except urllib.error.URLError as error:
-        raise RuntimeError(f"Unable to fetch contributor data.") from error
-MAX_CLOSED_PAGES = 10
-MAX_OPEN_PAGES = 5
+        raise RuntimeError("Unable to fetch contributor data.") from error
+
+
 PER_PAGE = 100
 DELAY_SECONDS = 0.35
 
@@ -161,15 +192,27 @@ def is_within_date_range(
     return True
 
 
-def build_leaderboard(start_date: datetime, end_date: datetime):
+def build_leaderboard(start_date: datetime, end_date: Optional[datetime]):
     contributor_stats = {}
 
+    closed_query = build_search_query(
+        GITHUB_ORG,
+        "closed",
+        start_date,
+        end_date,
+        "closed",
+    )
+
     closed_prs = []
-    for page in range(1, MAX_CLOSED_PAGES + 1):
-        rows = fetch_search_pulls(GITHUB_ORG, "closed", page)
+    page = 1
+    while page <= MAX_CLOSED_PAGES:
+        rows = fetch_search_pulls(closed_query, page)
         if not isinstance(rows, list) or len(rows) == 0:
             break
         closed_prs.extend(rows)
+        if len(rows) < PER_PAGE:
+            break
+        page += 1
         time.sleep(DELAY_SECONDS)
 
     for pr in closed_prs:
@@ -193,12 +236,24 @@ def build_leaderboard(start_date: datetime, end_date: datetime):
         else:
             contributor_stats[user["login"]]["closed_pr_count"] += 1
 
+    open_query = build_search_query(
+        GITHUB_ORG,
+        "open",
+        start_date,
+        end_date,
+        "created",
+    )
+
     open_prs = []
-    for page in range(1, MAX_OPEN_PAGES + 1):
-        rows = fetch_search_pulls(GITHUB_ORG, "open", page)
+    page = 1
+    while page <= MAX_OPEN_PAGES:
+        rows = fetch_search_pulls(open_query, page)
         if not isinstance(rows, list) or len(rows) == 0:
             break
         open_prs.extend(rows)
+        if len(rows) < PER_PAGE:
+            break
+        page += 1
         time.sleep(DELAY_SECONDS)
 
     for pr in open_prs:
