@@ -59,10 +59,10 @@ jobs:
               issue_number: parseInt(prNumber),
             });
 
-            const botLogin = 'github-actions[bot]';
+            const botLogins = new Set(['github-actions[bot]', 'github-actions']);
             const markerText = '<!-- check-unresolved-conversations -->';
             const existingComment = comments.find(
-              c => c.user.login === botLogin && c.body.includes(markerText)
+              c => botLogins.has(c.user.login) && c.body.includes(markerText)
             );
 
             // Fetch existing bot reviews
@@ -73,7 +73,7 @@ jobs:
             });
 
             const botChangesRequestedReviews = allReviews.filter(
-              r => r.user.login === botLogin && r.state === 'CHANGES_REQUESTED'
+              r => botLogins.has(r.user.login) && r.state === 'CHANGES_REQUESTED'
             );
 
             if (unresolvedCount > 0) {
