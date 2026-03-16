@@ -1,0 +1,21 @@
+name = "education-platform"
+main = "src/worker.py"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["python_workers"]
+
+[site]
+bucket = "./public"
+
+# ⚠️  REQUIRED before deployment – replace placeholder values:
+#     wrangler secret put ENCRYPTION_KEY
+#     wrangler secret put JWT_SECRET
+# For local dev, copy both to a `.dev.vars` file (already in .gitignore).
+[vars]
+ENCRYPTION_KEY = "MUST_BE_SET_BEFORE_DEPLOYMENT"
+JWT_SECRET = "MUST_BE_SET_BEFORE_DEPLOYMENT"
+
+# Run `wrangler d1 create education_db` and paste the returned UUID below.
+[[d1_databases]]
+binding = "DB"
+database_name = "education_db"
+database_id = "00000000-0000-0000-0000-000000000000"

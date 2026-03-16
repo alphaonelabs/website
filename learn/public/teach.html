@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Hub - EduPlatform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { extend: { colors: { brand:{ DEFAULT:'#4F46E5', dark:'#3730A3' } } } } };</script>
+  <style>
+    .hidden { display: none !important; }
+    .gradient-hero { background: linear-gradient(135deg,#4F46E5 0%,#7C3AED 50%,#2563EB 100%); }
+    .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+<nav class="bg-white shadow-sm sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+    <a href="/" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center text-white font-bold text-sm">E</div>
+      <span class="font-bold text-xl text-slate-800">EduPlatform</span>
+    </a>
+    <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+      <a href="/" class="hover:text-brand">Activities</a>
+      <a href="/dashboard.html" class="hover:text-brand">Dashboard</a>
+      <a href="/teach.html" class="text-brand font-semibold">Host Hub</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-slate-600 text-sm hidden sm:block" id="nav-user"></span>
+      <button onclick="logout()" class="text-slate-400 text-sm hover:text-red-500">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Auth guard -->
+<div id="auth-guard" class="hidden">
+  <div class="gradient-hero text-white py-20 px-4 text-center">
+    <p class="text-5xl mb-4">&#128274;</p>
+    <h1 class="text-2xl font-bold mb-2">Host Access Required</h1>
+    <p class="text-indigo-200 mb-6">Only users with Host role can access this page.</p>
+    <a href="/login.html" class="bg-white text-brand font-bold px-6 py-2.5 rounded-xl shadow hover:bg-indigo-50">Login as Host</a>
+  </div>
+</div>
+
+<!-- Main content (hosts only) -->
+<div id="host-content" class="hidden">
+
+  <div class="gradient-hero text-white py-12 px-4">
+    <div class="max-w-7xl mx-auto">
+      <h1 class="text-3xl font-extrabold mb-1">Host Hub</h1>
+      <p class="text-indigo-200">Create and manage your activities and sessions.</p>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+      <!-- Create Activity -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50">
+          <h2 class="font-bold text-slate-800">&#127775; Create New Activity</h2>
+          <p class="text-slate-500 text-xs mt-0.5">Descriptions are encrypted at rest in D1.</p>
+        </div>
+        <div class="p-6">
+          <form id="form-activity" class="space-y-4" novalidate>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Title *</label>
+              <input id="a-title" type="text" required
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="e.g. Python for Beginners" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <textarea id="a-desc" rows="3"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm resize-none" placeholder="What will participants gain?"></textarea>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                <select id="a-type" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
+                  <option value="course">📚 Course</option>
+                  <option value="meetup">🤝 Meetup</option>
+                  <option value="workshop">🔧 Workshop</option>
+                  <option value="seminar">🎤 Seminar</option>
+                  <option value="other">✨ Other</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Format</label>
+                <select id="a-format" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
+                  <option value="self_paced">Self-paced</option>
+                  <option value="live">Live</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Schedule</label>
+                <select id="a-schedule" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
+                  <option value="ongoing">Ongoing</option>
+                  <option value="one_time">One-time</option>
+                  <option value="multi_session">Multi-session</option>
+                  <option value="recurring">Recurring</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Tags (comma-separated)</label>
+              <input id="a-tags" type="text"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="Python, Beginners, Data Science" />
+            </div>
+            <p id="act-err" class="text-red-500 text-sm hidden"></p>
+            <p id="act-ok" class="text-emerald-600 text-sm hidden"></p>
+            <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Create Activity</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Create Session -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+          <h2 class="font-bold text-slate-800">&#128197; Add Session</h2>
+          <p class="text-slate-500 text-xs mt-0.5">Location and description are encrypted at rest.</p>
+        </div>
+        <div class="p-6">
+          <form id="form-session" class="space-y-4" novalidate>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Activity *</label>
+              <select id="s-activity" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
+                <option value="">Select one of your activities...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Session Title *</label>
+              <input id="s-title" type="text" required
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="e.g. Week 1 - Introduction" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Start Time</label>
+                <input id="s-start" type="datetime-local"
+                  class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">End Time</label>
+                <input id="s-end" type="datetime-local"
+                  class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Location (encrypted)</label>
+              <input id="s-location" type="text"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="e.g. Room 101 or Zoom link" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Description (encrypted)</label>
+              <textarea id="s-desc" rows="2"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm resize-none" placeholder="What will be covered in this session?"></textarea>
+            </div>
+            <p id="ses-err" class="text-red-500 text-sm hidden"></p>
+            <p id="ses-ok" class="text-emerald-600 text-sm hidden"></p>
+            <button type="submit" class="w-full bg-emerald-600 text-white font-semibold py-2.5 rounded-xl hover:bg-emerald-700 transition text-sm">Add Session</button>
+          </form>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- My Activities list -->
+    <section class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="font-bold text-slate-800">My Hosted Activities</h2>
+        <span id="hosted-count" class="text-xs text-slate-400"></span>
+      </div>
+      <div id="hosted-list" class="divide-y divide-slate-50">
+        <p class="px-6 py-4 text-sm text-slate-400 animate-pulse">Loading...</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-slate-800 text-slate-400 py-6 text-center text-sm mt-8">
+    <p>&copy; 2024&ndash;2026 EduPlatform &middot; Activity descriptions and session details encrypted at rest</p>
+  </footer>
+
+</div><!-- /#host-content -->
+
+<script>
+  const API   = '';
+  const token = localStorage.getItem('edu_token');
+  const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+  if (!token || !user) {
+    window.location.href = '/login.html';
+  } else if (user.role !== 'host') {
+    document.getElementById('auth-guard').classList.remove('hidden');
+  } else {
+    document.getElementById('nav-user').textContent = 'Hi, ' + user.username;
+    document.getElementById('host-content').classList.remove('hidden');
+    init();
+  }
+
+  const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', other:'✨' };
+  const typeColor = { course:'bg-indigo-100 text-indigo-700', meetup:'bg-pink-100 text-pink-700', workshop:'bg-orange-100 text-orange-700', seminar:'bg-teal-100 text-teal-700', other:'bg-slate-100 text-slate-600' };
+  const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
+
+  let hostedActivities = [];
+
+  async function init() {
+    await loadHostedActivities();
+    const params = new URLSearchParams(location.search);
+    const preselect = params.get('activity_id');
+    if (preselect) {
+      const sel = document.getElementById('s-activity');
+      const opt = sel.querySelector('option[value="' + esc(preselect) + '"]');
+      if (opt) opt.selected = true;
+    }
+  }
+
+  async function loadHostedActivities() {
+    const res  = await fetch('/api/dashboard', { headers:{ Authorization:'Bearer ' + token } });
+    const data = await res.json();
+    hostedActivities = data.hosted_activities || [];
+    document.getElementById('hosted-count').textContent = hostedActivities.length + ' activities';
+
+    const sel = document.getElementById('s-activity');
+    sel.innerHTML = '<option value="">Select one of your activities...</option>' +
+      hostedActivities.map(a =>
+        '<option value="' + esc(a.id) + '">' + esc(a.title) + '</option>'
+      ).join('');
+
+    const list = document.getElementById('hosted-list');
+    if (!hostedActivities.length) {
+      list.innerHTML = '<p class="px-6 py-8 text-sm text-slate-400 text-center">No activities yet. Create one above!</p>';
+      return;
+    }
+    list.innerHTML = hostedActivities.map(a => {
+      const tc  = typeColor[a.type] || 'bg-slate-100 text-slate-600';
+      const ic  = typeIcon[a.type]  || '✨';
+      const tags = (a.tags||[]).slice(0,4).map(t =>
+        '<span class="badge bg-slate-100 text-slate-500">' + esc(t) + '</span>').join('');
+      return '<div class="px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition">' +
+        '<div class="flex-1 min-w-0">' +
+          '<p class="font-semibold text-slate-800 text-sm truncate">' + ic + ' ' + esc(a.title) + '</p>' +
+          '<div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">' +
+            '<span class="badge ' + tc + '">' + esc(a.type) + '</span>' +
+            '<span>' + (fmtLabel[a.format]||a.format) + '</span>' +
+            '<span>👥 ' + a.participant_count + '</span>' +
+            '<span>🗓 ' + a.session_count + ' sessions</span>' +
+            tags +
+          '</div>' +
+        '</div>' +
+        '<div class="flex gap-2 shrink-0">' +
+          '<a href="/course.html?id=' + esc(a.id) + '" class="text-xs text-brand font-semibold border border-brand/30 px-3 py-1.5 rounded-lg hover:bg-indigo-50">View</a>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function showMsg(id, msg, isErr) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+  }
+
+  document.getElementById('form-activity').addEventListener('submit', async e => {
+    e.preventDefault();
+    document.getElementById('act-err').classList.add('hidden');
+    document.getElementById('act-ok').classList.add('hidden');
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.textContent = 'Creating...'; btn.disabled = true;
+    const rawTags = document.getElementById('a-tags').value;
+    const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    try {
+      const res  = await fetch('/api/activities', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
+        body: JSON.stringify({
+          title:         document.getElementById('a-title').value.trim(),
+          description:   document.getElementById('a-desc').value.trim(),
+          type:          document.getElementById('a-type').value,
+          format:        document.getElementById('a-format').value,
+          schedule_type: document.getElementById('a-schedule').value,
+          tags,
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      showMsg('act-ok', 'Activity created: ' + data.data.title, false);
+      e.target.reset();
+      await loadHostedActivities();
+    } catch (err) { showMsg('act-err', err.message, true); }
+    finally { btn.textContent = 'Create Activity'; btn.disabled = false; }
+  });
+
+  document.getElementById('form-session').addEventListener('submit', async e => {
+    e.preventDefault();
+    document.getElementById('ses-err').classList.add('hidden');
+    document.getElementById('ses-ok').classList.add('hidden');
+    const btn = e.target.querySelector('button[type=submit]');
+    const actId = document.getElementById('s-activity').value;
+    if (!actId) { showMsg('ses-err', 'Please select an activity', true); return; }
+    btn.textContent = 'Adding...'; btn.disabled = true;
+    const fmt = v => v ? v.replace('T',' ') : '';
+    try {
+      const res  = await fetch('/api/sessions', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
+        body: JSON.stringify({
+          activity_id: actId,
+          title:       document.getElementById('s-title').value.trim(),
+          description: document.getElementById('s-desc').value.trim(),
+          start_time:  fmt(document.getElementById('s-start').value),
+          end_time:    fmt(document.getElementById('s-end').value),
+          location:    document.getElementById('s-location').value.trim(),
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      showMsg('ses-ok', 'Session added successfully!', false);
+      document.getElementById('s-title').value    = '';
+      document.getElementById('s-desc').value     = '';
+      document.getElementById('s-start').value    = '';
+      document.getElementById('s-end').value      = '';
+      document.getElementById('s-location').value = '';
+      await loadHostedActivities();
+    } catch (err) { showMsg('ses-err', err.message, true); }
+    finally { btn.textContent = 'Add Session'; btn.disabled = false; }
+  });
+</script>
+</body>
+</html>

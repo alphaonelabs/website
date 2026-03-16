@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login / Register - EduPlatform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#4F46E5', dark: '#3730A3' } } } } };</script>
+  <style>
+    .hidden { display: none !important; }
+    .gradient-hero { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #2563EB 100%); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+
+<div class="w-full max-w-md">
+  <div class="text-center mb-8">
+    <a href="/" class="inline-flex items-center gap-2">
+      <div class="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center text-white font-bold">E</div>
+      <span class="font-bold text-2xl text-slate-800">EduPlatform</span>
+    </a>
+    <p class="text-slate-500 text-sm mt-2">All user data encrypted at rest - zero plaintext PII stored</p>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="flex border-b border-slate-100">
+      <button id="tab-login" onclick="switchTab('login')"
+        class="flex-1 py-4 text-sm font-semibold border-b-2 border-brand text-brand transition">Login</button>
+      <button id="tab-register" onclick="switchTab('register')"
+        class="flex-1 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition">Register</button>
+    </div>
+
+    <div id="panel-login" class="p-8">
+      <h2 class="text-xl font-bold text-slate-800 mb-6">Welcome back!</h2>
+      <form id="form-login" class="space-y-4" novalidate>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+          <input id="l-username" type="text" autocomplete="username" required
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="your_username" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+          <input id="l-password" type="password" autocomplete="current-password" required
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="..." />
+        </div>
+        <p id="login-err" class="text-red-500 text-sm hidden"></p>
+        <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Sign In</button>
+      </form>
+      <p class="text-center text-slate-400 text-sm mt-6">
+        Demo: <code class="bg-slate-100 px-1 rounded">alice / password123</code> (host)
+        or <code class="bg-slate-100 px-1 rounded">charlie / password123</code> (member)
+      </p>
+    </div>
+
+    <div id="panel-register" class="p-8 hidden">
+      <h2 class="text-xl font-bold text-slate-800 mb-6">Create your account</h2>
+      <form id="form-register" class="space-y-4" novalidate>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Display Name</label>
+          <input id="r-name" type="text" autocomplete="name"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="Your Full Name" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+          <input id="r-username" type="text" autocomplete="username" required
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="choose_a_username" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+          <input id="r-email" type="email" autocomplete="email" required
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="you@example.com" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+          <input id="r-password" type="password" autocomplete="new-password" required minlength="6"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="min 6 characters" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">I want to...</label>
+          <div class="grid grid-cols-2 gap-3">
+            <label id="role-member-label" class="flex items-center gap-3 p-3 rounded-xl border-2 border-brand bg-indigo-50 cursor-pointer transition">
+              <input type="radio" name="role" value="member" checked class="accent-brand" />
+              <span class="text-sm font-medium text-slate-700">Join Activities</span>
+            </label>
+            <label id="role-host-label" class="flex items-center gap-3 p-3 rounded-xl border-2 border-slate-200 cursor-pointer transition">
+              <input type="radio" name="role" value="host" class="accent-brand" />
+              <span class="text-sm font-medium text-slate-700">Host Activities</span>
+            </label>
+          </div>
+        </div>
+        <p id="register-err" class="text-red-500 text-sm hidden"></p>
+        <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <p class="text-center text-slate-400 text-xs mt-6">
+    <a href="/" class="hover:text-brand">Back to activities</a>
+  </p>
+</div>
+
+<script>
+  const API = '';
+  function switchTab(tab) {
+    const isLogin = tab === 'login';
+    document.getElementById('panel-login').classList.toggle('hidden', !isLogin);
+    document.getElementById('panel-register').classList.toggle('hidden', isLogin);
+    document.getElementById('tab-login').className    = 'flex-1 py-4 text-sm font-semibold border-b-2 transition ' + (isLogin ? 'border-brand text-brand' : 'border-transparent text-slate-400 hover:text-slate-600');
+    document.getElementById('tab-register').className = 'flex-1 py-4 text-sm font-semibold border-b-2 transition ' + (!isLogin ? 'border-brand text-brand' : 'border-transparent text-slate-400 hover:text-slate-600');
+  }
+  const params = new URLSearchParams(location.search);
+  if (params.get('tab') === 'register') switchTab('register');
+
+  document.querySelectorAll('input[name="role"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      document.getElementById('role-member-label').className = 'flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ' + (radio.value === 'host' ? 'border-slate-200' : 'border-brand bg-indigo-50');
+      document.getElementById('role-host-label').className   = 'flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ' + (radio.value === 'host' ? 'border-brand bg-indigo-50' : 'border-slate-200');
+    });
+  });
+
+  function storeAuth(data) {
+    localStorage.setItem('edu_token', data.token);
+    localStorage.setItem('edu_user',  JSON.stringify(data.user));
+    window.location.href = '/dashboard.html';
+  }
+  function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); }
+
+  document.getElementById('form-login').addEventListener('submit', async e => {
+    e.preventDefault();
+    document.getElementById('login-err').classList.add('hidden');
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.textContent = 'Signing in...'; btn.disabled = true;
+    try {
+      const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username: document.getElementById('l-username').value.trim(), password: document.getElementById('l-password').value }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      storeAuth(data.data);
+    } catch (err) { showErr('login-err', err.message); }
+    finally { btn.textContent = 'Sign In'; btn.disabled = false; }
+  });
+
+  document.getElementById('form-register').addEventListener('submit', async e => {
+    e.preventDefault();
+    document.getElementById('register-err').classList.add('hidden');
+    const btn  = e.target.querySelector('button[type=submit]');
+    const role = document.querySelector('input[name="role"]:checked').value;
+    btn.textContent = 'Creating...'; btn.disabled = true;
+    try {
+      const res  = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          name:     document.getElementById('r-name').value.trim(),
+          username: document.getElementById('r-username').value.trim(),
+          email:    document.getElementById('r-email').value.trim(),
+          password: document.getElementById('r-password').value,
+          role,
+        }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Registration failed');
+      storeAuth(data.data);
+    } catch (err) { showErr('register-err', err.message); }
+    finally { btn.textContent = 'Create Account'; btn.disabled = false; }
+  });
+
+  if (localStorage.getItem('edu_token')) window.location.href = '/dashboard.html';
+</script>
+</body>
+</html>
