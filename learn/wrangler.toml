@@ -3,8 +3,12 @@ main = "src/worker.py"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["python_workers"]
 
-[site]
-bucket = "./public"
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
 
 # ⚠️  REQUIRED before deployment – replace placeholder values:
 #     wrangler secret put ENCRYPTION_KEY
