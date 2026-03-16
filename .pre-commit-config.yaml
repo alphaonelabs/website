@@ -83,7 +83,7 @@ repos:
     hooks:
       - id: django-collectstatic
         name: Django Collect Static
-        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && if command -v poetry >/dev/null 2>&1; then POETRY_ENV_PATH="$(poetry env info -p 2>/dev/null)" && PYTHON_BIN="$POETRY_ENV_PATH/bin/python"; else PYTHON_BIN="${VIRTUAL_ENV:+$VIRTUAL_ENV/bin/python}"; fi && PYTHON_BIN="${PYTHON_BIN:-$(command -v python3 || command -v python)}" && "$PYTHON_BIN" manage.py collectstatic --noinput; fi'
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" || exit 1; unset PYTHON_BIN; if command -v poetry >/dev/null 2>&1; then POETRY_ENV_PATH="$(poetry env info -p 2>/dev/null || true)"; if [ -n "$POETRY_ENV_PATH" ] && [ -x "$POETRY_ENV_PATH/bin/python" ]; then PYTHON_BIN="$POETRY_ENV_PATH/bin/python"; fi; fi; if [ -z "${PYTHON_BIN:-}" ] && [ -n "${VIRTUAL_ENV:-}" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then PYTHON_BIN="$VIRTUAL_ENV/bin/python"; fi; if [ -z "${PYTHON_BIN:-}" ] && command -v python3 >/dev/null 2>&1; then PYTHON_BIN="$(command -v python3)"; fi; if [ -z "${PYTHON_BIN:-}" ] && command -v python >/dev/null 2>&1; then PYTHON_BIN="$(command -v python)"; fi; if [ -z "${PYTHON_BIN:-}" ] || [ ! -x "$PYTHON_BIN" ]; then echo "Python interpreter not found" >&2; exit 1; fi; "$PYTHON_BIN" manage.py collectstatic --noinput; fi'
         language: system
         types: [python]
         pass_filenames: false
@@ -92,7 +92,7 @@ repos:
         stages: [pre-commit]
       - id: django-test
         name: Django Tests
-        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && if command -v poetry >/dev/null 2>&1; then POETRY_ENV_PATH="$(poetry env info -p 2>/dev/null)" && PYTHON_BIN="$POETRY_ENV_PATH/bin/python"; else PYTHON_BIN="${VIRTUAL_ENV:+$VIRTUAL_ENV/bin/python}"; fi && PYTHON_BIN="${PYTHON_BIN:-$(command -v python3 || command -v python)}" && "$PYTHON_BIN" manage.py test --verbosity=2 --timing --parallel=4 --failfast; fi'
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" || exit 1; unset PYTHON_BIN; if command -v poetry >/dev/null 2>&1; then POETRY_ENV_PATH="$(poetry env info -p 2>/dev/null || true)"; if [ -n "$POETRY_ENV_PATH" ] && [ -x "$POETRY_ENV_PATH/bin/python" ]; then PYTHON_BIN="$POETRY_ENV_PATH/bin/python"; fi; fi; if [ -z "${PYTHON_BIN:-}" ] && [ -n "${VIRTUAL_ENV:-}" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then PYTHON_BIN="$VIRTUAL_ENV/bin/python"; fi; if [ -z "${PYTHON_BIN:-}" ] && command -v python3 >/dev/null 2>&1; then PYTHON_BIN="$(command -v python3)"; fi; if [ -z "${PYTHON_BIN:-}" ] && command -v python >/dev/null 2>&1; then PYTHON_BIN="$(command -v python)"; fi; if [ -z "${PYTHON_BIN:-}" ] || [ ! -x "$PYTHON_BIN" ]; then echo "Python interpreter not found" >&2; exit 1; fi; "$PYTHON_BIN" manage.py test --verbosity=2 --timing --parallel=4 --failfast; fi'
         language: system
         types: [python]
         pass_filenames: false
