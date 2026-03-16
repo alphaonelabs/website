@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Graphing Calculator{% endblock %}
+{% block title %}
+  Graphing Calculator
+{% endblock title %}
 {% block content %}
   <div class="flex flex-col md:flex-row h-screen bg-gray-100 dark:bg-gray-900">
     <!-- Sidebar -->
@@ -156,7 +158,11 @@
       window.addEventListener('resize', resizeCanvas);
 
       // Coordinate system settings
-      let scale = 40; // pixels per unit
+      let baseScale = 40; // zoom level in pixels per unit
+      let gridDensity = 1; // multiplier from the grid-size slider
+      let scale = baseScale * gridDensity; // effective scale used for drawing
+      const MIN_SCALE = 2; // prevent zooming out to nothing
+      const MAX_SCALE = 500; // prevent zooming in to the point of overdraw
       let origin = {
           x: canvas.width / 2,
           y: canvas.height / 2
@@ -218,10 +224,10 @@
           const mouseY = e.clientY - rect.top;
           const mousePos = toMathCoords(mouseX, mouseY);
           const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-          const newScale = scale * zoomFactor;
-          origin.x = mouseX - mousePos.x * newScale;
-          origin.y = mouseY + mousePos.y * newScale;
-          scale = newScale;
+          baseScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, baseScale * zoomFactor));
+          scale = baseScale * gridDensity;
+          origin.x = mouseX - mousePos.x * scale;
+          origin.y = mouseY + mousePos.y * scale;
           redraw();
       });
 
@@ -315,21 +321,38 @@
 
       // Plot explicit functions: y = f(x)
       function plotExplicit(equation, color) {
-          let exprStr = equation.trim();
-          if (exprStr.startsWith("y=")) {
-              exprStr = exprStr.substring(2);
+          let exprStr = equation;
+          if (exprStr.includes("=")) {
+              const eqParts = equation.split("=");
+              if (eqParts.length !== 2) {
+                  alert("Invalid equation: expected exactly one '=' sign.");
+                  return;
+              }
+              exprStr = eqParts[1].trim();
+          }
+          // Validate that the RHS does not reference 'y' (would be circular)
+          try {
+              const parsedRhs = math.parse(exprStr);
+              const yNodes = parsedRhs.filter(n => n.isSymbolNode && n.name.toLowerCase() === "y");
+              if (yNodes.length > 0) {
+                  alert("Explicit equations cannot reference 'y' on the right-hand side.");
+                  return;
+              }
+          } catch (err) {
+              console.warn("[plotExplicit] math.parse failed for expression:", exprStr, err);
           }
           let compiled;
           try {
               compiled = math.compile(exprStr);
           } catch (err) {
-              alert("Error in equation: " + err);
+              alert("Error in equation: " + err.message);
               return;
           }
           ctx.strokeStyle = color;
           ctx.lineWidth = 2;
           ctx.beginPath();
           let firstPoint = true;
+          let prevY = null;
           const xMin = toMathCoords(0, 0).x;
           const xMax = toMathCoords(canvas.width, 0).x;
           const step = (xMax - xMin) / canvas.width;
@@ -341,12 +364,19 @@
                   });
                   if (!isFinite(y)) {
                       firstPoint = true;
+                      prevY = null;
                       continue;
                   }
               } catch (err) {
                   firstPoint = true;
+                  prevY = null;
                   continue;
               }
+
+              if (prevY !== null && Math.abs(y - prevY) > (canvas.height / scale)) {
+                  firstPoint = true;
+              }
+              prevY = y;
               const {
                   x: cx,
                   y: cy
@@ -373,14 +403,20 @@
       // Plot implicit functions using marching squares: f(x,y)=0
       function plotImplicit(equation, color) {
           const parts = equation.split("=");
-          if (parts.length !== 2) {
+          if (parts.length !== 2 || parts[0].trim() === "" || parts[1].trim() === "") {
               alert("Invalid implicit equation format.");
               return;
           }
           const lhs = parts[0].trim();
           const rhs = parts[1].trim();
-          const lhsCompiled = math.compile(lhs);
-          const rhsCompiled = math.compile(rhs);
+          let lhsCompiled, rhsCompiled;
+          try {
+              lhsCompiled = math.compile(lhs);
+              rhsCompiled = math.compile(rhs);
+          } catch (err) {
+              alert("Error in equation: " + err.message);
+              return;
+          }
 
           function f(x, y) {
               try {
@@ -416,7 +452,11 @@
                   if (v4 > 0) index |= 8;
                   if (index === 0 || index === 15) continue;
                   let points = [];
-                  if ((index & 1) !== (index & 2)) {
+                  const b1 = v1 > 0;
+                  const b2 = v2 > 0;
+                  const b3 = v3 > 0;
+                  const b4 = v4 > 0;
+                  if (b1 !== b2) {
                       points.push(interpolate({
                           x: i,
                           y: j
@@ -425,7 +465,7 @@
                           y: j
                       }, v1, v2));
                   }
-                  if ((index & 2) !== (index & 4)) {
+                  if (b2 !== b3) {
                       points.push(interpolate({
                           x: i + gridStep,
                           y: j
@@ -434,7 +474,7 @@
                           y: j + gridStep
                       }, v2, v3));
                   }
-                  if ((index & 8) !== (index & 4)) {
+                  if (b3 !== b4) {
                       points.push(interpolate({
                           x: i,
                           y: j + gridStep
@@ -443,7 +483,7 @@
                           y: j + gridStep
                       }, v4, v3));
                   }
-                  if ((index & 1) !== (index & 8)) {
+                  if (b1 !== b4) {
                       points.push(interpolate({
                           x: i,
                           y: j
@@ -468,14 +508,39 @@
 
       // Determine whether to plot explicit or implicit based on input format
       function plotEquation(equation, color) {
-          if (equation.trim().startsWith("y=")) {
+          if (equation.split("=")[0].trim().toLowerCase() === "y") {
               plotExplicit(equation, color);
           } else if (equation.includes("=")) {
               plotImplicit(equation, color);
           } else {
-              plotExplicit("y=" + equation, color);
+              let hasYVariable = false;
+
+              try {
+                  const parseMath = math.parse(equation);
+
+                  const yNodes = parseMath.filter(function(node) {
+                      return node.isSymbolNode && node.name === "y";
+                  });
+                  if (yNodes.length > 0) {
+                      hasYVariable = true;
+                  }
+              } catch (err) {
+                  console.error("[plotEquation] Failed to parse expression:", equation, err);
+                  hasYVariable = true; // treat parse failure as invalid to prevent falling through to plotExplicit
+              }
+
+              if (hasYVariable) {
+                  alert("Invalid implicit equation format.");
+              } else {
+                  plotExplicit("y=" + equation, color);
+              }
           }
       }
+
+      // Allow submitting an equation by pressing Enter
+      document.getElementById('equationInput').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') addEquation();
+      });
 
       // Equation list manipulation
       function addEquation() {
@@ -561,19 +626,26 @@
 
       // Pan/Zoom and Control functions
       function zoomIn() {
-          scale *= 1.2;
+          baseScale = Math.min(MAX_SCALE, baseScale * 1.2);
+          scale = baseScale * gridDensity;
           redraw();
       }
 
       function zoomOut() {
-          scale *= 0.8;
+          baseScale = Math.max(MIN_SCALE, baseScale * 0.8);
+          scale = baseScale * gridDensity;
           redraw();
       }
 
       function resetView() {
-          scale = 40;
+          baseScale = 40;
+          gridDensity = 1;
+          scale = baseScale * gridDensity;
           origin.x = canvas.width / 2;
           origin.y = canvas.height / 2;
+          // Sync the slider UI back to neutral (value 40 = midpoint)
+          const slider = document.getElementById('gridSize');
+          if (slider) slider.value = 40;
           redraw();
       }
 
@@ -603,7 +675,10 @@
       }
 
       function updateGridSize(value) {
-          scale = parseInt(value);
+          // Map slider (20-80) to a density multiplier; 40 = 1x (neutral)
+          gridDensity = parseInt(value) / 40;
+          // Recompute effective scale without touching baseScale (zoom)
+          scale = baseScale * gridDensity;
           redraw();
       }
 
@@ -635,4 +710,4 @@
           attributeFilter: ['class']
       });
   </script>
-{% endblock %}
+{% endblock content %}
