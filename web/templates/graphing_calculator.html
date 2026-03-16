@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Graphing Calculator{% endblock %}
+{% block title %}
+  Graphing Calculator
+{% endblock title %}
 {% block content %}
   <div class="flex flex-col md:flex-row h-screen bg-gray-100 dark:bg-gray-900">
     <!-- Sidebar -->
@@ -319,11 +321,20 @@
           if (exprStr.includes("=")) {
               exprStr = equation.split("=")[1].trim();
           }
+          // Validate that the RHS does not reference 'y' (would be circular)
+          try {
+              const parsedRhs = math.parse(exprStr);
+              const yNodes = parsedRhs.filter(n => n.isSymbolNode && n.name.toLowerCase() === "y");
+              if (yNodes.length > 0) {
+                  alert("Explicit equations cannot reference 'y' on the right-hand side.");
+                  return;
+              }
+          } catch (err) {}
           let compiled;
           try {
               compiled = math.compile(exprStr);
           } catch (err) {
-              alert("Error in equation: " + err);
+              alert("Error in equation: " + err.message);
               return;
           }
           ctx.strokeStyle = color;
@@ -342,10 +353,12 @@
                   });
                   if (!isFinite(y)) {
                       firstPoint = true;
+                      prevY = null;
                       continue;
                   }
               } catch (err) {
                   firstPoint = true;
+                  prevY = null;
                   continue;
               }
 
@@ -385,8 +398,14 @@
           }
           const lhs = parts[0].trim();
           const rhs = parts[1].trim();
-          const lhsCompiled = math.compile(lhs);
-          const rhsCompiled = math.compile(rhs);
+          let lhsCompiled, rhsCompiled;
+          try {
+              lhsCompiled = math.compile(lhs);
+              rhsCompiled = math.compile(rhs);
+          } catch (err) {
+              alert("Error in equation: " + err.message);
+              return;
+          }
 
           function f(x, y) {
               try {
@@ -478,7 +497,7 @@
 
       // Determine whether to plot explicit or implicit based on input format
       function plotEquation(equation, color) {
-          if (equation.split("=")[0].trim() === "y") {
+          if (equation.split("=")[0].trim().toLowerCase() === "y") {
               plotExplicit(equation, color);
           } else if (equation.includes("=")) {
               plotImplicit(equation, color);
@@ -503,6 +522,11 @@
               }
           }
       }
+
+      // Allow submitting an equation by pressing Enter
+      document.getElementById('equationInput').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') addEquation();
+      });
 
       // Equation list manipulation
       function addEquation() {
@@ -629,8 +653,14 @@
           redraw();
       }
 
+      // gridDensity is a separate multiplier so the slider doesn't override the zoom level
+      let gridDensity = 1;
+
       function updateGridSize(value) {
-          scale = parseInt(value);
+          // Map slider (20-80) to a density multiplier; 40 = 1x (neutral)
+          gridDensity = parseInt(value) / 40;
+          // Re-derive scale from the current base zoom and density
+          scale = 40 * gridDensity;
           redraw();
       }
 
@@ -662,4 +692,4 @@
           attributeFilter: ['class']
       });
   </script>
-{% endblock %}
+{% endblock content %}
