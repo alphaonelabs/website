@@ -14,7 +14,7 @@ import time
 from collections import Counter
 from datetime import datetime, timedelta
 from decimal import Decimal
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 import requests
 import stripe
@@ -1147,7 +1147,13 @@ def github_update(request):
 def _invalidate_contributor_caches():
     """Clear cached contributor leaderboard views so GitHub PR counts refresh."""
     cache.delete("contributors_context_v3")
-    cache.delete("gsoc_landing_page_context_v2")
+    cache.delete(_gsoc_landing_page_cache_key())
+
+
+def _gsoc_landing_page_cache_key(year=None):
+    """Build a year-aware cache key for the GSoC landing leaderboard."""
+    target_year = year or timezone.now().year
+    return f"gsoc_landing_page_context_v3_{target_year}"
 
 
 def send_slack_message(message):
@@ -4519,39 +4525,37 @@ def gsoc_landing_page(request):
     Renders the GSOC landing page with top GitHub contributors
     based on the unified organization leaderboard.
     """
-    import logging
-
     from django.core.cache import cache
 
     # Initialize an empty list for contributors
     top_contributors = []
 
     try:
+        gsoc_year = timezone.now().year
+        cache_key = _gsoc_landing_page_cache_key(gsoc_year)
+
         # Check cache first to avoid rate limits
-        cached_context = cache.get("gsoc_landing_page_context_v2")
+        cached_context = cache.get(cache_key)
         if cached_context:
             return render(request, "gsoc_landing_page.html", cached_context)
 
-        # Build leaderboard for the current GSoC year (2026)
+        # Build leaderboard for the current GSoC year
         # This mirrors the logic in contributors_list_view for consistency
-        all_contributors = _build_leaderboard_for_year(2026)
+        all_contributors = _build_leaderboard_for_year(gsoc_year)
 
         # We only need the top 10 for the landing page
         # The _build_leaderboard_for_year function already sorts by smart_score and merged_pr_count
         top_contributors = all_contributors[:10]
 
-        context = {"top_contributors": top_contributors}
+        context = {"top_contributors": top_contributors, "gsoc_year": gsoc_year}
 
         # Cache for 12 hours like the contributors list
-        cache.set("gsoc_landing_page_context_v2", context, 12 * 60 * 60)
+        cache.set(cache_key, context, 12 * 60 * 60)
         return render(request, "gsoc_landing_page.html", context)
 
-    except Exception as e:
-        logging.error(f"Error fetching GitHub contributors for GSoC landing page: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        context = {"top_contributors": []}
+    except Exception:
+        logger.exception("Error fetching GitHub contributors for GSoC landing page")
+        context = {"top_contributors": [], "gsoc_year": timezone.now().year}
 
     return render(request, "gsoc_landing_page.html", context)
 
@@ -7499,13 +7503,17 @@ GITHUB_API_BASE = "https://api.github.com"
 logger = logging.getLogger(__name__)
 
 
-def github_api_request(endpoint, params=None, headers=None):
+def github_api_request(endpoint, params=None, headers=None, timeout=10, return_response=False):
     """
     Make a GitHub API request with consistent error handling and timeout.
-    Returns JSON response on success, empty dict on failure.
+    Returns JSON response on success (default), empty dict on failure.
+    If return_response=True, returns the raw response object (or None on request error).
     """
     try:
-        response = requests.get(endpoint, params=params, headers=headers, timeout=10)
+        response = requests.get(endpoint, params=params, headers=headers, timeout=timeout)
+        if return_response:
+            return response
+
         if response.status_code == 200:
             return response.json()
         else:
@@ -7513,6 +7521,8 @@ def github_api_request(endpoint, params=None, headers=None):
             return {}
     except requests.RequestException as e:
         logger.error(f"Request error for {endpoint}: {e}")
+        if return_response:
+            return None
         return {}
 
 
@@ -8353,23 +8363,19 @@ def _is_within_date_range(value, start_date, end_date):
     return True
 
 
-def _fetch_search_pulls(org, state, page):
+def _fetch_search_pulls(org, qualifiers, page):
     """
-    Fetch PRs from GitHub Search API using state:open or state:closed.
-    This matches the GSoC generate_leaderboard.py approach exactly.
+    Fetch PRs from GitHub Search API using explicit qualifiers.
+    Example qualifiers: ["is:merged", "created:2025-09-01..2026-08-31"]
     """
-    import urllib.parse
-
-    query = urllib.parse.urlencode(
-        {
-            "q": f"org:{org} is:pr state:{state}",
-            "sort": "updated",
-            "order": "desc",
-            "per_page": 100,
-            "page": page,
-        }
-    )
-    url = f"https://api.github.com/search/issues?{query}"
+    url = "https://api.github.com/search/issues"
+    params = {
+        "q": " ".join([f"org:{org}", "is:pr", *qualifiers]),
+        "sort": "updated",
+        "order": "desc",
+        "per_page": SEARCH_PER_PAGE,
+        "page": page,
+    }
     headers = {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "alphaonelabs-leaderboard",
@@ -8378,19 +8384,18 @@ def _fetch_search_pulls(org, state, page):
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    try:
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code == 200:
-            return response.json().get("items", [])
-        elif response.status_code == 403:
-            print(f"GitHub API rate limit or access issue (403) for state={state} page={page}")
-            return []
-        else:
-            print(f"GitHub API error {response.status_code} for state={state} page={page}")
-            return []
-    except Exception as e:
-        print(f"Error fetching search pulls: {e}")
+    response = github_api_request(url, params=params, headers=headers, timeout=15, return_response=True)
+    if response is None:
+        logger.error("No response returned from GitHub for qualifiers=%s page=%s", qualifiers, page)
         return []
+    if response.status_code == 200:
+        return response.json().get("items", [])
+    if response.status_code == 403:
+        logger.warning("GitHub API rate limit or access issue (403) for qualifiers=%s page=%s", qualifiers, page)
+        return []
+
+    logger.error("GitHub API error %s for qualifiers=%s page=%s", response.status_code, qualifiers, page)
+    return []
 
 
 MAX_CLOSED_PAGES = 10
@@ -8403,8 +8408,7 @@ def _build_leaderboard_for_year(year):
     """
     Build contributor leaderboard for a given year across all alphaonelabs repos.
     This directly mirrors the GSoC generate_leaderboard.py build_leaderboard() function.
-    Uses state:closed + state:open queries, then checks pull_request.merged_at
-    to distinguish merged from closed-unmerged.
+    Uses explicit merged/closed/open search qualifiers over the GSoC date window.
     """
     from datetime import datetime as dt
     from datetime import timezone as tz
@@ -8413,6 +8417,8 @@ def _build_leaderboard_for_year(year):
     start_date = dt(year - 1, 9, 1, tzinfo=tz.utc)
     # End date is optional, but we can set it to Sept 1st of the current year
     end_date = dt(year, 9, 1, tzinfo=tz.utc)
+    end_date_inclusive = end_date - timedelta(days=1)
+    date_range = f"{start_date.strftime('%Y-%m-%d')}..{end_date_inclusive.strftime('%Y-%m-%d')}"
 
     contributor_stats = {}
 
@@ -8430,52 +8436,28 @@ def _build_leaderboard_for_year(year):
                 "smart_score": 0,
             }
 
-    # ---- Fetch ALL closed PRs (includes merged + closed-unmerged) ----
-    closed_prs = []
-    for page in range(1, MAX_CLOSED_PAGES + 1):
-        rows = _fetch_search_pulls("alphaonelabs", "closed", page)
-        if not isinstance(rows, list) or len(rows) == 0:
-            break
-        closed_prs.extend(rows)
-        time.sleep(SEARCH_DELAY_SECONDS)
+    def _accumulate_counts(qualifiers, target_field, max_pages):
+        for page in range(1, max_pages + 1):
+            rows = _fetch_search_pulls("alphaonelabs", qualifiers, page)
+            if not isinstance(rows, list) or len(rows) == 0:
+                break
 
-    for pr in closed_prs:
-        user = pr.get("user")
-        if not user or not user.get("login") or _should_exclude_contributor(user.get("login")):
-            continue
+            for pr in rows:
+                user = pr.get("user")
+                if not user or not user.get("login") or _should_exclude_contributor(user.get("login")):
+                    continue
 
-        merged_at = _parse_github_date(pr.get("pull_request", {}).get("merged_at"))
-        closed_at = _parse_github_date(pr.get("closed_at"))
-        relevant_date = merged_at or closed_at
-        if not _is_within_date_range(relevant_date, start_date, end_date):
-            continue
+                ensure_contributor(contributor_stats, user)
+                contributor_stats[user["login"]][target_field] += 1
 
-        ensure_contributor(contributor_stats, user)
-        if merged_at:
-            contributor_stats[user["login"]]["merged_pr_count"] += 1
-        else:
-            contributor_stats[user["login"]]["closed_pr_count"] += 1
+            if len(rows) < SEARCH_PER_PAGE:
+                break
+            time.sleep(SEARCH_DELAY_SECONDS)
 
-    # ---- Fetch ALL open PRs ----
-    open_prs = []
-    for page in range(1, MAX_OPEN_PAGES + 1):
-        rows = _fetch_search_pulls("alphaonelabs", "open", page)
-        if not isinstance(rows, list) or len(rows) == 0:
-            break
-        open_prs.extend(rows)
-        time.sleep(SEARCH_DELAY_SECONDS)
-
-    for pr in open_prs:
-        user = pr.get("user")
-        if not user or not user.get("login") or _should_exclude_contributor(user.get("login")):
-            continue
-
-        created_at = _parse_github_date(pr.get("created_at"))
-        if not _is_within_date_range(created_at, start_date, end_date):
-            continue
-
-        ensure_contributor(contributor_stats, user)
-        contributor_stats[user["login"]]["open_pr_count"] += 1
+    # Search API does not include merged_at in the issue payload, so use explicit qualifiers.
+    _accumulate_counts([f"created:{date_range}", "is:merged"], "merged_pr_count", MAX_CLOSED_PAGES)
+    _accumulate_counts([f"created:{date_range}", "is:closed", "is:unmerged"], "closed_pr_count", MAX_CLOSED_PAGES)
+    _accumulate_counts([f"created:{date_range}", "is:open"], "open_pr_count", MAX_OPEN_PAGES)
 
     # ---- Calculate scores and build final list ----
     contributors = []
@@ -8492,11 +8474,24 @@ def _build_leaderboard_for_year(year):
 
         item["smart_score"] = smart_score
         item["contribution_ratio"] = item["merged_pr_count"] / total_pr_count if total_pr_count > 0 else 0
-        base_query = f"org%3Aalphaonelabs+author%3A{item['username']}" f"+is%3Apr+created%3A{year}-01-01..{year}-12-31"
-        item["prs_url"] = f"https://github.com/search?q={base_query}&type=pullrequests"
-        item["merged_prs_url"] = f"https://github.com/search?q={base_query}+is%3Amerged&type=pullrequests"
-        item["open_prs_url"] = f"https://github.com/search?q={base_query}+is%3Aopen&type=pullrequests"
-        item["closed_prs_url"] = f"https://github.com/search?q={base_query}+is%3Aunmerged+is%3Aclosed&type=pullrequests"
+
+        search_terms = [
+            "org:alphaonelabs",
+            f"author:{item['username']}",
+            "is:pr",
+            f"created:{date_range}",
+        ]
+        base_query = " ".join(search_terms)
+        item["prs_url"] = f"https://github.com/search?q={quote_plus(base_query)}&type=pullrequests"
+
+        merged_query = " ".join(search_terms + ["is:merged"])
+        item["merged_prs_url"] = f"https://github.com/search?q={quote_plus(merged_query)}&type=pullrequests"
+
+        open_query = " ".join(search_terms + ["is:open"])
+        item["open_prs_url"] = f"https://github.com/search?q={quote_plus(open_query)}&type=pullrequests"
+
+        closed_query = " ".join(search_terms + ["is:unmerged", "is:closed"])
+        item["closed_prs_url"] = f"https://github.com/search?q={quote_plus(closed_query)}&type=pullrequests"
         item["year"] = year
         contributors.append(item)
 
@@ -8514,8 +8509,11 @@ def contributors_list_view(request):
         return render(request, "web/contributors_list.html", cached_context)
 
     try:
-        contributors_2026 = _build_leaderboard_for_year(2026)
-        contributors_2025 = _build_leaderboard_for_year(2025)
+        current_year = timezone.now().year
+        previous_year = current_year - 1
+
+        contributors_current_year = _build_leaderboard_for_year(current_year)
+        contributors_previous_year = _build_leaderboard_for_year(previous_year)
 
         # Pre-compute summary stats since Django templates can't accumulate in loops
         def _compute_stats(contributors):
@@ -8526,10 +8524,17 @@ def contributors_list_view(request):
             }
 
         context = {
-            "contributors_2026": contributors_2026,
-            "contributors_2025": contributors_2025,
-            "stats_2026": _compute_stats(contributors_2026),
-            "stats_2025": _compute_stats(contributors_2025),
+            "current_year": current_year,
+            "previous_year": previous_year,
+            "contributors_current_year": contributors_current_year,
+            "contributors_previous_year": contributors_previous_year,
+            "stats_current_year": _compute_stats(contributors_current_year),
+            "stats_previous_year": _compute_stats(contributors_previous_year),
+            # Backward-compatible keys while templates/tests migrate.
+            "contributors_2026": contributors_current_year if current_year == 2026 else [],
+            "contributors_2025": contributors_previous_year if previous_year == 2025 else [],
+            "stats_2026": _compute_stats(contributors_current_year) if current_year == 2026 else _compute_stats([]),
+            "stats_2025": _compute_stats(contributors_previous_year) if previous_year == 2025 else _compute_stats([]),
         }
 
         # Cache for 12 hours
@@ -8537,16 +8542,21 @@ def contributors_list_view(request):
 
         return render(request, "web/contributors_list.html", context)
 
-    except Exception as e:
-        print(f"Error fetching contributors: {e}")
-        import traceback
-
-        traceback.print_exc()
+    except Exception:
+        logger.exception("Error fetching contributors")
         empty_stats = {"total_merged": 0, "total_open": 0, "total_closed": 0}
+        current_year = timezone.now().year
+        previous_year = current_year - 1
         return render(
             request,
             "web/contributors_list.html",
             {
+                "current_year": current_year,
+                "previous_year": previous_year,
+                "contributors_current_year": [],
+                "contributors_previous_year": [],
+                "stats_current_year": empty_stats,
+                "stats_previous_year": empty_stats,
                 "contributors_2026": [],
                 "contributors_2025": [],
                 "stats_2026": empty_stats,

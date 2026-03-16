@@ -127,8 +127,9 @@ class AuthenticationTests(TestCase):
 class GitHubWebhookTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.gsoc_cache_key = f"gsoc_landing_page_context_v3_{timezone.now().year}"
         cache.set("contributors_context_v3", {"stale": True}, timeout=600)
-        cache.set("gsoc_landing_page_context_v2", {"stale": True}, timeout=600)
+        cache.set(self.gsoc_cache_key, {"stale": True}, timeout=600)
 
     def test_pull_request_webhook_invalidates_contributor_caches(self):
         payload = b'{"action":"closed"}'
@@ -145,7 +146,7 @@ class GitHubWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content.decode(), "Contributor caches cleared")
         self.assertIsNone(cache.get("contributors_context_v3"))
-        self.assertIsNone(cache.get("gsoc_landing_page_context_v2"))
+        self.assertIsNone(cache.get(self.gsoc_cache_key))
 
 
 @override_settings(

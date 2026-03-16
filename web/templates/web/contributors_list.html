@@ -15,6 +15,7 @@
       </div>
       <a href="https://github.com/AlphaOneLabs"
          target="_blank"
+         rel="noopener noreferrer"
          class="mt-4 md:mt-0 inline-flex items-center bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
         <svg class="w-5 h-5 mr-2"
              xmlns="http://www.w3.org/2000/svg"
@@ -64,53 +65,61 @@
     <div class="flex justify-center mb-8">
       <div class="inline-flex bg-gray-200 dark:bg-gray-700 rounded-xl p-1 shadow-inner">
         <button id="toggle-2026"
-                onclick="switchYear('2026')"
+                type="button"
+                aria-pressed="true"
+                aria-controls="section-current"
+                onclick="switchYear('current')"
                 class="px-8 py-3 rounded-lg text-lg font-bold transition-all duration-300 bg-teal-400 text-white shadow-md">
-          2026
+          {{ current_year }}
         </button>
         <button id="toggle-2025"
-                onclick="switchYear('2025')"
+                type="button"
+                aria-pressed="false"
+                aria-controls="section-previous"
+                onclick="switchYear('previous')"
                 class="px-8 py-3 rounded-lg text-lg font-bold transition-all duration-300 text-gray-500 dark:text-gray-300">
-          2025
+          {{ previous_year }}
         </button>
       </div>
     </div>
-    <!-- ========== 2026 CONTRIBUTORS ========== -->
-    <div id="section-2026">
-      <!-- Stats Summary Row - 2026 -->
+    <!-- ========== CURRENT YEAR CONTRIBUTORS ========== -->
+    <div id="section-current" aria-hidden="false">
+      <!-- Stats Summary Row - Current Year -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-teal-300 mb-2">{{ contributors_2026|length }}</div>
+          <div class="text-4xl font-bold text-teal-300 mb-2">{{ contributors_current_year|length }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Contributors</div>
         </div>
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-green-500 mb-2">{{ stats_2026.total_merged }}</div>
+          <div class="text-4xl font-bold text-green-500 mb-2">{{ stats_current_year.total_merged }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Merged PRs</div>
         </div>
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-blue-500 mb-2">{{ stats_2026.total_open }}</div>
+          <div class="text-4xl font-bold text-blue-500 mb-2">{{ stats_current_year.total_open }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Open PRs</div>
         </div>
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-gray-500 mb-2">{{ stats_2026.total_closed }}</div>
+          <div class="text-4xl font-bold text-gray-500 mb-2">{{ stats_current_year.total_closed }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Closed PRs</div>
         </div>
       </div>
-      <!-- Contributors List - 2026 -->
+      <!-- Contributors List - Current Year -->
       <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden">
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">🏆 2026 Contributors</h2>
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">🏆 {{ current_year }} Contributors</h2>
           <p class="text-gray-600 dark:text-gray-400 mt-1">
             Sorted by contribution quality score &middot; All Alpha One Labs repos
           </p>
         </div>
         <div class="divide-y divide-gray-200 dark:divide-gray-700">
-          {% for contributor in contributors_2026 %}
+          {% for contributor in contributors_current_year %}
             <div class="p-6 hover:bg-gray-50 dark:hover:bg-gray-750 transition duration-150">
               <div class="flex flex-col md:flex-row md:items-center">
                 <div class="flex items-center mb-4 md:mb-0">
                   <div class="flex-shrink-0 mr-4 relative">
-                    <a href="{{ contributor.profile_url }}" target="_blank">
+                    <a href="{{ contributor.profile_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer">
                       <img src="{{ contributor.avatar_url }}"
                            alt="{{ contributor.username }}"
                            class="w-12 h-12 rounded-full border-2 border-gray-200 dark:border-gray-700"
@@ -125,6 +134,7 @@
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                       <a href="{{ contributor.profile_url }}"
                          target="_blank"
+                         rel="noopener noreferrer"
                          class="hover:text-teal-300 transition duration-150">{{ contributor.username }}</a>
                     </h3>
                     <div class="flex flex-wrap gap-2 mt-1">
@@ -149,6 +159,7 @@
                   <div class="flex-1 bg-green-100 dark:bg-green-900 rounded-lg p-3 text-center hover:bg-green-200 dark:hover:bg-green-800 transition duration-150">
                     <a href="{{ contributor.merged_prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.merged_pr_count }}</div>
                       <div class="text-xs font-medium">Merged</div>
@@ -157,6 +168,7 @@
                   <div class="flex-1 bg-blue-100 dark:bg-blue-900 rounded-lg p-3 text-center hover:bg-blue-200 dark:hover:bg-blue-800 transition duration-150">
                     <a href="{{ contributor.open_prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.open_pr_count }}</div>
                       <div class="text-xs font-medium">Open</div>
@@ -165,6 +177,7 @@
                   <div class="flex-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-3 text-center hover:bg-gray-200 dark:hover:bg-gray-800 transition duration-150">
                     <a href="{{ contributor.closed_prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-gray-700 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.closed_pr_count }}</div>
                       <div class="text-xs font-medium">Closed</div>
@@ -173,6 +186,7 @@
                   <div class="flex-1 bg-purple-100 dark:bg-purple-900 rounded-lg p-3 text-center hover:bg-purple-200 dark:hover:bg-purple-800 transition duration-150">
                     <a href="{{ contributor.prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-purple-700 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.total_pr_count }}</div>
                       <div class="text-xs font-medium">Total</div>
@@ -190,49 +204,53 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
                 </path>
               </svg>
-              <h3 class="mt-4 text-xl font-medium text-gray-900 dark:text-white">No 2026 contributors found yet</h3>
-              <p class="mt-2 text-gray-500 dark:text-gray-400">Contributions for 2026 will appear here as PRs are merged.</p>
+              <h3 class="mt-4 text-xl font-medium text-gray-900 dark:text-white">No {{ current_year }} contributors found yet</h3>
+              <p class="mt-2 text-gray-500 dark:text-gray-400">
+                Contributions for {{ current_year }} will appear here as PRs are merged.
+              </p>
             </div>
           {% endfor %}
         </div>
       </div>
     </div>
-    <!-- ========== 2025 CONTRIBUTORS ========== -->
-    <div id="section-2025" class="hidden">
-      <!-- Stats Summary Row - 2025 -->
+    <!-- ========== PREVIOUS YEAR CONTRIBUTORS ========== -->
+    <div id="section-previous" class="hidden" aria-hidden="true">
+      <!-- Stats Summary Row - Previous Year -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-teal-300 mb-2">{{ contributors_2025|length }}</div>
+          <div class="text-4xl font-bold text-teal-300 mb-2">{{ contributors_previous_year|length }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Contributors</div>
         </div>
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-green-500 mb-2">{{ stats_2025.total_merged }}</div>
+          <div class="text-4xl font-bold text-green-500 mb-2">{{ stats_previous_year.total_merged }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Merged PRs</div>
         </div>
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-blue-500 mb-2">{{ stats_2025.total_open }}</div>
+          <div class="text-4xl font-bold text-blue-500 mb-2">{{ stats_previous_year.total_open }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Open PRs</div>
         </div>
         <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div class="text-4xl font-bold text-gray-500 mb-2">{{ stats_2025.total_closed }}</div>
+          <div class="text-4xl font-bold text-gray-500 mb-2">{{ stats_previous_year.total_closed }}</div>
           <div class="text-gray-600 dark:text-gray-300 font-medium">Closed PRs</div>
         </div>
       </div>
-      <!-- Contributors List - 2025 -->
+      <!-- Contributors List - Previous Year -->
       <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden">
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">🏆 2025 Contributors</h2>
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">🏆 {{ previous_year }} Contributors</h2>
           <p class="text-gray-600 dark:text-gray-400 mt-1">
             Sorted by contribution quality score &middot; All Alpha One Labs repos
           </p>
         </div>
         <div class="divide-y divide-gray-200 dark:divide-gray-700">
-          {% for contributor in contributors_2025 %}
+          {% for contributor in contributors_previous_year %}
             <div class="p-6 hover:bg-gray-50 dark:hover:bg-gray-750 transition duration-150">
               <div class="flex flex-col md:flex-row md:items-center">
                 <div class="flex items-center mb-4 md:mb-0">
                   <div class="flex-shrink-0 mr-4 relative">
-                    <a href="{{ contributor.profile_url }}" target="_blank">
+                    <a href="{{ contributor.profile_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer">
                       <img src="{{ contributor.avatar_url }}"
                            alt="{{ contributor.username }}"
                            class="w-12 h-12 rounded-full border-2 border-gray-200 dark:border-gray-700"
@@ -247,6 +265,7 @@
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                       <a href="{{ contributor.profile_url }}"
                          target="_blank"
+                         rel="noopener noreferrer"
                          class="hover:text-teal-300 transition duration-150">{{ contributor.username }}</a>
                     </h3>
                     <div class="flex flex-wrap gap-2 mt-1">
@@ -271,6 +290,7 @@
                   <div class="flex-1 bg-green-100 dark:bg-green-900 rounded-lg p-3 text-center hover:bg-green-200 dark:hover:bg-green-800 transition duration-150">
                     <a href="{{ contributor.merged_prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.merged_pr_count }}</div>
                       <div class="text-xs font-medium">Merged</div>
@@ -279,6 +299,7 @@
                   <div class="flex-1 bg-blue-100 dark:bg-blue-900 rounded-lg p-3 text-center hover:bg-blue-200 dark:hover:bg-blue-800 transition duration-150">
                     <a href="{{ contributor.open_prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.open_pr_count }}</div>
                       <div class="text-xs font-medium">Open</div>
@@ -287,6 +308,7 @@
                   <div class="flex-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-3 text-center hover:bg-gray-200 dark:hover:bg-gray-800 transition duration-150">
                     <a href="{{ contributor.closed_prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-gray-700 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.closed_pr_count }}</div>
                       <div class="text-xs font-medium">Closed</div>
@@ -295,6 +317,7 @@
                   <div class="flex-1 bg-purple-100 dark:bg-purple-900 rounded-lg p-3 text-center hover:bg-purple-200 dark:hover:bg-purple-800 transition duration-150">
                     <a href="{{ contributor.prs_url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="block text-purple-700 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200 transition duration-150">
                       <div class="text-xl font-bold">{{ contributor.total_pr_count }}</div>
                       <div class="text-xs font-medium">Total</div>
@@ -312,7 +335,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
                 </path>
               </svg>
-              <h3 class="mt-4 text-xl font-medium text-gray-900 dark:text-white">No 2025 contributors found</h3>
+              <h3 class="mt-4 text-xl font-medium text-gray-900 dark:text-white">No {{ previous_year }} contributors found</h3>
               <p class="mt-2 text-gray-500 dark:text-gray-400">We couldn't retrieve the contributor list at this time.</p>
             </div>
           {% endfor %}
@@ -328,6 +351,7 @@
         </p>
         <a href="https://github.com/AlphaOneLabs/education-website/issues"
            target="_blank"
+           rel="noopener noreferrer"
            class="inline-flex items-center bg-white text-teal-600 font-semibold px-6 py-3 rounded-lg hover:bg-gray-100 transition duration-200 shadow-md">
           <svg class="w-5 h-5 mr-2"
                xmlns="http://www.w3.org/2000/svg"
@@ -342,25 +366,33 @@
   </main>
   <script>
       function switchYear(year) {
-          var section2026 = document.getElementById('section-2026');
-          var section2025 = document.getElementById('section-2025');
+          var sectionCurrent = document.getElementById('section-current');
+          var sectionPrevious = document.getElementById('section-previous');
           var toggle2026 = document.getElementById('toggle-2026');
           var toggle2025 = document.getElementById('toggle-2025');
 
-          if (year === '2026') {
-              section2026.classList.remove('hidden');
-              section2025.classList.add('hidden');
+          if (year === 'current') {
+              sectionCurrent.classList.remove('hidden');
+              sectionPrevious.classList.add('hidden');
               toggle2026.classList.add('bg-teal-400', 'text-white', 'shadow-md');
               toggle2026.classList.remove('text-gray-500', 'dark:text-gray-300');
               toggle2025.classList.remove('bg-teal-400', 'text-white', 'shadow-md');
               toggle2025.classList.add('text-gray-500', 'dark:text-gray-300');
+              toggle2026.setAttribute('aria-pressed', 'true');
+              toggle2025.setAttribute('aria-pressed', 'false');
+              sectionCurrent.setAttribute('aria-hidden', 'false');
+              sectionPrevious.setAttribute('aria-hidden', 'true');
           } else {
-              section2025.classList.remove('hidden');
-              section2026.classList.add('hidden');
+              sectionPrevious.classList.remove('hidden');
+              sectionCurrent.classList.add('hidden');
               toggle2025.classList.add('bg-teal-400', 'text-white', 'shadow-md');
               toggle2025.classList.remove('text-gray-500', 'dark:text-gray-300');
               toggle2026.classList.remove('bg-teal-400', 'text-white', 'shadow-md');
               toggle2026.classList.add('text-gray-500', 'dark:text-gray-300');
+              toggle2026.setAttribute('aria-pressed', 'false');
+              toggle2025.setAttribute('aria-pressed', 'true');
+              sectionCurrent.setAttribute('aria-hidden', 'true');
+              sectionPrevious.setAttribute('aria-hidden', 'false');
           }
       }
   </script>
