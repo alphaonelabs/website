@@ -47,8 +47,8 @@
         <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Sign In</button>
       </form>
       <p class="text-center text-slate-400 text-sm mt-6">
-        Demo: <code class="bg-slate-100 px-1 rounded">alice / password123</code> (host)
-        or <code class="bg-slate-100 px-1 rounded">charlie / password123</code> (member)
+        Demo: <code class="bg-slate-100 px-1 rounded">alice / password123</code>
+        or <code class="bg-slate-100 px-1 rounded">charlie / password123</code>
       </p>
     </div>
 
@@ -75,19 +75,6 @@
           <input id="r-password" type="password" autocomplete="new-password" required minlength="6"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="min 6 characters" />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">I want to...</label>
-          <div class="grid grid-cols-2 gap-3">
-            <label id="role-member-label" class="flex items-center gap-3 p-3 rounded-xl border-2 border-brand bg-indigo-50 cursor-pointer transition">
-              <input type="radio" name="role" value="member" checked class="accent-brand" />
-              <span class="text-sm font-medium text-slate-700">Join Activities</span>
-            </label>
-            <label id="role-host-label" class="flex items-center gap-3 p-3 rounded-xl border-2 border-slate-200 cursor-pointer transition">
-              <input type="radio" name="role" value="host" class="accent-brand" />
-              <span class="text-sm font-medium text-slate-700">Host Activities</span>
-            </label>
-          </div>
-        </div>
         <p id="register-err" class="text-red-500 text-sm hidden"></p>
         <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Create Account</button>
       </form>
@@ -110,13 +97,6 @@
   }
   const params = new URLSearchParams(location.search);
   if (params.get('tab') === 'register') switchTab('register');
-
-  document.querySelectorAll('input[name="role"]').forEach(radio => {
-    radio.addEventListener('change', () => {
-      document.getElementById('role-member-label').className = 'flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ' + (radio.value === 'host' ? 'border-slate-200' : 'border-brand bg-indigo-50');
-      document.getElementById('role-host-label').className   = 'flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ' + (radio.value === 'host' ? 'border-brand bg-indigo-50' : 'border-slate-200');
-    });
-  });
 
   function storeAuth(data) {
     localStorage.setItem('edu_token', data.token);
@@ -144,7 +124,6 @@
     e.preventDefault();
     document.getElementById('register-err').classList.add('hidden');
     const btn  = e.target.querySelector('button[type=submit]');
-    const role = document.querySelector('input[name="role"]:checked').value;
     btn.textContent = 'Creating...'; btn.disabled = true;
     try {
       const res  = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'},
@@ -153,7 +132,6 @@
           username: document.getElementById('r-username').value.trim(),
           email:    document.getElementById('r-email').value.trim(),
           password: document.getElementById('r-password').value,
-          role,
         }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
