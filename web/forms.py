@@ -872,6 +872,7 @@ class EducationalVideoForm(forms.ModelForm):
         # If the user is authenticated, remove captcha field
         if user and user.is_authenticated:
             del self.fields["captcha"]
+
     def clean_video_url(self):
         url = self.cleaned_data.get("video_url", "").strip()
         if not url:
