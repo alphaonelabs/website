@@ -1134,7 +1134,7 @@ def github_update(request):
 def send_slack_message(message):
     webhook_url = os.getenv("SLACK_WEBHOOK_URL")
     if not webhook_url:
-        logger.warning("SLACK_WEBHOOK_URL not configured")
+        print("Warning: SLACK_WEBHOOK_URL not configured")
         return
 
     payload = {"text": f"```{message}```"}
@@ -3254,7 +3254,7 @@ def create_forum_category(request):
             messages.success(request, f"Forum category '{category.name}' created successfully!")
             return redirect("forum_category", slug=category.slug)
         else:
-            logger.warning("Forum category form validation failed: %s", form.errors)
+            print(form.errors)
     else:
         form = ForumCategoryForm()
 
@@ -3497,7 +3497,11 @@ def system_status(request):
             status["sendgrid"]["message"] = f"API Error: {str(e)}"
     else:
         status["sendgrid"]["status"] = "error"
-        status["sendgrid"]["message"] = "SendGrid API key not configured"
+
+        if settings.DEBUG:
+            status["sendgrid"]["message"] = "SendGrid API key not configured"
+        else:
+            status["sendgrid"]["message"] = "Email service unavailable"
 
     # Check disk space
     try:
@@ -4885,7 +4889,7 @@ def virtual_classroom_list(request):
     return render(
         request,
         "virtual_classroom/list.html",
-        {"classrooms": classrooms, "user": request.user},  # Pass the user object which includes the profile
+        {"classrooms": classrooms},
     )
 
 
@@ -4893,7 +4897,6 @@ def virtual_classroom_list(request):
 @require_POST
 def join_global_virtual_classroom(request):
     """Join (or create) the global virtual classroom and redirect to it."""
-
     teacher = User.objects.filter(is_staff=True, is_active=True).order_by("-is_superuser", "date_joined").first()
 
     if not teacher:
@@ -4986,12 +4989,10 @@ def virtual_classroom_detail(request, classroom_id):
     """View to display a virtual classroom."""
     classroom = get_object_or_404(VirtualClassroom, id=classroom_id)
 
-    is_teacher = request.user == classroom.teacher
-    can_access = can_access_classroom(request.user, classroom)
-    is_enrolled = can_access and not is_teacher
-
     # Check if user is teacher or enrolled student
-    if not can_access:
+    is_teacher = request.user == classroom.teacher
+    is_enrolled = can_access_classroom(request.user, classroom)
+    if not is_enrolled:
         messages.error(request, "You do not have access to this virtual classroom.")
         if classroom.course:
             return redirect("course_detail", slug=classroom.course.slug)
@@ -6067,7 +6068,7 @@ def upload_educational_video(request):
     If user leaves title/description blank, we back‑fill from YouTube/Vimeo.
     """
     if request.method == "POST":
-        form = EducationalVideoForm(request.POST)
+        form = EducationalVideoForm(request.POST, user=request.user)
         if form.is_valid():
             video = form.save(commit=False)
             if request.user.is_authenticated:
@@ -6092,7 +6093,7 @@ def upload_educational_video(request):
             return JsonResponse({"success": False, "error": error_text}, status=400)
 
     else:
-        form = EducationalVideoForm()
+        form = EducationalVideoForm(user=request.user)
 
     return render(request, "videos/upload.html", {"form": form})
 

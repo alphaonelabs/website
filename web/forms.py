@@ -860,12 +860,18 @@ class EducationalVideoForm(forms.ModelForm):
             ),
         }
 
+    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
+
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
         # Order subjects by 'order' first, then alphabetically by 'name'
         self.fields["category"].queryset = Subject.objects.all().order_by("order", "name")
 
+        # If the user is authenticated, remove captcha field
+        if user and user.is_authenticated:
+            del self.fields["captcha"]
     def clean_video_url(self):
         url = self.cleaned_data.get("video_url", "").strip()
         if not url:

@@ -37,17 +37,17 @@ def add_slug_column_if_not_exists(apps, schema_editor):
             column_name = "slug"
 
             if vendor == "sqlite":
-                cursor.execute("PRAGMA table_info(web_meme)")
+                cursor.execute(f"PRAGMA table_info({table_name})")
                 columns = [info[1] for info in cursor.fetchall()]
                 if column_name in columns:
                     return
-                cursor.execute("ALTER TABLE web_meme ADD COLUMN slug VARCHAR(255) DEFAULT ''")
+                cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} VARCHAR(255) DEFAULT ''")
 
             elif vendor == "mysql":
-                cursor.execute("SHOW COLUMNS FROM web_meme LIKE %s", [column_name])
+                cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE '{column_name}'")
                 if cursor.fetchone():
                     return
-                cursor.execute("ALTER TABLE web_meme ADD COLUMN slug VARCHAR(255) DEFAULT ''")
+                cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} VARCHAR(255) DEFAULT ''")
 
             elif vendor == "postgresql":
                 # Add column if not exists for PostgreSQL
