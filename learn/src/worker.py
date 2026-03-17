@@ -481,15 +481,14 @@ async def api_register(req, env):
     username = (body.get("username") or "").strip()
     email    = (body.get("email")    or "").strip()
     password = (body.get("password") or "")
-    role     = (body.get("role")     or "member").strip()
     name     = (body.get("name")     or username).strip()
 
     if not username or not email or not password:
         return err("username, email, and password are required")
     if len(password) < 8:
         return err("Password must be at least 8 characters")
-    if role not in ("member", "host"):
-        role = "member"
+
+    role = "member"
 
     enc = env.ENCRYPTION_KEY
     uid = new_id()
@@ -634,8 +633,8 @@ async def api_list_activities(req, env):
 
 async def api_create_activity(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user or user.get("role") != "host":
-        return err("Host access required", 401)
+    if not user:
+        return err("Authentication required", 401)
 
     try:
         body = await req.json()
@@ -813,70 +812,68 @@ async def api_dashboard(req, env):
 
     enc = env.ENCRYPTION_KEY
 
-    if user.get("role") == "host":
-        res = await env.DB.prepare(
-            "SELECT a.id,a.title,a.type,a.format,a.schedule_type,a.created_at,"
-            "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
-            " AS participant_count,"
-            "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
-            " FROM activities a WHERE a.host_id=? ORDER BY a.created_at DESC"
-        ).bind(user["id"]).all()
+    res = await env.DB.prepare(
+        "SELECT a.id,a.title,a.type,a.format,a.schedule_type,a.created_at,"
+        "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
+        " AS participant_count,"
+        "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
+        " FROM activities a WHERE a.host_id=? ORDER BY a.created_at DESC"
+    ).bind(user["id"]).all()
 
-        hosted = []
-        for r in res.results or []:
-            t_res = await env.DB.prepare(
-                "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
-                " WHERE at2.activity_id=?"
-            ).bind(r["id"]).all()
-            hosted.append({
-                "id":                r["id"],
-                "title":             r["title"],
-                "type":              r["type"],
-                "format":            r["format"],
-                "schedule_type":     r["schedule_type"],
-                "participant_count": r["participant_count"],
-                "session_count":     r["session_count"],
-                "tags":              [t["name"] for t in (t_res.results or [])],
-                "created_at":        r["created_at"],
-            })
-        return json_resp({"user": user, "role": "host", "hosted_activities": hosted})
+    hosted = []
+    for r in res.results or []:
+        t_res = await env.DB.prepare(
+            "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
+            " WHERE at2.activity_id=?"
+        ).bind(r["id"]).all()
+        hosted.append({
+            "id":                r["id"],
+            "title":             r["title"],
+            "type":              r["type"],
+            "format":            r["format"],
+            "schedule_type":     r["schedule_type"],
+            "participant_count": r["participant_count"],
+            "session_count":     r["session_count"],
+            "tags":              [t["name"] for t in (t_res.results or [])],
+            "created_at":        r["created_at"],
+        })
 
-    else:
-        res = await env.DB.prepare(
-            "SELECT a.id,a.title,a.type,a.format,a.schedule_type,"
-            "e.role AS enr_role,e.status AS enr_status,e.created_at AS joined_at,"
-            "u.name AS host_name_enc"
-            " FROM enrollments e"
-            " JOIN activities a ON e.activity_id=a.id"
-            " JOIN users u ON a.host_id=u.id"
-            " WHERE e.user_id=? ORDER BY e.created_at DESC"
-        ).bind(user["id"]).all()
+    res2 = await env.DB.prepare(
+        "SELECT a.id,a.title,a.type,a.format,a.schedule_type,"
+        "e.role AS enr_role,e.status AS enr_status,e.created_at AS joined_at,"
+        "u.name AS host_name_enc"
+        " FROM enrollments e"
+        " JOIN activities a ON e.activity_id=a.id"
+        " JOIN users u ON a.host_id=u.id"
+        " WHERE e.user_id=? ORDER BY e.created_at DESC"
+    ).bind(user["id"]).all()
 
-        joined = []
-        for r in res.results or []:
-            t_res = await env.DB.prepare(
-                "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
-                " WHERE at2.activity_id=?"
-            ).bind(r["id"]).all()
-            joined.append({
-                "id":            r["id"],
-                "title":         r["title"],
-                "type":          r["type"],
-                "format":        r["format"],
-                "schedule_type": r["schedule_type"],
-                "enr_role":      r["enr_role"],
-                "enr_status":    r["enr_status"],
-                "host_name":     decrypt(r["host_name_enc"] or "", enc),
-                "tags":          [t["name"] for t in (t_res.results or [])],
-                "joined_at":     r["joined_at"],
-            })
-        return json_resp({"user": user, "role": "member", "joined_activities": joined})
+    joined = []
+    for r in res2.results or []:
+        t_res = await env.DB.prepare(
+            "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
+            " WHERE at2.activity_id=?"
+        ).bind(r["id"]).all()
+        joined.append({
+            "id":            r["id"],
+            "title":         r["title"],
+            "type":          r["type"],
+            "format":        r["format"],
+            "schedule_type": r["schedule_type"],
+            "enr_role":      r["enr_role"],
+            "enr_status":    r["enr_status"],
+            "host_name":     decrypt(r["host_name_enc"] or "", enc),
+            "tags":          [t["name"] for t in (t_res.results or [])],
+            "joined_at":     r["joined_at"],
+        })
+
+    return json_resp({"user": user, "hosted_activities": hosted, "joined_activities": joined})
 
 
 async def api_create_session(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user or user.get("role") != "host":
-        return err("Host access required", 401)
+    if not user:
+        return err("Authentication required", 401)
 
     try:
         body = await req.json()
@@ -926,8 +923,8 @@ async def api_list_tags(_req, env):
 
 async def api_add_activity_tags(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user or user.get("role") != "host":
-        return err("Host access required", 401)
+    if not user:
+        return err("Authentication required", 401)
 
     try:
         body = await req.json()

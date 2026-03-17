@@ -32,17 +32,7 @@
   </div>
 </nav>
 
-<!-- Auth guard -->
-<div id="auth-guard" class="hidden">
-  <div class="gradient-hero text-white py-20 px-4 text-center">
-    <p class="text-5xl mb-4">&#128274;</p>
-    <h1 class="text-2xl font-bold mb-2">Host Access Required</h1>
-    <p class="text-indigo-200 mb-6">Only users with Host role can access this page.</p>
-    <a href="/login.html" class="bg-white text-brand font-bold px-6 py-2.5 rounded-xl shadow hover:bg-indigo-50">Login as Host</a>
-  </div>
-</div>
-
-<!-- Main content (hosts only) -->
+<!-- Main content -->
 <div id="host-content" class="hidden">
 
   <div class="gradient-hero text-white py-12 px-4">
@@ -191,8 +181,6 @@
 
   if (!token || !user) {
     window.location.href = '/login.html';
-  } else if (user.role !== 'host') {
-    document.getElementById('auth-guard').classList.remove('hidden');
   } else {
     document.getElementById('nav-user').textContent = 'Hi, ' + user.username;
     document.getElementById('host-content').classList.remove('hidden');
