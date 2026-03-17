@@ -210,4 +210,41 @@
       </div>
     </div>
   </div>
+
+    <!-- Course Recommendations -->
+    {% if recommendations %}
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white">
+          <i class="fas fa-lightbulb text-yellow-500 dark:text-yellow-300 mr-2"></i> Recommended for You
+        </h2>
+        <a href="{% url 'course_recommendations' %}" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400">
+          See all
+        </a>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {% for course in recommendations %}
+        <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md transition duration-200 flex flex-col">
+          {% if course.image %}
+            <img src="{{ course.image.url }}" alt="{{ course.title }}" class="w-full h-28 object-cover">
+          {% else %}
+            <div class="w-full h-28 bg-teal-100 dark:bg-teal-900 flex items-center justify-center">
+              <i class="fas fa-book-open text-teal-500 dark:text-teal-300 text-2xl"></i>
+            </div>
+          {% endif %}
+          <div class="p-3 flex flex-col flex-1">
+            <span class="text-xs text-teal-600 dark:text-teal-400 font-medium">{{ course.subject }}</span>
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mt-1 line-clamp-2">{{ course.title }}</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">by {{ course.teacher.get_full_name|default:course.teacher.username }}</p>
+            <a href="{% url 'course_detail' course.slug %}"
+               class="mt-3 text-xs text-center bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-3 py-1.5 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+              View Course
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
 {% endblock content %}

@@ -96,6 +96,7 @@ urlpatterns += i18n_patterns(
     path("accounts/delete/", views.delete_account, name="delete_account"),
     # Dashboard URLs
     path("dashboard/student/", views.student_dashboard, name="student_dashboard"),
+    path("dashboard/student/recommendations/", views.course_recommendations, name="course_recommendations"),
     path("dashboard/teacher/", views.teacher_dashboard, name="teacher_dashboard"),
     path("dashboard/content/", views.content_dashboard, name="content_dashboard"),
     # SURVEY URLs
