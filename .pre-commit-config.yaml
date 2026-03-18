@@ -92,7 +92,7 @@ repos:
         stages: [pre-commit]
       - id: django-test
         name: Django Tests
-        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && poetry run python manage.py test --verbosity=2 --timing --parallel=4 --failfast; fi'
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && poetry run python manage.py test --verbosity=2 --timing --failfast; fi'
         language: system
         types: [python]
         pass_filenames: false

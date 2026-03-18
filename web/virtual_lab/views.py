@@ -4,6 +4,8 @@ import json
 import logging
 
 import requests
+from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
@@ -148,11 +150,27 @@ def code_editor_view(request):
 
 
 @require_POST
+@login_required
 def evaluate_code(request):
     """
     Proxy code + stdin to Piston and return its JSON result.
     """
-    data = json.loads(request.body)
+    # Lightweight manual rate limiting (5 req/min)
+    cache_key = f"eval_rate_{request.user.id}"
+    request_count = cache.get(cache_key)
+
+    if request_count is None:
+        cache.set(cache_key, 1, timeout=60)
+    elif request_count >= 5:
+        logger.warning(f"Rate limit exceeded for user {request.user.id}")
+        return JsonResponse({"error": "Rate limit exceeded. Try again later."}, status=429)
+    else:
+        cache.incr(cache_key)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
     source_code = data.get("code", "")
     language = data.get("language", "python")  # e.g. "python","javascript","c","cpp"
     stdin_text = data.get("stdin", "")
