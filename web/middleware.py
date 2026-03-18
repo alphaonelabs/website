@@ -65,7 +65,6 @@ class GlobalExceptionMiddleware:
             send_slack_message(error_message)
             return render(request, "500.html", status=500)
 
-        return None
 
 
 class WebRequestMiddleware:
