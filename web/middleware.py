@@ -46,14 +46,13 @@ class GlobalExceptionMiddleware:
         sentry_sdk.capture_exception(exception)
 
         # Print exception details to console
-        print("\n=== Exception Details ===")
-        print(f"Exception Type: {type(exception).__name__}")
-        print(f"Exception Message: {str(exception)}")
-        print("\nTraceback:")
-        traceback.print_exc()
-        print("=====================\n")
+        logger.error("=== Exception Details ===")
+        logger.error("Exception Type: %s", type(exception).__name__)
+        logger.error("Exception Message: %s", exception)
+        exc_info = (type(exception), exception, exception.__traceback__)
+        logger.error("Traceback:", exc_info=exc_info)
 
-        tb = traceback.format_exc()
+        tb = "".join(traceback.format_exception(*exc_info))
         error_message = f"ERROR: {str(exception)}\n\n" f"Traceback:\n{tb}\n\n" f"Path: {request.path}"
 
         if settings.DEBUG:
@@ -67,7 +66,6 @@ class GlobalExceptionMiddleware:
             send_slack_message(error_message)
             return render(request, "500.html", status=500)
 
-        return None
 
 
 class WebRequestMiddleware:
