@@ -482,9 +482,6 @@ urlpatterns += i18n_patterns(
     path("features/", features_page, name="features"),
     path("features/vote/", feature_vote, name="feature_vote"),
     path("features/vote-count/", feature_vote_count, name="feature_vote_count"),
-    # Contributors
-    path("contributors/", views.contributors_list_view, name="contributors_list_view"),
-    path("contributors/<str:username>/", views.contributor_detail_view, name="contributor_detail"),
     # Membership URLs
     path("membership/checkout/<int:plan_id>/", views.membership_checkout, name="membership_checkout"),
     path(
