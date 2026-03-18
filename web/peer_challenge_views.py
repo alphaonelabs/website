@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -7,8 +9,6 @@ from django.utils import timezone
 
 from .forms import PeerChallengeForm, PeerChallengeInvitationForm
 from .models import PeerChallenge, PeerChallengeInvitation, UserQuiz
-
-import logging
 
 logger = logging.getLogger(__name__)
 
