@@ -49,9 +49,10 @@ class GlobalExceptionMiddleware:
         logger.error("=== Exception Details ===")
         logger.error("Exception Type: %s", type(exception).__name__)
         logger.error("Exception Message: %s", exception)
-        logger.error("Traceback:", exc_info=True)
+        exc_info = (type(exception), exception, exception.__traceback__)
+        logger.error("Traceback:", exc_info=exc_info)
 
-        tb = traceback.format_exc()
+        tb = "".join(traceback.format_exception(*exc_info))
         error_message = f"ERROR: {str(exception)}\n\n" f"Traceback:\n{tb}\n\n" f"Path: {request.path}"
 
         if settings.DEBUG:
