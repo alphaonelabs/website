@@ -46,12 +46,12 @@ class GlobalExceptionMiddleware:
         sentry_sdk.capture_exception(exception)
 
         # Print exception details to console
-        print("\n=== Exception Details ===")
-        print(f"Exception Type: {type(exception).__name__}")
-        print(f"Exception Message: {str(exception)}")
-        print("\nTraceback:")
+        logger.error("=== Exception Details ===")
+        logger.error(f"Exception Type: {type(exception).__name__}")
+        logger.error(f"Exception Message: {str(exception)}")
+        logger.error("Traceback:")
         traceback.print_exc()
-        print("=====================\n")
+        logger.error("=====================")
 
         tb = traceback.format_exc()
         error_message = f"ERROR: {str(exception)}\n\n" f"Traceback:\n{tb}\n\n" f"Path: {request.path}"
