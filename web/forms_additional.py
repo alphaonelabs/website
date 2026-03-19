@@ -1,8 +1,10 @@
+from captcha.fields import CaptchaField
 from django import forms
 from django.contrib.auth.models import User
 
 from .models import BlogComment, Course, CourseMaterial, Review, StudyGroup
 from .widgets import (
+    TailwindCaptchaTextInput,
     TailwindCheckboxInput,
     TailwindEmailInput,
     TailwindFileInput,
@@ -56,6 +58,7 @@ class LearningInquiryForm(forms.Form):
         ],
         widget=TailwindSelect(),
     )
+    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
 
 class TeachingInquiryForm(forms.Form):

@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -11,6 +12,10 @@ User = get_user_model()
 
 class EducationalVideoUploadTests(TestCase):
     def setUp(self):
+        self.captcha_patcher = patch("captcha.fields.CaptchaField.clean", return_value="PASSED")
+        self.captcha_patcher.start()
+        self.addCleanup(self.captcha_patcher.stop)
+
         # create a user and two categories
         self.user = User.objects.create_user(username="tester", password="password")
         self.math = Subject.objects.create(name="Math", slug="math", order=1)
@@ -32,6 +37,8 @@ class EducationalVideoUploadTests(TestCase):
             "video_url": "https://youtu.be/dQw4w9WgXcQ",
             "description": "A great test",
             "category": self.math.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data)
         self.assertRedirects(resp, reverse("educational_videos_list"))
@@ -47,6 +54,8 @@ class EducationalVideoUploadTests(TestCase):
             "video_url": "https://youtu.be/dQw4w9WgXcQ",
             "description": "Anonymous desc",
             "category": self.bio.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data)
         self.assertRedirects(resp, reverse("educational_videos_list"))
@@ -63,6 +72,8 @@ class EducationalVideoUploadTests(TestCase):
             "title": "Bad Quick",
             "description": "",
             "category": "",
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(resp.status_code, 400)
@@ -78,6 +89,8 @@ class EducationalVideoUploadTests(TestCase):
             "title": "Good Quick",
             "description": "Auto desc",
             "category": self.math.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(resp.status_code, 200)
@@ -93,6 +106,8 @@ class EducationalVideoUploadTests(TestCase):
             "video_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
             "description": "Test embed URL",
             "category": self.math.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data)
         self.assertRedirects(resp, reverse("educational_videos_list"))
@@ -106,6 +121,8 @@ class EducationalVideoUploadTests(TestCase):
             "video_url": "https://youtube.com/embed/dQw4w9WgXcQ",
             "description": "Test embed URL without www",
             "category": self.math.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data)
         self.assertRedirects(resp, reverse("educational_videos_list"))
@@ -119,6 +136,8 @@ class EducationalVideoUploadTests(TestCase):
             "video_url": "https://vimeo.com/video/123456789",
             "description": "Test Vimeo video path URL",
             "category": self.bio.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data)
         self.assertRedirects(resp, reverse("educational_videos_list"))
@@ -132,6 +151,8 @@ class EducationalVideoUploadTests(TestCase):
             "video_url": "https://www.youtube.com/embed/shortid",
             "description": "Test invalid embed URL",
             "category": self.math.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(resp.status_code, 400)
@@ -147,6 +168,8 @@ class EducationalVideoUploadTests(TestCase):
             "video_url": "https://vimeo.com/video/1234567",  # 7 digits, need 8+
             "description": "Test invalid Vimeo URL",
             "category": self.bio.id,
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         resp = self.client.post(self.upload_url, data, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(resp.status_code, 400)
