@@ -6068,7 +6068,7 @@ def upload_educational_video(request):
     If user leaves title/description blank, we back‑fill from YouTube/Vimeo.
     """
     if request.method == "POST":
-        form = EducationalVideoForm(request.POST, user=request.user)
+        form = EducationalVideoForm(request.POST)
         if form.is_valid():
             video = form.save(commit=False)
             if request.user.is_authenticated:
@@ -6093,7 +6093,7 @@ def upload_educational_video(request):
             return JsonResponse({"success": False, "error": error_text}, status=400)
 
     else:
-        form = EducationalVideoForm(user=request.user)
+        form = EducationalVideoForm()
 
     return render(request, "videos/upload.html", {"form": form})
 

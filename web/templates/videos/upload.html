@@ -2,9 +2,7 @@
 
 {% load static %}
 
-{% block title %}
-  Upload Educational Video
-{% endblock title %}
+{% block title %}Upload Educational Video{% endblock %}
 {% block content %}
   <main class="flex-1 w-full max-w-3xl mx-auto mt-6 px-4 md:px-6">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -96,18 +94,6 @@
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Describe what viewers will learn from this video</div>
           </div>
         </div>
-        <!-- CAPTCHA (shown to anonymous users only) -->
-        {% if form.captcha %}
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CAPTCHA</label>
-            {{ form.captcha }}
-            {% if form.captcha.errors %}
-              <div class="text-red-600 dark:text-red-400 text-sm mt-1">
-                {% for error in form.captcha.errors %}<p>{{ error }}</p>{% endfor %}
-              </div>
-            {% endif %}
-          </div>
-        {% endif %}
         <!-- Submit Button -->
         <div class="pt-4">
           <button type="submit"
@@ -118,4 +104,4 @@
       </form>
     </div>
   </main>
-{% endblock content %}
+{% endblock %}
