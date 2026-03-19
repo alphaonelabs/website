@@ -197,6 +197,19 @@ def err(msg: str, status: int = 400):
     return json_resp({"error": msg}, status)
 
 
+async def parse_json_object(req):
+    """Parse request JSON and ensure payload is an object/dict."""
+    try:
+        body = await req.json()
+    except Exception:
+        return None, err("Invalid JSON body")
+
+    if not isinstance(body, dict):
+        return None, err("JSON body must be an object", 400)
+
+    return body, None
+
+
 def _clean_path(value: str, default: str = "/admin") -> str:
     """Normalize an env-provided path into a safe absolute URL path."""
     raw = (value or "").strip()
@@ -516,10 +529,9 @@ async def seed_db(env, enc_key: str):
 # ---------------------------------------------------------------------------
 
 async def api_register(req, env):
-    try:
-        body = await req.json()
-    except Exception:
-        return err("Invalid JSON body")
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
 
     username = (body.get("username") or "").strip()
     email    = (body.get("email")    or "").strip()
@@ -564,10 +576,9 @@ async def api_register(req, env):
 
 
 async def api_login(req, env):
-    try:
-        body = await req.json()
-    except Exception:
-        return err("Invalid JSON body")
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
 
     username = (body.get("username") or "").strip()
     password = (body.get("password") or "")
@@ -679,10 +690,9 @@ async def api_create_activity(req, env):
     if not user:
         return err("Authentication required", 401)
 
-    try:
-        body = await req.json()
-    except Exception:
-        return err("Invalid JSON body")
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
 
     title         = (body.get("title")         or "").strip()
     description   = (body.get("description")   or "").strip()
@@ -817,10 +827,9 @@ async def api_join(req, env):
     if not user:
         return err("Authentication required", 401)
 
-    try:
-        body = await req.json()
-    except Exception:
-        return err("Invalid JSON body")
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
 
     act_id = body.get("activity_id")
     role   = (body.get("role") or "participant").strip()
@@ -918,10 +927,9 @@ async def api_create_session(req, env):
     if not user:
         return err("Authentication required", 401)
 
-    try:
-        body = await req.json()
-    except Exception:
-        return err("Invalid JSON body")
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
 
     act_id      = body.get("activity_id")
     title       = (body.get("title")       or "").strip()
@@ -969,10 +977,9 @@ async def api_add_activity_tags(req, env):
     if not user:
         return err("Authentication required", 401)
 
-    try:
-        body = await req.json()
-    except Exception:
-        return err("Invalid JSON body")
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
 
     act_id = body.get("activity_id")
     tags   = body.get("tags") or []
