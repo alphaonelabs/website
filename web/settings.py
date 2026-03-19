@@ -14,6 +14,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
 
+MESSAGE_ENCRYPTION_KEY_REQUIRED_MSG = "MESSAGE_ENCRYPTION_KEY must be set in production"
+GOOGLE_OAUTH_CREDENTIALS_REQUIRED_MSG = "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in production"
+EARLY_DEBUG = env.bool("DEBUG", default=False)
+
 env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 
 if os.path.exists(env_file):
@@ -22,7 +26,12 @@ else:
     print("No .env file found.")
 
 # Set encryption key for secure messaging; in production, this must come from the environment
-MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default=Fernet.generate_key()).strip()
+MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default="").strip()
+if not MESSAGE_ENCRYPTION_KEY:
+    if EARLY_DEBUG:
+        MESSAGE_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    else:
+        raise ImproperlyConfigured(MESSAGE_ENCRYPTION_KEY_REQUIRED_MSG)
 SECURE_MESSAGE_KEY = MESSAGE_ENCRYPTION_KEY
 
 # Re-initialize / initialize Sentry AFTER environment variables are loaded so DSN is present here.
@@ -539,7 +548,7 @@ GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
 google_client_id = env.str("GOOGLE_CLIENT_ID", default="")
 google_client_secret = env.str("GOOGLE_CLIENT_SECRET", default="")
 if not DEBUG and (not google_client_id or not google_client_secret):
-    raise ImproperlyConfigured("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in production")
+    raise ImproperlyConfigured(GOOGLE_OAUTH_CREDENTIALS_REQUIRED_MSG)
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
