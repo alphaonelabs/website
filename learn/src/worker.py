@@ -37,7 +37,52 @@ import os
 import re
 from urllib.parse import urlparse, parse_qs
 
+import sentry_sdk
 from workers import Response
+
+
+_SENTRY_READY = False
+_SENTRY_DSN = ""
+
+
+def _init_sentry(env):
+    """Initialize Sentry once per isolate using env-provided DSN."""
+    global _SENTRY_READY, _SENTRY_DSN
+
+    dsn = (getattr(env, "SENTRY_DSN", "") or "").strip()
+    if not dsn:
+        return
+    if _SENTRY_READY and _SENTRY_DSN == dsn:
+        return
+
+    sentry_sdk.init(
+        dsn=dsn,
+        send_default_pii=True,
+    )
+    _SENTRY_READY = True
+    _SENTRY_DSN = dsn
+
+
+def capture_exception(exc: Exception, req=None, env=None, where: str = ""):
+    """Best-effort exception capture to Sentry with request context."""
+    try:
+        if env:
+            _init_sentry(env)
+        if not _SENTRY_READY:
+            return
+
+        with sentry_sdk.push_scope() as scope:
+            if where:
+                scope.set_tag("where", where)
+            if req:
+                scope.set_context("request", {
+                    "method": req.method,
+                    "url": req.url,
+                    "path": urlparse(req.url).path,
+                })
+            sentry_sdk.capture_exception(exc)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -565,6 +610,7 @@ async def api_register(req, env):
     except Exception as e:
         if "UNIQUE" in str(e):
             return err("Username or email already registered", 409)
+        capture_exception(e, req, env, "api_register.insert_user")
         return err("Registration failed — please try again", 500)
 
     token = create_token(uid, username, role, env.JWT_SECRET)
@@ -722,6 +768,7 @@ async def api_create_activity(req, env):
             atype, fmt, schedule_type, user["id"]
         ).run()
     except Exception as e:
+        capture_exception(e, req, env, "api_create_activity.insert_activity")
         return err("Failed to create activity — please try again", 500)
 
     for tag_name in (body.get("tags") or []):
@@ -852,6 +899,7 @@ async def api_join(req, env):
             " VALUES (?,?,?,?)"
         ).bind(enr_id, act_id, user["id"], role).run()
     except Exception as e:
+        capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
 
     return ok(None, "Joined activity successfully")
@@ -961,6 +1009,7 @@ async def api_create_session(req, env):
             encrypt(location, enc) if location else "",
         ).run()
     except Exception as e:
+        capture_exception(e, req, env, "api_create_session.insert_session")
         return err("Failed to create session — please try again", 500)
 
     return ok({"id": sid}, "Session created")
@@ -1090,7 +1139,7 @@ async def serve_static(path: str, env):
 # Main dispatcher
 # ---------------------------------------------------------------------------
 
-async def on_fetch(request, env):
+async def _dispatch(request, env):
     path   = urlparse(request.url).path
     method = request.method.upper()
     admin_path = _clean_path(getattr(env, "ADMIN_URL", ""))
@@ -1109,6 +1158,7 @@ async def on_fetch(request, env):
                 await init_db(env)
                 return ok(None, "Database initialised")
             except Exception as e:
+                capture_exception(e, request, env, "api_init")
                 return err("Database init failed — check D1 binding", 500)
 
         if path == "/api/seed" and method == "POST":
@@ -1117,6 +1167,7 @@ async def on_fetch(request, env):
                 await seed_db(env, env.ENCRYPTION_KEY)
                 return ok(None, "Sample data seeded")
             except Exception as e:
+                capture_exception(e, request, env, "api_seed")
                 return err("Seed failed — check D1 binding and schema", 500)
 
         if path == "/api/register" and method == "POST":
@@ -1156,3 +1207,12 @@ async def on_fetch(request, env):
         return err("API endpoint not found", 404)
 
     return await serve_static(path, env)
+
+
+async def on_fetch(request, env):
+    try:
+        _init_sentry(env)
+        return await _dispatch(request, env)
+    except Exception as e:
+        capture_exception(e, request, env, "on_fetch_unhandled")
+        return err("Internal server error", 500)
