@@ -1,6 +1,7 @@
 {% extends "allauth/layouts/base.html" %}
 
 {% load static %}
+{% load socialaccount %}
 
 {% block extra_head %}
   {{ block.super }}
@@ -248,6 +249,25 @@
             Sign in <i class="fas fa-arrow-right text-xs ml-1"></i>
           </a>
         </p>
+        <!-- Divider -->
+        <div class="relative my-4">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="bg-white dark:bg-gray-800 px-2 text-gray-500">Or sign up with</span>
+          </div>
+        </div>
+        <!-- Google Signup Button -->
+        <a href="{% provider_login_url 'google' %}"
+           class="flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-base font-semibold text-gray-700 dark:text-white shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600">
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg"
+               width="20"
+               height="20"
+               alt="Google"
+               class="h-5 w-5" />
+          Sign up with Google
+        </a>
       </form>
     </div>
   </div>
