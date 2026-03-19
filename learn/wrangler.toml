@@ -10,16 +10,25 @@ run_worker_first = ["/api/*"]
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
 
-# ⚠️  REQUIRED before deployment – replace placeholder values:
-#     wrangler secret put ENCRYPTION_KEY
-#     wrangler secret put JWT_SECRET
-# For local dev, copy both to a `.dev.vars` file (already in .gitignore).
-[vars]
-ENCRYPTION_KEY = "MUST_BE_SET_BEFORE_DEPLOYMENT"
-JWT_SECRET = "MUST_BE_SET_BEFORE_DEPLOYMENT"
 
 # Run `wrangler d1 create education_db` and paste the returned UUID below.
 [[d1_databases]]
 binding = "DB"
 database_name = "education_db"
 database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
+
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

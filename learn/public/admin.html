@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduPlatform Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --accent: #0f766e;
+      --accent-soft: #ccfbf1;
+    }
+    body {
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at 10% 10%, #d1fae5 0%, #f8fafc 35%),
+                  radial-gradient(circle at 90% 20%, #bfdbfe 0%, #f8fafc 40%);
+      color: var(--ink);
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(226, 232, 240, 0.85);
+    }
+    .pulse {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.45; }
+      50% { opacity: 1; }
+      100% { opacity: 0.45; }
+    }
+  </style>
+</head>
+<body>
+  <main class="max-w-4xl mx-auto px-4 py-10 sm:py-16">
+    <section class="glass rounded-3xl shadow-xl p-6 sm:p-10">
+      <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Restricted area</p>
+          <h1 class="text-3xl font-black mt-1">Database Table Counts</h1>
+          <p class="text-sm text-slate-500 mt-2">Protected by HTTP Basic Auth and loaded from live D1 metadata.</p>
+        </div>
+        <button id="reload" class="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold transition">Refresh</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+          <p class="text-xs uppercase tracking-wider text-slate-500">Tables</p>
+          <p id="stat-tables" class="text-2xl font-extrabold mt-1">-</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+          <p class="text-xs uppercase tracking-wider text-slate-500">Rows Total</p>
+          <p id="stat-rows" class="text-2xl font-extrabold mt-1">-</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+          <p class="text-xs uppercase tracking-wider text-slate-500">Largest Table</p>
+          <p id="stat-largest" class="text-xl font-extrabold mt-1">-</p>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <table class="w-full text-left">
+          <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+            <tr>
+              <th class="px-4 py-3">Table</th>
+              <th class="px-4 py-3">Rows</th>
+            </tr>
+          </thead>
+          <tbody id="rows" class="text-sm"></tbody>
+        </table>
+      </div>
+
+      <p id="status" class="text-sm text-slate-500 mt-4">Loading table counts...</p>
+    </section>
+  </main>
+
+  <script>
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function setLoading() {
+      const body = document.getElementById('rows');
+      body.innerHTML =
+        '<tr><td class="px-4 py-3 pulse text-slate-400">Loading...</td><td class="px-4 py-3 pulse text-slate-400">Loading...</td></tr>';
+      document.getElementById('status').textContent = 'Loading table counts...';
+    }
+
+    function render(rows) {
+      const tbody = document.getElementById('rows');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td class="px-4 py-4 text-slate-400" colspan="2">No tables found.</td></tr>';
+        document.getElementById('status').textContent = 'No application tables available.';
+        document.getElementById('stat-tables').textContent = '0';
+        document.getElementById('stat-rows').textContent = '0';
+        document.getElementById('stat-largest').textContent = '-';
+        return;
+      }
+
+      rows.sort((a, b) => b.count - a.count);
+      tbody.innerHTML = rows.map((r) =>
+        '<tr class="border-t border-slate-100">' +
+          '<td class="px-4 py-3 font-medium text-slate-700">' + esc(r.table) + '</td>' +
+          '<td class="px-4 py-3 text-slate-900">' + Number(r.count).toLocaleString() + '</td>' +
+        '</tr>'
+      ).join('');
+
+      const totalRows = rows.reduce((sum, r) => sum + Number(r.count || 0), 0);
+      const largest = rows[0];
+
+      document.getElementById('stat-tables').textContent = String(rows.length);
+      document.getElementById('stat-rows').textContent = totalRows.toLocaleString();
+      document.getElementById('stat-largest').textContent = largest.table + ' (' + Number(largest.count).toLocaleString() + ')';
+      document.getElementById('status').textContent = 'Updated at ' + new Date().toLocaleTimeString();
+    }
+
+    async function loadCounts() {
+      setLoading();
+      try {
+        const res = await fetch('/api/admin/table-counts', { cache: 'no-store' });
+        if (!res.ok) {
+          throw new Error('HTTP ' + res.status + ' while loading admin stats');
+        }
+        const data = await res.json();
+        render(data.tables || []);
+      } catch (e) {
+        document.getElementById('rows').innerHTML =
+          '<tr><td class="px-4 py-4 text-red-600" colspan="2">Failed to load counts.</td></tr>';
+        document.getElementById('status').textContent = e.message;
+      }
+    }
+
+    document.getElementById('reload').addEventListener('click', loadCounts);
+    loadCounts();
+  </script>
+</body>
+</html>

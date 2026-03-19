@@ -197,6 +197,49 @@ def err(msg: str, status: int = 400):
     return json_resp({"error": msg}, status)
 
 
+def _clean_path(value: str, default: str = "/admin") -> str:
+    """Normalize an env-provided path into a safe absolute URL path."""
+    raw = (value or "").strip()
+    if not raw:
+        return default
+    parsed = urlparse(raw)
+    path = (parsed.path or raw).strip()
+    if not path.startswith("/"):
+        path = "/" + path
+    path = re.sub(r"/+", "/", path)
+    if len(path) > 1 and path.endswith("/"):
+        path = path[:-1]
+    return path or default
+
+
+def _unauthorized_basic(realm: str = "EduPlatform Admin"):
+    return Response(
+        "Authentication required",
+        status=401,
+        headers={"WWW-Authenticate": f'Basic realm="{realm}"', **_CORS},
+    )
+
+
+def _is_basic_auth_valid(req, env) -> bool:
+    username = (getattr(env, "ADMIN_BASIC_USER", "") or "").strip()
+    password = (getattr(env, "ADMIN_BASIC_PASS", "") or "").strip()
+    if not username or not password:
+        return False
+
+    auth = req.headers.get("Authorization") or ""
+    if not auth.lower().startswith("basic "):
+        return False
+
+    try:
+        raw = auth.split(" ", 1)[1].strip()
+        decoded = base64.b64decode(raw).decode("utf-8")
+        user, pwd = decoded.split(":", 1)
+    except Exception:
+        return False
+
+    return _hmac.compare_digest(user, username) and _hmac.compare_digest(pwd, password)
+
+
 # ---------------------------------------------------------------------------
 # DDL - full schema (mirrors schema.sql)
 # ---------------------------------------------------------------------------
@@ -969,6 +1012,26 @@ async def api_add_activity_tags(req, env):
     return ok(None, "Tags updated")
 
 
+async def api_admin_table_counts(req, env):
+    if not _is_basic_auth_valid(req, env):
+        return _unauthorized_basic()
+
+    tables_res = await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    ).all()
+
+    counts = []
+    for row in tables_res.results or []:
+        table_name = row["name"]
+        # Table names come from sqlite_master and are quoted to avoid SQL injection.
+        count_row = await env.DB.prepare(
+            f'SELECT COUNT(*) AS cnt FROM "{table_name.replace(chr(34), chr(34) + chr(34))}"'
+        ).first()
+        counts.append({"table": table_name, "count": (count_row or {}).get("cnt", 0)})
+
+    return json_resp({"tables": counts})
+
+
 # ---------------------------------------------------------------------------
 # Static-asset serving  (Workers Sites / __STATIC_CONTENT KV)
 # ---------------------------------------------------------------------------
@@ -1023,9 +1086,15 @@ async def serve_static(path: str, env):
 async def on_fetch(request, env):
     path   = urlparse(request.url).path
     method = request.method.upper()
+    admin_path = _clean_path(getattr(env, "ADMIN_URL", ""))
 
     if method == "OPTIONS":
         return Response("", status=204, headers=_CORS)
+
+    if path == admin_path and method == "GET":
+        if not _is_basic_auth_valid(request, env):
+            return _unauthorized_basic()
+        return await serve_static("/admin.html", env)
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
@@ -1073,6 +1142,9 @@ async def on_fetch(request, env):
 
         if path == "/api/activity-tags" and method == "POST":
             return await api_add_activity_tags(request, env)
+
+        if path == "/api/admin/table-counts" and method == "GET":
+            return await api_admin_table_counts(request, env)
 
         return err("API endpoint not found", 404)
 
