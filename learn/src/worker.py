@@ -35,52 +35,29 @@ import hmac as _hmac
 import json
 import os
 import re
+import traceback
 from urllib.parse import urlparse, parse_qs
 
-import sentry_sdk
 from workers import Response
 
 
-_SENTRY_READY = False
-_SENTRY_DSN = ""
-
-
-def _init_sentry(env):
-    """Initialize Sentry once per isolate using env-provided DSN."""
-    global _SENTRY_READY, _SENTRY_DSN
-
-    dsn = (getattr(env, "SENTRY_DSN", "") or "").strip()
-    if not dsn:
-        return
-    if _SENTRY_READY and _SENTRY_DSN == dsn:
-        return
-
-    sentry_sdk.init(
-        dsn=dsn,
-        send_default_pii=True,
-    )
-    _SENTRY_READY = True
-    _SENTRY_DSN = dsn
-
-
-def capture_exception(exc: Exception, req=None, env=None, where: str = ""):
-    """Best-effort exception capture to Sentry with request context."""
+def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
+    """Best-effort exception logging with full traceback and request context."""
     try:
-        if env:
-            _init_sentry(env)
-        if not _SENTRY_READY:
-            return
-
-        with sentry_sdk.push_scope() as scope:
-            if where:
-                scope.set_tag("where", where)
-            if req:
-                scope.set_context("request", {
-                    "method": req.method,
-                    "url": req.url,
-                    "path": urlparse(req.url).path,
-                })
-            sentry_sdk.capture_exception(exc)
+        payload = {
+            "level": "error",
+            "where": where or "unknown",
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+        }
+        if req:
+            payload["request"] = {
+                "method": req.method,
+                "url": req.url,
+                "path": urlparse(req.url).path,
+            }
+        print(json.dumps(payload))
     except Exception:
         pass
 
@@ -1211,7 +1188,6 @@ async def _dispatch(request, env):
 
 async def on_fetch(request, env):
     try:
-        _init_sentry(env)
         return await _dispatch(request, env)
     except Exception as e:
         capture_exception(e, request, env, "on_fetch_unhandled")
