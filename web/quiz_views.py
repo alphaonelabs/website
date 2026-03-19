@@ -1,3 +1,5 @@
+import logging
+
 import json
 import random
 
@@ -18,6 +20,7 @@ from .forms import (
     TakeQuizForm,
 )
 from .models import Quiz, QuizQuestion, UserQuiz
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -182,7 +185,7 @@ def add_question(request, quiz_id):
                 else:
                     return redirect("quiz_detail", quiz_id=quiz.id)
             except Exception as e:
-                print(e)
+                logger.error("An error occurred: %s", e)
                 # Re-raise the exception
                 raise
     else:

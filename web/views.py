@@ -1,8 +1,8 @@
+import logging
 import calendar
 import html
 import ipaddress
 import json
-import logging
 import os
 import random
 import re
@@ -1134,7 +1134,7 @@ def github_update(request):
 def send_slack_message(message):
     webhook_url = os.getenv("SLACK_WEBHOOK_URL")
     if not webhook_url:
-        print("Warning: SLACK_WEBHOOK_URL not configured")
+        logger.warning("SLACK_WEBHOOK_URL not configured")
         return
 
     payload = {"text": f"```{message}```"}
@@ -3254,7 +3254,7 @@ def create_forum_category(request):
             messages.success(request, f"Forum category '{category.name}' created successfully!")
             return redirect("forum_category", slug=category.slug)
         else:
-            print(form.errors)
+            logger.warning("Form errors: %s", form.errors)
     else:
         form = ForumCategoryForm()
 
@@ -3480,7 +3480,7 @@ def system_status(request):
     if sendgrid_api_key:
         status["sendgrid"]["api_key_configured"] = True
         try:
-            print("Checking SendGrid API...")
+            logger.debug("Checking SendGrid API...")
             response = requests.get(
                 "https://api.sendgrid.com/v3/user/account",
                 headers={"Authorization": f"Bearer {sendgrid_api_key}"},
@@ -8113,7 +8113,7 @@ def post_to_twitter(request, post_id):
             post.posted_at = timezone.now()
             post.save()
         except Exception as e:
-            print(f"Error posting tweet: {e}")
+            logger.error("Error posting tweet: %s", e)
         return redirect("social_media_dashboard")
     return redirect("social_media_dashboard")
 
@@ -8485,7 +8485,7 @@ def contributors_list_view(request):
 
     except Exception as e:
         # Log the error
-        print(f"Error fetching contributors: {e}")
+        logger.error("Error fetching contributors: %s", e)
         # Return an empty list in case of error
         return render(request, "web/contributors_list.html", {"contributors": []})
 
