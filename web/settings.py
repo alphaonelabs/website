@@ -6,7 +6,7 @@ from pathlib import Path
 import environ
 import sentry_sdk
 from cryptography.fernet import Fernet
-from django.core.exceptions import DisallowedHost
+from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -15,16 +15,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 
 env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-environ.Env.read_env(env_file)
-
-# Set encryption key for secure messaging; in production, this must come from the environment
-MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default=Fernet.generate_key()).strip()
-SECURE_MESSAGE_KEY = MESSAGE_ENCRYPTION_KEY
 
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
 else:
     print("No .env file found.")
+
+# Set encryption key for secure messaging; in production, this must come from the environment
+MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default=Fernet.generate_key()).strip()
+SECURE_MESSAGE_KEY = MESSAGE_ENCRYPTION_KEY
 
 # Re-initialize / initialize Sentry AFTER environment variables are loaded so DSN is present here.
 SENTRY_DSN = env.str("SENTRY_DSN", default="")
@@ -131,8 +130,6 @@ ADMINS = [("Admin", os.getenv("EMAIL_FROM"))]
 SERVER_EMAIL = os.getenv("EMAIL_FROM")  # Email address error messages come from
 
 INSTALLED_APPS = [
-    "allauth.socialaccount",
-    "allauth.socialaccount.providers.google",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -144,6 +141,8 @@ INSTALLED_APPS = [
     "channels",
     "allauth",
     "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "captcha",
     "markdownx",
     "web",
@@ -536,16 +535,22 @@ CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
 SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=not DEBUG)
 GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
 
+# Validate Google OAuth credentials
+google_client_id = env.str("GOOGLE_CLIENT_ID", default="")
+google_client_secret = env.str("GOOGLE_CLIENT_SECRET", default="")
+if not DEBUG and (not google_client_id or not google_client_secret):
+    raise ImproperlyConfigured("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in production")
+
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APP": {
-            "client_id": env.str("GOOGLE_CLIENT_ID", default=""),
-            "secret": env.str("GOOGLE_CLIENT_SECRET", default=""),
+            "client_id": google_client_id,
+            "secret": google_client_secret,
         },
         "SCOPE": ["profile", "email"],
         "AUTH_PARAMS": {"access_type": "online"},
     }
 }
 
-SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
-SOCIALACCOUNT_EMAIL_REQUIRED = False
+SOCIALACCOUNT_EMAIL_VERIFICATION = "mandatory"
+SOCIALACCOUNT_EMAIL_REQUIRED = True

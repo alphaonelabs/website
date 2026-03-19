@@ -97,9 +97,9 @@
           </div>
         </div>
         <!-- Google Login Button -->
-        <a href="{% provider_login_url 'google' %}"
+        <a href="{% provider_login_url 'google' next=redirect_field_value %}"
            class="flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-base font-semibold text-gray-700 dark:text-white shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600">
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg"
+          <img src="{% static 'images/google-icon.svg' %}"
                width="20"
                height="20"
                alt="Google"
