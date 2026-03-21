@@ -496,7 +496,7 @@ class Session(models.Model):
                     f"lat={self.latitude}, \n lng={self.longitude}",
                 )
         except Exception as e:
-            logger.error("Error geocoding session %s location '%s': %s", self.id, self.location, str(e))
+            logger.exception("Error geocoding session %s location '%s'", self.id, self.location)
 
     def is_live(self):
         """Returns True if the session is live right now."""
