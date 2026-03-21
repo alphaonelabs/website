@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Assignment - {{ course.title }}{% endblock title %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+  <nav class="text-sm mb-4">
+    <a href="{% url 'course_detail' course.slug %}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">{{ course.title }}</a>
+    <span class="mx-2 text-gray-400">/</span>
+    <a href="{% url 'course_assignments' course.slug %}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">Assignments</a>
+    <span class="mx-2 text-gray-400">/</span>
+    <span class="text-gray-600 dark:text-gray-400">{{ action }}</span>
+  </nav>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">{{ action }} Assignment</h1>
+    <form method="post">
+      {% csrf_token %}
+      <div class="space-y-5">
+        <div>
+          <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title <span class="text-red-500">*</span></label>
+          <input type="text" id="title" name="title" value="{{ assignment.title|default:'' }}" required
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300">
+        </div>
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description <span class="text-red-500">*</span></label>
+          <textarea id="description" name="description" rows="5" required
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300">{{ assignment.description|default:'' }}</textarea>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="due_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+            <input type="datetime-local" id="due_date" name="due_date"
+              value="{{ assignment.due_date|date:'Y-m-d\TH:i'|default:'' }}"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300">
+          </div>
+          <div>
+            <label for="max_score" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Score</label>
+            <input type="number" id="max_score" name="max_score" min="1" max="1000"
+              value="{{ assignment.max_score|default:100 }}"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300">
+          </div>
+        </div>
+        <div>
+          <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+          <select id="status" name="status"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300">
+            <option value="draft" {% if not assignment or assignment.status == 'draft' %}selected{% endif %}>Draft</option>
+            <option value="published" {% if assignment.status == 'published' %}selected{% endif %}>Published</option>
+          </select>
+        </div>
+        <div class="flex items-center">
+          <input type="checkbox" id="allow_late_submissions" name="allow_late_submissions"
+            {% if assignment.allow_late_submissions %}checked{% endif %}
+            class="w-4 h-4 text-teal-500 border-gray-300 rounded focus:ring-teal-300">
+          <label for="allow_late_submissions" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Allow late submissions</label>
+        </div>
+        <div class="flex items-center space-x-3 pt-2">
+          <button type="submit"
+            class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-6 py-2 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+            {{ action }} Assignment
+          </button>
+          <a href="{% url 'course_assignments' course.slug %}"
+             class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold px-6 py-2 rounded-lg transition duration-200">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock content %}

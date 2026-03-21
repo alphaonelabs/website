@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Delete Assignment - {{ assignment.title }}{% endblock title %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-lg">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Delete Assignment</h1>
+    <p class="text-gray-600 dark:text-gray-400 mb-6">
+      Are you sure you want to delete <span class="font-semibold text-gray-900 dark:text-white">{{ assignment.title }}</span>?
+      This will also delete all student submissions. This action cannot be undone.
+    </p>
+    <div class="flex items-center space-x-3">
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit"
+          class="bg-red-500 hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-red-400">
+          Yes, Delete
+        </button>
+      </form>
+      <a href="{% url 'course_assignments' course.slug %}"
+         class="text-gray-500 hover:text-gray-700 dark:text-gray-400 text-sm">Cancel</a>
+    </div>
+  </div>
+</div>
+{% endblock content %}

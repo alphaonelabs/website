@@ -11,6 +11,8 @@ from django.utils.html import format_html
 
 from .models import (
     Achievement,
+    Assignment,
+    AssignmentSubmission,
     Badge,
     BlogComment,
     BlogPost,
@@ -610,6 +612,21 @@ class ChallengeSubmissionAdmin(admin.ModelAdmin):
 
 # Unregister the default User admin and register our custom one
 admin.site.unregister(User)
+@admin.register(Assignment)
+class AssignmentAdmin(admin.ModelAdmin):
+    list_display = ("title", "course", "status", "due_date", "max_score", "created_at")
+    list_filter = ("status", "course")
+    search_fields = ("title", "course__title")
+
+
+@admin.register(AssignmentSubmission)
+class AssignmentSubmissionAdmin(admin.ModelAdmin):
+    list_display = ("student", "assignment", "status", "score", "submitted_at")
+    list_filter = ("status",)
+    search_fields = ("student__username", "assignment__title")
+    raw_id_fields = ("student", "assignment", "graded_by")
+
+
 admin.site.register(User, CustomUserAdmin)
 
 

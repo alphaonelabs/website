@@ -3176,3 +3176,92 @@ class VirtualClassroomWhiteboard(models.Model):
         ordering = ["-last_updated"]
         verbose_name = "Virtual Classroom Whiteboard"
         verbose_name_plural = "Virtual Classroom Whiteboards"
+
+
+class Assignment(models.Model):
+    """A teacher-created assignment for a course."""
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("published", "Published"),
+    ]
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="assignments")
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    due_date = models.DateTimeField(null=True, blank=True)
+    max_score = models.PositiveIntegerField(default=100, validators=[MinValueValidator(1)])
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="draft")
+    allow_late_submissions = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.title} ({self.course.title})"
+
+    @property
+    def is_past_due(self) -> bool:
+        if self.due_date:
+            return timezone.now() > self.due_date
+        return False
+
+    @property
+    def submission_count(self) -> int:
+        return self.submissions.count()
+
+
+class AssignmentSubmission(models.Model):
+    """A student submission for an assignment."""
+
+    STATUS_CHOICES = [
+        ("submitted", "Submitted"),
+        ("graded", "Graded"),
+        ("returned", "Returned"),
+    ]
+
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="submissions")
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="assignment_submissions")
+    text_response = models.TextField(blank=True)
+    file_submission = models.FileField(upload_to="assignment_submissions/", blank=True, null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="submitted")
+    score = models.PositiveIntegerField(null=True, blank=True)
+    feedback = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    graded_at = models.DateTimeField(null=True, blank=True)
+    graded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="graded_submissions",
+    )
+
+    class Meta:
+        unique_together = ["assignment", "student"]
+        ordering = ["-submitted_at"]
+
+    def __str__(self) -> str:
+        return f"{self.student.username} - {self.assignment.title}"
+
+    @property
+    def percentage(self) -> "int | None":
+        if self.score is not None and self.assignment.max_score > 0:
+            return round((self.score / self.assignment.max_score) * 100)
+        return None
+
+
+
+from django.db.models.signals import post_delete as _post_delete
+
+
+def _delete_submission_file(sender, instance, **kwargs):
+    """Delete file from storage when AssignmentSubmission is deleted."""
+    if instance.file_submission:
+        instance.file_submission.delete(save=False)
+
+
+_post_delete.connect(_delete_submission_file, sender=AssignmentSubmission)

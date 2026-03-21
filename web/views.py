@@ -49,6 +49,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import NoReverseMatch, reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.crypto import get_random_string
 from django.utils.html import strip_tags
 from django.utils.text import slugify
@@ -113,6 +114,8 @@ from .marketing import (
 )
 from .models import (
     Achievement,
+    Assignment,
+    AssignmentSubmission,
     Badge,
     BlogComment,
     BlogPost,
@@ -1948,6 +1951,213 @@ def download_material(request, slug, material_id):
     except FileNotFoundError:
         messages.error(request, "The requested file could not be found.")
         return redirect("course_detail", slug=slug)
+
+
+# ─── Assignment Views ────────────────────────────────────────────────────────
+
+
+@login_required
+@teacher_required
+def create_assignment(request: HttpRequest, slug: str) -> HttpResponse:
+    """Teacher creates a new assignment for a course."""
+    course = get_object_or_404(Course, slug=slug, teacher=request.user)
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        description = request.POST.get("description", "").strip()
+        due_date = request.POST.get("due_date", "").strip() or None
+        try:
+            max_score = int(request.POST.get("max_score", 100))
+            if max_score < 1 or max_score > 1000:
+                raise ValueError
+        except (ValueError, TypeError):
+            messages.error(request, "Max score must be a number between 1 and 1000.")
+            return redirect("create_assignment", slug=slug)
+        status = request.POST.get("status", "draft")
+        if status not in ("draft", "published"):
+            status = "draft"
+        allow_late = request.POST.get("allow_late_submissions") == "on"
+        if not title or not description:
+            messages.error(request, "Title and description are required.")
+            return redirect("create_assignment", slug=slug)
+        parsed_due = parse_datetime(due_date) if due_date else None
+        Assignment.objects.create(
+            course=course,
+            title=title,
+            description=description,
+            due_date=parsed_due,
+            max_score=max_score,
+            status=status,
+            allow_late_submissions=allow_late,
+        )
+        messages.success(request, "Assignment created successfully.")
+        return redirect("course_assignments", slug=slug)
+    return render(request, "courses/assignment_form.html", {"course": course, "action": "Create"})
+
+
+@login_required
+def course_assignments(request: HttpRequest, slug: str) -> HttpResponse:
+    """List all assignments for a course."""
+    course = get_object_or_404(Course, slug=slug)
+    is_teacher = request.user == course.teacher
+    is_enrolled = Enrollment.objects.filter(
+        student=request.user, course=course, status__in=["approved", "completed"]
+    ).exists()
+    if not is_teacher and not is_enrolled:
+        messages.error(request, "You must be enrolled to view assignments.")
+        return redirect("course_detail", slug=slug)
+    if is_teacher:
+        assignments = course.assignments.all()
+    else:
+        assignments = course.assignments.filter(status="published")
+    # Annotate submission status for student
+    submission_map = {}
+    if not is_teacher:
+        subs = AssignmentSubmission.objects.filter(
+            student=request.user, assignment__in=assignments
+        ).values("assignment_id", "status", "score")
+        submission_map = {s["assignment_id"]: s for s in subs}
+    context = {
+        "course": course,
+        "assignments": assignments,
+        "is_teacher": is_teacher,
+        "submission_map": submission_map,
+    }
+    return render(request, "courses/assignment_list.html", context)
+
+
+@login_required
+def assignment_detail(request: HttpRequest, slug: str, assignment_id: int) -> HttpResponse:
+    """View assignment details and submit work (students) or view submissions (teachers)."""
+    course = get_object_or_404(Course, slug=slug)
+    assignment = get_object_or_404(Assignment, id=assignment_id, course=course)
+    is_teacher = request.user == course.teacher
+    is_enrolled = Enrollment.objects.filter(
+        student=request.user, course=course, status__in=["approved", "completed"]
+    ).exists()
+    if not is_teacher and not is_enrolled:
+        messages.error(request, "You must be enrolled to view this assignment.")
+        return redirect("course_detail", slug=slug)
+    if not is_teacher and assignment.status == "draft":
+        messages.error(request, "This assignment is not yet published.")
+        return redirect("course_assignments", slug=slug)
+    submission = None
+    submissions = None
+    if is_teacher:
+        submissions = assignment.submissions.select_related("student").order_by("-submitted_at")
+    else:
+        submission = AssignmentSubmission.objects.filter(
+            assignment=assignment, student=request.user
+        ).first()
+        # Handle student submission
+        if request.method == "POST":
+            if submission:
+                messages.error(request, "You have already submitted this assignment.")
+                return redirect("assignment_detail", slug=slug, assignment_id=assignment_id)
+            if assignment.is_past_due and not assignment.allow_late_submissions:
+                messages.error(request, "This assignment is past due and does not accept late submissions.")
+                return redirect("assignment_detail", slug=slug, assignment_id=assignment_id)
+            text_response = request.POST.get("text_response", "").strip()
+            file_submission = request.FILES.get("file_submission")
+            if file_submission:
+                allowed_types = ["application/pdf", "image/jpeg", "image/png", "text/plain",
+                                 "application/msword",
+                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+                if file_submission.content_type not in allowed_types:
+                    messages.error(request, "Invalid file type. Allowed: PDF, JPEG, PNG, TXT, DOC, DOCX.")
+                    return redirect("assignment_detail", slug=slug, assignment_id=assignment_id)
+                if file_submission.size > 10 * 1024 * 1024:  # 10MB
+                    messages.error(request, "File size must not exceed 10MB.")
+                    return redirect("assignment_detail", slug=slug, assignment_id=assignment_id)
+            if not text_response and not file_submission:
+                messages.error(request, "Please provide a text response or upload a file.")
+                return redirect("assignment_detail", slug=slug, assignment_id=assignment_id)
+            _, created = AssignmentSubmission.objects.get_or_create(
+                assignment=assignment,
+                student=request.user,
+                defaults={"text_response": text_response, "file_submission": file_submission},
+            )
+            if not created:
+                messages.error(request, "You have already submitted this assignment.")
+                return redirect("assignment_detail", slug=slug, assignment_id=assignment_id)
+            messages.success(request, "Assignment submitted successfully.")
+            return redirect("assignment_detail", slug=slug, assignment_id=assignment_id)
+    context = {
+        "course": course,
+        "assignment": assignment,
+        "is_teacher": is_teacher,
+        "submission": submission,
+        "submissions": submissions,
+    }
+    return render(request, "courses/assignment_detail.html", context)
+
+
+@login_required
+@teacher_required
+def grade_submission(request: HttpRequest, slug: str, submission_id: int) -> HttpResponse:
+    """Teacher grades a student submission."""
+    course = get_object_or_404(Course, slug=slug, teacher=request.user)
+    submission = get_object_or_404(AssignmentSubmission, id=submission_id, assignment__course=course)
+    if request.method == "POST":
+        score_str = request.POST.get("score", "").strip()
+        feedback = request.POST.get("feedback", "").strip()
+        if not score_str.isdigit():
+            messages.error(request, "Score must be a valid number.")
+            return redirect("grade_submission", slug=slug, submission_id=submission_id)
+        score = int(score_str)
+        if score > submission.assignment.max_score:
+            messages.error(request, f"Score cannot exceed {submission.assignment.max_score}.")
+            return redirect("grade_submission", slug=slug, submission_id=submission_id)
+        submission.score = score
+        submission.feedback = feedback
+        submission.status = "graded"
+        submission.graded_by = request.user
+        submission.graded_at = timezone.now()
+        submission.save(update_fields=["score", "feedback", "status", "graded_by", "graded_at"])
+        messages.success(request, f"Submission graded: {score}/{submission.assignment.max_score}.")
+        return redirect("assignment_detail", slug=slug, assignment_id=submission.assignment.id)
+    context = {"course": course, "submission": submission}
+    return render(request, "courses/grade_submission.html", context)
+
+
+@login_required
+@teacher_required
+def edit_assignment(request: HttpRequest, slug: str, assignment_id: int) -> HttpResponse:
+    """Teacher edits an existing assignment."""
+    course = get_object_or_404(Course, slug=slug, teacher=request.user)
+    assignment = get_object_or_404(Assignment, id=assignment_id, course=course)
+    if request.method == "POST":
+        assignment.title = request.POST.get("title", "").strip()
+        assignment.description = request.POST.get("description", "").strip()
+        due_date = request.POST.get("due_date", "").strip() or None
+        assignment.max_score = int(request.POST.get("max_score", 100))
+        assignment.status = request.POST.get("status", "draft")
+        assignment.allow_late_submissions = request.POST.get("allow_late_submissions") == "on"
+        assignment.due_date = parse_datetime(due_date) if due_date else None
+        assignment.save()
+        messages.success(request, "Assignment updated successfully.")
+        return redirect("course_assignments", slug=slug)
+    return render(request, "courses/assignment_form.html", {
+        "course": course,
+        "assignment": assignment,
+        "action": "Edit",
+    })
+
+
+@login_required
+@teacher_required
+def delete_assignment(request: HttpRequest, slug: str, assignment_id: int) -> HttpResponse:
+    """Teacher deletes an assignment."""
+    course = get_object_or_404(Course, slug=slug, teacher=request.user)
+    assignment = get_object_or_404(Assignment, id=assignment_id, course=course)
+    if request.method == "POST":
+        assignment.delete()
+        messages.success(request, "Assignment deleted.")
+        return redirect("course_assignments", slug=slug)
+    return render(request, "courses/assignment_confirm_delete.html", {
+        "course": course,
+        "assignment": assignment,
+    })
+
 
 
 @login_required
@@ -8839,3 +9049,26 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+@login_required
+def download_submission(request, submission_id):
+    """Serve submission files only to the course teacher or the submitting student."""
+    submission = get_object_or_404(AssignmentSubmission, id=submission_id)
+    course = submission.assignment.course
+    is_teacher = request.user == course.teacher
+    is_owner = request.user == submission.student
+    if not is_teacher and not is_owner:
+        messages.error(request, "You do not have permission to access this file.")
+        return redirect("course_detail", slug=course.slug)
+    if not submission.file_submission:
+        messages.error(request, "No file attached to this submission.")
+        return redirect("assignment_detail", slug=course.slug, assignment_id=submission.assignment.id)
+    from django.http import FileResponse
+    import os
+    file_path = submission.file_submission.path
+    if not os.path.exists(file_path):
+        messages.error(request, "File not found.")
+        return redirect("assignment_detail", slug=course.slug, assignment_id=submission.assignment.id)
+    return FileResponse(open(file_path, "rb"), as_attachment=True,
+                        filename=os.path.basename(file_path))

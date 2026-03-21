@@ -185,6 +185,43 @@ urlpatterns += i18n_patterns(
         views.course_progress_overview,
         name="course_progress_overview",
     ),
+
+    # Assignment URLs
+    path(
+        "courses/<slug:slug>/assignments/",
+        views.course_assignments,
+        name="course_assignments",
+    ),
+    path(
+        "courses/<slug:slug>/assignments/create/",
+        views.create_assignment,
+        name="create_assignment",
+    ),
+    path(
+        "courses/<slug:slug>/assignments/<int:assignment_id>/",
+        views.assignment_detail,
+        name="assignment_detail",
+    ),
+    path(
+        "courses/<slug:slug>/assignments/<int:assignment_id>/edit/",
+        views.edit_assignment,
+        name="edit_assignment",
+    ),
+    path(
+        "courses/<slug:slug>/assignments/<int:assignment_id>/delete/",
+        views.delete_assignment,
+        name="delete_assignment",
+    ),
+    path(
+        "courses/<slug:slug>/submissions/<int:submission_id>/grade/",
+        views.grade_submission,
+        name="grade_submission",
+    ),
+    path(
+        "courses/<slug:slug>/submissions/<int:submission_id>/download/",
+        views.download_submission,
+        name="download_submission",
+    ),
     path(
         "courses/<slug:slug>/materials/upload/",
         views.upload_material,
