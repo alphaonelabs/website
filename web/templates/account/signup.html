@@ -1,6 +1,7 @@
 {% extends "allauth/layouts/base.html" %}
 
 {% load static %}
+{% load i18n %}
 {% load socialaccount %}
 
 {% block extra_head %}
@@ -255,7 +256,7 @@
             <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
           </div>
           <div class="relative flex justify-center text-sm">
-            <span class="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-300">Or sign up with</span>
+            <span class="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-300">{% trans "Or sign up with" %}</span>
           </div>
         </div>
         <!-- Google Signup Button -->
@@ -266,7 +267,7 @@
                height="20"
                alt="Google"
                class="h-5 w-5" />
-          Sign up with Google
+          {% trans "Sign up with Google" %}
         </a>
       </form>
     </div>

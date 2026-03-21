@@ -16,7 +16,6 @@ env = environ.Env()
 
 MESSAGE_ENCRYPTION_KEY_REQUIRED_MSG = "MESSAGE_ENCRYPTION_KEY must be set in production"
 GOOGLE_OAUTH_CREDENTIALS_REQUIRED_MSG = "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in production"
-EARLY_DEBUG = env.bool("DEBUG", default=False)
 
 env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 
@@ -25,10 +24,13 @@ if os.path.exists(env_file):
 else:
     print("No .env file found.")
 
+EARLY_ENVIRONMENT = env.str("ENVIRONMENT", default="development")
+EARLY_DEBUG = EARLY_ENVIRONMENT == "development" or "test" in sys.argv
+
 # Set encryption key for secure messaging; in production, this must come from the environment
 MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default="").strip()
 if not MESSAGE_ENCRYPTION_KEY:
-    if EARLY_DEBUG:
+    if EARLY_DEBUG or "collectstatic" in sys.argv:
         MESSAGE_ENCRYPTION_KEY = Fernet.generate_key().decode()
     else:
         raise ImproperlyConfigured(MESSAGE_ENCRYPTION_KEY_REQUIRED_MSG)
