@@ -4,6 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import bleach
 from allauth.account.forms import LoginForm, SignupForm
+from allauth.socialaccount.forms import SignupForm as SocialSignupForm
 from captcha.fields import CaptchaField
 from cryptography.fernet import Fernet
 from django import forms
@@ -72,6 +73,7 @@ from .widgets import (
 
 __all__ = [
     "UserRegistrationForm",
+    "SocialUserRegistrationForm",
     "ProfileForm",
     "ChallengeSubmissionForm",
     "CourseCreationForm",
@@ -303,6 +305,74 @@ class UserRegistrationForm(SignupForm):
         email_address = EmailAddress.objects.get_for_user(user, user.email)
         if not email_address.verified:
             email_address.send_confirmation(request)
+
+        return user
+
+
+class SocialUserRegistrationForm(SocialSignupForm):
+    first_name = forms.CharField(
+        max_length=30,
+        required=True,
+        widget=TailwindInput(attrs={"placeholder": "First Name"}),
+    )
+    last_name = forms.CharField(
+        max_length=30,
+        required=True,
+        widget=TailwindInput(attrs={"placeholder": "Last Name"}),
+    )
+    is_teacher = forms.BooleanField(
+        required=False,
+        label="Register as a teacher",
+        widget=TailwindCheckboxInput(),
+    )
+    referral_code = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=TailwindInput(attrs={"placeholder": "Enter referral code"}),
+        help_text="Optional - Enter a referral code if you have one",
+    )
+    how_did_you_hear_about_us = forms.CharField(
+        max_length=500,
+        required=False,
+        widget=TailwindTextarea(
+            attrs={"rows": 2, "placeholder": "How did you hear about us? You can enter text or a link."}
+        ),
+        help_text="Optional - Tell us how you found us. You can enter text or a link.",
+    )
+    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
+    is_profile_public = forms.TypedChoiceField(
+        required=True,
+        choices=(("True", "Public"), ("False", "Private")),
+        coerce=lambda x: x == "True",
+        widget=forms.RadioSelect,
+        label="Profile Visibility",
+        help_text="Select whether your profile details will be public or private.",
+    )
+
+    def clean_referral_code(self):
+        referral_code = self.cleaned_data.get("referral_code")
+        if referral_code and not Profile.objects.filter(referral_code=referral_code).exists():
+            raise forms.ValidationError("Invalid referral code. Please check and try again.")
+        return referral_code
+
+    def save(self, request):
+        user = super().save(request)
+
+        user.first_name = self.cleaned_data.get("first_name", "")
+        user.last_name = self.cleaned_data.get("last_name", "")
+        user.save()
+
+        user.profile.is_profile_public = self.cleaned_data.get("is_profile_public")
+        user.profile.how_did_you_hear_about_us = self.cleaned_data.get("how_did_you_hear_about_us", "")
+
+        if self.cleaned_data.get("is_teacher"):
+            user.profile.is_teacher = True
+
+        user.profile.save()
+
+        referral_code = self.cleaned_data.get("referral_code")
+        if referral_code:
+            handle_referral(user, referral_code)
 
         return user
 

@@ -316,6 +316,10 @@ ACCOUNT_FORMS = {
     "signup": "web.forms.UserRegistrationForm",
     "login": "web.forms.CustomLoginForm",
 }
+SOCIALACCOUNT_FORMS = {
+    "signup": "web.forms.SocialUserRegistrationForm",
+}
+SOCIALACCOUNT_AUTO_SIGNUP = False
 
 LANGUAGE_CODE = "en"
 
@@ -554,6 +558,7 @@ if not DEBUG and (not google_client_id or not google_client_secret):
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
+        "EMAIL_AUTHENTICATION": True,
         "APP": {
             "client_id": google_client_id,
             "secret": google_client_secret,
