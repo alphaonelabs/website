@@ -1,5 +1,4 @@
 # AlphaOneLabs Education Platform
-new website fully encrypted database
 
 ## Project Overview
 
