@@ -2621,6 +2621,43 @@ def student_dashboard(request):
     # Query achievements for the user.
     achievements = Achievement.objects.filter(student=request.user).order_by("-awarded_at")
 
+    # Course recommendations
+    enrolled_course_ids = enrollments.filter(status__in=["approved", "completed"]).values_list("course_id", flat=True)
+    enrolled_subject_ids = Course.objects.filter(
+        id__in=enrolled_course_ids
+    ).values_list("subject_id", flat=True).distinct()
+    dashboard_limit = 3
+    same_subject_recs = (
+        Course.objects.filter(status="published", subject_id__in=enrolled_subject_ids)
+        .exclude(id__in=enrolled_course_ids)
+        .exclude(teacher=request.user)
+        .annotate(enrollment_count=Count("enrollments"), avg_rating=Avg("reviews__rating"))
+        .order_by("-enrollment_count")[:dashboard_limit]
+    )
+    recommendations = list(same_subject_recs)
+    if len(recommendations) < dashboard_limit:
+        rec_ids = [c.id for c in recommendations]
+        top_rated_recs = (
+            Course.objects.filter(status="published")
+            .exclude(id__in=enrolled_course_ids)
+            .exclude(id__in=rec_ids)
+            .exclude(teacher=request.user)
+            .annotate(avg_rating=Avg("reviews__rating"), enrollment_count=Count("enrollments", distinct=True))
+            .filter(avg_rating__gte=4.0)
+            .order_by("-avg_rating", "-enrollment_count")[: dashboard_limit - len(recommendations)]
+        )
+        recommendations += list(top_rated_recs)
+    if len(recommendations) < dashboard_limit:
+        existing_ids = [c.id for c in recommendations] + list(enrolled_course_ids)
+        popular_recs = (
+            Course.objects.filter(status="published")
+            .exclude(id__in=existing_ids)
+            .exclude(teacher=request.user)
+            .annotate(enrollment_count=Count("enrollments"), avg_rating=Avg("reviews__rating"))
+            .order_by("-enrollment_count")[: dashboard_limit - len(recommendations)]
+        )
+        recommendations += list(popular_recs)
+
     context = {
         "enrollments": enrollments,
         "upcoming_sessions": upcoming_sessions,
@@ -2628,8 +2665,74 @@ def student_dashboard(request):
         "avg_progress": avg_progress,
         "streak": streak,
         "achievements": achievements,
+        "recommendations": recommendations,
     }
     return render(request, "dashboard/student.html", context)
+
+
+@login_required
+def course_recommendations(request: HttpRequest) -> HttpResponse:
+    """Return personalized course recommendations for the student.
+
+    Recommendation logic (in priority order):
+    1. Published courses in subjects the student is already enrolled in (sorted by enrollment count)
+    2. Highest-rated published courses (avg rating >= 4.0) not yet enrolled
+    3. Fallback: most popular published courses by enrollment count
+    """
+    enrolled_course_ids = Enrollment.objects.filter(
+        student=request.user, status__in=["approved", "completed"]
+    ).values_list("course_id", flat=True)
+
+    enrolled_subject_ids = Course.objects.filter(
+        id__in=enrolled_course_ids
+    ).values_list("subject_id", flat=True).distinct()
+
+    page_limit = 8
+    # Tier 1: same-subject courses not yet enrolled
+    same_subject = (
+        Course.objects.filter(status="published", subject_id__in=enrolled_subject_ids)
+        .exclude(id__in=enrolled_course_ids)
+        .exclude(teacher=request.user)
+        .annotate(enrollment_count=Count("enrollments"), avg_rating=Avg("reviews__rating"))
+        .order_by("-enrollment_count")[:page_limit]
+    )
+    recommendations = list(same_subject)
+
+    # Tier 2: top-rated courses not enrolled
+    if len(recommendations) < page_limit:
+        same_subject_ids = [c.id for c in recommendations]
+        top_rated = (
+            Course.objects.filter(status="published")
+            .exclude(id__in=enrolled_course_ids)
+            .exclude(id__in=same_subject_ids)
+            .exclude(teacher=request.user)
+            .annotate(
+                avg_rating=Avg("reviews__rating"),
+                enrollment_count=Count("enrollments", distinct=True),
+            )
+            .filter(avg_rating__gte=4.0)
+            .order_by("-avg_rating", "-enrollment_count")[: page_limit - len(recommendations)]
+        )
+        recommendations += list(top_rated)
+
+    # Tier 3: most popular published courses
+    if len(recommendations) < page_limit:
+        existing_ids = [c.id for c in recommendations] + list(enrolled_course_ids)
+        popular = (
+            Course.objects.filter(status="published")
+            .exclude(id__in=existing_ids)
+            .exclude(teacher=request.user)
+            .annotate(enrollment_count=Count("enrollments"), avg_rating=Avg("reviews__rating"))
+            .order_by("-enrollment_count")[: page_limit - len(recommendations)]
+        )
+        recommendations += list(popular)
+
+    return render(
+        request,
+        "dashboard/recommendations.html",
+        {"recommendations": recommendations},
+    )
+
 
 
 @login_required
