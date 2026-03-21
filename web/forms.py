@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import ClassVar
 from urllib.parse import parse_qs, urlparse
@@ -117,6 +118,7 @@ __all__ = [
 ]
 
 fernet = Fernet(settings.SECURE_MESSAGE_KEY)
+INVALID_REFERRAL_CODE_MSG = "Invalid referral code. Please check and try again."
 
 
 class TailwindWidgetMixin:
@@ -265,7 +267,7 @@ class UserRegistrationForm(SignupForm):
         referral_code = self.cleaned_data.get("referral_code")
         if referral_code:
             if not Profile.objects.filter(referral_code=referral_code).exists():
-                raise forms.ValidationError("Invalid referral code. Please check and try again.")
+                raise forms.ValidationError(INVALID_REFERRAL_CODE_MSG)
         return referral_code
 
     def save(self, request):
@@ -297,7 +299,10 @@ class UserRegistrationForm(SignupForm):
         # Handle referral code if provided.
         referral_code = self.cleaned_data.get("referral_code")
         if referral_code:
-            handle_referral(user, referral_code)
+            try:
+                handle_referral(user, referral_code)
+            except Exception:
+                logging.getLogger(__name__).exception("Failed to process referral for user %s", user.pk)
 
         # Ensure email verification is sent
         from allauth.account.models import EmailAddress
@@ -310,6 +315,8 @@ class UserRegistrationForm(SignupForm):
 
 
 class SocialUserRegistrationForm(SocialSignupForm):
+    """Custom social signup form that collects onboarding fields used in standard registration."""
+
     first_name = forms.CharField(
         max_length=30,
         required=True,
@@ -352,10 +359,10 @@ class SocialUserRegistrationForm(SocialSignupForm):
     def clean_referral_code(self):
         referral_code = self.cleaned_data.get("referral_code")
         if referral_code and not Profile.objects.filter(referral_code=referral_code).exists():
-            raise forms.ValidationError("Invalid referral code. Please check and try again.")
+            raise forms.ValidationError(INVALID_REFERRAL_CODE_MSG)
         return referral_code
 
-    def save(self, request):
+    def save(self, request) -> User:
         user = super().save(request)
 
         user.first_name = self.cleaned_data.get("first_name", "")
@@ -372,7 +379,10 @@ class SocialUserRegistrationForm(SocialSignupForm):
 
         referral_code = self.cleaned_data.get("referral_code")
         if referral_code:
-            handle_referral(user, referral_code)
+            try:
+                handle_referral(user, referral_code)
+            except Exception:
+                logging.getLogger(__name__).exception("Failed to process referral for user %s", user.pk)
 
         return user
 
