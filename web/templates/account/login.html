@@ -1,7 +1,9 @@
 {% extends "allauth/layouts/base.html" %}
 
 {% load static %}
+{% load i18n %}
 {% load account %}
+{% load socialaccount %}
 
 {% block extra_head %}
   {{ block.super }}
@@ -86,6 +88,25 @@
             Sign in
           </button>
         </div>
+        <!-- Divider -->
+        <div class="relative my-4">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-300">{% trans "Or continue with" %}</span>
+          </div>
+        </div>
+        <!-- Google Login Button -->
+        <a href="{% provider_login_url 'google' next=redirect_field_value %}"
+           class="flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-base font-semibold text-gray-700 dark:text-white shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600">
+          <img src="{% static 'images/google-icon.svg' %}"
+               width="20"
+               height="20"
+               alt="Google"
+               class="h-5 w-5" />
+          {% trans "Sign in with Google" %}
+        </a>
       </form>
       <p class="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
         Don't have an account?

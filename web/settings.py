@@ -6,7 +6,7 @@ from pathlib import Path
 import environ
 import sentry_sdk
 from cryptography.fernet import Fernet
-from django.core.exceptions import DisallowedHost
+from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -14,17 +14,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
 
+MESSAGE_ENCRYPTION_KEY_REQUIRED_MSG = "MESSAGE_ENCRYPTION_KEY must be set in production"
+GOOGLE_OAUTH_CREDENTIALS_REQUIRED_MSG = "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in production"
+
 env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-
-
-# Set encryption key for secure messaging; in production, this must come from the environment
-MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default=Fernet.generate_key()).strip()
-SECURE_MESSAGE_KEY = MESSAGE_ENCRYPTION_KEY
 
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
 else:
     print("No .env file found.")
+
+EARLY_ENVIRONMENT = env.str("ENVIRONMENT", default="development")
+EARLY_DEBUG = EARLY_ENVIRONMENT == "development" or "test" in sys.argv
+
+# Set encryption key for secure messaging; in production, this must come from the environment
+MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default="").strip()
+if not MESSAGE_ENCRYPTION_KEY:
+    if EARLY_DEBUG or "collectstatic" in sys.argv:
+        MESSAGE_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    else:
+        raise ImproperlyConfigured(MESSAGE_ENCRYPTION_KEY_REQUIRED_MSG)
+SECURE_MESSAGE_KEY = MESSAGE_ENCRYPTION_KEY
 
 # Re-initialize / initialize Sentry AFTER environment variables are loaded so DSN is present here.
 SENTRY_DSN = env.str("SENTRY_DSN", default="")
@@ -142,6 +152,8 @@ INSTALLED_APPS = [
     "channels",
     "allauth",
     "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "captcha",
     "markdownx",
     "web",
@@ -304,6 +316,10 @@ ACCOUNT_FORMS = {
     "signup": "web.forms.UserRegistrationForm",
     "login": "web.forms.CustomLoginForm",
 }
+SOCIALACCOUNT_FORMS = {
+    "signup": "web.forms.SocialUserRegistrationForm",
+}
+SOCIALACCOUNT_AUTO_SIGNUP = False
 
 LANGUAGE_CODE = "en"
 
@@ -533,3 +549,24 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
 SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=not DEBUG)
 GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
+
+# Validate Google OAuth credentials
+google_client_id = env.str("GOOGLE_CLIENT_ID", default="")
+google_client_secret = env.str("GOOGLE_CLIENT_SECRET", default="")
+if not DEBUG and (not google_client_id or not google_client_secret):
+    raise ImproperlyConfigured(GOOGLE_OAUTH_CREDENTIALS_REQUIRED_MSG)
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "EMAIL_AUTHENTICATION": True,
+        "APP": {
+            "client_id": google_client_id,
+            "secret": google_client_secret,
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    }
+}
+
+SOCIALACCOUNT_EMAIL_VERIFICATION = "mandatory"
+SOCIALACCOUNT_EMAIL_REQUIRED = True
