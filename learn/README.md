@@ -6,15 +6,15 @@ Alpha One Labs is an education platform designed to facilitate both learning and
 
 ## Tech Stack
 
-- Frontend: HTML, Inline, Tailwind CSS 
+- Frontend: HTML,Tailwind CSS 
 - Backend: Python (Cloudflare Worker)
 - Database: Cloudflare D1 (SQLite)
 
-## Set Up Instruction
+## Set Up Instructions
 
 ### Prerequisites
 
-Make Sure you have installed:
+Make sure you have installed:
  - Node.js
  - Wrangler CLI
 
@@ -27,8 +27,8 @@ Install Wrangler:
 ### Clone the Repository
 
 ```bash
- git clone <your-repo-url> 
- cd <repo-folder>
+ git clone https://github.com/<user_name>/learn.git
+ cd learn
 ```
 
 ### Login to Cloudflare (One time)
@@ -38,11 +38,13 @@ Install Wrangler:
 ```
 
 ### Setup Database (D1)
+
 - Create Database:
 
 ```bash
  wrangler d1 create education_db
 ```
+
 - Add the generated database_id to your wrangler.toml:
 
  [[d1_databases]]
@@ -70,16 +72,19 @@ Backend server will start at :
 ### Run Frontend
 
 - Open directly
+
 ```bash
  public/index.html
 ```
 
 - Use a local server
+
 ```bash
  npx serve public
 ```
 
 Frontend Server will start at:
+
 ```bash
  http://localhost:3000
 ```
