@@ -8113,7 +8113,7 @@ def post_to_twitter(request, post_id):
             post.posted_at = timezone.now()
             post.save()
         except Exception as e:
-            logger.error("Error posting tweet: %s", e)
+            logger.exception("Error posting tweet")
         return redirect("social_media_dashboard")
     return redirect("social_media_dashboard")
 
@@ -8485,7 +8485,7 @@ def contributors_list_view(request):
 
     except Exception as e:
         # Log the error
-        logger.error("Error fetching contributors: %s", e)
+        logger.exception("Error fetching contributors")
         # Return an empty list in case of error
         return render(request, "web/contributors_list.html", {"contributors": []})
 
