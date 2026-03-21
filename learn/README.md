@@ -47,10 +47,12 @@ Install Wrangler:
 
 - Add the generated database_id to your wrangler.toml:
 
+```bash
  [[d1_databases]]
  binding = "DB"
  database_name = "education_db"
  database_id = "YOUR_DATABASE_ID"
+```
 
 - Apply Schema:
 
