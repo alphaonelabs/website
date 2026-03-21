@@ -1,8 +1,8 @@
-import logging
 import calendar
 import html
 import ipaddress
 import json
+import logging
 import os
 import random
 import re
@@ -3254,7 +3254,7 @@ def create_forum_category(request):
             messages.success(request, f"Forum category '{category.name}' created successfully!")
             return redirect("forum_category", slug=category.slug)
         else:
-            logger.warning("Form errors: %s", form.errors)
+            logger.debug("Form errors: %s", form.errors)
     else:
         form = ForumCategoryForm()
 
