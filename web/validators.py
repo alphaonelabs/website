@@ -108,7 +108,7 @@ def validate_github_username(value):
         raise ValidationError(
             _(
                 "GitHub username can only contain alphanumeric characters and hyphens, "
-                "and cannot start or end with a hyphen."
+                "cannot start or end with a hyphen, and cannot contain consecutive hyphens."
             ),
             code="invalid_github_chars",
         )
