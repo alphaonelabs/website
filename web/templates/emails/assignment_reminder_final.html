@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 30px;
+            border-left: 4px solid #d9534f;
+        }
+        .header {
+            color: #d9534f;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .urgent-badge {
+            display: inline-block;
+            background-color: #d9534f;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .course-name {
+            background-color: #f2dede;
+            border-left: 4px solid #d9534f;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .due-date {
+            font-size: 18px;
+            color: #d9534f;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+        .button {
+            display: inline-block;
+            background-color: #d9534f;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="urgent-badge">🚨 FINAL REMINDER - DUE TODAY!</div>
+        
+        <div class="header">Last Chance to Submit Your Assignment</div>
+        
+        <p>Hi {{ student_name }},</p>
+        
+        <p>This is your <strong>final reminder</strong> that your assignment for <strong>{{ course_title }}</strong> is due <strong>TODAY</strong>.</p>
+        
+        <div class="course-name">
+            <strong>Assignment:</strong> {{ assignment_title }}<br>
+            <div class="due-date">Due: {{ due_date|date:"F j, Y \a\t g:i A" }}</div>
+        </div>
+        
+        {% if description %}
+        <p><strong>Assignment Details:</strong></p>
+        <p>{{ description }}</p>
+        {% endif %}
+        
+        <p><strong>⚠️ Important:</strong> Please submit your work before the deadline. Late submissions may not be accepted.</p>
+        
+        <p>If you're having any issues or need an extension, contact your instructor immediately.</p>
+        
+        <p>
+            <a href="{{ site_url }}" class="button">Submit Your Assignment Now</a>
+        </p>
+        
+        <div class="footer">
+            <p>Alpha One Labs Education Platform<br>
+            This is an automated reminder. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
