@@ -7,10 +7,12 @@ Validates usernames across various social media platforms.
 import re
 
 from django.core.exceptions import ValidationError
+from typing import Optional
+
 from django.utils.translation import gettext_lazy as _
 
 
-def validate_discord_username(value):
+def validate_discord_username(value: Optional[str]) -> None:
     """
     Validate Discord username format.
 
@@ -58,7 +60,7 @@ def validate_discord_username(value):
         )
 
 
-def validate_slack_username(value):
+def validate_slack_username(value: Optional[str]) -> None:
     """
     Validate Slack username format.
 
@@ -70,7 +72,7 @@ def validate_slack_username(value):
     if not value:
         return
 
-    if len(value) < 1 or len(value) > 21:
+    if len(value) > 21:
         raise ValidationError(
             _("Slack username must be between 1 and 21 characters long."),
             code="invalid_slack_length",
@@ -86,7 +88,7 @@ def validate_slack_username(value):
         )
 
 
-def validate_github_username(value):
+def validate_github_username(value: Optional[str]) -> None:
     """
     Validate GitHub username format.
 
@@ -98,7 +100,7 @@ def validate_github_username(value):
     if not value:
         return
 
-    if len(value) < 1 or len(value) > 39:
+    if len(value) > 39:
         raise ValidationError(
             _("GitHub username must be between 1 and 39 characters long."),
             code="invalid_github_length",
