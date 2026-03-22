@@ -747,32 +747,31 @@ class ProfileUpdateForm(forms.ModelForm):
             raise forms.ValidationError("This username is already taken. Please choose a different one.")
         return username
 
-    def clean_discord_username(self):
-        username = self.cleaned_data.get("discord_username", "")
+    def _clean_social_media_username(self, field_name, validator):
+        """
+        Helper method to validate social media usernames.
+        
+        Reduces code duplication by centralizing the validation logic
+        for all social media platform usernames.
+        """
+        username = self.cleaned_data.get(field_name, "")
         if username:
             try:
-                validate_discord_username(username)
+                validator(username)
             except ValidationError as e:
-                raise forms.ValidationError(e.message)
+                # Get the message from ValidationError
+                message = e.message if hasattr(e, 'message') else str(e.messages[0] if e.messages else e)
+                raise forms.ValidationError(message)
         return username
+
+    def clean_discord_username(self):
+        return self._clean_social_media_username("discord_username", validate_discord_username)
 
     def clean_slack_username(self):
-        username = self.cleaned_data.get("slack_username", "")
-        if username:
-            try:
-                validate_slack_username(username)
-            except ValidationError as e:
-                raise forms.ValidationError(e.message)
-        return username
+        return self._clean_social_media_username("slack_username", validate_slack_username)
 
     def clean_github_username(self):
-        username = self.cleaned_data.get("github_username", "")
-        if username:
-            try:
-                validate_github_username(username)
-            except ValidationError as e:
-                raise forms.ValidationError(e.message)
-        return username
+        return self._clean_social_media_username("github_username", validate_github_username)
 
     def save(self, commit=True):
         user = super().save(commit=False)

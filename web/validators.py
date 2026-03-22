@@ -17,16 +17,32 @@ def validate_discord_username(value):
     Discord usernames:
     - Must be 2-32 characters long
     - Can contain letters, numbers, underscores, hyphens, and dots
-    - Cannot contain spaces
+    - Optional discriminator format: username#1234 (4 digits)
     """
     if not value:
         return  # Allow empty values; use blank=True in model if needed
 
-    # Remove the discriminator (e.g., "User#1234")
+    # Validate and extract the discriminator (e.g., "User#1234")
+    username_part = value
     if "#" in value:
-        username_part = value.split("#")[0]
-    else:
-        username_part = value
+        parts = value.split("#")
+        
+        # Only one # allowed
+        if len(parts) != 2:
+            raise ValidationError(
+                _("Discord username can only contain one '#' symbol."),
+                code="invalid_discord_format",
+            )
+        
+        username_part = parts[0]
+        discriminator = parts[1]
+        
+        # Discriminator must be 4 digits if present
+        if not discriminator or not discriminator.isdigit() or len(discriminator) != 4:
+            raise ValidationError(
+                _("Discord discriminator must be exactly 4 digits (e.g., User#1234)."),
+                code="invalid_discord_discriminator",
+            )
 
     if len(username_part) < 2 or len(username_part) > 32:
         raise ValidationError(

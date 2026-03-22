@@ -40,14 +40,29 @@ class DiscordUsernameValidatorTests(TestCase):
         """Test Discord username shorter than 2 characters."""
         with self.assertRaises(ValidationError) as cm:
             validate_discord_username("A")
-        self.assertIn("2 and 32", str(cm.exception))
+        self.assertEqual(cm.exception.code, "invalid_discord_length")
 
     def test_discord_username_too_long(self):
         """Test Discord username longer than 32 characters."""
         long_username = "A" * 33
         with self.assertRaises(ValidationError) as cm:
             validate_discord_username(long_username)
-        self.assertIn("2 and 32", str(cm.exception))
+        self.assertEqual(cm.exception.code, "invalid_discord_length")
+
+    def test_discord_discriminator_invalid_format(self):
+        """Test Discord username with invalid discriminator format."""
+        invalid_cases = [
+            "User#",  # Missing discriminator
+            "User#12",  # Too few digits
+            "User#12345",  # Too many digits
+            "User#abcd",  # Letters instead of digits
+            "User#1234#extra",  # Multiple # symbols
+        ]
+        for username in invalid_cases:
+            with self.subTest(username=username):
+                with self.assertRaises(ValidationError) as cm:
+                    validate_discord_username(username)
+                self.assertIn(cm.exception.code, ["invalid_discord_format", "invalid_discord_discriminator"])
 
     def test_discord_username_invalid_characters(self):
         """Test Discord username with invalid characters."""
@@ -93,7 +108,7 @@ class SlackUsernameValidatorTests(TestCase):
         long_username = "a" * 22
         with self.assertRaises(ValidationError) as cm:
             validate_slack_username(long_username)
-        self.assertIn("1 and 21", str(cm.exception))
+        self.assertEqual(cm.exception.code, "invalid_slack_length")
 
     def test_slack_username_starts_with_number(self):
         """Test Slack username starting with a number."""
@@ -145,7 +160,7 @@ class GitHubUsernameValidatorTests(TestCase):
         long_username = "a" * 40
         with self.assertRaises(ValidationError) as cm:
             validate_github_username(long_username)
-        self.assertIn("1 and 39", str(cm.exception))
+        self.assertEqual(cm.exception.code, "invalid_github_length")
 
     def test_github_username_starts_with_hyphen(self):
         """Test GitHub username starting with a hyphen."""
@@ -186,47 +201,51 @@ class ProfileModelValidationTests(TestCase):
 
     def test_profile_with_valid_social_usernames(self):
         """Test creating a profile with valid social media usernames."""
-        profile = Profile.objects.create(
+        profile = Profile(
             user=self.user,
             discord_username="TestUser#1234",
             slack_username="test.user",
             github_username="test-user",
         )
         profile.full_clean()  # Should not raise
+        profile.save()
         self.assertEqual(profile.discord_username, "TestUser#1234")
 
     def test_profile_with_invalid_discord_username(self):
         """Test creating a profile with invalid Discord username."""
-        profile = Profile.objects.create(
+        profile = Profile(
             user=self.user,
             discord_username="A",  # Too short
             slack_username="valid",
             github_username="valid",
         )
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as cm:
             profile.full_clean()
+        self.assertIn("discord_username", cm.exception.message_dict)
 
     def test_profile_with_invalid_slack_username(self):
         """Test creating a profile with invalid Slack username."""
-        profile = Profile.objects.create(
+        profile = Profile(
             user=self.user,
             discord_username="ValidUser",
             slack_username="123invalid",  # Starts with number
             github_username="valid",
         )
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as cm:
             profile.full_clean()
+        self.assertIn("slack_username", cm.exception.message_dict)
 
     def test_profile_with_invalid_github_username(self):
         """Test creating a profile with invalid GitHub username."""
-        profile = Profile.objects.create(
+        profile = Profile(
             user=self.user,
             discord_username="ValidUser",
             slack_username="valid",
             github_username="-invalid",  # Starts with hyphen
         )
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as cm:
             profile.full_clean()
+        self.assertIn("github_username", cm.exception.message_dict)
 
 
 class ProfileUpdateFormValidationTests(TestCase):

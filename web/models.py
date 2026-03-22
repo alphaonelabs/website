@@ -64,19 +64,19 @@ class Profile(models.Model):
     is_teacher = models.BooleanField(default=False)
     is_social_media_manager = models.BooleanField(default=False)
     discord_username = models.CharField(
-        max_length=50,
+        max_length=37,  # 32 (username) + 1 (#) + 4 (discriminator)
         blank=True,
         validators=[validate_discord_username],
         help_text="Your Discord username (e.g., User#1234)",
     )
     slack_username = models.CharField(
-        max_length=50,
+        max_length=21,  # Matches Slack's 21 character limit
         blank=True,
         validators=[validate_slack_username],
         help_text="Your Slack username",
     )
     github_username = models.CharField(
-        max_length=50,
+        max_length=39,  # Matches GitHub's 39 character limit
         blank=True,
         validators=[validate_github_username],
         help_text="Your GitHub username (without @)",
