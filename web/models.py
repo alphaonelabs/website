@@ -26,6 +26,7 @@ from markdownx.models import MarkdownxField
 from PIL import Image
 
 from web.utils import calculate_and_update_user_streak
+from web.validators import validate_discord_username, validate_github_username, validate_slack_username
 
 
 class Notification(models.Model):
@@ -62,9 +63,24 @@ class Profile(models.Model):
     )
     is_teacher = models.BooleanField(default=False)
     is_social_media_manager = models.BooleanField(default=False)
-    discord_username = models.CharField(max_length=50, blank=True, help_text="Your Discord username (e.g., User#1234)")
-    slack_username = models.CharField(max_length=50, blank=True, help_text="Your Slack username")
-    github_username = models.CharField(max_length=50, blank=True, help_text="Your GitHub username (without @)")
+    discord_username = models.CharField(
+        max_length=50,
+        blank=True,
+        validators=[validate_discord_username],
+        help_text="Your Discord username (e.g., User#1234)",
+    )
+    slack_username = models.CharField(
+        max_length=50,
+        blank=True,
+        validators=[validate_slack_username],
+        help_text="Your Slack username",
+    )
+    github_username = models.CharField(
+        max_length=50,
+        blank=True,
+        validators=[validate_github_username],
+        help_text="Your GitHub username (without @)",
+    )
     referral_code = models.CharField(max_length=20, unique=True, blank=True)
     referred_by = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="referrals")
     referral_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)

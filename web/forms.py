@@ -58,6 +58,7 @@ from .models import (
     WaitingRoom,
 )
 from .referrals import handle_referral
+from .validators import validate_discord_username, validate_github_username, validate_slack_username
 from .widgets import (
     TailwindCaptchaTextInput,
     TailwindCheckboxInput,
@@ -744,6 +745,33 @@ class ProfileUpdateForm(forms.ModelForm):
         username = self.cleaned_data["username"]
         if User.objects.exclude(pk=self.instance.pk).filter(username=username).exists():
             raise forms.ValidationError("This username is already taken. Please choose a different one.")
+        return username
+
+    def clean_discord_username(self):
+        username = self.cleaned_data.get("discord_username", "")
+        if username:
+            try:
+                validate_discord_username(username)
+            except ValidationError as e:
+                raise forms.ValidationError(e.message)
+        return username
+
+    def clean_slack_username(self):
+        username = self.cleaned_data.get("slack_username", "")
+        if username:
+            try:
+                validate_slack_username(username)
+            except ValidationError as e:
+                raise forms.ValidationError(e.message)
+        return username
+
+    def clean_github_username(self):
+        username = self.cleaned_data.get("github_username", "")
+        if username:
+            try:
+                validate_github_username(username)
+            except ValidationError as e:
+                raise forms.ValidationError(e.message)
         return username
 
     def save(self, commit=True):
