@@ -14,6 +14,7 @@ API Routes
   POST /api/sessions          – add a session to activity    [host]
   GET  /api/tags              – list all tags
   POST /api/activity-tags     – add tags to an activity      [host]
+  POST /api/chat              – chat with the AI assistant   (Cloudflare AI)
 
 Security model
   * ALL user PII (username, email, display name, role) is encrypted with a
@@ -1113,6 +1114,69 @@ async def serve_static(path: str, env):
 
 
 # ---------------------------------------------------------------------------
+# AI chat endpoint
+# ---------------------------------------------------------------------------
+
+_CHAT_SYSTEM_PROMPT = (
+    "You are a helpful learning assistant for EduPlatform, an online education "
+    "platform where learners discover and join courses, workshops, meetups, and "
+    "study groups. Help users find activities, understand how the platform works, "
+    "and answer general learning questions. Keep answers concise and friendly."
+)
+
+_MAX_HISTORY = 10   # maximum number of user+assistant turns kept per request
+
+
+async def api_chat(request, env):
+    """POST /api/chat – send a message and receive an AI reply."""
+    data, error = await parse_json_object(request)
+    if error:
+        return error
+
+    message = (data.get("message") or "").strip()
+    if not message:
+        return err("message is required", 400)
+    if len(message) > 2000:
+        return err("message too long (max 2000 characters)", 400)
+
+    # Optional conversation history – list of {role, content} dicts
+    history = data.get("history") or []
+    if not isinstance(history, list):
+        history = []
+
+    # Sanitise history: keep only valid role/content pairs, trim to last N turns
+    clean_history = []
+    for entry in history:
+        if (
+            isinstance(entry, dict)
+            and entry.get("role") in ("user", "assistant")
+            and isinstance(entry.get("content"), str)
+            and entry["content"].strip()
+        ):
+            clean_history.append({
+                "role": entry["role"],
+                "content": entry["content"][:2000],
+            })
+    clean_history = clean_history[-(_MAX_HISTORY * 2):]
+
+    messages = [{"role": "system", "content": _CHAT_SYSTEM_PROMPT}]
+    messages.extend(clean_history)
+    messages.append({"role": "user", "content": message})
+
+    try:
+        result = await env.AI.run(
+            "@cf/meta/llama-3.1-8b-instruct",
+            {"messages": messages},
+        )
+        reply = result.get("response") or ""
+    except Exception as exc:
+        capture_exception(exc, request, env, "api_chat")
+        return err("AI service unavailable", 503)
+
+    return ok({"reply": reply})
+
+
+# ---------------------------------------------------------------------------
 # Main dispatcher
 # ---------------------------------------------------------------------------
 
@@ -1180,6 +1244,9 @@ async def _dispatch(request, env):
 
         if path == "/api/admin/table-counts" and method == "GET":
             return await api_admin_table_counts(request, env)
+
+        if path == "/api/chat" and method == "POST":
+            return await api_chat(request, env)
 
         return err("API endpoint not found", 404)
 

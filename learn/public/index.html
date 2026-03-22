@@ -24,6 +24,29 @@
     .badge { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: .75rem; font-weight: 600; }
     .tag-pill { cursor: pointer; transition: background .15s; }
     .tag-pill.active { background: #4F46E5; color: #fff; }
+
+    /* ── Chat widget ────────────────────────────────────────────────────── */
+    #chat-widget { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: .75rem; }
+    #chat-toggle { width: 3.5rem; height: 3.5rem; border-radius: 9999px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 16px rgba(79,70,229,.4); background: linear-gradient(135deg,#4F46E5,#7C3AED); color: #fff; transition: transform .2s, box-shadow .2s; }
+    #chat-toggle:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(79,70,229,.5); }
+    #chat-window { width: 22rem; max-width: calc(100vw - 3rem); background: #fff; border-radius: 1.25rem; box-shadow: 0 8px 40px rgba(0,0,0,.14); display: flex; flex-direction: column; overflow: hidden; }
+    #chat-window.hidden { display: none !important; }
+    #chat-header { background: linear-gradient(135deg,#4F46E5,#7C3AED); color: #fff; padding: .875rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+    #chat-header h4 { margin: 0; font-size: .9375rem; font-weight: 700; }
+    #chat-header p  { margin: 0; font-size: .75rem; opacity: .8; }
+    #chat-close { background: none; border: none; color: #fff; cursor: pointer; font-size: 1.1rem; opacity: .8; line-height: 1; padding: 0; }
+    #chat-close:hover { opacity: 1; }
+    #chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .625rem; min-height: 14rem; max-height: 22rem; }
+    .chat-msg { max-width: 85%; padding: .5rem .875rem; border-radius: 1rem; font-size: .875rem; line-height: 1.5; word-break: break-word; }
+    .chat-msg.bot  { background: #f1f5f9; color: #1e293b; align-self: flex-start; border-bottom-left-radius: .25rem; }
+    .chat-msg.user { background: linear-gradient(135deg,#4F46E5,#7C3AED); color: #fff; align-self: flex-end; border-bottom-right-radius: .25rem; }
+    .chat-msg.typing { opacity: .6; font-style: italic; }
+    #chat-form { display: flex; gap: .5rem; padding: .75rem 1rem; border-top: 1px solid #f1f5f9; }
+    #chat-input { flex: 1; border: 1px solid #e2e8f0; border-radius: .75rem; padding: .5rem .875rem; font-size: .875rem; outline: none; transition: border-color .15s; }
+    #chat-input:focus { border-color: #4F46E5; }
+    #chat-send { background: linear-gradient(135deg,#4F46E5,#7C3AED); color: #fff; border: none; border-radius: .75rem; padding: .5rem .875rem; cursor: pointer; font-size: .875rem; font-weight: 600; transition: opacity .15s; }
+    #chat-send:hover { opacity: .9; }
+    #chat-send:disabled { opacity: .5; cursor: not-allowed; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
@@ -145,6 +168,27 @@
 <footer class="bg-slate-800 text-slate-400 py-8 text-center text-sm">
   <p>© 2024–2026 EduPlatform · Cloudflare Python Workers + D1 · All user data encrypted at rest</p>
 </footer>
+
+<!-- ── Chat Widget ────────────────────────────────────────────────────── -->
+<div id="chat-widget">
+  <div id="chat-window" class="hidden">
+    <div id="chat-header">
+      <div>
+        <h4>🤖 EduBot</h4>
+        <p>Ask me anything about EduPlatform!</p>
+      </div>
+      <button id="chat-close" aria-label="Close chat">✕</button>
+    </div>
+    <div id="chat-messages" role="log" aria-live="polite">
+      <div class="chat-msg bot">👋 Hi! I'm EduBot. Ask me about activities, how the platform works, or anything learning-related!</div>
+    </div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" placeholder="Type a message…" maxlength="2000" aria-label="Chat message" />
+      <button id="chat-send" type="submit">Send</button>
+    </form>
+  </div>
+  <button id="chat-toggle" aria-label="Open chat assistant" title="Chat with EduBot">💬</button>
+</div>
 
 <script>
   const API = '';
@@ -273,6 +317,81 @@
 
   updateNav();
   loadActivities();
+
+  // ── Chat widget ────────────────────────────────────────────────────────
+  (function () {
+    const toggle     = document.getElementById('chat-toggle');
+    const chatWindow = document.getElementById('chat-window');
+    const closeBtn   = document.getElementById('chat-close');
+    const messages   = document.getElementById('chat-messages');
+    const form       = document.getElementById('chat-form');
+    const input      = document.getElementById('chat-input');
+    const sendBtn    = document.getElementById('chat-send');
+
+    let chatHistory = [];   // [{role:'user'|'assistant', content:string}]
+    let isOpen      = false;
+
+    function openChat()  { isOpen = true;  chatWindow.classList.remove('hidden'); toggle.setAttribute('aria-label','Close chat assistant'); input.focus(); }
+    function closeChat() { isOpen = false; chatWindow.classList.add('hidden');    toggle.setAttribute('aria-label','Open chat assistant'); }
+
+    toggle.addEventListener('click', () => isOpen ? closeChat() : openChat());
+    closeBtn.addEventListener('click', closeChat);
+
+    function appendMsg(role, text) {
+      const div = document.createElement('div');
+      div.className = `chat-msg ${role === 'user' ? 'user' : 'bot'}`;
+      div.textContent = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+      return div;
+    }
+
+    function setLoading(loading) {
+      input.disabled   = loading;
+      sendBtn.disabled = loading;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      appendMsg('user', text);
+      chatHistory.push({ role: 'user', content: text });
+      setLoading(true);
+
+      const typing = appendMsg('bot', '…');
+      typing.classList.add('typing');
+
+      try {
+        const res  = await fetch(`${API}/api/chat`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          // Send prior turns as history; current message goes in the 'message' field.
+          body:    JSON.stringify({ message: text, history: chatHistory.slice(0, -1) }),
+        });
+        const data = await res.json();
+        typing.remove();
+
+        if (data.data && data.data.reply) {
+          const reply = data.data.reply;
+          appendMsg('bot', reply);
+          chatHistory.push({ role: 'assistant', content: reply });
+          // Keep history bounded to last 10 turns
+          if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+        } else {
+          appendMsg('bot', data.error || 'Sorry, I could not get a response. Please try again.');
+        }
+      } catch (_) {
+        typing.remove();
+        appendMsg('bot', 'Network error. Please check your connection and try again.');
+      } finally {
+        setLoading(false);
+        input.focus();
+      }
+    });
+  })();
 </script>
 </body>
 </html>
