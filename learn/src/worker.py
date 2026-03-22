@@ -16,15 +16,13 @@ API Routes
   POST /api/activity-tags     – add tags to an activity      [host]
 
 Security model
-  * ALL user PII (username, email, display name, role) is encrypted with a
-    XOR stream-cipher (SHA-256 key expansion) before storage.
+  * ALL user PII (username, email, display name, role) is encrypted with
+    AES-256-GCM (authenticated encryption) before storage.
   * HMAC-SHA256 blind indexes (username_hash, email_hash) allow O(1) row
     lookups without ever storing plaintext PII in an indexed column.
   * Activity descriptions and session locations/descriptions are encrypted.
   * Passwords: PBKDF2-SHA256, per-user derived salt (username + global pepper).
   * Auth tokens: HMAC-SHA256 signed, stateless (JWT-lite).
-  XOR stream cipher - demonstration only.  Replace encrypt()/decrypt()
-    with AES-GCM via js.crypto.subtle for a production deployment.
 
 Static HTML pages (public/) are served via Workers Sites (KV binding).
 """
@@ -38,6 +36,7 @@ import re
 import traceback
 from urllib.parse import urlparse, parse_qs
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from workers import Response
 
 
@@ -86,30 +85,33 @@ def _derive_key(secret: str) -> bytes:
 
 def encrypt(plaintext: str, secret: str) -> str:
     """
-    XOR stream-cipher encryption.
+    AES-256-GCM authenticated encryption.
 
-    Key is SHA-256 of secret, XOR'd byte-by-byte against plaintext.
-    Result is Base64-encoded for safe TEXT storage in D1.
-
-    XOR stream cipher - demonstration only. Replace with AES-GCM for production.
+    Key is SHA-256 of secret (32 bytes).  A fresh 96-bit nonce is generated
+    via os.urandom for every call; the collision probability is negligible
+    for typical web-application request volumes (birthday bound ~2^48).
+    Output format: base64(nonce || ciphertext || GCM-tag), safe for TEXT
+    storage in D1.
     """
     if not plaintext:
         return ""
-    key  = _derive_key(secret)
-    data = plaintext.encode("utf-8")
-    ks   = (key * (len(data) // len(key) + 1))[: len(data)]
-    return base64.b64encode(bytes(a ^ b for a, b in zip(data, ks))).decode("ascii")
+    key    = _derive_key(secret)
+    nonce  = os.urandom(12)
+    aesgcm = AESGCM(key)
+    ct     = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
+    return base64.b64encode(nonce + ct).decode("ascii")
 
 
 def decrypt(ciphertext: str, secret: str) -> str:
-    """Reverse of encrypt(). XOR is self-inverse."""
+    """Reverse of encrypt(). AES-256-GCM authenticated decryption."""
     if not ciphertext:
         return ""
     try:
-        key = _derive_key(secret)
-        raw = base64.b64decode(ciphertext)
-        ks  = (key * (len(raw) // len(key) + 1))[: len(raw)]
-        return bytes(a ^ b for a, b in zip(raw, ks)).decode("utf-8")
+        raw          = base64.b64decode(ciphertext)
+        nonce, ct    = raw[:12], raw[12:]
+        aesgcm       = AESGCM(_derive_key(secret))
+        plaintext    = aesgcm.decrypt(nonce, ct, None)
+        return plaintext.decode("utf-8")
     except Exception:
         return "[decryption error]"
 
