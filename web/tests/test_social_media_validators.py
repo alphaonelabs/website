@@ -187,6 +187,11 @@ class GitHubUsernameValidatorTests(TestCase):
         with self.assertRaises(ValidationError):
             validate_github_username("octo.cat")
 
+    def test_github_username_with_consecutive_hyphens(self):
+        """Test GitHub username with consecutive hyphens (not allowed)."""
+        with self.assertRaises(ValidationError):
+            validate_github_username("octo--cat")
+
     def test_empty_github_username(self):
         """Test that empty GitHub username is allowed."""
         validate_github_username("")  # Should not raise
@@ -201,15 +206,13 @@ class ProfileModelValidationTests(TestCase):
 
     def test_profile_with_valid_social_usernames(self):
         """Test creating a profile with valid social media usernames."""
-        profile = Profile(
-            user=self.user,
-            discord_username="TestUser#1234",
-            slack_username="test.user",
-            github_username="test-user",
-        )
-        profile.full_clean()  # Should not raise
-        profile.save()
-        self.assertEqual(profile.discord_username, "TestUser#1234")
+        # Update the existing profile created by post_save signal
+        self.user.profile.discord_username = "TestUser#1234"
+        self.user.profile.slack_username = "test.user"
+        self.user.profile.github_username = "test-user"
+        self.user.profile.full_clean()  # Should not raise
+        self.user.profile.save()
+        self.assertEqual(self.user.profile.discord_username, "TestUser#1234")
 
     def test_profile_with_invalid_discord_username(self):
         """Test creating a profile with invalid Discord username."""

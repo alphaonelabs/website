@@ -759,9 +759,8 @@ class ProfileUpdateForm(forms.ModelForm):
             try:
                 validator(username)
             except ValidationError as e:
-                # Get the message from ValidationError
-                message = e.message if hasattr(e, 'message') else str(e.messages[0] if e.messages else e)
-                raise forms.ValidationError(message)
+                # Preserve error codes and full error structure
+                raise forms.ValidationError(e.message, code=e.code if hasattr(e, 'code') else None)
         return username
 
     def clean_discord_username(self):

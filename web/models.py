@@ -118,6 +118,8 @@ class Profile(models.Model):
     def save(self, *args, **kwargs):
         if not self.referral_code:
             self.referral_code = self.generate_referral_code()
+        # Validate social media usernames and other field constraints
+        self.full_clean()
         # Skip image processing for SVG files
         super().save(*args, **kwargs)
 

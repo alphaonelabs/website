@@ -104,7 +104,7 @@ def validate_github_username(value):
             code="invalid_github_length",
         )
 
-    if not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$", value):
+    if not re.match(r"^[a-zA-Z0-9](?!.*--)([a-zA-Z0-9-]*[a-zA-Z0-9])?$", value):
         raise ValidationError(
             _(
                 "GitHub username can only contain alphanumeric characters and hyphens, "
