@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Become a Mentor{% endblock title %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">{% if mentor %}Edit Mentor Profile{% else %}Become a Mentor{% endif %}</h1>
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+      <div>
+        <label for="bio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
+        <textarea id="bio" name="bio" rows="4" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">{{ mentor.bio|default:"" }}</textarea>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="experience_years" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Years of Experience</label>
+          <input type="number" id="experience_years" name="experience_years" min="0" max="50" value="{{ mentor.experience_years|default:0 }}" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label for="availability" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Availability</label>
+          <select id="availability" name="availability" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {% for val, label in availability_choices %}<option value="{{ val }}" {% if mentor.availability == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center">
+          <input type="checkbox" id="is_free" name="is_free" {% if not mentor or mentor.is_free %}checked{% endif %} class="w-4 h-4 text-teal-500 border-gray-300 rounded focus:ring-teal-300">
+          <label for="is_free" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Free mentorship</label>
+        </div>
+        <label for="hourly_rate" class="sr-only">Hourly rate</label><input type="number" id="hourly_rate" name="hourly_rate" min="0" step="0.01" value="{{ mentor.hourly_rate|default:0 }}" placeholder="Hourly rate (if paid)" aria-label="Hourly rate" class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subjects</label>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {% for s in subjects %}<label class="flex items-center space-x-2"><input type="checkbox" name="subjects" value="{{ s.id }}" {% if mentor and s in mentor.subjects.all %}checked{% endif %} class="w-4 h-4 text-teal-500 border-gray-300 rounded focus:ring-teal-300"><span class="text-sm text-gray-700 dark:text-gray-300">{{ s.name }}</span></label>{% endfor %}
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button type="submit" class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-6 py-2 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">Save Profile</button>
+        <a href="{% url 'mentor_list' %}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 text-sm">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock content %}

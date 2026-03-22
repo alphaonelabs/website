@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Schedule Session{% endblock title %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-lg">
+  <nav class="text-sm mb-4">
+    <a href="{% url 'mentor_dashboard' %}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400">Dashboard</a>
+    <span class="mx-2 text-gray-400">/</span>
+    <span class="text-gray-600 dark:text-gray-400">Schedule Session</span>
+  </nav>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Schedule Session</h1>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">with {{ mentorship_request.student.get_full_name|default:mentorship_request.student.username }}</p>
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+      <div>
+        <label for="scheduled_at" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date and Time <span class="text-red-500">*</span></label>
+        <input type="datetime-local" id="scheduled_at" name="scheduled_at" required
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label for="duration_minutes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duration (minutes)</label>
+        <input type="number" id="duration_minutes" name="duration_minutes" min="15" max="240" value="60"
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (optional)</label>
+        <textarea id="notes" name="notes" rows="3" placeholder="Session agenda or preparation notes..."
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button type="submit" class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-6 py-2 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+          Schedule Session
+        </button>
+        <a href="{% url 'mentor_dashboard' %}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 text-sm">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock content %}

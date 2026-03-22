@@ -3176,3 +3176,95 @@ class VirtualClassroomWhiteboard(models.Model):
         ordering = ["-last_updated"]
         verbose_name = "Virtual Classroom Whiteboard"
         verbose_name_plural = "Virtual Classroom Whiteboards"
+
+
+class MentorProfile(models.Model):
+    """A user who offers mentorship in one or more subjects."""
+
+    AVAILABILITY_CHOICES = [
+        ("weekdays", "Weekdays"),
+        ("weekends", "Weekends"),
+        ("evenings", "Evenings"),
+        ("flexible", "Flexible"),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="mentor_profile")
+    subjects = models.ManyToManyField(Subject, related_name="mentors", blank=True)
+    bio = models.TextField(blank=True)
+    experience_years = models.PositiveIntegerField(default=0)
+    hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+    is_free = models.BooleanField(default=True)
+    availability = models.CharField(max_length=20, choices=AVAILABILITY_CHOICES, default="flexible")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.user.username} - Mentor"
+
+    @property
+    def average_rating(self):
+        result = self.sessions.filter(rating__isnull=False).aggregate(avg=Avg("rating"))["avg"]
+        return round(result, 1) if result else None
+
+    @property
+    def total_sessions(self) -> int:
+        return self.sessions.filter(status="completed").count()
+
+
+class MentorshipRequest(models.Model):
+    """A student request for mentorship."""
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("declined", "Declined"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    mentor = models.ForeignKey(MentorProfile, on_delete=models.CASCADE, related_name="requests")
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mentorship_requests")
+    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True)
+    message = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.student.username} -> {self.mentor.user.username} ({self.status})"
+
+
+class MentorshipSession(models.Model):
+    """A scheduled or completed 1-on-1 mentorship session."""
+
+    STATUS_CHOICES = [
+        ("scheduled", "Scheduled"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    mentor = models.ForeignKey(MentorProfile, on_delete=models.CASCADE, related_name="sessions")
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mentorship_sessions")
+    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True)
+    scheduled_at = models.DateTimeField()
+    duration_minutes = models.PositiveIntegerField(default=60, validators=[MinValueValidator(15), MaxValueValidator(240)])
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="scheduled")
+    notes = models.TextField(blank=True)
+    rating = models.PositiveIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    review = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-scheduled_at"]
+
+    def __str__(self) -> str:
+        return f"{self.mentor.user.username} + {self.student.username} @ {self.scheduled_at:%Y-%m-%d %H:%M}"

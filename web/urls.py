@@ -94,6 +94,19 @@ urlpatterns += i18n_patterns(
     path("profile/", views.profile, name="profile"),
     path("accounts/profile/", views.profile, name="accounts_profile"),
     path("accounts/delete/", views.delete_account, name="delete_account"),
+
+    # Mentorship URLs
+    path('mentorship/', views.mentor_list, name='mentor_list'),
+    path('mentorship/become/', views.become_mentor, name='become_mentor'),
+    path('mentorship/dashboard/', views.mentor_dashboard, name='mentor_dashboard'),
+    path('mentorship/my/', views.my_mentorship, name='my_mentorship'),
+    path('mentorship/<int:mentor_id>/', views.mentor_profile_view, name='mentor_profile_view'),
+    path('mentorship/<int:mentor_id>/request/', views.request_mentorship, name='request_mentorship'),
+    path('mentorship/requests/<int:request_id>/respond/', views.respond_to_request, name='respond_to_request'),
+    path('mentorship/requests/<int:request_id>/cancel/', views.cancel_mentorship_request, name='cancel_mentorship_request'),
+    path('mentorship/requests/<int:request_id>/schedule/', views.schedule_session, name='schedule_session'),
+    path('mentorship/sessions/<int:session_id>/complete/', views.complete_session, name='complete_session'),
+    path('mentorship/sessions/<int:session_id>/rate/', views.rate_session, name='rate_session'),
     # Dashboard URLs
     path("dashboard/student/", views.student_dashboard, name="student_dashboard"),
     path("dashboard/teacher/", views.teacher_dashboard, name="teacher_dashboard"),
