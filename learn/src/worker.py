@@ -222,7 +222,8 @@ def err(msg: str, status: int = 400):
 async def parse_json_object(req):
     """Parse request JSON and ensure payload is an object/dict."""
     try:
-        body = await req.json()
+        text = await req.text()
+        body = json.loads(text)
     except Exception:
         return None, err("Invalid JSON body")
 
@@ -615,15 +616,23 @@ async def api_login(req, env):
         "SELECT id,password_hash,role,name FROM users WHERE username_hash=?"
     ).bind(u_hash).first()
 
-    if not row or not verify_password(password, row["password_hash"], username):
+    if not row:
         return err("Invalid username or password", 401)
+    
+    password_hash = row.password_hash
+    user_id = row.id
+    role_enc = row.role
+    name_enc = row.name
 
-    real_role = decrypt(row["role"], enc)
-    real_name = decrypt(row["name"], enc)
-    token     = create_token(row["id"], username, real_role, env.JWT_SECRET)
+    if not verify_password(password, password_hash, username):
+        return err("Invalid username of password", 401)
+
+    real_role = decrypt(role_enc, enc)
+    real_name = decrypt(name_enc, enc)
+    token     = create_token(user_id, username, real_role, env.JWT_SECRET)
     return ok(
         {"token": token,
-         "user": {"id": row["id"], "username": username,
+         "user": {"id": user_id, "username": username,
                   "name": real_name, "role": real_role}},
         "Login successful",
     )
