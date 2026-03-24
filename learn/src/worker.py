@@ -766,19 +766,20 @@ async def api_create_activity(req, env):
         t_row = await env.DB.prepare(
             "SELECT id FROM tags WHERE name=?"
         ).bind(tag_name).first()
-        if not t_row:
-            tid = new_id()
+        if t_row:
+            tag_id = t_row.id
+        else:
+            tag_id = new_id()
             try:
                 await env.DB.prepare(
                     "INSERT INTO tags (id,name) VALUES (?,?)"
-                ).bind(tid, tag_name).run()
-                t_row = {"id": tid}
+                ).bind(tag_id, tag_name).run()
             except Exception:
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(act_id, t_row.id).run()
+            ).bind(act_id, tag_id).run()
         except Exception:
             pass
 
@@ -1037,19 +1038,20 @@ async def api_add_activity_tags(req, env):
         t_row = await env.DB.prepare(
             "SELECT id FROM tags WHERE name=?"
         ).bind(tag_name).first()
-        if not t_row:
-            tid = new_id()
+        if t_row:
+            tag_id = t_row.id
+        else:
+            tag_id = new_id()
             try:
                 await env.DB.prepare(
                     "INSERT INTO tags (id,name) VALUES (?,?)"
-                ).bind(tid, tag_name).run()
-                t_row = {"id": tid}
+                ).bind(tag_id, tag_name).run()
             except Exception:
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(act_id, t_row.id).run()
+            ).bind(act_id, tag_id).run()
         except Exception:
             pass
 
