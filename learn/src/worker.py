@@ -613,7 +613,7 @@ async def api_login(req, env):
     enc    = env.ENCRYPTION_KEY
     u_hash = blind_index(username, enc)
     row    = await env.DB.prepare(
-        "SELECT id,password_hash,role,name FROM users WHERE username_hash=?"
+        "SELECT id,password_hash,role,name,username FROM users WHERE username_hash=?"
     ).bind(u_hash).first()
 
     if not row:
@@ -623,16 +623,18 @@ async def api_login(req, env):
     user_id = row.id
     role_enc = row.role
     name_enc = row.name
+    username_enc = row.username
+    stored_username = decrypt(username_enc, enc)
 
-    if not verify_password(password, password_hash, username):
-        return err("Invalid username of password", 401)
+    if not verify_password(password, password_hash, stored_username):
+        return err("Invalid username or password", 401)
 
     real_role = decrypt(role_enc, enc)
     real_name = decrypt(name_enc, enc)
-    token     = create_token(user_id, username, real_role, env.JWT_SECRET)
+    token     = create_token(user_id, stored_username, real_role, env.JWT_SECRET)
     return ok(
         {"token": token,
-         "user": {"id": user_id, "username": username,
+         "user": {"id": user_id, "username": stored_username,
                   "name": real_name, "role": real_role}},
         "Login successful",
     )

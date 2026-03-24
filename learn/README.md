@@ -27,7 +27,7 @@ npm install -g wrangler
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/<user_name>/learn.git
+git clone https://github.com/alphaonelabs/learn.git
 cd learn
 ```
 
@@ -66,7 +66,7 @@ This project requires environment variables for encryption and authentication.
 - For Local Development
 Add the following to your `wrangler.toml`:
 
-```bash
+```toml
 [vars]
 ENCRYPTION_KEY = "your-dev-encryption-key"
 JWT_SECRET = "your-dev-jwt-secret"
