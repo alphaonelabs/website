@@ -668,7 +668,7 @@ async def api_list_activities(req, env):
             base_q
             + " JOIN activity_tags at2 ON at2.activity_id=a.id"
               " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
-        ).bind(tag_row["id"]).all()
+        ).bind(tag_row.id).all()
     elif atype and fmt:
         res = await env.DB.prepare(
             base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
@@ -688,10 +688,10 @@ async def api_list_activities(req, env):
 
     activities = []
     for row in res.results or []:
-        desc      = decrypt(row["description"] or "", enc)
-        host_name = decrypt(row["host_name_enc"] or "", enc)
+        desc      = decrypt(row.description or "", enc)
+        host_name = decrypt(row.host_name_enc or "", enc)
         if search and (
-            search.lower() not in row["title"].lower()
+            search.lower() not in row.title.lower()
             and search.lower() not in desc.lower()
         ):
             continue
@@ -700,20 +700,20 @@ async def api_list_activities(req, env):
             "SELECT t.name FROM tags t"
             " JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
-        ).bind(row["id"]).all()
+        ).bind(row.id).all()
 
         activities.append({
-            "id":                row["id"],
-            "title":             row["title"],
+            "id":                row.id,
+            "title":             row.title,
             "description":       desc,
-            "type":              row["type"],
-            "format":            row["format"],
-            "schedule_type":     row["schedule_type"],
+            "type":              row.type,
+            "format":            row.format,
+            "schedule_type":     row.schedule_type,
             "host_name":         host_name,
-            "participant_count": row["participant_count"],
-            "session_count":     row["session_count"],
-            "tags":              [t["name"] for t in (t_res.results or [])],
-            "created_at":        row["created_at"],
+            "participant_count": row.participant_count,
+            "session_count":     row.session_count,
+            "tags":              [t.name for t in (t_res.results or [])],
+            "created_at":        row.created_at,
         })
 
     return json_resp({"activities": activities})
@@ -806,7 +806,7 @@ async def api_get_activity(act_id: str, req, env):
         ).bind(act_id, user["id"]).first()
         is_enrolled = enrollment is not None
 
-    is_host = bool(user and act["host_uid"] == user["id"])
+    is_host = bool(user and act.host_uid == user["id"])
 
     ses_res = await env.DB.prepare(
         "SELECT id,title,description,start_time,end_time,location,created_at"
@@ -816,12 +816,12 @@ async def api_get_activity(act_id: str, req, env):
     sessions = []
     for s in ses_res.results or []:
         sessions.append({
-            "id":          s["id"],
-            "title":       s["title"],
-            "description": decrypt(s["description"] or "", enc) if (is_enrolled or is_host) else None,
-            "start_time":  s["start_time"],
-            "end_time":    s["end_time"],
-            "location":    decrypt(s["location"] or "", enc) if (is_enrolled or is_host) else None,
+            "id":          s.id,
+            "title":       s.title,
+            "description": decrypt(s.description or "", enc) if (is_enrolled or is_host) else None,
+            "start_time":  s.start_time,
+            "end_time":    s.end_time,
+            "location":    decrypt(s.location or "", enc) if (is_enrolled or is_host) else None,
         })
 
     t_res = await env.DB.prepare(
@@ -836,23 +836,23 @@ async def api_get_activity(act_id: str, req, env):
 
     return json_resp({
         "activity": {
-            "id":                act["id"],
-            "title":             act["title"],
-            "description":       decrypt(act["description"] or "", enc),
-            "type":              act["type"],
-            "format":            act["format"],
-            "schedule_type":     act["schedule_type"],
-            "host_name":         decrypt(act["host_name_enc"] or "", enc),
-            "participant_count": count_row["cnt"] if count_row else 0,
-            "tags":              [t["name"] for t in (t_res.results or [])],
-            "created_at":        act["created_at"],
+            "id":                act.id,
+            "title":             act.title,
+            "description":       decrypt(act.description or "", enc),
+            "type":              act.type,
+            "format":            act.format,
+            "schedule_type":     act.schedule_type,
+            "host_name":         decrypt(act.host_name_enc or "", enc),
+            "participant_count": count_row.cnt if count_row else 0,
+            "tags":              [t.name for t in (t_res.results or [])],
+            "created_at":        act.created_at,
         },
         "sessions":    sessions,
         "is_enrolled": is_enrolled,
         "is_host":     is_host,
         "enrollment":  {
-            "role":   enrollment["role"],
-            "status": enrollment["status"],
+            "role":   enrollment.role,
+            "status": enrollment.status,
         } if enrollment else None,
     })
 
@@ -1005,7 +1005,7 @@ async def api_create_session(req, env):
 
 async def api_list_tags(_req, env):
     res  = await env.DB.prepare("SELECT id,name FROM tags ORDER BY name").all()
-    tags = [{"id": r["id"], "name": r["name"]} for r in (res.results or [])]
+    tags = [{"id": r.id, "name": r.name} for r in (res.results or [])]
     return json_resp({"tags": tags})
 
 
@@ -1049,7 +1049,7 @@ async def api_add_activity_tags(req, env):
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(act_id, t_row["id"]).run()
+            ).bind(act_id, t_row.id).run()
         except Exception:
             pass
 
@@ -1066,12 +1066,12 @@ async def api_admin_table_counts(req, env):
 
     counts = []
     for row in tables_res.results or []:
-        table_name = row["name"]
+        table_name = row.name
         # Table names come from sqlite_master and are quoted to avoid SQL injection.
         count_row = await env.DB.prepare(
             f'SELECT COUNT(*) AS cnt FROM "{table_name.replace(chr(34), chr(34) + chr(34))}"'
         ).first()
-        counts.append({"table": table_name, "count": (count_row or {}).get("cnt", 0)})
+        counts.append({"table": table_name, "count": count_row.cnt if count_row else 0})
 
     return json_resp({"tables": counts})
 
