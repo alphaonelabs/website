@@ -1,5 +1,5 @@
 """
-EduPlatform – Cloudflare Python Worker (Activities Model)
+Alpha One Labs – Cloudflare Python Worker (Activities Model)
 =========================================================
 API Routes
   POST /api/init              – initialise DB schema
@@ -248,7 +248,7 @@ def _clean_path(value: str, default: str = "/admin") -> str:
     return path or default
 
 
-def _unauthorized_basic(realm: str = "EduPlatform Admin"):
+def _unauthorized_basic(realm: str = "Alpha One Labs Admin"):
     return Response(
         "Authentication required",
         status=401,
