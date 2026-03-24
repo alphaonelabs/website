@@ -778,7 +778,7 @@ async def api_create_activity(req, env):
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(act_id, t_row["id"]).run()
+            ).bind(act_id, t_row.id).run()
         except Exception:
             pass
 
@@ -913,17 +913,17 @@ async def api_dashboard(req, env):
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
-        ).bind(r["id"]).all()
+        ).bind(r.id).all()
         hosted.append({
-            "id":                r["id"],
-            "title":             r["title"],
-            "type":              r["type"],
-            "format":            r["format"],
-            "schedule_type":     r["schedule_type"],
-            "participant_count": r["participant_count"],
-            "session_count":     r["session_count"],
-            "tags":              [t["name"] for t in (t_res.results or [])],
-            "created_at":        r["created_at"],
+            "id":                r.id,
+            "title":             r.title,
+            "type":              r.type,
+            "format":            r.format,
+            "schedule_type":     r.schedule_type,
+            "participant_count": r.participant_count,
+            "session_count":     r.session_count,
+            "tags":              [t.name for t in (t_res.results or [])],
+            "created_at":        r.created_at,
         })
 
     res2 = await env.DB.prepare(
@@ -941,18 +941,18 @@ async def api_dashboard(req, env):
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
-        ).bind(r["id"]).all()
+        ).bind(r.id).all()
         joined.append({
-            "id":            r["id"],
-            "title":         r["title"],
-            "type":          r["type"],
-            "format":        r["format"],
-            "schedule_type": r["schedule_type"],
-            "enr_role":      r["enr_role"],
-            "enr_status":    r["enr_status"],
-            "host_name":     decrypt(r["host_name_enc"] or "", enc),
-            "tags":          [t["name"] for t in (t_res.results or [])],
-            "joined_at":     r["joined_at"],
+            "id":            r.id,
+            "title":         r.title,
+            "type":          r.type,
+            "format":        r.format,
+            "schedule_type": r.schedule_type,
+            "enr_role":      r.enr_role,
+            "enr_status":    r.enr_status,
+            "host_name":     decrypt(r.host_name_enc or "", enc),
+            "tags":          [t.name for t in (t_res.results or [])],
+            "joined_at":     r.joined_at,
         })
 
     return json_resp({"user": user, "hosted_activities": hosted, "joined_activities": joined})
