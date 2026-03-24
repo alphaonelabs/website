@@ -66,12 +66,11 @@ This project requires environment variables for encryption and authentication.
 
 - For Local Development
 
-Add the following to your `wrangler.toml`:
+Create a `.dev.vars` file in the project root:
 
-```toml
-[vars]
-ENCRYPTION_KEY = "your-dev-encryption-key"
-JWT_SECRET = "your-dev-jwt-secret"
+```
+ENCRYPTION_KEY=your-dev-encryption-key
+JWT_SECRET=your-dev-jwt-secret
 ```
 
 - For Production
@@ -89,7 +88,7 @@ wrangler secret put JWT_SECRET
 wrangler dev
 ```
 
-Backend server will start at :
+Backend server starts at:
 
 ```bash
 http://127.0.0.1:8787
