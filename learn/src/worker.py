@@ -774,13 +774,15 @@ async def api_create_activity(req, env):
                 await env.DB.prepare(
                     "INSERT INTO tags (id,name) VALUES (?,?)"
                 ).bind(tag_id, tag_name).run()
-            except Exception:
+            except Exception as e:
+                capture_exception(e, req, env, f"api_create_activity.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
             ).bind(act_id, tag_id).run()
-        except Exception:
+        except Exception as e:
+            capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok({"id": act_id, "title": title}, "Activity created")
@@ -1046,13 +1048,15 @@ async def api_add_activity_tags(req, env):
                 await env.DB.prepare(
                     "INSERT INTO tags (id,name) VALUES (?,?)"
                 ).bind(tag_id, tag_name).run()
-            except Exception:
+            except Exception as e:
+                capture_exception(e, req, env, f"api_add_activity_tags.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
             ).bind(act_id, tag_id).run()
-        except Exception:
+        except Exception as e:
+            capture_exception(e, req, env, f"api_add_activity_tags.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok(None, "Tags updated")
