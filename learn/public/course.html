@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Activity - EduPlatform</title>
+  <title>Activity - Alpha One Labs</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { theme: { extend: { colors: { brand:{ DEFAULT:'#4F46E5', dark:'#3730A3' } } } } };</script>
   <style>
@@ -17,8 +17,8 @@
 <nav class="bg-white shadow-sm sticky top-0 z-50">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
     <a href="/" class="flex items-center gap-2">
-      <div class="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center text-white font-bold text-sm">E</div>
-      <span class="font-bold text-xl text-slate-800">EduPlatform</span>
+      <div class="w-8 h-8 rounded-lg gradient-hero flex items-center justify-center text-white font-bold text-sm">A</div>
+      <span class="font-bold text-xl text-slate-800">Alpha One Labs</span>
     </a>
     <div id="nav-auth" class="flex items-center gap-3"></div>
   </div>
@@ -90,7 +90,7 @@
 </main>
 
 <footer class="bg-slate-800 text-slate-400 py-6 text-center text-sm mt-8">
-  <p>&copy; 2024&ndash;2026 EduPlatform &middot; Session details encrypted at rest &middot; <a href="/" class="hover:text-white">Home</a></p>
+  <p>&copy; 2024&ndash;2026 Alpha One Labs &middot; Session details encrypted at rest &middot; <a href="/" class="hover:text-white">Home</a></p>
 </footer>
 
 <script>
@@ -129,7 +129,7 @@
     if (!res.ok) { document.getElementById('act-title').textContent = 'Activity not found'; return; }
 
     const a = data.activity;
-    document.title = a.title + ' - EduPlatform';
+    document.title = a.title + ' - Alpha One Labs';
     document.getElementById('crumb-title').textContent   = a.title;
     document.getElementById('act-title').textContent     = a.title;
     document.getElementById('act-description').textContent = a.description;
