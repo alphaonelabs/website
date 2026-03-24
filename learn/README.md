@@ -64,6 +64,7 @@ wrangler d1 execute education_db --file=schema.sql
 This project requires environment variables for encryption and authentication.
 
 - For Local Development
+
 Add the following to your `wrangler.toml`:
 
 ```toml
