@@ -61,6 +61,7 @@ wrangler d1 execute education_db --file=schema.sql
 ```
 
 ### Setup Environment Variables
+
 This project requires environment variables for encryption and authentication.
 
 - For Local Development
@@ -87,6 +88,7 @@ wrangler secret put JWT_SECRET
 ```bash
 wrangler dev
 ```
+
 Backend server will start at :
 
 ```bash
