@@ -66,6 +66,23 @@ reviews:
       instructions: |
         Ensure tests are descriptive, cover edge cases, and follow the project's existing
         test patterns. Verify test isolation and meaningful assertions.
+  tools:
+    github-checks:
+      enabled: true
+    ast-grep:
+      enabled: true
+    shellcheck:
+      enabled: true
+    ruff:
+      enabled: true
+    eslint:
+      enabled: true
+    semgrep:
+      enabled: true
+    gitleaks:
+      enabled: true
+    hadolint:
+      enabled: true
 
 chat:
   auto_reply: true
@@ -83,20 +100,3 @@ knowledge_base:
   pull_requests:
     scope: "auto"
 
-tools:
-  github-checks:
-    enabled: true
-  ast-grep:
-    enabled: true
-  shellcheck:
-    enabled: true
-  ruff:
-    enabled: true
-  eslint:
-    enabled: true
-  semgrep:
-    enabled: true
-  gitleaks:
-    enabled: true
-  hadolint:
-    enabled: true
