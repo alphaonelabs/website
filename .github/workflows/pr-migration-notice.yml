@@ -1,0 +1,51 @@
+name: PR Migration Notice
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  notify-and-close:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post migration notice and close PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
+            const prAuthor = pr.user.login;
+            const repo = context.repo;
+
+            const message =
+              `## 🚚 This Repository Is Moving\n\n` +
+              `Hi @${prAuthor}, thank you for your contribution!\n\n` +
+              `We are in the process of **migrating most of the logic from this repository** to our new repository: ` +
+              `[alphaonelabs/learn](https://github.com/alphaonelabs/learn).\n\n` +
+              `### What this means for your PR\n\n` +
+              `Please **do not merge or continue work here**. Instead:\n\n` +
+              `1. Review the [alphaonelabs/learn](https://github.com/alphaonelabs/learn) repository and familiarize yourself with its tech stack.\n` +
+              `2. Adapt your changes to work with that codebase.\n` +
+              `3. Open a new Pull Request in [alphaonelabs/learn](https://github.com/alphaonelabs/learn).\n\n` +
+              `This PR has been automatically closed. Once you have opened your PR in the new repository, feel free to reference it here.\n\n` +
+              `Thank you for your understanding and continued support! 🙏`;
+
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: prNumber,
+              body: message,
+            });
+
+            await github.rest.pulls.update({
+              owner: repo.owner,
+              repo: repo.repo,
+              pull_number: prNumber,
+              state: 'closed',
+            });
+
+            console.log(`Posted migration notice and closed PR #${prNumber} by ${prAuthor}.`);
