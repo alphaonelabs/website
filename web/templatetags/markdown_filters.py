@@ -1,5 +1,5 @@
 import bleach
-from typing import Optional
+from typing import Any, Optional
 from django import template
 from django.utils.safestring import mark_safe
 from markdownx.utils import markdownify
@@ -46,7 +46,6 @@ def markdownify_sanitized(content: Optional[str]) -> str:
 
 
 @register.filter
-def markdown(text):
+def markdown(text: str) -> Any:
     """Convert markdown text to sanitized HTML."""
-    clean_html = markdownify_sanitized(text)
-    return mark_safe(clean_html)
+    return mark_safe(markdownify_sanitized(text))
