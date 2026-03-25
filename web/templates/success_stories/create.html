@@ -15,6 +15,7 @@
   <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+  <script src="{% static 'js/markdown_preview.js' %}"></script>
   {{ form.media }}
   <link rel="stylesheet" href="{% static 'css/markdown.css' %}" />
 {% endblock extra_head %}
@@ -145,7 +146,8 @@
                       'preview', 'side-by-side', 'fullscreen', '|',
                       'guide'
                   ],
-                  theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+                  theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                  previewRender: (plainText) => sanitizedPreviewRender(plainText, '{% url "markdownx_markdownify" %}')
               });
 
               // Store the editor instance

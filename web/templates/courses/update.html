@@ -10,6 +10,7 @@
   <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+  <script src="{% static 'js/markdown_preview.js' %}"></script>
   {{ form.media }}
 {% endblock extra_head %}
 {% block content %}
@@ -72,24 +73,7 @@
                       'guide'
                   ],
                   theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-                  // Use language-agnostic URL
-                  previewRender: function(plainText) {
-                      // Create a temporary form
-                      const formData = new FormData();
-                      formData.append('content', plainText);
-
-                      // Use a synchronous request to get the rendered HTML
-                      const xhr = new XMLHttpRequest();
-                      xhr.open('POST', '{% url "markdownx_markdownify" %}', false); // synchronous request
-                      xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-                      xhr.send(formData);
-
-                      if (xhr.status === 200) {
-                          return xhr.responseText;
-                      }
-
-                      return 'Error rendering markdown';
-                  }
+                  previewRender: (plainText) => sanitizedPreviewRender(plainText, '{% url "markdownx_markdownify" %}')
               });
 
               // Store the editor instance
