@@ -590,6 +590,23 @@
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </a>
+              <a href="/3D/index.html" className="tech-btn" style={{ letterSpacing: '0.14em' }} onClick={(e) => {
+                e.preventDefault();
+                const overlay = document.getElementById('page-transition');
+                overlay.classList.add('active');
+                setTimeout(() => { window.location.href = '/3D/index.html'; }, 1200);
+              }}>
+                <span className="btn-corner tl"></span>
+                <span className="btn-corner tr"></span>
+                <span className="btn-corner bl"></span>
+                <span className="btn-corner br"></span>
+                <span className="btn-pulse"></span>
+                <span className="btn-status"></span>
+                <span>Assemble a robot in 3D</span>
+                <svg className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 7.5L12 3 4 7.5m16 0v9L12 21m8-13.5L12 12m0 9-8-4.5v-9M12 21v-9m0 0L4 7.5m8 4.5 8-4.5" />
+                </svg>
+              </a>
               <a href="https://github.com/alphaonelabs/botlab" target="_blank" rel="noopener noreferrer" className="tech-btn">
                 <span className="btn-corner tl"></span>
                 <span className="btn-corner tr"></span>
@@ -806,4 +823,3 @@
   </script>
 </body>
 </html>
-

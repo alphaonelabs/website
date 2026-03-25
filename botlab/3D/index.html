@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Gesture Robot Assembler</title>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script>
+    window.__assetVersion = Date.now().toString();
+    const stylesheet = document.createElement("link");
+    stylesheet.rel = "stylesheet";
+    stylesheet.href = `./style.css?v=${window.__assetVersion}`;
+    document.head.appendChild(stylesheet);
+  </script>
+</head>
+<body>
+  <canvas id="simCanvas" width="1920" height="1080"></canvas>
+  <video id="cameraVideo" autoplay playsinline muted></video>
+  <script>
+    const appScript = document.createElement("script");
+    appScript.defer = true;
+    appScript.src = `./app.js?v=${window.__assetVersion}`;
+    document.body.appendChild(appScript);
+  </script>
+</body>
+</html>
