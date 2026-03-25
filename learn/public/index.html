@@ -790,14 +790,20 @@
   }
 
   function buildTagCloud(activities) {
-    const freq = {};
-    activities.forEach(a => (a.tags || []).forEach(t => freq[t] = (freq[t] || 0) + 1));
-    const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]);
-    document.getElementById('tag-cloud').innerHTML = sorted.map(([name, cnt]) =>
-      `<button onclick="toggleTag('${esc(name)}')" id="tag-${esc(name)}" class="tag-pill">
-        ${esc(name)} <span style="opacity:.5;font-size:.65rem;">${cnt}</span>
-       </button>`).join('');
-  }
+  const freq = {};
+  activities.forEach(a => (a.tags || []).forEach(t => freq[t] = (freq[t] || 0) + 1));
+  const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]);
+  
+  const cloud = document.getElementById('tag-cloud');
+  cloud.innerHTML = sorted.map(([name, cnt]) => `
+    <button class="tag-pill" data-tag-name="${esc(name)}" id="tag-${esc(name)}">
+      ${esc(name)} <span style="opacity:.5;font-size:.65rem;">${cnt}</span>
+    </button>`).join('');
+  
+  cloud.querySelectorAll('.tag-pill').forEach(btn => {
+    btn.addEventListener('click', () => toggleTag(btn.dataset.tagName));
+  });
+}
 
   function toggleTag(name) {
     activeTag = activeTag === name ? null : name;
