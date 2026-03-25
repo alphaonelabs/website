@@ -35,7 +35,7 @@ from django.core.management import call_command
 from django.core.paginator import Paginator
 from django.db import IntegrityError, models, router, transaction
 from django.db.models import Avg, Count, Q, Sum
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate, TruncWeek
 from django.http import (
     FileResponse,
     Http404,
@@ -86,6 +86,8 @@ from .forms import (
     MemeForm,
     MessageTeacherForm,
     NotificationPreferencesForm,
+    PeerChallengeForm,
+    PeerChallengeInvitationForm,
     ProfileUpdateForm,
     ProgressTrackerForm,
     ReviewForm,
@@ -147,6 +149,8 @@ from .models import (
     Order,
     OrderItem,
     Payment,
+    PeerChallenge,
+    PeerChallengeInvitation,
     PeerConnection,
     PeerMessage,
     ProductImage,
@@ -321,9 +325,18 @@ def index(request):
     latest_post = BlogPost.objects.filter(status="published").order_by("-published_at").first()
 
     # Get latest success story
-    latest_success_story = SuccessStory.objects.filter(status="published").order_by("-published_at").first()
+        latest_success_story = (
+        SuccessStory.objects.filter(status="published")
+        .exclude(title__iexact="test")
+        .order_by("-published_at")
+        .first()
+    )
+    
+    
 
-    # Get last two waiting room requests
+
+
+    #Get last two waiting room requests
     latest_waiting_room_requests = WaitingRoom.objects.filter(status="open").order_by("-created_at")[:2]
 
     # Global virtual classroom summary for homepage CTA
@@ -2683,6 +2696,70 @@ def teacher_dashboard(request):
     # Get the teacher's storefront if it exists
     storefront = Storefront.objects.filter(teacher=request.user).first()
 
+    # Enrollment trend — last 30 days
+    today = timezone.now().date()
+    thirty_days_ago = today - timedelta(days=29)
+    start_dt = timezone.make_aware(timezone.datetime.combine(thirty_days_ago, timezone.datetime.min.time()))
+    enroll_qs = (
+        Enrollment.objects.filter(course__teacher=request.user, enrollment_date__gte=start_dt)
+        .annotate(day=TruncDate("enrollment_date"))
+        .values("day")
+        .annotate(count=Count("id"))
+        .order_by("day")
+    )
+    enroll_by_date = {e["day"].strftime("%b %d"): e["count"] for e in enroll_qs}
+    enroll_labels = []
+    enroll_data = []
+    for i in range(30):
+        day = thirty_days_ago + timedelta(days=i)
+        label = day.strftime("%b %d")
+        enroll_labels.append(label)
+        enroll_data.append(enroll_by_date.get(label, 0))
+
+    # Revenue trend — last 12 weeks
+    twelve_weeks_ago = today - timedelta(weeks=11)
+    start_dt_12w = timezone.make_aware(timezone.datetime.combine(twelve_weeks_ago, timezone.datetime.min.time()))
+    revenue_qs = (
+        Payment.objects.filter(
+            enrollment__course__teacher=request.user,
+            status="completed",
+            created_at__gte=start_dt_12w,
+        )
+        .annotate(week=TruncWeek("created_at"))
+        .values("week")
+        .annotate(total=Sum("amount"))
+        .order_by("week")
+    )
+    revenue_by_week = {r["week"].strftime("%b %d"): float(r["total"]) for r in revenue_qs}
+    revenue_labels = []
+    revenue_data = []
+    for i in range(12):
+        week_start = twelve_weeks_ago + timedelta(weeks=i)
+        label = week_start.strftime("%b %d")
+        revenue_labels.append(label)
+        revenue_data.append(revenue_by_week.get(label, 0))
+
+    # Top 5 students by average completion percentage
+    top_students = []
+    enrollments_with_progress = Enrollment.objects.filter(
+        course__teacher=request.user, status="approved"
+    ).select_related("student", "course")
+    student_progress = {}
+    for enrollment in enrollments_with_progress:
+        try:
+            pct = enrollment.progress.completion_percentage
+        except CourseProgress.DoesNotExist:
+            pct = 0
+        uid = enrollment.student.id
+        if uid not in student_progress:
+            student_progress[uid] = {"student": enrollment.student, "total": 0, "count": 0}
+        student_progress[uid]["total"] += pct
+        student_progress[uid]["count"] += 1
+    for uid, data in student_progress.items():
+        avg = data["total"] // data["count"] if data["count"] else 0
+        top_students.append({"student": data["student"], "avg_progress": avg, "courses": data["count"]})
+    top_students = sorted(top_students, key=lambda x: -x["avg_progress"])[:5]
+
     context = {
         "courses": courses,
         "upcoming_sessions": upcoming_sessions,
@@ -2691,6 +2768,11 @@ def teacher_dashboard(request):
         "completion_rate": (total_completed / total_students * 100) if total_students > 0 else 0,
         "total_earnings": round(total_earnings, 2),
         "storefront": storefront,
+        "enroll_labels": enroll_labels,
+        "enroll_data": enroll_data,
+        "revenue_labels": revenue_labels,
+        "revenue_data": revenue_data,
+        "top_students": top_students,
     }
     return render(request, "dashboard/teacher.html", context)
 
@@ -8839,3 +8921,129 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+# ---------------------------------------------------------------------------
+# Peer Challenge Views
+# ---------------------------------------------------------------------------
+
+@login_required
+def peer_challenge_list(request):
+    """List all active peer challenges and challenges the user is involved in."""
+    active_challenges = PeerChallenge.objects.filter(status="active").select_related("creator", "quiz")
+    my_challenges = PeerChallenge.objects.filter(creator=request.user).select_related("quiz")
+    invited_challenges = PeerChallengeInvitation.objects.filter(
+        participant=request.user
+    ).select_related("challenge", "challenge__creator", "challenge__quiz")
+    context = {
+        "active_challenges": active_challenges,
+        "my_challenges": my_challenges,
+        "invited_challenges": invited_challenges,
+    }
+    return render(request, "peer_challenges/list.html", context)
+
+
+@login_required
+def peer_challenge_create(request):
+    """Create a new peer challenge."""
+    form = PeerChallengeForm(request.POST or None, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        challenge = form.save(commit=False)
+        challenge.creator = request.user
+        challenge.save()
+        messages.success(request, "Peer challenge created successfully!")
+        return redirect("peer_challenge_detail", pk=challenge.pk)
+    return render(request, "peer_challenges/create.html", {"form": form})
+
+
+@login_required
+def peer_challenge_detail(request, pk):
+    """View challenge details, leaderboard, and invite form."""
+    challenge = get_object_or_404(PeerChallenge, pk=pk)
+    invitation = PeerChallengeInvitation.objects.filter(
+        challenge=challenge, participant=request.user
+    ).first()
+    invite_form = None
+    if challenge.creator == request.user:
+        invite_form = PeerChallengeInvitationForm(request.POST or None)
+        if request.method == "POST" and invite_form.is_valid():
+            usernames = [u.strip() for u in invite_form.cleaned_data["participants"].split(",") if u.strip()]
+            from django.contrib.auth.models import User as AuthUser
+            invited = []
+            already = []
+            not_found = []
+            for username in usernames:
+                try:
+                    user = AuthUser.objects.get(username=username)
+                    if user == request.user:
+                        continue
+                    _, created = PeerChallengeInvitation.objects.get_or_create(
+                        challenge=challenge,
+                        participant=user,
+                        defaults={"message": invite_form.cleaned_data.get("message", "")},
+                    )
+                    if created:
+                        Notification.objects.create(
+                            user=user,
+                            title="New Peer Challenge Invitation",
+                            message=f"{request.user.username} has challenged you: {challenge.title}",
+                            notification_type="info",
+                        )
+                        invited.append(username)
+                    else:
+                        already.append(username)
+                except AuthUser.DoesNotExist:
+                    not_found.append(username)
+            if invited:
+                messages.success(request, f"Invited: {', '.join(invited)}")
+            if already:
+                messages.info(request, f"Already invited: {', '.join(already)}")
+            if not_found:
+                messages.error(request, f"Users not found: {', '.join(not_found)}")
+            return redirect("peer_challenge_detail", pk=challenge.pk)
+    context = {
+        "challenge": challenge,
+        "leaderboard": challenge.leaderboard,
+        "invitation": invitation,
+        "invite_form": invite_form,
+        "is_creator": challenge.creator == request.user,
+        "is_expired": challenge.is_expired,
+    }
+    return render(request, "peer_challenges/detail.html", context)
+
+
+@login_required
+def peer_challenge_accept(request, pk):
+    """Accept a peer challenge invitation."""
+    invitation = get_object_or_404(PeerChallengeInvitation, challenge__pk=pk, participant=request.user)
+    if request.method == "POST":
+        if invitation.status == "pending":
+            invitation.accept()
+            messages.success(request, "Challenge accepted!")
+        return redirect("peer_challenge_detail", pk=pk)
+    return redirect("peer_challenge_detail", pk=pk)
+
+
+@login_required
+def peer_challenge_decline(request, pk):
+    """Decline a peer challenge invitation."""
+    invitation = get_object_or_404(PeerChallengeInvitation, challenge__pk=pk, participant=request.user)
+    if request.method == "POST":
+        if invitation.status == "pending":
+            invitation.decline()
+            messages.success(request, "Challenge declined.")
+        return redirect("peer_challenge_list")
+    return redirect("peer_challenge_detail", pk=pk)
+
+
+@login_required
+def peer_challenge_cancel(request, pk):
+    """Cancel a peer challenge (creator only)."""
+    challenge = get_object_or_404(PeerChallenge, pk=pk, creator=request.user)
+    if request.method == "POST":
+        challenge.status = "cancelled"
+        challenge.save()
+        messages.success(request, "Challenge cancelled.")
+        return redirect("peer_challenge_list")
+    return render(request, "peer_challenges/cancel_confirm.html", {"challenge": challenge})
+
