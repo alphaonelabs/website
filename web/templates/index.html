@@ -626,9 +626,9 @@
           </div>
         </div>
       </section>
-      <!-- ===== SECTION 6: VIEW WAITING ROOMS | VIEW CONTRIBUTIONS ===== -->
+      <!-- ===== SECTION 6: VIEW WAITING ROOMS ===== -->
       <section>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-6">
           <!-- View Waiting Rooms -->
           <a href="{% url 'waiting_room_list' %}"
              class="group block rounded-2xl p-10 bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
@@ -642,21 +642,6 @@
             </p>
             <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
               Browse Waiting Rooms <i class="fas fa-arrow-right"></i>
-            </span>
-          </a>
-          <!-- View Contributions -->
-          <a href="{% url 'contributors_list_view' %}"
-             class="group block rounded-2xl p-10 bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-800 dark:to-black text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
-            <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
-              <i class="fab fa-github text-4xl"></i>
-            </div>
-            <h3 class="text-2xl font-bold mb-3">View Contributions</h3>
-            <p class="text-gray-300 text-sm mb-6 max-w-sm mx-auto">
-              Explore contributions from our open source community.
-              See top contributors and recently merged pull requests.
-            </p>
-            <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
-              View Contributors <i class="fas fa-arrow-right"></i>
             </span>
           </a>
         </div>
