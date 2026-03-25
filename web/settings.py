@@ -523,6 +523,10 @@ MARKDOWNX_URLS_PATH = "/markdownx/markdownify/"
 MARKDOWNX_UPLOAD_URLS_PATH = "/markdownx/upload/"
 MARKDOWNX_MEDIA_PATH = "markdownx/"  # Path within MEDIA_ROOT
 
+
+MARKDOWNX_MARKDOWNIFY_FUNCTION = "web.templatetags.markdown_filters.markdownify_sanitized"
+
+
 USE_X_FORWARDED_HOST = True
 
 # GitHub API Token for fetching contributor data

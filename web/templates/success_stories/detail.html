@@ -54,8 +54,9 @@
             </div>
           {% endif %}
         </header>
+        {% load markdown_filters %}
         <!-- Main Content -->
-        <div class="prose prose-orange dark:prose-invert max-w-none">{{ success_story.content|safe }}</div>
+        <div class="prose prose-orange dark:prose-invert max-w-none">{{ success_story.content|markdown }}</div>
         <!-- Share Links -->
         <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <h3 class="text-lg font-semibold mb-3">Share this success story</h3>
