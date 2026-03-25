@@ -1,4 +1,5 @@
 import bleach
+from typing import Optional
 from django import template
 from django.utils.safestring import mark_safe
 from markdownx.utils import markdownify
@@ -25,7 +26,9 @@ SAFE_ATTRIBUTES = {
     "th": {"align"},
 }
 
-def markdownify_sanitized(content):
+ALLOWED_PROTOCOLS = {"http", "https", "mailto"}
+
+def markdownify_sanitized(content: Optional[str]) -> str:
     """
     Custom markdownify function that sanitizes the output HTML using bleach.
     This is used both for template filters and for the markdownx AJAX preview.
@@ -33,18 +36,13 @@ def markdownify_sanitized(content):
     if not content:
         return ""
 
-    # Convert markdown to HTML
-    html = markdownify(content)
-
-    # Sanitize HTML
-    clean_html = bleach.clean(
-        html,
+    return bleach.clean(
+        markdownify(content),
         tags=SAFE_TAGS,
         attributes=SAFE_ATTRIBUTES,
+        protocols=ALLOWED_PROTOCOLS,
         strip=True
     )
-
-    return clean_html
 
 
 @register.filter
