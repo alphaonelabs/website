@@ -5,202 +5,765 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Alpha One Labs – Discover Activities</title>
   <link rel="icon" type="image/png" href="/images/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            display: ['Syne', 'sans-serif'],
+            body: ['DM Sans', 'sans-serif'],
+          },
           colors: {
-            brand: { DEFAULT: '#4F46E5', dark: '#3730A3', light: '#818CF8' },
+            ink: '#0D0D14',
+            paper: '#F7F6F3',
+            brand: { DEFAULT: '#3B48E0', light: '#6470F3', dim: '#E8EAFF' },
+            accent: '#FF5C3A',
+            jade: '#00B27A',
           },
         },
       },
     };
   </script>
   <style>
+    :root {
+      --teal: #0D9488;
+      --teal-dark: #0F766E;
+      --teal-darker: #115E59;
+      --teal-light: #14B8A6;
+      --teal-dim: #CCFBF1;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: #FFFFFF; color: #0D0D14; }
+    h1, h2, h3, h4, .font-display { font-family: 'Syne', sans-serif; }
     .hidden { display: none !important; }
-    .gradient-hero { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #2563EB 100%); }
-    .card-hover { transition: transform .2s, box-shadow .2s; }
-    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,.12); }
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: .75rem; font-weight: 600; }
-    .tag-pill { cursor: pointer; transition: background .15s; }
-    .tag-pill.active { background: #4F46E5; color: #fff; }
+
+    /* ── Navbar — Teal ── */
+    #navbar {
+      position: sticky; top: 0; z-index: 200;
+      background: #0D9488;
+      border-bottom: 1px solid rgba(0,0,0,.1);
+      box-shadow: 0 2px 12px rgba(0,0,0,.12);
+      transition: background .3s;
+    }
+    #navbar.scrolled { background: #0F766E; box-shadow: 0 4px 20px rgba(0,0,0,.18); }
+
+    /* ── Profile dropdown ── */
+    #profile-dropdown {
+      position: absolute; right: 0; top: calc(100% + 10px);
+      background: #fff;
+      border: 1px solid rgba(13,13,20,.09);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(13,13,20,.14);
+      min-width: 220px;
+      overflow: hidden;
+      opacity: 0; transform: translateY(-8px) scale(.97);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events: none;
+    }
+    #profile-dropdown.open {
+      opacity: 1; transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* ── Hero — full-width teal gradient ── */
+    .hero-wrap {
+      position: relative; overflow: hidden;
+      background: linear-gradient(135deg, #0F766E 0%, #0D9488 55%, #14B8A6 100%);
+    }
+    .hero-mesh {
+      position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 15% 40%, rgba(255,255,255,.12) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 45% at 80% 20%, rgba(20,184,166,.2) 0%, transparent 50%),
+        radial-gradient(ellipse 45% 40% at 60% 85%, rgba(249,115,22,.12) 0%, transparent 50%);
+    }
+    .hero-grid-bg {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 90% 75% at 50% 50%, black 20%, transparent 75%);
+    }
+    .orb { position: absolute; border-radius: 50%; filter: blur(52px); pointer-events: none; animation: orbFloat 9s ease-in-out infinite; }
+    .orb-1 { width: 280px; height: 280px; background: rgba(255,255,255,.08); top: 8%; left: 2%; animation-delay: 0s; }
+    .orb-2 { width: 200px; height: 200px; background: rgba(0,178,122,.12); top: 55%; right: 5%; animation-delay: -3.5s; }
+    .orb-3 { width: 160px; height: 160px; background: rgba(249,115,22,.1); bottom: 10%; left: 40%; animation-delay: -7s; }
+    @keyframes orbFloat { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-28px) scale(1.05)} }
+
+    .hero-content {
+      position: relative; z-index: 10;
+      max-width: 1200px; margin: 0 auto;
+      padding: 5rem 1.5rem 4rem;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+    }
+    @media (max-width: 900px) { .hero-content { grid-template-columns: 1fr; } }
+
+    .hero-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.1); color: rgba(255,255,255,.88);
+      font-family: 'Syne', sans-serif; font-size: .7rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 7px 16px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.15); backdrop-filter: blur(8px);
+    }
+    .pill-dot { width: 6px; height: 6px; background: #00B27A; border-radius: 50%; box-shadow: 0 0 6px #00B27A; animation: blink 2s ease infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .hero-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.7rem, 5vw, 4.4rem);
+      font-weight: 800;
+      line-height: 1.04;
+      letter-spacing: -.04em;
+      color: #fff;
+    }
+    .hero-title .gt { background: linear-gradient(135deg, #fff 0%, #CCFBF1 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-title span.line2 { display: block; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; color: var(--teal-dark);
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: .9rem;
+      padding: 14px 26px; border-radius: 12px;
+      transition: background .18s, transform .14s, box-shadow .18s;
+      border: none; cursor: pointer;
+    }
+    .btn-primary:hover { background: #F0FDFA; transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.18); }
+
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.1); color: rgba(255,255,255,.9);
+      font-family: 'Syne', sans-serif; font-weight: 600; font-size: .9rem;
+      padding: 13px 26px; border-radius: 12px;
+      border: 1.5px solid rgba(255,255,255,.2);
+      transition: background .18s, border-color .18s;
+      cursor: pointer;
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.4); }
+
+    /* ── Hero visual card ── */
+    .hero-visual {
+      position: relative;
+    }
+    .hero-card {
+      background: rgba(255,255,255,.08);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,.15);
+      box-shadow: 0 40px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+    }
+    .hero-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #fff 0%, #14B8A6 50%, #F97316 100%);
+      opacity: .6;
+    }
+    .enc-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(0,178,122,.2); color: #4ade80;
+      font-size: .75rem; font-weight: 600; font-family: 'Syne', sans-serif;
+      padding: 4px 12px; border-radius: 999px;
+      border: 1px solid rgba(0,178,122,.3);
+    }
+    .mini-activity {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 13px; border-radius: 12px;
+      background: rgba(255,255,255,.06); margin-top: 9px;
+      border: 1px solid rgba(255,255,255,.06);
+      transition: background .15s;
+    }
+    .mini-activity:hover { background: rgba(255,255,255,.1); }
+    .mini-dot { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+
+    /* ── Stat strip ── */
+    .stat-strip {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      background: #0F172A; color: #fff;
+      border-radius: 20px; overflow: hidden;
+    }
+    .stat-item { padding: 2rem; border-right: 1px solid rgba(255,255,255,.07); }
+    .stat-item:last-child { border-right: none; }
+    .stat-num { font-family: 'Syne', sans-serif; font-size: 2.4rem; font-weight: 800; }
+    .stat-label { font-size: .8rem; color: rgba(255,255,255,.5); margin-top: 2px; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-family: 'Syne', sans-serif; font-size: .7rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--teal);
+      margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::before { content: ''; width: 18px; height: 2px; background: var(--teal); border-radius: 1px; }
+
+    /* ── Activity Cards ── */
+    .act-card {
+      background: #fff;
+      border-radius: 20px;
+      border: 1px solid #E2E8F0;
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: 1rem;
+      transition: transform .2s, box-shadow .2s, border-color .2s;
+      position: relative; overflow: hidden;
+    }
+    .act-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(13,13,20,.1);
+      border-color: rgba(13,148,136,.25);
+    }
+    .act-card::after {
+      content: ''; position: absolute; inset: 0;
+      border-radius: 20px;
+      opacity: 0; transition: opacity .2s;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(13,148,136,.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .act-card:hover::after { opacity: 1; }
+
+    .type-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-family: 'Syne', sans-serif; font-size: .7rem; font-weight: 700;
+      padding: 4px 10px; border-radius: 8px; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .fmt-badge {
+      display: inline-flex; align-items: center;
+      font-size: .72rem; font-weight: 500;
+      padding: 3px 10px; border-radius: 999px;
+    }
+    .tag-chip {
+      font-size: .7rem; font-weight: 500;
+      padding: 3px 10px; border-radius: 999px;
+      background: #F1F5F9; color: #64748B;
+      border: 1px solid #E2E8F0;
+    }
+
+    /* ── Tag cloud ── */
+    .tag-pill {
+      cursor: pointer;
+      font-family: 'Syne', sans-serif; font-size: .72rem; font-weight: 600;
+      padding: 6px 14px; border-radius: 999px;
+      border: 1.5px solid #E2E8F0;
+      background: #fff; color: #64748B;
+      transition: all .15s;
+    }
+    .tag-pill:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-dim); }
+    .tag-pill.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+
+    /* ── Filters ── */
+    .filter-input {
+      background: #fff; border: 1.5px solid #E2E8F0;
+      border-radius: 12px; padding: 10px 16px;
+      font-family: 'DM Sans', sans-serif; font-size: .875rem; color: #0D0D14;
+      outline: none; transition: border-color .15s;
+    }
+    .filter-input:focus { border-color: var(--teal); }
+
+    /* ── Features section ── */
+    .feat-card {
+      background: #fff; border-radius: 20px;
+      border: 1px solid rgba(13,13,20,.07);
+      padding: 2rem;
+    }
+    .feat-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 1rem;
+    }
+
+    /* ── CTA band ── */
+    .cta-band {
+      background: #0F172A; border-radius: 24px;
+      padding: 3.5rem; color: #fff;
+      display: flex; align-items: center; justify-content: space-between; gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Footer ── */
+    footer { background: #0F172A; color: rgba(255,255,255,.45); }
+    .footer-grid { max-width: 1200px; margin: 0 auto; padding: 3.5rem 1.5rem 2.5rem; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2.5rem; }
+    @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .footer-grid { grid-template-columns: 1fr; } }
+    .fc-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-bottom: 1.1rem; }
+    .fc-link { display: block; font-size: .82rem; color: rgba(255,255,255,.38); text-decoration: none; margin-bottom: .55rem; transition: color .15s; }
+    .fc-link:hover { color: rgba(255,255,255,.8); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,.07); padding: 1.5rem; max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .f-social { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.07); color: rgba(255,255,255,.5); display: flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid rgba(255,255,255,.08); transition: all .2s; }
+    .f-social:hover { background: var(--teal-dim); color: var(--teal); border-color: var(--teal); transform: translateY(-2px); }
+    .f-social svg, .f-social i { font-size: 1rem; }
+
+    /* ── Skeleton pulse ── */
+    @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+    .skel { background: rgba(13,13,20,.06); border-radius: 12px; animation: pulse 1.4s ease infinite; }
+
+    /* ── Page fade-in ── */
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp .55s ease both; }
+    .fade-up-2 { animation: fadeUp .55s .12s ease both; }
+    .fade-up-3 { animation: fadeUp .55s .22s ease both; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
+<body>
 
-<!-- ── Navbar ─────────────────────────────────────────────────────────── -->
-<nav class="bg-white shadow-sm sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-    <a href="/" class="flex items-center gap-2">
-      <img src="/images/logo.png" alt="Alpha One Labs" class="h-8 w-auto" />
-      <span class="font-bold text-xl text-slate-800">Alpha One Labs</span>
+<!-- ════════════════════════════════════ NAVBAR ══ -->
+<nav id="navbar">
+  <div style="max-width:1200px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:66px;">
+
+    <!-- Logo -->
+    <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <img src="./images/logo.png" alt="Alpha One Labs" style="width:38px;height:38px;border-radius:8px;"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div style="display:none;width:38px;height:38px;background:rgba(255,255,255,.2);border-radius:8px;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 14L9 4L15 14H3Z" fill="white"/></svg>
+      </div>
+      <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;">Alpha One Labs</span>
     </a>
-    <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-      <a href="/" class="text-brand hover:text-brand-dark">Activities</a>
-      <a href="/dashboard.html" class="hover:text-brand">Dashboard</a>
-      <a href="/teach.html" class="hover:text-brand">Host</a>
+
+    <!-- Center nav -->
+    <div style="display:flex;align-items:center;gap:2px;">
+      <a href="/" style="font-size:.84rem;font-weight:600;color:#fff;padding:6px 14px;border-radius:8px;text-decoration:none;background:rgba(255,255,255,.18);">Activities</a>
+      <a href="/dashboard.html" style="font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:8px;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='transparent'">Dashboard</a>
+      <a href="/teach.html" style="font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:8px;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='transparent'">Host</a>
     </div>
-    <div id="nav-auth" class="flex items-center gap-3"></div>
+
+    <!-- Auth area -->
+    <div id="nav-auth" style="display:flex;align-items:center;gap:10px;position:relative;"></div>
   </div>
 </nav>
 
-<!-- ── Hero ───────────────────────────────────────────────────────────── -->
-<header class="gradient-hero text-white py-20 px-4">
-  <div class="max-w-4xl mx-auto text-center">
-    <p class="text-indigo-200 text-sm font-semibold tracking-widest uppercase mb-3">🔒 Fully Encrypted · Privacy-First</p>
-    <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
-      Learn Together.<br/>Grow Together.
-    </h1>
-    <p class="text-indigo-100 text-lg max-w-2xl mx-auto mb-8">
-      Discover courses, meetups, workshops, and study groups — all on a platform where every piece of user data is encrypted at rest.
-    </p>
-    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <a href="/login.html?tab=register" class="bg-white text-brand font-bold px-8 py-3 rounded-xl shadow hover:bg-indigo-50 transition">Join Free</a>
-      <a href="#activities" class="border border-white/50 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/10 transition">Browse Activities</a>
+<!-- ════════════════════════════════════ HERO ══ -->
+<section class="hero-wrap">
+  <div class="hero-mesh"></div>
+  <div class="hero-grid-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="hero-content">
+    <!-- Left copy -->
+    <div class="fade-up">
+      <div style="margin-bottom:1.5rem;">
+        <span class="hero-pill"><span class="pill-dot"></span>Open Source · Encrypted · Community-Driven</span>
+      </div>
+      <h1 class="hero-title">
+        Where Curiosity<span class="line2"><span class="gt">Meets Knowledge</span></span>
+      </h1>
+      <p style="font-size:1.05rem;color:rgba(255,255,255,.62);line-height:1.7;margin:1.5rem 0 2rem;max-width:460px;">
+        Discover courses, meetups, and workshops on a platform where every user record is encrypted — your data is yours, always.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <a href="/login.html?tab=register" class="btn-primary">Start Learning Free <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="#0D9488" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a href="#activities" class="btn-outline">Browse Activities</a>
+      </div>
+      <div style="display:flex;align-items:center;gap:1.5rem;margin-top:2rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:.76rem;color:rgba(255,255,255,.38);">
+          <div style="width:14px;height:14px;background:rgba(0,178,122,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="#00B27A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          100% Data Encrypted
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:.76rem;color:rgba(255,255,255,.38);">
+          <div style="width:14px;height:14px;background:rgba(0,178,122,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="#00B27A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          No ads · No tracking
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:.76rem;color:rgba(255,255,255,.38);">
+          <div style="width:14px;height:14px;background:rgba(0,178,122,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="#00B27A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          GSoC 2026 Participant
+        </div>
+      </div>
+    </div>
+
+    <!-- Right visual -->
+    <div class="hero-visual fade-up-2">
+      <div class="hero-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;">
+          <div>
+            <p style="font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;color:#fff;">Live Activities</p>
+            <p style="font-size:.74rem;color:rgba(255,255,255,.38);margin-top:2px;">Updated in real-time</p>
+          </div>
+          <span class="enc-badge">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="4" width="6" height="5.5" rx="1" stroke="#4ade80" stroke-width="1.2"/><path d="M3 4V3a2 2 0 0 1 4 0v1" stroke="#4ade80" stroke-width="1.2"/></svg>
+            Encrypted
+          </span>
+        </div>
+        <div class="mini-activity">
+          <div class="mini-dot" style="background:rgba(59,72,224,.2);">📚</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;">Python for Beginners</p>
+            <p style="font-size:.72rem;color:rgba(255,255,255,.38);margin-top:1px;">by Alice Chen · 4 enrolled</p>
+          </div>
+          <span style="font-size:.65rem;background:rgba(59,72,224,.25);color:#a5b4fc;padding:3px 8px;border-radius:6px;font-weight:600;flex-shrink:0;">Course</span>
+        </div>
+        <div class="mini-activity">
+          <div class="mini-dot" style="background:rgba(249,115,22,.18);">🤝</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;">JS Developers Meetup</p>
+            <p style="font-size:.72rem;color:rgba(255,255,255,.38);margin-top:1px;">by Bob Martinez · Monthly</p>
+          </div>
+          <span style="font-size:.65rem;background:rgba(249,115,22,.2);color:#fb923c;padding:3px 8px;border-radius:6px;font-weight:600;flex-shrink:0;">Meetup</span>
+        </div>
+        <div class="mini-activity">
+          <div class="mini-dot" style="background:rgba(0,178,122,.18);">🔧</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;">Data Science Workshop</p>
+            <p style="font-size:.72rem;color:rgba(255,255,255,.38);margin-top:1px;">by Alice Chen · 3 sessions</p>
+          </div>
+          <span style="font-size:.65rem;background:rgba(0,178,122,.2);color:#34d399;padding:3px 8px;border-radius:6px;font-weight:600;flex-shrink:0;">Workshop</span>
+        </div>
+        <!-- footer strip -->
+        <div style="margin-top:10px;padding:10px 13px;border-radius:10px;background:rgba(0,178,122,.08);display:flex;align-items:center;gap:8px;border:1px solid rgba(0,178,122,.15);">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><rect x="2.5" y="6" width="9" height="7" rx="1.5" stroke="#00B27A" stroke-width="1.3"/><path d="M4 6V4.5a3 3 0 1 1 6 0V6" stroke="#00B27A" stroke-width="1.3" stroke-linecap="round"/></svg>
+          <span style="font-family:'Syne',sans-serif;font-size:.66rem;font-weight:600;color:#4ade80;">All PII encrypted at rest — PBKDF2 · HMAC · AES-GCM</span>
+        </div>
+        <!-- floating badge -->
+        <div style="position:absolute;top:-14px;right:24px;background:#F97316;color:#fff;font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;padding:5px 12px;border-radius:999px;box-shadow:0 4px 14px rgba(249,115,22,.4);">
+          🔥 Open Source
+        </div>
+      </div>
     </div>
   </div>
-</header>
 
-<!-- ── Stats bar ──────────────────────────────────────────────────────── -->
-<div class="bg-white border-b border-slate-100">
-  <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-3 divide-x divide-slate-100">
-    <div class="text-center px-4">
-      <p class="text-3xl font-extrabold text-brand" id="stat-activities">—</p>
-      <p class="text-slate-500 text-sm mt-1">Activities</p>
-    </div>
-    <div class="text-center px-4">
-      <p class="text-3xl font-extrabold text-purple-600" id="stat-members">—</p>
-      <p class="text-slate-500 text-sm mt-1">Participants</p>
-    </div>
-    <div class="text-center px-4">
-      <p class="text-3xl font-extrabold text-emerald-600">🔒</p>
-      <p class="text-slate-500 text-sm mt-1">Encrypted at Rest</p>
-    </div>
+  <!-- Wave transition to white body -->
+  <div style="position:relative;z-index:10;margin-top:auto;">
+    <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;">
+      <path d="M0 60V28C360 2 720 58 1080 28C1260 14 1380 20 1440 14V60H0Z" fill="#FFFFFF"/>
+    </svg>
   </div>
-</div>
+</section>
 
-<!-- ── Activity Browser ───────────────────────────────────────────────── -->
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" id="activities">
-
-  <!-- Search + Filters -->
-  <div class="flex flex-col sm:flex-row gap-3 mb-4">
-    <input id="search" type="text" placeholder="🔍  Search activities…"
-      class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" />
-    <select id="filter-type"
-      class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-brand/40">
-      <option value="">All Types</option>
-      <option value="course">📚 Course</option>
-      <option value="meetup">🤝 Meetup</option>
-      <option value="workshop">🔧 Workshop</option>
-      <option value="seminar">🎤 Seminar</option>
-      <option value="other">✨ Other</option>
-    </select>
-    <select id="filter-format"
-      class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-brand/40">
-      <option value="">All Formats</option>
-      <option value="live">🎥 Live</option>
-      <option value="self_paced">⏱ Self-paced</option>
-      <option value="hybrid">🔀 Hybrid</option>
-    </select>
-  </div>
-
-  <!-- Tag cloud -->
-  <div id="tag-cloud" class="flex flex-wrap gap-2 mb-8"></div>
-
-  <!-- Activity grid -->
-  <div id="activity-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div class="bg-white rounded-2xl shadow-sm p-6 animate-pulse h-52"></div>
-    <div class="bg-white rounded-2xl shadow-sm p-6 animate-pulse h-52"></div>
-    <div class="bg-white rounded-2xl shadow-sm p-6 animate-pulse h-52"></div>
-  </div>
-
-  <p id="no-results" class="hidden text-center text-slate-400 py-16 text-lg">No activities found matching your filters.</p>
-</main>
-
-<!-- ── Features strip ─────────────────────────────────────────────────── -->
-<section class="bg-white py-16 border-t border-slate-100">
-  <div class="max-w-5xl mx-auto px-4 text-center mb-10">
-    <h2 class="text-2xl font-bold text-slate-800">Why Alpha One Labs?</h2>
-  </div>
-  <div class="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-    <div class="text-center p-6">
-      <div class="text-4xl mb-4">🔐</div>
-      <h3 class="font-bold text-slate-700 mb-2">Zero Plaintext PII</h3>
-      <p class="text-slate-500 text-sm">Every user field — name, email, username, role — is encrypted. HMAC blind indexes enable fast lookups without ever storing plaintext.</p>
+<!-- ════════════════════════════════════ STATS ══ -->
+<section style="max-width:1200px;margin:3rem auto 0;padding:0 1.5rem;">
+  <div class="stat-strip fade-up-3">
+    <div class="stat-item">
+      <p class="stat-num" id="stat-activities">—</p>
+      <p class="stat-label">Active Activities</p>
     </div>
-    <div class="text-center p-6">
-      <div class="text-4xl mb-4">⚡</div>
-      <h3 class="font-bold text-slate-700 mb-2">Edge-Native</h3>
-      <p class="text-slate-500 text-sm">Runs on Cloudflare Python Workers + D1 — globally distributed, fast, and serverless.</p>
+    <div class="stat-item">
+      <p class="stat-num" id="stat-members">—</p>
+      <p class="stat-label">Total Participants</p>
     </div>
-    <div class="text-center p-6">
-      <div class="text-4xl mb-4">🗓️</div>
-      <h3 class="font-bold text-slate-700 mb-2">Flexible Activities</h3>
-      <p class="text-slate-500 text-sm">Courses, meetups, workshops — with optional scheduled sessions, attendance tracking, and flexible tags.</p>
+    <div class="stat-item">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="10" rx="2" stroke="#00B27A" stroke-width="1.8"/><path d="M7 9V6a3 3 0 0 1 6 0v3" stroke="#00B27A" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <p class="stat-num" style="color:#00B27A;">100%</p>
+      </div>
+      <p class="stat-label">Data Encrypted at Rest</p>
     </div>
   </div>
 </section>
 
-<!-- ── Footer ─────────────────────────────────────────────────────────── -->
-<footer class="bg-slate-800 text-slate-400 py-8 text-center text-sm">
-  <p>© 2024–2026 Alpha One Labs · Cloudflare Python Workers + D1 · All user data encrypted at rest</p>
+<!-- ════════════════════════════════════ ACTIVITY BROWSER ══ -->
+<section style="max-width:1200px;margin:5rem auto;padding:0 1.5rem;" id="activities">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <p class="section-label">Browse</p>
+      <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.025em;">All Activities</h2>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <input id="search" type="text" placeholder="Search activities…" class="filter-input" style="min-width:220px;" />
+      <select id="filter-type" class="filter-input">
+        <option value="">All Types</option>
+        <option value="course">📚 Course</option>
+        <option value="meetup">🤝 Meetup</option>
+        <option value="workshop">🔧 Workshop</option>
+        <option value="seminar">🎤 Seminar</option>
+        <option value="other">✨ Other</option>
+      </select>
+      <select id="filter-format" class="filter-input">
+        <option value="">All Formats</option>
+        <option value="live">🎥 Live</option>
+        <option value="self_paced">⏱ Self-paced</option>
+        <option value="hybrid">🔀 Hybrid</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tag cloud -->
+  <div id="tag-cloud" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2rem;"></div>
+
+  <!-- Grid -->
+  <div id="activity-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.5rem;">
+    <div class="skel" style="height:220px;"></div>
+    <div class="skel" style="height:220px;"></div>
+    <div class="skel" style="height:220px;"></div>
+  </div>
+
+  <p id="no-results" class="hidden" style="text-align:center;color:rgba(13,13,20,.35);padding:5rem 0;font-size:1.05rem;">
+    No activities match your filters.
+  </p>
+</section>
+
+<!-- ════════════════════════════════════ FEATURES ══ -->
+<section style="background:#0D0D14;padding:5rem 1.5rem;">
+  <div style="max-width:1200px;margin:0 auto;">
+    <p class="section-label" style="color:rgba(255,255,255,.3);">Platform</p>
+    <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.025em;color:#fff;margin-bottom:2.5rem;">Why Alpha One Labs?</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;">
+
+      <div class="feat-card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07);">
+        <div class="feat-icon" style="background:rgba(59,72,224,.2);">🔐</div>
+        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.5rem;">Zero Plaintext PII</h3>
+        <p style="font-size:.85rem;color:rgba(255,255,255,.45);line-height:1.6;">Every user field is encrypted. HMAC blind indexes enable fast lookups with zero plaintext stored in indexed columns.</p>
+      </div>
+
+      <div class="feat-card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07);">
+        <div class="feat-icon" style="background:rgba(255,92,58,.15);">⚡</div>
+        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.5rem;">Edge-Native</h3>
+        <p style="font-size:.85rem;color:rgba(255,255,255,.45);line-height:1.6;">Cloudflare Python Workers + D1 — globally distributed, sub-10ms cold starts, entirely serverless.</p>
+      </div>
+
+      <div class="feat-card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07);">
+        <div class="feat-icon" style="background:rgba(0,178,122,.15);">🗓️</div>
+        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.5rem;">Flexible Activities</h3>
+        <p style="font-size:.85rem;color:rgba(255,255,255,.45);line-height:1.6;">Courses, meetups, workshops — with sessions, attendance tracking, enrollment roles, and flexible tags.</p>
+      </div>
+
+      <div class="feat-card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.07);">
+        <div class="feat-icon" style="background:rgba(255,255,255,.08);">🌍</div>
+        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.5rem;">Open Source</h3>
+        <p style="font-size:.85rem;color:rgba(255,255,255,.45);line-height:1.6;">Fully open source and community-driven. Fork it, self-host it, contribute — your platform, your rules.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════ CTA ══ -->
+<section style="max-width:1200px;margin:5rem auto;padding:0 1.5rem;">
+  <div class="cta-band">
+    <div>
+      <p style="font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:.5rem;">Get Started</p>
+      <h2 style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;letter-spacing:-.025em;">Ready to start learning?</h2>
+      <p style="color:rgba(255,255,255,.5);font-size:.9rem;margin-top:.5rem;">Join the community. Your data stays private.</p>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="/login.html?tab=register" style="display:inline-flex;align-items:center;gap:8px;background:#0D9488;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;padding:14px 26px;border-radius:12px;text-decoration:none;transition:background .18s;" onmouseover="this.style.background='#0F766E'" onmouseout="this.style.background='#0D9488'">Create Free Account</a>
+      <a href="#activities" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);color:#fff;font-family:'Syne',sans-serif;font-weight:600;font-size:.9rem;padding:14px 26px;border-radius:12px;text-decoration:none;border:1px solid rgba(255,255,255,.15);transition:background .18s;" onmouseover="this.style.background='rgba(255,255,255,.14)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">Browse Activities</a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════ FOOTER ══ -->
+<footer>
+  <div class="footer-grid">
+    <!-- Brand column -->
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.1rem;">
+        <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs" style="width:34px;height:34px;border-radius:8px;" onerror="this.style.display='none'">
+        <span style="font-family:'Syne',sans-serif;font-weight:700;color:rgba(255,255,255,.82);font-size:.95rem;">Alpha One Labs</span>
+      </div>
+      <p style="font-size:.78rem;color:rgba(255,255,255,.3);line-height:1.75;max-width:230px;margin-bottom:1.25rem;">Open Source Education Platform. All user data encrypted at rest. GSoC 2026 participant.</p>
+      <!-- OSL logo -->
+      <div style="margin-bottom:1.25rem;">
+        <p style="font-size:.66rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:.6rem;">Affiliated with</p>
+        <img src="./images/logo-osl.svg" alt="Open Science Labs" style="height:28px;opacity:.75;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.75'" onerror="this.style.display='none'">
+      </div>
+      <!-- Social icons -->
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener" class="f-social" title="X / Twitter">
+          <img src="https://alphaonelabs.com/static/images/x-logo.svg" alt="X" style="width:14px;height:14px;filter:invert(1);opacity:.55;" onerror="this.parentElement.innerHTML='<svg width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'currentColor\'><path d=\'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.254 5.622 5.91-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z\'/></svg>'">
+        </a>
+        <a href="https://discord.gg/HJtuzTJN3h" target="_blank" rel="noopener" class="f-social" title="Discord">
+          <i class="fab fa-discord" style="font-size:.95rem;"></i>
+        </a>
+        <a href="https://instagram.com/alphaonelabs1" target="_blank" rel="noopener" class="f-social" title="Instagram">
+          <i class="fab fa-instagram" style="font-size:.95rem;"></i>
+        </a>
+        <a href="https://facebook.com/alphaonelabs" target="_blank" rel="noopener" class="f-social" title="Facebook">
+          <i class="fab fa-facebook" style="font-size:.95rem;"></i>
+        </a>
+        <a href="https://youtube.com/alphaonelabs" target="_blank" rel="noopener" class="f-social" title="YouTube">
+          <i class="fab fa-youtube" style="font-size:.95rem;"></i>
+        </a>
+        <a href="https://github.com/alphaonelabs/learn" target="_blank" rel="noopener" class="f-social" title="GitHub">
+          <i class="fab fa-github" style="font-size:.95rem;"></i>
+        </a>
+        <a href="https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg" target="_blank" rel="noopener" class="f-social" title="Slack">
+          <i class="fab fa-slack" style="font-size:.95rem;"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Learning column -->
+    <div>
+      <p class="fc-title">Learning</p>
+      <a href="#activities" class="fc-link">Activities</a>
+      <a href="/dashboard.html" class="fc-link">Dashboard</a>
+      <a href="/teach.html" class="fc-link">Host an Activity</a>
+      <a href="https://alphaonelabs.com/en/courses/search/" target="_blank" class="fc-link">All Courses</a>
+      <a href="https://alphaonelabs.com/en/subjects/" target="_blank" class="fc-link">Subjects</a>
+      <a href="https://alphaonelabs.com/en/study-groups/" target="_blank" class="fc-link">Study Groups</a>
+    </div>
+
+    <!-- Community column -->
+    <div>
+      <p class="fc-title">Community</p>
+      <a href="https://alphaonelabs.com/en/forum/" target="_blank" class="fc-link">Forum</a>
+      <a href="https://alphaonelabs.com/en/blog/" target="_blank" class="fc-link">Blog</a>
+      <a href="https://alphaonelabs.com/en/success-stories/" target="_blank" class="fc-link">Success Stories</a>
+      <a href="https://alphaonelabs.com/en/waiting-rooms/" target="_blank" class="fc-link">Waiting Rooms</a>
+      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas" target="_blank" class="fc-link">GSoC '26</a>
+    </div>
+
+    <!-- About column -->
+    <div>
+      <p class="fc-title">About</p>
+      <a href="https://alphaonelabs.com/en/about/" target="_blank" class="fc-link">Our Mission</a>
+      <a href="https://github.com/alphaonelabs/learn" target="_blank" class="fc-link">GitHub Repo</a>
+      <a href="https://alphaonelabs.com/en/status/" target="_blank" class="fc-link">Status</a>
+      <a href="https://alphaonelabs.com/en/feedback/" target="_blank" class="fc-link">Feedback</a>
+      <a href="https://alphaonelabs.com/en/terms/#privacy" target="_blank" class="fc-link">Privacy Policy</a>
+      <a href="https://alphaonelabs.com/en/terms/#terms" target="_blank" class="fc-link">Terms</a>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="footer-bottom">
+    <p style="font-size:.75rem;color:rgba(255,255,255,.22);">© 2024–2026 Alpha One Labs · Cloudflare Workers + D1 · All data encrypted at rest</p>
+    <div style="display:flex;gap:1.25rem;">
+      <a href="https://alphaonelabs.com/en/terms/#privacy" target="_blank" style="font-size:.73rem;color:rgba(255,255,255,.24);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.65)'" onmouseout="this.style.color='rgba(255,255,255,.24)'">Privacy</a>
+      <a href="https://alphaonelabs.com/en/terms/#terms" target="_blank" style="font-size:.73rem;color:rgba(255,255,255,.24);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.65)'" onmouseout="this.style.color='rgba(255,255,255,.24)'">Terms</a>
+      <a href="https://alphaonelabs.com/en/terms/#cookies" target="_blank" style="font-size:.73rem;color:rgba(255,255,255,.24);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.65)'" onmouseout="this.style.color='rgba(255,255,255,.24)'">Cookies</a>
+    </div>
+  </div>
 </footer>
+
+<!-- ════════════════════════════════════ PROFILE DROPDOWN ══ -->
+<div id="profile-dropdown">
+  <div id="dropdown-header" style="padding:16px 18px;border-bottom:1px solid rgba(13,13,20,.07);">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div id="dropdown-avatar" style="width:38px;height:38px;background:#E8EAFF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;color:#3B48E0;"></div>
+      <div>
+        <p id="dropdown-name" style="font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#0D0D14;"></p>
+        <p id="dropdown-role" style="font-size:.72rem;color:rgba(13,13,20,.4);margin-top:1px;"></p>
+      </div>
+    </div>
+  </div>
+  <div style="padding:8px;">
+    <a href="/profile.html" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;text-decoration:none;color:#0D0D14;font-size:.85rem;font-weight:500;transition:background .15s;" onmouseover="this.style.background='#F7F6F3'" onmouseout="this.style.background='transparent'">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="#0D0D14" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="#0D0D14" stroke-width="1.4" stroke-linecap="round"/></svg>
+      View Profile
+    </a>
+    <a href="/dashboard.html" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;text-decoration:none;color:#0D0D14;font-size:.85rem;font-weight:500;transition:background .15s;" onmouseover="this.style.background='#F7F6F3'" onmouseout="this.style.background='transparent'">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/><rect x="9" y="2" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/><rect x="2" y="9" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/><rect x="9" y="9" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/></svg>
+      Dashboard
+    </a>
+  </div>
+  <div style="padding:8px;border-top:1px solid rgba(13,13,20,.07);">
+    <button onclick="logout()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:transparent;border:none;cursor:pointer;color:#e53e3e;font-size:.85rem;font-weight:500;width:100%;text-align:left;transition:background .15s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke="#e53e3e" stroke-width="1.4" stroke-linecap="round"/><path d="M10 11l3-3-3-3M13 8H6" stroke="#e53e3e" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Sign Out
+    </button>
+  </div>
+</div>
 
 <script>
   const API = '';
 
-  // ── Auth nav
+  // Navbar scroll shadow
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 8);
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Auth nav ─────────────────────────────────────────────────────────────
   function updateNav() {
     const token = localStorage.getItem('edu_token');
     const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
     const nav   = document.getElementById('nav-auth');
+    const dd    = document.getElementById('profile-dropdown');
+
     if (token && user) {
+      const initials = (user.name || user.username || '?').slice(0,2).toUpperCase();
       nav.innerHTML = `
-        <span class="text-slate-600 text-sm hidden sm:block">👋 ${esc(user.username)}</span>
-        <a href="/dashboard.html" class="bg-brand text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-brand-dark transition">Dashboard</a>
-        <button onclick="logout()" class="text-slate-400 text-sm hover:text-red-500 transition">Logout</button>`;
+        <a href="/dashboard.html" style="font-size:.82rem;font-weight:600;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.14)'" onmouseout="this.style.background='transparent'">Dashboard</a>
+        <button id="profile-btn" onclick="toggleDropdown(event)" style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#fff;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">${esc(initials)}</button>`;
+
+      // populate dropdown
+      document.getElementById('dropdown-avatar').textContent = initials;
+      document.getElementById('dropdown-name').textContent   = user.name || user.username;
+      document.getElementById('dropdown-role').textContent   = user.role || 'member';
+
+      // re-attach dropdown to nav
+      nav.appendChild(dd);
     } else {
       nav.innerHTML = `
-        <a href="/login.html" class="text-slate-600 text-sm font-medium hover:text-brand">Login</a>
-        <a href="/login.html?tab=register" class="bg-brand text-white text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-brand-dark transition">Register</a>`;
+        <a href="/login.html" style="font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='transparent'">Login</a>
+        <a href="/login.html?tab=register" style="font-size:.84rem;font-weight:700;background:#F97316;color:#fff;text-decoration:none;padding:8px 18px;border-radius:10px;font-family:'Syne',sans-serif;transition:background .18s;" onmouseover="this.style.background='#ea6c0a'" onmouseout="this.style.background='#F97316'">Sign Up Free</a>`;
     }
   }
-  function logout() { localStorage.removeItem('edu_token'); localStorage.removeItem('edu_user'); updateNav(); }
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  // ── Colours
+  let dropdownOpen = false;
+  function toggleDropdown(e) {
+    e.stopPropagation();
+    dropdownOpen = !dropdownOpen;
+    document.getElementById('profile-dropdown').classList.toggle('open', dropdownOpen);
+  }
+  document.addEventListener('click', () => {
+    if (dropdownOpen) {
+      dropdownOpen = false;
+      const dd = document.getElementById('profile-dropdown');
+      if (dd) dd.classList.remove('open');
+    }
+  });
+
+  function logout() {
+    localStorage.removeItem('edu_token');
+    localStorage.removeItem('edu_user');
+    updateNav();
+    window.location.reload();
+  }
+
+  // ── Colours ───────────────────────────────────────────────────────────────
   const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', other:'✨' };
-  const typeColor = { course:'bg-indigo-100 text-indigo-700', meetup:'bg-pink-100 text-pink-700', workshop:'bg-orange-100 text-orange-700', seminar:'bg-teal-100 text-teal-700', other:'bg-slate-100 text-slate-600' };
-  const fmtColor  = { live:'bg-red-100 text-red-700', self_paced:'bg-emerald-100 text-emerald-700', hybrid:'bg-purple-100 text-purple-700' };
+  const typeBg    = { course:'#E8EAFF', meetup:'#FFF0ED', workshop:'#F0FDF4', seminar:'#F0FDFC', other:'#F7F6F3' };
+  const typeClr   = { course:'#3B48E0', meetup:'#FF5C3A', workshop:'#00B27A', seminar:'#0D9488', other:'#6b7280' };
+  const fmtBg     = { live:'#FFF0ED', self_paced:'#F0FDF4', hybrid:'#FAF0FF' };
+  const fmtClr    = { live:'#FF5C3A', self_paced:'#00B27A', hybrid:'#9333ea' };
   const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
-  const schedLabel = { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
+  const schedLabel= { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
 
   function actCard(a) {
-    const tc = typeColor[a.type] || 'bg-slate-100 text-slate-600';
-    const fc = fmtColor[a.format]  || 'bg-slate-100 text-slate-600';
-    const ic = typeIcon[a.type] || '✨';
-    const desc = a.description.length > 110 ? a.description.slice(0, 110) + '…' : a.description;
-    const tags = (a.tags || []).slice(0, 3).map(t =>
-      `<span class="badge bg-slate-100 text-slate-500">${esc(t)}</span>`).join('');
+    const bg  = typeBg[a.type]  || '#F7F6F3';
+    const clr = typeClr[a.type] || '#6b7280';
+    const ic  = typeIcon[a.type] || '✨';
+    const fb  = fmtBg[a.format]  || '#F7F6F3';
+    const fc  = fmtClr[a.format] || '#6b7280';
+    const desc= (a.description || '').length > 100
+              ? a.description.slice(0,100) + '…'
+              : (a.description || '');
+    const tags = (a.tags || []).slice(0, 3)
+      .map(t => `<span class="tag-chip">${esc(t)}</span>`).join('');
+
     return `
-      <article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 card-hover flex flex-col gap-3">
-        <div class="flex items-start justify-between gap-2">
-          <h3 class="font-bold text-slate-800 text-base leading-snug">${ic} ${esc(a.title)}</h3>
-          <span class="badge ${tc} shrink-0">${esc(a.type)}</span>
+      <article class="act-card" onmousemove="this.style.setProperty('--mx',event.offsetX/this.offsetWidth*100+'%');this.style.setProperty('--my',event.offsetY/this.offsetHeight*100+'%')">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;line-height:1.3;color:#0D0D14;">
+            ${ic} ${esc(a.title)}
+          </h3>
+          <span class="type-badge" style="background:${bg};color:${clr};white-space:nowrap;">${esc(a.type)}</span>
         </div>
-        <p class="text-slate-500 text-sm leading-relaxed flex-1">${esc(desc)}</p>
-        <div class="flex flex-wrap gap-1.5">${tags}</div>
-        <div class="flex items-center justify-between mt-auto pt-2 border-t border-slate-50 text-xs text-slate-400">
-          <div class="flex gap-2 flex-wrap">
-            <span class="badge ${fc}">${fmtLabel[a.format] || a.format}</span>
-            <span>${schedLabel[a.schedule_type] || a.schedule_type}</span>
-            <span>👥 ${a.participant_count}</span>
-            ${a.session_count ? `<span>🗓 ${a.session_count} sessions</span>` : ''}
+        <p style="font-size:.82rem;color:rgba(13,13,20,.5);line-height:1.55;flex:1;">${esc(desc)}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">${tags}</div>
+        <div style="border-top:1px solid rgba(13,13,20,.06);padding-top:.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <span class="fmt-badge" style="background:${fb};color:${fc};">${fmtLabel[a.format] || a.format}</span>
+            <span style="font-size:.72rem;color:rgba(13,13,20,.4);">${schedLabel[a.schedule_type] || a.schedule_type}</span>
+            <span style="font-size:.72rem;color:rgba(13,13,20,.4);">👥 ${a.participant_count}</span>
+            ${a.session_count ? `<span style="font-size:.72rem;color:rgba(13,13,20,.4);">🗓 ${a.session_count}</span>` : ''}
           </div>
-          <a href="/course.html?id=${esc(a.id)}" class="text-brand font-semibold hover:underline">View →</a>
+          <a href="/course.html?id=${esc(a.id)}" style="font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;color:#0D9488;text-decoration:none;">View →</a>
         </div>
-        <p class="text-xs text-slate-400">by <span class="font-medium text-slate-500">${esc(a.host_name)}</span></p>
+        <p style="font-size:.72rem;color:rgba(13,13,20,.35);">by <span style="color:rgba(13,13,20,.55);font-weight:500;">${esc(a.host_name)}</span></p>
       </article>`;
   }
 
@@ -216,7 +779,7 @@
       if (type && a.type !== type) return false;
       if (fmt  && a.format !== fmt) return false;
       if (activeTag && !(a.tags || []).includes(activeTag)) return false;
-      if (q && !a.title.toLowerCase().includes(q) && !a.description.toLowerCase().includes(q)) return false;
+      if (q && !a.title.toLowerCase().includes(q) && !(a.description || '').toLowerCase().includes(q)) return false;
       return true;
     });
 
@@ -230,21 +793,16 @@
     const freq = {};
     activities.forEach(a => (a.tags || []).forEach(t => freq[t] = (freq[t] || 0) + 1));
     const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]);
-    const cloud = document.getElementById('tag-cloud');
-    cloud.innerHTML = sorted.map(([name, cnt]) => `
-      <button onclick="toggleTag('${esc(name)}')" id="tag-${esc(name)}"
-        class="tag-pill badge bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-brand">
-        ${esc(name)} <span class="opacity-60">${cnt}</span>
-      </button>`).join('');
+    document.getElementById('tag-cloud').innerHTML = sorted.map(([name, cnt]) =>
+      `<button onclick="toggleTag('${esc(name)}')" id="tag-${esc(name)}" class="tag-pill">
+        ${esc(name)} <span style="opacity:.5;font-size:.65rem;">${cnt}</span>
+       </button>`).join('');
   }
 
   function toggleTag(name) {
-    if (activeTag === name) {
-      activeTag = null;
-      document.querySelectorAll('.tag-pill').forEach(el => el.classList.remove('active'));
-    } else {
-      activeTag = name;
-      document.querySelectorAll('.tag-pill').forEach(el => el.classList.remove('active'));
+    activeTag = activeTag === name ? null : name;
+    document.querySelectorAll('.tag-pill').forEach(el => el.classList.remove('active'));
+    if (activeTag) {
       const el = document.getElementById(`tag-${name}`);
       if (el) el.classList.add('active');
     }
@@ -263,14 +821,17 @@
 
       buildTagCloud(allActivities);
       renderGrid();
-    } catch (e) {
+    } catch {
       document.getElementById('activity-grid').innerHTML =
-        `<p class="col-span-3 text-center text-red-400 py-16">Failed to load activities.<br>Seed sample data via <code>POST /api/seed</code>.</p>`;
+        `<p style="grid-column:1/-1;text-align:center;color:rgba(13,13,20,.35);padding:5rem 0;">
+          Failed to load activities. Seed data via <code>POST /api/seed</code>.
+        </p>`;
     }
   }
 
   ['search','filter-type','filter-format'].forEach(id =>
-    document.getElementById(id).addEventListener(id === 'search' ? 'input' : 'change', renderGrid));
+    document.getElementById(id)
+      .addEventListener(id === 'search' ? 'input' : 'change', renderGrid));
 
   updateNav();
   loadActivities();
