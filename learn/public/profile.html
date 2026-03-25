@@ -60,8 +60,9 @@
       opacity:0;transform:translateY(-8px) scale(.97);
       transition:opacity .18s,transform .18s;
       pointer-events:none;
+      visibility:hidden;
     }
-    #profile-dropdown.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+    #profile-dropdown.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto; visibility:visible;}
 
     /* ─── HERO ─── */
     .profile-hero{
@@ -118,7 +119,16 @@
     }
     .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(13,13,20,.08);}
     .s-num{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;}
-    .s-label{font-size:.74rem;color:var(--muted);margin-top:3px;}
+    . /* ── Stats section labels ── */
+    .stat-label { font-size:.74rem; color:rgba(13,13,20,.4); margin-top:2px; }
+    
+    /* ── Section label (decorative) ── */
+    .section-label {
+      font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;
+      letter-spacing:.12em;text-transform:uppercase;color:var(--teal);
+      margin-bottom:1rem;display:flex;align-items:center;gap:8px;
+    }
+    .section-label::before { content:'';width:18px;height:2px;background:var(--teal);border-radius:1px; }
 
     /* ─── ACTIVITY ROW ─── */
     .act-row{
@@ -324,7 +334,10 @@
           <div class="i-icon" style="background:#F1F5F9;">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="2" stroke="#6b7280" stroke-width="1.4"/><path d="M5 2v2M11 2v2M2 7h12" stroke="#6b7280" stroke-width="1.4" stroke-linecap="round"/></svg>
           </div>
-          <div><p class="i-label">Member Since</p><p id="prof-joined" class="i-val"></p></div>
+         <div>
+            <p class="i-label">First Activity</p>
+            <p id="prof-joined" class="i-val"></p>
+          </div>
         </div>
         <div class="info-row">
           <div class="i-icon" style="background:#F1F5F9;">

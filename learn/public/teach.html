@@ -210,19 +210,17 @@
         </div>
         <div style="padding:1.5rem;">
           <form id="form-activity" novalidate>
-            <div class="form-group">
-              <label class="form-label">Title *</label>
+                        <div class="form-group">
+              <label for="a-title" class="form-label">Title *</label>
               <input id="a-title" type="text" required class="form-input" placeholder="e.g. Python Basics" />
             </div>
-
             <div class="form-group">
-              <label class="form-label">Description</label>
+              <label for="a-desc" class="form-label">Description</label>
               <textarea id="a-desc" class="form-textarea" placeholder="What will participants gain?"></textarea>
             </div>
-
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;">
               <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label">Type</label>
+                <label for="a-type" class="form-label">Type</label>
                 <select id="a-type" class="form-select">
                   <option value="course">📚 Course</option>
                   <option value="meetup">🤝 Meetup</option>
@@ -232,7 +230,7 @@
                 </select>
               </div>
               <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label">Format</label>
+                <label for="a-format" class="form-label">Format</label>
                 <select id="a-format" class="form-select">
                   <option value="self_paced">Self-paced</option>
                   <option value="live">Live</option>
@@ -240,7 +238,7 @@
                 </select>
               </div>
               <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label">Schedule</label>
+                <label for="a-schedule" class="form-label">Schedule</label>
                 <select id="a-schedule" class="form-select">
                   <option value="ongoing">Ongoing</option>
                   <option value="one_time">One-time</option>
@@ -249,12 +247,11 @@
                 </select>
               </div>
             </div>
-
             <div class="form-group">
-              <label class="form-label">Tags (comma-separated)</label>
+              <label for="a-tags" class="form-label">Tags (comma-separated)</label>
               <input id="a-tags" type="text" class="form-input" placeholder="Python, Beginners, Data Science" />
             </div>
-
+            
             <p id="act-err" class="alert alert-error"></p>
             <p id="act-ok" class="alert alert-success"></p>
             <button type="submit" class="btn btn-primary btn-full">Create Activity</button>

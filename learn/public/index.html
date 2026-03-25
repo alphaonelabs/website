@@ -53,7 +53,7 @@
     #navbar.scrolled { background: #0F766E; box-shadow: 0 4px 20px rgba(0,0,0,.18); }
 
     /* ── Profile dropdown ── */
-    #profile-dropdown {
+     #profile-dropdown {
       position: absolute; right: 0; top: calc(100% + 10px);
       background: #fff;
       border: 1px solid rgba(13,13,20,.09);
@@ -64,10 +64,12 @@
       opacity: 0; transform: translateY(-8px) scale(.97);
       transition: opacity .18s ease, transform .18s ease;
       pointer-events: none;
+      visibility: hidden;
     }
     #profile-dropdown.open {
       opacity: 1; transform: translateY(0) scale(1);
       pointer-events: auto;
+      visibility: visible;
     }
 
     /* ── Hero — full-width teal gradient ── */
@@ -464,24 +466,37 @@
       <p class="section-label">Browse</p>
       <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.025em;">All Activities</h2>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <input id="search" type="text" placeholder="Search activities…" class="filter-input" style="min-width:220px;" />
-      <select id="filter-type" class="filter-input">
-        <option value="">All Types</option>
-        <option value="course">📚 Course</option>
-        <option value="meetup">🤝 Meetup</option>
-        <option value="workshop">🔧 Workshop</option>
-        <option value="seminar">🎤 Seminar</option>
-        <option value="other">✨ Other</option>
-      </select>
-      <select id="filter-format" class="filter-input">
-        <option value="">All Formats</option>
-        <option value="live">🎥 Live</option>
-        <option value="self_paced">⏱ Self-paced</option>
-        <option value="hybrid">🔀 Hybrid</option>
-      </select>
+       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <!-- ✅ NEW: Wrap input with label -->
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:220px;">
+        <label for="search" style="font-size:.75rem;font-weight:600;color:rgba(13,13,20,.6);">Search activities</label>
+        <input id="search" type="text" placeholder="e.g. Python, Web Development…" class="filter-input" style="min-width:220px;" />
+      </div>
+      
+      <!-- ✅ NEW: Wrap select with label -->
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label for="filter-type" style="font-size:.75rem;font-weight:600;color:rgba(13,13,20,.6);">Activity Type</label>
+        <select id="filter-type" class="filter-input">
+          <option value="">All Types</option>
+          <option value="course">📚 Course</option>
+          <option value="meetup">🤝 Meetup</option>
+          <option value="workshop">🔧 Workshop</option>
+          <option value="seminar">🎤 Seminar</option>
+          <option value="other">✨ Other</option>
+        </select>
+      </div>
+      
+      <!-- ✅ NEW: Wrap select with label -->
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label for="filter-format" style="font-size:.75rem;font-weight:600;color:rgba(13,13,20,.6);">Format</label>
+        <select id="filter-format" class="filter-input">
+          <option value="">All Formats</option>
+          <option value="live">🎥 Live</option>
+          <option value="self_paced">⏱ Self-paced</option>
+          <option value="hybrid">🔀 Hybrid</option>
+        </select>
+      </div>
     </div>
-  </div>
 
   <!-- Tag cloud -->
   <div id="tag-cloud" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2rem;"></div>
@@ -675,46 +690,57 @@
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ── Auth nav ─────────────────────────────────────────────────────────────
-  function updateNav() {
-    const token = localStorage.getItem('edu_token');
-    const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
-    const nav   = document.getElementById('nav-auth');
-    const dd    = document.getElementById('profile-dropdown');
+// ── Auth nav ─────────────────────────────────────────────────────────────
+function updateNav() {
+  const token = localStorage.getItem('edu_token');
+  const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
+  const nav   = document.getElementById('nav-auth');
+  const dd    = document.getElementById('profile-dropdown');
 
-    if (token && user) {
-      const initials = (user.name || user.username || '?').slice(0,2).toUpperCase();
-      nav.innerHTML = `
-        <a href="/dashboard.html" style="font-size:.82rem;font-weight:600;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.14)'" onmouseout="this.style.background='transparent'">Dashboard</a>
-        <button id="profile-btn" onclick="toggleDropdown(event)" style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#fff;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">${esc(initials)}</button>`;
+  if (token && user) {
+    const initials = (user.name || user.username || '?').slice(0,2).toUpperCase();
+    nav.innerHTML = `
+      <a href="/dashboard.html" style="font-size:.82rem;font-weight:600;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.14)'" onmouseout="this.style.background='transparent'">Dashboard</a>
+      <button id="profile-btn" onclick="toggleDropdown(event)" 
+        aria-expanded="false" 
+        aria-controls="profile-dropdown"
+        style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#fff;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">${esc(initials)}</button>`;
 
-      // populate dropdown
-      document.getElementById('dropdown-avatar').textContent = initials;
-      document.getElementById('dropdown-name').textContent   = user.name || user.username;
-      document.getElementById('dropdown-role').textContent   = user.role || 'member';
+    // populate dropdown
+    document.getElementById('dropdown-avatar').textContent = initials;
+    document.getElementById('dropdown-name').textContent   = user.name || user.username;
+    document.getElementById('dropdown-role').textContent   = user.role || 'member';
 
-      // re-attach dropdown to nav
-      nav.appendChild(dd);
-    } else {
-      nav.innerHTML = `
-        <a href="/login.html" style="font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='transparent'">Login</a>
-        <a href="/login.html?tab=register" style="font-size:.84rem;font-weight:700;background:#F97316;color:#fff;text-decoration:none;padding:8px 18px;border-radius:10px;font-family:'Syne',sans-serif;transition:background .18s;" onmouseover="this.style.background='#ea6c0a'" onmouseout="this.style.background='#F97316'">Sign Up Free</a>`;
-    }
+    // re-attach dropdown to nav
+    nav.appendChild(dd);
+  } else {
+    nav.innerHTML = `
+      <a href="/login.html" style="font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='transparent'">Login</a>
+      <a href="/login.html?tab=register" style="font-size:.84rem;font-weight:700;background:#F97316;color:#fff;text-decoration:none;padding:8px 18px;border-radius:10px;font-family:'Syne',sans-serif;transition:background .18s;" onmouseover="this.style.background='#ea6c0a'" onmouseout="this.style.background='#F97316'">Sign Up Free</a>`;
   }
+}
 
-  let dropdownOpen = false;
-  function toggleDropdown(e) {
-    e.stopPropagation();
-    dropdownOpen = !dropdownOpen;
-    document.getElementById('profile-dropdown').classList.toggle('open', dropdownOpen);
+let dropdownOpen = false;
+function toggleDropdown(e) {
+  e.stopPropagation();
+  dropdownOpen = !dropdownOpen;
+  const btn = document.getElementById('profile-btn');
+  const dd = document.getElementById('profile-dropdown');
+  
+  // ✅ Update aria-expanded for screen readers
+  btn.setAttribute('aria-expanded', dropdownOpen);
+  dd.classList.toggle('open', dropdownOpen);
+}
+
+document.addEventListener('click', () => {
+  if (dropdownOpen) {
+    dropdownOpen = false;
+    const btn = document.getElementById('profile-btn');
+    const dd = document.getElementById('profile-dropdown');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    if (dd) dd.classList.remove('open');
   }
-  document.addEventListener('click', () => {
-    if (dropdownOpen) {
-      dropdownOpen = false;
-      const dd = document.getElementById('profile-dropdown');
-      if (dd) dd.classList.remove('open');
-    }
-  });
+});
 
   function logout() {
     localStorage.removeItem('edu_token');
