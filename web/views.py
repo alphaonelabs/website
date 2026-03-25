@@ -1603,7 +1603,7 @@ def create_payment_intent(request, slug):
     course = get_object_or_404(Course, slug=slug)
 
     # Prevent creating payment intents for free courses
-    if course.price == 0:
+    if course.price <= 0:
         # Find the enrollment and update its status to approved if it's pending
         enrollment = get_object_or_404(Enrollment, student=request.user, course=course)
         if enrollment.status == "pending":
@@ -1618,17 +1618,6 @@ def create_payment_intent(request, slug):
 
     # Ensure user has a pending enrollment
     enrollment = get_object_or_404(Enrollment, student=request.user, course=course, status="pending")
-
-    # Validate price is greater than zero for Stripe
-    if course.price <= 0:
-        enrollment.status = "approved"
-        enrollment.save()
-
-        # Send notifications
-        send_enrollment_confirmation(enrollment)
-        notify_teacher_new_enrollment(enrollment)
-
-        return JsonResponse({"free_course": True, "message": "Enrollment approved for free course"})
 
     try:
         # Create a PaymentIntent with the order amount and currency
