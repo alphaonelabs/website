@@ -7,14 +7,34 @@ from markdownx.utils import markdownify
 register = template.Library()
 
 SAFE_TAGS = {
-    "h1", "h2", "h3", "h4", "h5", "h6",
-    "p", "br", "hr",
-    "strong", "em", "b", "i", "u", "del",
-    "ul", "ol", "li",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "p",
+    "br",
+    "hr",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "u",
+    "del",
+    "ul",
+    "ol",
+    "li",
     "a",
-    "pre", "code",
+    "pre",
+    "code",
     "blockquote",
-    "table", "thead", "tbody", "tr", "th", "td",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
     "img",
 }
 
@@ -28,6 +48,7 @@ SAFE_ATTRIBUTES = {
 
 ALLOWED_PROTOCOLS = {"http", "https", "mailto"}
 
+
 def markdownify_sanitized(content: Optional[str]) -> str:
     """
     Custom markdownify function that sanitizes the output HTML using bleach.
@@ -37,11 +58,7 @@ def markdownify_sanitized(content: Optional[str]) -> str:
         return ""
 
     return bleach.clean(
-        markdownify(content),
-        tags=SAFE_TAGS,
-        attributes=SAFE_ATTRIBUTES,
-        protocols=ALLOWED_PROTOCOLS,
-        strip=True
+        markdownify(content), tags=SAFE_TAGS, attributes=SAFE_ATTRIBUTES, protocols=ALLOWED_PROTOCOLS, strip=True
     )
 
 
