@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Profile – Alpha One Labs</title>
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <link rel="icon" type="image/png" href="/images/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
@@ -29,42 +29,59 @@
     .hidden{display:none!important;}
     a{text-decoration:none;color:inherit;}
 
-    /* ─── NAVBAR (Teal) ─── */
+    /* ─── NAVBAR ─── */
     #navbar{
       position:sticky;top:0;z-index:200;
-      background:rgba(13,148,136,.96);
-      backdrop-filter:blur(18px) saturate(180%);
-      border-bottom:1px solid rgba(255,255,255,.18);
-      box-shadow:0 2px 12px rgba(0,0,0,.12);
-      transition:box-shadow .3s,background .3s;
+      background:var(--teal);
+      box-shadow:0 2px 16px rgba(0,0,0,.15);
     }
-    #navbar.scrolled{background:rgba(15,118,110,.98);box-shadow:0 4px 20px rgba(0,0,0,.18);}
-    .nav-inner{max-width:1200px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:66px;}
+    #navbar.scrolled{background:var(--teal-dark);box-shadow:0 4px 24px rgba(0,0,0,.2);}
+    .nav-inner{max-width:1200px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:68px;}
+    @media(max-width:768px){.nav-inner{height:60px;padding:0 1rem;}}
     .nav-logo{display:flex;align-items:center;gap:10px;}
-    .nav-logo img{width:38px;height:38px;border-radius:10px;}
-    .nav-logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;}
+    .nav-logo img{width:50px;height:50px;border-radius:8px;}
+    @media(max-width:768px){.nav-logo img{width:40px;height:40px;}}
+    .nav-logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:#fff;}
+    @media(max-width:768px){.nav-logo-text{font-size:.95rem;}}
     .nav-links{display:flex;align-items:center;gap:2px;}
-    .nav-link{font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:8px;transition:color .15s,background .15s;}
-    .nav-link:hover{color:#fff;background:rgba(255,255,255,.12);}
+    .nav-link{font-size:.85rem;font-weight:500;color:rgba(255,255,255,.85);padding:6px 14px;border-radius:8px;}
+    .nav-link:hover{background:rgba(255,255,255,.15);color:#fff;}
+    .nav-link.active{background:rgba(255,255,255,.2);color:#fff;font-weight:600;}
     #nav-auth{display:flex;align-items:center;gap:10px;position:relative;}
+    .nav-toggle{display:none;background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;}
 
-    /* ─── PROFILE DROPDOWN ─── */
+    @media(max-width:768px){
+      .nav-links{display:none;}
+      .nav-toggle{display:block;}
+    }
+
+    /* Mobile Menu */
+    #mobile-menu{
+      position:fixed;top:60px;left:0;right:0;bottom:0;
+      background:#fff;z-index:190;
+      overflow-y:auto;max-height:calc(100vh - 60px);
+      box-shadow:0 4px 12px rgba(0,0,0,.1);
+    }
+    #mobile-menu.hidden{display:none;}
+    .mobile-menu-item{padding:16px 16px;border-bottom:1px solid var(--border);}
+    .mobile-menu-item a{
+      font-family:'Syne',sans-serif;font-weight:600;color:var(--ink);font-size:.95rem;
+      display:flex;align-items:center;gap:10px;
+    }
+    .mobile-menu-item i{color:var(--teal);width:18px;}
+
+    /* Profile dropdown */
     #profile-dropdown{
       position:absolute;right:0;top:calc(100% + 10px);
-      background:#fff;
-      border:1px solid rgba(13,13,20,.09);
-      border-radius:16px;
-      box-shadow:0 20px 60px rgba(13,13,20,.14);
-      min-width:220px;
-      overflow:hidden;
+      background:#fff;border:1px solid var(--border);
+      border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.14);
+      min-width:220px;overflow:hidden;
       opacity:0;transform:translateY(-8px) scale(.97);
-      transition:opacity .18s,transform .18s;
       pointer-events:none;
-      visibility:hidden;
     }
-    #profile-dropdown.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto; visibility:visible;}
+    #profile-dropdown.open{opacity:1;transform:none;pointer-events:auto;}
 
-    /* ─── HERO ─── */
+    /* ─── PROFILE HERO ─── */
     .profile-hero{
       background:linear-gradient(135deg,#0F766E 0%,#0D9488 50%,#14B8A6 100%);
       position:relative;overflow:hidden;padding:4rem 1.5rem 0;
@@ -119,16 +136,15 @@
     }
     .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(13,13,20,.08);}
     .s-num{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;}
-    . /* ── Stats section labels ── */
-    .stat-label { font-size:.74rem; color:rgba(13,13,20,.4); margin-top:2px; }
-    
-    /* ── Section label (decorative) ── */
-    .section-label {
+    .stat-label{font-size:.74rem;color:rgba(13,13,20,.4);margin-top:2px;}
+
+    /* ─── SECTION LABEL ─── */
+    .section-label{
       font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;
       letter-spacing:.12em;text-transform:uppercase;color:var(--teal);
       margin-bottom:1rem;display:flex;align-items:center;gap:8px;
     }
-    .section-label::before { content:'';width:18px;height:2px;background:var(--teal);border-radius:1px; }
+    .section-label::before{content:'';width:18px;height:2px;background:var(--teal);border-radius:1px;}
 
     /* ─── ACTIVITY ROW ─── */
     .act-row{
@@ -189,7 +205,7 @@
     .ha2{animation:fadeUp .6s .2s ease both;}
     .ha3{animation:fadeUp .6s .3s ease both;}
 
-    /* ─── SECTION LABEL ─── */
+    /* ─── S LABEL ─── */
     .s-label{
       display:inline-flex;align-items:center;gap:8px;
       font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;
@@ -199,17 +215,51 @@
     .s-label::before{content:'';width:18px;height:2px;background:var(--teal);border-radius:1px;}
 
     /* ─── FOOTER ─── */
-    footer { background: #0F172A; color: rgba(255,255,255,.45); }
-    .footer-grid { max-width: 1200px; margin: 0 auto; padding: 3.5rem 1.5rem 2.5rem; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 2.5rem; }
-    @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 480px) { .footer-grid { grid-template-columns: 1fr; } }
-    .fc-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-bottom: 1.1rem; }
-    .fc-link { display: block; font-size: .82rem; color: rgba(255,255,255,.38); text-decoration: none; margin-bottom: .55rem; transition: color .15s; }
-    .fc-link:hover { color: rgba(255,255,255,.8); }
-    .footer-bottom { border-top: 1px solid rgba(255,255,255,.07); padding: 1.5rem; max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-    .f-social { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.07); color: rgba(255,255,255,.5); display: flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid rgba(255,255,255,.08); transition: all .2s; }
-    .f-social:hover { background: var(--teal-dim); color: var(--teal); border-color: var(--teal); transform: translateY(-2px); }
-    .f-social svg, .f-social i { font-size: 1rem; }
+    footer{background:#ffffff;color:rgba(0,0,0,.6);padding:4rem 1.5rem 2rem;}
+    @media(max-width:768px){footer{padding:3rem 1.25rem 1.5rem;}}
+    @media(max-width:640px){footer{padding:2.5rem 1rem 1.5rem;}}
+    
+    .footer-grid{max-width:1200px;margin:0 auto;padding:3.5rem 1.5rem;display:grid;grid-template-columns:repeat(4,1fr);gap:3.5rem;}
+    @media(max-width:1024px){.footer-grid{grid-template-columns:repeat(3,1fr);gap:3rem;}}
+    @media(max-width:768px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:2.5rem;padding:2.5rem 1.25rem;}}
+    @media(max-width:640px){.footer-grid{grid-template-columns:1fr;gap:2rem;padding:2rem 1rem;}}
+
+    .fc-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);margin-bottom:1.5rem;}
+    @media(max-width:640px){.fc-title{font-size:.8rem;margin-bottom:1.25rem;}}
+    
+    .fc-link{display:flex;align-items:center;gap:10px;font-size:.95rem;color:rgba(0,0,0,.55);margin-bottom:1rem;text-decoration:none;line-height:1.6;}
+    @media(max-width:768px){.fc-link{font-size:.9rem;margin-bottom:.85rem;}}
+    @media(max-width:640px){.fc-link{font-size:.85rem;margin-bottom:.75rem;}}
+
+    .fc-link i{color:var(--teal);width:18px;flex-shrink:0;}
+    .fc-link:hover{color:var(--teal);transform:translateX(4px);transition:all .3s ease;}
+
+    .footer-social{display:flex;flex-wrap:wrap;gap:12px;margin-top:1.75rem;}
+    @media(max-width:640px){.footer-social{justify-content:flex-start;gap:10px;margin-top:1.5rem;}}
+
+    .footer-social-btn{
+      width:44px;height:44px;border-radius:50%;
+      background:var(--teal-dim);color:var(--teal);
+      display:flex;align-items:center;justify-content:center;
+      border:2px solid var(--teal);font-size:1rem;text-decoration:none;
+      transition:all .3s ease;
+    }
+    @media(max-width:640px){.footer-social-btn{width:40px;height:40px;font-size:.9rem;}}
+
+    .footer-social-btn:hover{background:var(--teal);color:#fff;transform:translateY(-3px);box-shadow:0 8px 20px rgba(13,148,136,.25);}
+
+    .footer-bottom{border-top:2px solid var(--border);max-width:1200px;margin:0 auto;padding:1.5rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;font-size:.85rem;color:rgba(0,0,0,.6);}
+    @media(max-width:768px){.footer-bottom{padding:1.25rem 1.25rem;flex-direction:column;text-align:center;gap:1rem;}}
+    @media(max-width:640px){.footer-bottom{padding:1rem 1rem;font-size:.8rem;gap:1rem;}}
+
+    .footer-links{display:flex;gap:2rem;text-decoration:none;}
+    @media(max-width:768px){.footer-links{flex-direction:column;gap:1rem;}}
+    @media(max-width:640px){.footer-links{gap:.75rem;}}
+
+    .footer-links a{color:rgba(0,0,0,.55);text-decoration:none;font-size:.9rem;transition:all .3s ease;}
+    @media(max-width:640px){.footer-links a{font-size:.8rem;}}
+    
+    .footer-links a:hover{color:var(--teal);font-weight:600;}
 
     @media(max-width:780px){.pg{grid-template-columns:1fr!important;}}
   </style>
@@ -220,10 +270,10 @@
 <nav id="navbar">
   <div class="nav-inner">
     <a href="/" class="nav-logo">
-      <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs"
-           onerror="this.style.display='none';document.getElementById('lf2').style.display='flex'">
-      <div id="lf2" style="display:none;width:38px;height:38px;background:rgba(255,255,255,.2);border-radius:10px;align-items:center;justify-content:center;">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 14L9 4L15 14H3Z" fill="white"/></svg>
+      <img src="./images/logo.png" alt="Alpha One Labs"
+           onerror="this.style.display='none';document.getElementById('logo-fb').style.display='flex'">
+      <div id="logo-fb" style="display:none;width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:8px;align-items:center;justify-content:center;">
+        <i class="fas fa-graduation-cap" style="color:#fff;font-size:1.2rem;"></i>
       </div>
       <span class="nav-logo-text">Alpha One Labs</span>
     </a>
@@ -233,29 +283,20 @@
       <a href="/teach.html" class="nav-link">Host</a>
     </div>
     <div id="nav-auth"></div>
+    <button class="nav-toggle" onclick="toggleMobileMenu()"><i class="fas fa-bars"></i></button>
   </div>
 </nav>
 
-<!-- ─── PROFILE DROPDOWN ─── -->
-<div id="profile-dropdown">
-  <div style="padding:15px 17px;border-bottom:1px solid rgba(13,13,20,.07);">
-    <div style="display:flex;align-items:center;gap:11px;">
-      <div id="dd-avatar" style="width:36px;height:36px;background:var(--teal-dim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;color:var(--teal);"></div>
-      <div><p id="dd-name" style="font-family:'Syne',sans-serif;font-weight:700;font-size:.83rem;color:var(--ink);"></p><p id="dd-role" style="font-size:.7rem;color:rgba(13,13,20,.4);margin-top:1px;"></p></div>
-    </div>
+<!-- Mobile Menu -->
+<div id="mobile-menu" class="hidden">
+  <div class="mobile-menu-item">
+    <a href="/"><i class="fas fa-home"></i>Activities</a>
   </div>
-  <div style="padding:7px;">
-    <a href="/profile.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;color:var(--teal);font-size:.83rem;font-weight:600;background:var(--teal-dim);">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg> View Profile
-    </a>
-    <a href="/dashboard.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;color:var(--ink);font-size:.83rem;font-weight:500;transition:background .15s;margin-top:2px;" onmouseover="this.style.background='#F0FDFA'" onmouseout="this.style.background='transparent'">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/><rect x="9" y="2" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/><rect x="2" y="9" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/><rect x="9" y="9" width="5" height="5" rx="1.5" stroke="#0D0D14" stroke-width="1.4"/></svg> Dashboard
-    </a>
+  <div class="mobile-menu-item">
+    <a href="/dashboard.html"><i class="fas fa-gauge"></i>Dashboard</a>
   </div>
-  <div style="padding:7px;border-top:1px solid rgba(13,13,20,.07);">
-    <button type="button" onclick="logout()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;background:transparent;border:none;cursor:pointer;color:#e53e3e;font-size:.83rem;font-weight:500;width:100%;text-align:left;transition:background .15s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke="#e53e3e" stroke-width="1.4" stroke-linecap="round"/><path d="M10 11l3-3-3-3M13 8H6" stroke="#e53e3e" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Sign Out
-    </button>
+  <div class="mobile-menu-item">
+    <a href="/teach.html"><i class="fas fa-chalkboard-user"></i>Host</a>
   </div>
 </div>
 
@@ -286,7 +327,7 @@
         </div>
         <div class="ha3 enc-strip">
           <div style="width:34px;height:34px;background:rgba(0,178,122,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="8" rx="2" stroke="#00B27A" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="#00B27A" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="6" width="9" height="8" rx="1.5" stroke="#00B27A" stroke-width="1.3"/><path d="M4 6V4.5a3 3 0 1 1 6 0V6" stroke="#00B27A" stroke-width="1.3" stroke-linecap="round"/></svg>
           </div>
           <div>
             <p style="font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;color:#00B27A;">Data Encrypted</p>
@@ -334,7 +375,7 @@
           <div class="i-icon" style="background:#F1F5F9;">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="2" stroke="#6b7280" stroke-width="1.4"/><path d="M5 2v2M11 2v2M2 7h12" stroke="#6b7280" stroke-width="1.4" stroke-linecap="round"/></svg>
           </div>
-         <div>
+          <div>
             <p class="i-label">First Activity</p>
             <p id="prof-joined" class="i-val"></p>
           </div>
@@ -369,15 +410,15 @@
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;" class="reveal">
         <div class="stat-card">
           <p class="s-num" id="stat-hosted" style="color:var(--teal);">0</p>
-          <p class="s-label">Hosted</p>
+          <p class="stat-label">Hosted</p>
         </div>
         <div class="stat-card">
           <p class="s-num" id="stat-joined" style="color:var(--accent);">0</p>
-          <p class="s-label">Joined</p>
+          <p class="stat-label">Joined</p>
         </div>
         <div class="stat-card">
           <p class="s-num" id="stat-total" style="color:var(--jade);">0</p>
-          <p class="s-label">Total</p>
+          <p class="stat-label">Total</p>
         </div>
       </div>
 
@@ -409,87 +450,105 @@
 <!-- ─── FOOTER ─── -->
 <footer>
   <div class="footer-grid">
-    <!-- Brand column -->
-    <div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.1rem;">
-        <img src="./images/logo.png" alt="Alpha One Labs" style="width:34px;height:34px;border-radius:8px;" onerror="this.style.display='none'">
-        <span style="font-family:'Syne',sans-serif;font-weight:700;color:rgba(255,255,255,.82);font-size:.95rem;">Alpha One Labs</span>
-      </div>
-      <p style="font-size:.78rem;color:rgba(255,255,255,.3);line-height:1.75;max-width:230px;margin-bottom:1.25rem;">Open Source Education Platform. All user data encrypted at rest. GSoC 2026 participant.</p>
-      <!-- OSL logo -->
-      <div style="margin-bottom:1.25rem;">
-        <p style="font-size:.66rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:.6rem;">Affiliated with</p>
-        <img src="./images/logo-osl.svg" alt="Open Science Labs" style="height:28px;opacity:.75;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.75'" onerror="this.style.display='none'">
-      </div>
-      <!-- Social icons -->
-      <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener" class="f-social" title="X / Twitter">
-          <img src="https://alphaonelabs.com/static/images/x-logo.svg" alt="X" style="width:14px;height:14px;filter:invert(1);opacity:.55;" onerror="this.parentElement.innerHTML='<svg width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'currentColor\'><path d=\'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.254 5.622 5.91-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z\'/></svg>'">
-        </a>
-        <a href="https://discord.gg/HJtuzTJN3h" target="_blank" rel="noopener" class="f-social" title="Discord">
-          <i class="fab fa-discord" style="font-size:.95rem;"></i>
-        </a>
-        <a href="https://instagram.com/alphaonelabs1" target="_blank" rel="noopener" class="f-social" title="Instagram">
-          <i class="fab fa-instagram" style="font-size:.95rem;"></i>
-        </a>
-        <a href="https://facebook.com/alphaonelabs" target="_blank" rel="noopener" class="f-social" title="Facebook">
-          <i class="fab fa-facebook" style="font-size:.95rem;"></i>
-        </a>
-        <a href="https://youtube.com/alphaonelabs" target="_blank" rel="noopener" class="f-social" title="YouTube">
-          <i class="fab fa-youtube" style="font-size:.95rem;"></i>
-        </a>
-        <a href="https://github.com/alphaonelabs/learn" target="_blank" rel="noopener" class="f-social" title="GitHub">
-          <i class="fab fa-github" style="font-size:.95rem;"></i>
-        </a>
-        <a href="https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg" target="_blank" rel="noopener" class="f-social" title="Slack">
-          <i class="fab fa-slack" style="font-size:.95rem;"></i>
-        </a>
-      </div>
-    </div>
-
-    <!-- Learning column -->
+    <!-- LEARNING -->
     <div>
       <p class="fc-title">Learning</p>
-      <a href="/" class="fc-link">Activities</a>
-      <a href="/dashboard.html" class="fc-link">Dashboard</a>
-      <a href="/teach.html" class="fc-link">Host an Activity</a>
-      <a href="https://alphaonelabs.com/en/courses/search/" target="_blank" class="fc-link">All Courses</a>
-      <a href="https://alphaonelabs.com/en/subjects/" target="_blank" class="fc-link">Subjects</a>
-      <a href="https://alphaonelabs.com/en/study-groups/" target="_blank" class="fc-link">Study Groups</a>
+      <a href="/" class="fc-link"><i class="fas fa-compass"></i>Activities</a>
+      <a href="/dashboard.html" class="fc-link"><i class="fas fa-gauge"></i>Dashboard</a>
+      <a href="/teach.html" class="fc-link"><i class="fas fa-chalkboard"></i>Host Activity</a>
+      <a href="https://alphaonelabs.com/en/courses/search/" target="_blank" class="fc-link"><i class="fas fa-book-open"></i>All Courses</a>
+      <a href="https://alphaonelabs.com/en/subjects/" target="_blank" class="fc-link"><i class="fas fa-list-check"></i>Subjects</a>
+      <a href="https://alphaonelabs.com/en/study-groups/" target="_blank" class="fc-link"><i class="fas fa-users"></i>Study Groups</a>
     </div>
 
-    <!-- Community column -->
+    <!-- COMMUNITY -->
     <div>
       <p class="fc-title">Community</p>
-      <a href="https://alphaonelabs.com/en/forum/" target="_blank" class="fc-link">Forum</a>
-      <a href="https://alphaonelabs.com/en/blog/" target="_blank" class="fc-link">Blog</a>
-      <a href="https://alphaonelabs.com/en/success-stories/" target="_blank" class="fc-link">Success Stories</a>
-      <a href="https://alphaonelabs.com/en/waiting-rooms/" target="_blank" class="fc-link">Waiting Rooms</a>
-      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas" target="_blank" class="fc-link">GSoC '26</a>
+      <a href="https://alphaonelabs.com/en/forum/" target="_blank" class="fc-link"><i class="fas fa-comments"></i>Forum</a>
+      <a href="https://alphaonelabs.com/en/blog/" target="_blank" class="fc-link"><i class="fas fa-blog"></i>Blog</a>
+      <a href="https://alphaonelabs.com/en/success-stories/" target="_blank" class="fc-link"><i class="fas fa-star"></i>Success Stories</a>
+      <a href="https://alphaonelabs.com/en/waiting-rooms/" target="_blank" class="fc-link"><i class="fas fa-door-open"></i>Waiting Rooms</a>
+      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas" target="_blank" class="fc-link"><i class="fas fa-code"></i>GSoC '26</a>
     </div>
 
-    <!-- About column -->
+    <!-- RESOURCES & INFO -->
     <div>
-      <p class="fc-title">About</p>
-      <a href="https://alphaonelabs.com/en/about/" target="_blank" class="fc-link">Our Mission</a>
-      <a href="https://github.com/alphaonelabs/learn" target="_blank" class="fc-link">GitHub Repo</a>
-      <a href="https://alphaonelabs.com/en/status/" target="_blank" class="fc-link">Status</a>
-      <a href="https://alphaonelabs.com/en/feedback/" target="_blank" class="fc-link">Feedback</a>
-      <a href="https://alphaonelabs.com/en/terms/#privacy" target="_blank" class="fc-link">Privacy Policy</a>
-      <a href="https://alphaonelabs.com/en/terms/#terms" target="_blank" class="fc-link">Terms</a>
+      <p class="fc-title">Resources</p>
+      <a href="https://alphaonelabs.com/en/about/" target="_blank" class="fc-link"><i class="fas fa-circle-info"></i>About Us</a>
+      <a href="https://github.com/alphaonelabs/learn" target="_blank" class="fc-link"><i class="fas fa-github"></i>GitHub</a>
+      <a href="https://alphaonelabs.com/en/status/" target="_blank" class="fc-link"><i class="fas fa-chart-line"></i>Status</a>
+      <a href="https://alphaonelabs.com/en/feedback/" target="_blank" class="fc-link"><i class="fas fa-comment-dots"></i>Feedback</a>
+      <a href="https://alphaonelabs.com/en/terms/#privacy" target="_blank" class="fc-link"><i class="fas fa-shield-halved"></i>Privacy</a>
+    </div>
+
+    <!-- CONNECT -->
+    <div>
+      <p class="fc-title">Connect</p>
+      <div class="footer-social">
+        <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="X/Twitter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:var(--teal);">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.254 5.622 5.91-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+        <a href="https://discord.gg/HJtuzTJN3h" target="_blank" rel="noopener" class="footer-social-btn" title="Discord">
+          <i class="fab fa-discord"></i>
+        </a>
+        <a href="https://instagram.com/alphaonelabs1" target="_blank" rel="noopener" class="footer-social-btn" title="Instagram">
+          <i class="fab fa-instagram"></i>
+        </a>
+        <a href="https://facebook.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="Facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+        <a href="https://youtube.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="YouTube">
+          <i class="fab fa-youtube"></i>
+        </a>
+        <a href="https://github.com/alphaonelabs/learn" target="_blank" rel="noopener" class="footer-social-btn" title="GitHub">
+          <i class="fab fa-github"></i>
+        </a>
+        <a href="https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg" target="_blank" rel="noopener" class="footer-social-btn" title="Slack">
+          <i class="fab fa-slack"></i>
+        </a>
+      </div>
     </div>
   </div>
 
-  <!-- Bottom bar -->
+  <!-- Footer Bottom -->
   <div class="footer-bottom">
-    <p style="font-size:.75rem;color:rgba(255,255,255,.22);">© 2024–2026 Alpha One Labs · Cloudflare Workers + D1 · All data encrypted at rest</p>
-    <div style="display:flex;gap:1.25rem;">
-      <a href="https://alphaonelabs.com/en/terms/#privacy" target="_blank" style="font-size:.73rem;color:rgba(255,255,255,.24);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.65)'" onmouseout="this.style.color='rgba(255,255,255,.24)'">Privacy</a>
-      <a href="https://alphaonelabs.com/en/terms/#terms" target="_blank" style="font-size:.73rem;color:rgba(255,255,255,.24);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.65)'" onmouseout="this.style.color='rgba(255,255,255,.24)'">Terms</a>
-      <a href="https://alphaonelabs.com/en/terms/#cookies" target="_blank" style="font-size:.73rem;color:rgba(255,255,255,.24);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.65)'" onmouseout="this.style.color='rgba(255,255,255,.24)'">Cookies</a>
+    <p>© 2024–2026 Alpha One Labs. All rights reserved. · Cloudflare Workers + D1</p>
+    <div class="footer-links">
+      <a href="https://alphaonelabs.com/en/about/">About Us</a>
+      <a href="https://alphaonelabs.com/en/terms/#terms">Terms & Conditions</a>
+      <a href="https://alphaonelabs.com/en/terms/#privacy">Privacy Policy</a>
+      <a href="https://alphaonelabs.com/en/terms/#cookies">Cookie Policy</a>
     </div>
   </div>
 </footer>
+
+<!-- ─── PROFILE DROPDOWN ─── -->
+<div id="profile-dropdown">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:11px;">
+      <div id="dd-avatar" style="width:36px;height:36px;background:var(--teal-dim);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;color:var(--teal);"></div>
+      <div>
+        <p id="dd-name" style="font-family:'Syne',sans-serif;font-weight:700;font-size:.83rem;color:var(--ink);"></p>
+        <p id="dd-role" style="font-size:.7rem;color:var(--muted);margin-top:1px;"></p>
+      </div>
+    </div>
+  </div>
+  <div style="padding:6px;">
+    <a href="/profile.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;color:var(--ink);font-size:.83rem;font-weight:500;">
+      <i class="fas fa-user-circle" style="color:var(--teal);width:16px;"></i> View Profile
+    </a>
+    <a href="/dashboard.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;color:var(--ink);font-size:.83rem;font-weight:500;">
+      <i class="fas fa-gauge" style="color:var(--teal);width:16px;"></i> Dashboard
+    </a>
+  </div>
+  <div style="padding:6px;border-top:1px solid var(--border);">
+    <button onclick="logout()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;background:transparent;border:none;cursor:pointer;color:#dc2626;font-size:.83rem;font-weight:500;width:100%;text-align:left;">
+      <i class="fas fa-sign-out-alt" style="width:16px;"></i> Sign Out
+    </button>
+  </div>
+</div>
 
 <script>
 const API='';
@@ -497,6 +556,20 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 
 // Navbar scroll
 window.addEventListener('scroll',()=>{document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>8);});
+
+// Mobile menu toggle
+function toggleMobileMenu(){
+  const menu=document.getElementById('mobile-menu');
+  menu.classList.toggle('hidden');
+  document.body.classList.toggle('overflow-hidden');
+}
+document.addEventListener('click',function(e){
+  const menu=document.getElementById('mobile-menu');
+  const btn=e.target.closest('[onclick="toggleMobileMenu()"]');
+  if(!menu.classList.contains('hidden')&&!btn&&!e.target.closest('#mobile-menu')){
+    toggleMobileMenu();
+  }
+});
 
 // Reveal animations
 const ro=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');}});},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
@@ -511,16 +584,18 @@ function updateNav(){
   if(token&&user){
     const ini=(user.name||user.username||'?').slice(0,2).toUpperCase();
     nav.innerHTML=`
-      <a href="/dashboard.html" style="font-size:.82rem;font-weight:600;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.8)'">Dashboard</a>
-      <button onclick="toggleDD(event)" style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#fff;display:flex;align-items:center;justify-content:center;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">${esc(ini)}</button>`;
+      <a href="/dashboard.html" class="nav-link">Dashboard</a>
+      <button onclick="toggleDD(event)" style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#fff;display:flex;align-items:center;justify-content:center;">${esc(ini)}</button>`;
     document.getElementById('dd-avatar').textContent=ini;
     document.getElementById('dd-name').textContent=user.name||user.username;
     document.getElementById('dd-role').textContent=user.role||'member';
     nav.appendChild(dd);
   } else {
     nav.innerHTML=`
-      <a href="/login.html" style="font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:color .15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.8)'">Login</a>
-      <a href="/login.html?tab=register" style="font-size:.84rem;font-weight:700;background:#F97316;color:#fff;text-decoration:none;padding:8px 18px;border-radius:10px;font-family:'Syne',sans-serif;transition:background .18s;" onmouseover="this.style.background='#ea6c0a'" onmouseout="this.style.background='#F97316'">Sign Up Free</a>`;
+      <a href="/login.html" class="nav-link" style="display:flex;align-items:center;gap:6px;"><i class="fas fa-right-to-bracket"></i> Login</a>
+      <a href="/login.html?tab=register" style="display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:.84rem;padding:8px 18px;border-radius:999px;border:none;cursor:pointer;text-decoration:none;">
+        <i class="fas fa-user-plus"></i> Signup
+      </a>`;
   }
 }
 

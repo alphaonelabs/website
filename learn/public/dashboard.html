@@ -18,10 +18,12 @@
       --teal-dark:#0F766E;
       --teal-light:#14B8A6;
       --teal-dim:#CCFBF1;
-      --accent:#F97316;
-      --jade:#00B27A;
+      --teal-dd:#115E59;
+      --orange:#F97316;
+      --orange-d:#EA6C0A;
       --muted:rgba(13,13,20,.48);
       --border:#E2E8F0;
+      --white:#ffffff;
     }
     html{scroll-behavior:smooth;}
     body{font-family:'DM Sans',sans-serif;background:#FAFBFC;color:var(--ink);overflow-x:hidden;}
@@ -32,24 +34,56 @@
     /* ─── NAVBAR ─── */
     #navbar{
       position:sticky;top:0;z-index:200;
-      background:rgba(13,148,136,.96);
-      backdrop-filter:blur(18px) saturate(180%);
-      border-bottom:1px solid rgba(255,255,255,.18);
-      box-shadow:0 2px 12px rgba(0,0,0,.12);
-      transition:box-shadow .3s,background .3s;
+      background:var(--teal);
+      box-shadow:0 2px 16px rgba(0,0,0,.15);
     }
-    #navbar.scrolled{background:rgba(15,118,110,.98);box-shadow:0 4px 20px rgba(0,0,0,.18);}
-    .nav-inner{max-width:1200px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:66px;}
+    #navbar.scrolled{background:var(--teal-dark);box-shadow:0 4px 24px rgba(0,0,0,.2);}
+    .nav-inner{max-width:1200px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:68px;}
+    @media(max-width:768px){.nav-inner{height:60px;padding:0 1rem;}}
     .nav-logo{display:flex;align-items:center;gap:10px;}
-    .nav-logo img{width:38px;height:38px;border-radius:10px;}
-    .nav-logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;color:#fff;}
+    .nav-logo img{width:50px;height:50px;border-radius:8px;}
+    @media(max-width:768px){.nav-logo img{width:40px;height:40px;}}
+    .nav-logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:#fff;}
+    @media(max-width:768px){.nav-logo-text{font-size:.95rem;}}
     .nav-links{display:flex;align-items:center;gap:2px;}
-    .nav-link{font-size:.84rem;font-weight:500;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:8px;transition:color .15s,background .15s;}
-    .nav-link.active{color:#fff;background:rgba(255,255,255,.18);}
-    .nav-link:hover{color:#fff;background:rgba(255,255,255,.12);}
+    .nav-link{font-size:.85rem;font-weight:500;color:rgba(255,255,255,.85);padding:6px 14px;border-radius:8px;}
+    .nav-link:hover{background:rgba(255,255,255,.15);color:#fff;}
+    .nav-link.active{background:rgba(255,255,255,.2);color:#fff;font-weight:600;}
     #nav-auth{display:flex;align-items:center;gap:10px;position:relative;}
+    .nav-toggle{display:none;background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;}
 
-    /* ─── HERO ─── */
+    @media(max-width:768px){
+      .nav-links{display:none;}
+      .nav-toggle{display:block;}
+    }
+
+    /* Mobile Menu */
+    #mobile-menu{
+      position:fixed;top:60px;left:0;right:0;bottom:0;
+      background:#fff;z-index:190;
+      overflow-y:auto;max-height:calc(100vh - 60px);
+      box-shadow:0 4px 12px rgba(0,0,0,.1);
+    }
+    #mobile-menu.hidden{display:none;}
+    .mobile-menu-item{padding:16px 16px;border-bottom:1px solid var(--border);}
+    .mobile-menu-item a{
+      font-family:'Syne',sans-serif;font-weight:600;color:var(--ink);font-size:.95rem;
+      display:flex;align-items:center;gap:10px;
+    }
+    .mobile-menu-item i{color:var(--teal);width:18px;}
+
+    /* Profile dropdown */
+    #profile-dropdown{
+      position:absolute;right:0;top:calc(100% + 10px);
+      background:#fff;border:1px solid var(--border);
+      border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.14);
+      min-width:220px;overflow:hidden;
+      opacity:0;transform:translateY(-8px) scale(.97);
+      pointer-events:none;
+    }
+    #profile-dropdown.open{opacity:1;transform:none;pointer-events:auto;}
+
+    /* ─── MAIN CONTENT ─── */
     .hero{
       background:linear-gradient(135deg,#0F766E 0%,#0D9488 50%,#14B8A6 100%);
       position:relative;overflow:hidden;padding:3rem 1.5rem;
@@ -146,7 +180,51 @@
     .empty-state-link:hover{text-decoration:underline;}
 
     /* ─── FOOTER ─── */
-    footer{background:#0F172A;color:rgba(255,255,255,.45);padding:2rem 1.5rem;text-align:center;font-size:.75rem;}
+    footer{background:#ffffff;color:rgba(0,0,0,.6);padding:4rem 1.5rem 2rem;}
+    @media(max-width:768px){footer{padding:3rem 1.25rem 1.5rem;}}
+    @media(max-width:640px){footer{padding:2.5rem 1rem 1.5rem;}}
+    
+    .footer-grid{max-width:1200px;margin:0 auto;padding:3.5rem 1.5rem;display:grid;grid-template-columns:repeat(4,1fr);gap:3.5rem;}
+    @media(max-width:1024px){.footer-grid{grid-template-columns:repeat(3,1fr);gap:3rem;}}
+    @media(max-width:768px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:2.5rem;padding:2.5rem 1.25rem;}}
+    @media(max-width:640px){.footer-grid{grid-template-columns:1fr;gap:2rem;padding:2rem 1rem;}}
+
+    .fc-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);margin-bottom:1.5rem;}
+    @media(max-width:640px){.fc-title{font-size:.8rem;margin-bottom:1.25rem;}}
+    
+    .fc-link{display:flex;align-items:center;gap:10px;font-size:.95rem;color:rgba(0,0,0,.55);margin-bottom:1rem;text-decoration:none;line-height:1.6;}
+    @media(max-width:768px){.fc-link{font-size:.9rem;margin-bottom:.85rem;}}
+    @media(max-width:640px){.fc-link{font-size:.85rem;margin-bottom:.75rem;}}
+
+    .fc-link i{color:var(--teal);width:18px;flex-shrink:0;}
+    .fc-link:hover{color:var(--teal);transform:translateX(4px);transition:all .3s ease;}
+
+    .footer-social{display:flex;flex-wrap:wrap;gap:12px;margin-top:1.75rem;}
+    @media(max-width:640px){.footer-social{justify-content:flex-start;gap:10px;margin-top:1.5rem;}}
+
+    .footer-social-btn{
+      width:44px;height:44px;border-radius:50%;
+      background:var(--teal-dim);color:var(--teal);
+      display:flex;align-items:center;justify-content:center;
+      border:2px solid var(--teal);font-size:1rem;text-decoration:none;
+      transition:all .3s ease;
+    }
+    @media(max-width:640px){.footer-social-btn{width:40px;height:40px;font-size:.9rem;}}
+
+    .footer-social-btn:hover{background:var(--teal);color:#fff;transform:translateY(-3px);box-shadow:0 8px 20px rgba(13,148,136,.25);}
+
+    .footer-bottom{border-top:2px solid var(--border);max-width:1200px;margin:0 auto;padding:1.5rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;font-size:.85rem;color:rgba(0,0,0,.6);}
+    @media(max-width:768px){.footer-bottom{padding:1.25rem 1.25rem;flex-direction:column;text-align:center;gap:1rem;}}
+    @media(max-width:640px){.footer-bottom{padding:1rem 1rem;font-size:.8rem;gap:1rem;}}
+
+    .footer-links{display:flex;gap:2rem;text-decoration:none;}
+    @media(max-width:768px){.footer-links{flex-direction:column;gap:1rem;}}
+    @media(max-width:640px){.footer-links{gap:.75rem;}}
+
+    .footer-links a{color:rgba(0,0,0,.55);text-decoration:none;font-size:.9rem;transition:all .3s ease;}
+    @media(max-width:640px){.footer-links a{font-size:.8rem;}}
+    
+    .footer-links a:hover{color:var(--teal);font-weight:600;}
 
     /* ─── GRID ─── */
     .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin-bottom:2rem;}
@@ -160,23 +238,34 @@
   <div class="nav-inner">
     <a href="/" class="nav-logo">
       <img src="./images/logo.png" alt="Alpha One Labs"
-           onerror="this.style.display='none';document.getElementById('lf2').style.display='flex'">
-      <div id="lf2" style="display:none;width:38px;height:38px;background:rgba(255,255,255,.2);border-radius:10px;align-items:center;justify-content:center;">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 14L9 4L15 14H3Z" fill="white"/></svg>
+           onerror="this.style.display='none';document.getElementById('logo-fb').style.display='flex'">
+      <div id="logo-fb" style="display:none;width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:8px;align-items:center;justify-content:center;">
+        <i class="fas fa-graduation-cap" style="color:#fff;font-size:1.2rem;"></i>
       </div>
       <span class="nav-logo-text">Alpha One Labs</span>
     </a>
     <div class="nav-links">
       <a href="/" class="nav-link">Activities</a>
       <a href="/dashboard.html" class="nav-link active">Dashboard</a>
-      <a href="/teach.html" class="nav-link" id="host-link">Host</a>
+      <a href="/teach.html" class="nav-link">Host</a>
     </div>
-    <div id="nav-auth" style="display:flex;align-items:center;gap:10px;position:relative;">
-      <span class="nav-user" style="font-size:.82rem;font-weight:600;color:rgba(255,255,255,.8);text-decoration:none;padding:6px 13px;border-radius:8px;transition:color .15s;" id="nav-user"></span>
-      <button type="button" onclick="logout()" style="font-size:.82rem;font-weight:500;color:rgba(255,255,255,.7);text-decoration:none;padding:6px 13px;border-radius:8px;transition:color .15s;background:transparent;border:none;cursor:pointer;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.7)'">Logout</button>
-    </div>
+    <div id="nav-auth"></div>
+    <button class="nav-toggle" onclick="toggleMobileMenu()"><i class="fas fa-bars"></i></button>
   </div>
 </nav>
+
+<!-- Mobile Menu -->
+<div id="mobile-menu" class="hidden">
+  <div class="mobile-menu-item">
+    <a href="/"><i class="fas fa-home"></i>Activities</a>
+  </div>
+  <div class="mobile-menu-item">
+    <a href="/dashboard.html"><i class="fas fa-gauge"></i>Dashboard</a>
+  </div>
+  <div class="mobile-menu-item">
+    <a href="/teach.html"><i class="fas fa-chalkboard-user"></i>Host</a>
+  </div>
+</div>
 
 <!-- ─── HERO ─── -->
 <div class="hero">
@@ -214,10 +303,10 @@
     </div>
 
     <div id="empty-state" class="hidden empty-state">
-  <p class="empty-state-icon">🎓</p>
-  <p class="empty-state-text" id="empty-msg">No hosted activities yet.</p>
-  <a id="empty-action-link" href="/teach.html" class="empty-state-link">Create your first activity →</a>
-</div>
+      <p class="empty-state-icon">🎓</p>
+      <p class="empty-state-text" id="empty-msg">No hosted activities yet.</p>
+      <a id="empty-action-link" href="/teach.html" class="empty-state-link">Create your first activity →</a>
+    </div>
   </section>
 
   <!-- JOINED ACTIVITIES SECTION -->
@@ -225,31 +314,162 @@
 
 </main>
 
+<!-- ─── PROFILE DROPDOWN ─── -->
+<div id="profile-dropdown">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:11px;">
+      <div id="dd-avatar" style="width:36px;height:36px;background:var(--teal-dim);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;color:var(--teal);"></div>
+      <div>
+        <p id="dd-name" style="font-family:'Syne',sans-serif;font-weight:700;font-size:.83rem;color:var(--ink);"></p>
+        <p id="dd-role" style="font-size:.7rem;color:var(--muted);margin-top:1px;"></p>
+      </div>
+    </div>
+  </div>
+  <div style="padding:6px;">
+    <a href="/profile.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;color:var(--ink);font-size:.83rem;font-weight:500;">
+      <i class="fas fa-user-circle" style="color:var(--teal);width:16px;"></i> View Profile
+    </a>
+    <a href="/dashboard.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;color:var(--ink);font-size:.83rem;font-weight:500;">
+      <i class="fas fa-gauge" style="color:var(--teal);width:16px;"></i> Dashboard
+    </a>
+  </div>
+  <div style="padding:6px;border-top:1px solid var(--border);">
+    <button onclick="logout()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;background:transparent;border:none;cursor:pointer;color:#dc2626;font-size:.83rem;font-weight:500;width:100%;text-align:left;">
+      <i class="fas fa-sign-out-alt" style="width:16px;"></i> Sign Out
+    </button>
+  </div>
+</div>
+
 <!-- ─── FOOTER ─── -->
 <footer>
-  <p>&copy; 2024–2026 Alpha One Labs · All user data encrypted at rest</p>
+  <div class="footer-grid">
+    <!-- LEARNING -->
+    <div>
+      <p class="fc-title">Learning</p>
+      <a href="/" class="fc-link"><i class="fas fa-compass"></i>Activities</a>
+      <a href="/dashboard.html" class="fc-link"><i class="fas fa-gauge"></i>Dashboard</a>
+      <a href="/teach.html" class="fc-link"><i class="fas fa-chalkboard"></i>Host Activity</a>
+      <a href="https://alphaonelabs.com/en/courses/search/" target="_blank" class="fc-link"><i class="fas fa-book-open"></i>All Courses</a>
+      <a href="https://alphaonelabs.com/en/subjects/" target="_blank" class="fc-link"><i class="fas fa-list-check"></i>Subjects</a>
+      <a href="https://alphaonelabs.com/en/study-groups/" target="_blank" class="fc-link"><i class="fas fa-users"></i>Study Groups</a>
+    </div>
+
+    <!-- COMMUNITY -->
+    <div>
+      <p class="fc-title">Community</p>
+      <a href="https://alphaonelabs.com/en/forum/" target="_blank" class="fc-link"><i class="fas fa-comments"></i>Forum</a>
+      <a href="https://alphaonelabs.com/en/blog/" target="_blank" class="fc-link"><i class="fas fa-blog"></i>Blog</a>
+      <a href="https://alphaonelabs.com/en/success-stories/" target="_blank" class="fc-link"><i class="fas fa-star"></i>Success Stories</a>
+      <a href="https://alphaonelabs.com/en/waiting-rooms/" target="_blank" class="fc-link"><i class="fas fa-door-open"></i>Waiting Rooms</a>
+      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas" target="_blank" class="fc-link"><i class="fas fa-code"></i>GSoC '26</a>
+    </div>
+
+    <!-- RESOURCES & INFO -->
+    <div>
+      <p class="fc-title">Resources</p>
+      <a href="https://alphaonelabs.com/en/about/" target="_blank" class="fc-link"><i class="fas fa-circle-info"></i>About Us</a>
+      <a href="https://github.com/alphaonelabs/learn" target="_blank" class="fc-link"><i class="fas fa-github"></i>GitHub</a>
+      <a href="https://alphaonelabs.com/en/status/" target="_blank" class="fc-link"><i class="fas fa-chart-line"></i>Status</a>
+      <a href="https://alphaonelabs.com/en/feedback/" target="_blank" class="fc-link"><i class="fas fa-comment-dots"></i>Feedback</a>
+      <a href="https://alphaonelabs.com/en/terms/#privacy" target="_blank" class="fc-link"><i class="fas fa-shield-halved"></i>Privacy</a>
+    </div>
+
+    <!-- CONNECT -->
+    <div>
+      <p class="fc-title">Connect</p>
+      <div class="footer-social">
+        <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="X/Twitter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:var(--teal);">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.254 5.622 5.91-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+        <a href="https://discord.gg/HJtuzTJN3h" target="_blank" rel="noopener" class="footer-social-btn" title="Discord">
+          <i class="fab fa-discord"></i>
+        </a>
+        <a href="https://instagram.com/alphaonelabs1" target="_blank" rel="noopener" class="footer-social-btn" title="Instagram">
+          <i class="fab fa-instagram"></i>
+        </a>
+        <a href="https://facebook.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="Facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+        <a href="https://youtube.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="YouTube">
+          <i class="fab fa-youtube"></i>
+        </a>
+        <a href="https://github.com/alphaonelabs/learn" target="_blank" rel="noopener" class="footer-social-btn" title="GitHub">
+          <i class="fab fa-github"></i>
+        </a>
+        <a href="https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg" target="_blank" rel="noopener" class="footer-social-btn" title="Slack">
+          <i class="fab fa-slack"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Bottom -->
+  <div class="footer-bottom">
+    <p>© 2024–2026 Alpha One Labs. All rights reserved. · Cloudflare Workers + D1</p>
+    <div class="footer-links">
+      <a href="https://alphaonelabs.com/en/about/">About Us</a>
+      <a href="https://alphaonelabs.com/en/terms/#terms">Terms & Conditions</a>
+      <a href="https://alphaonelabs.com/en/terms/#privacy">Privacy Policy</a>
+      <a href="https://alphaonelabs.com/en/terms/#cookies">Cookie Policy</a>
+    </div>
+  </div>
 </footer>
 
 <script>
   const API = '';
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  
+  // Scroll effect for navbar
+  window.addEventListener('scroll',()=>{document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>8);});
+
+  // Mobile menu toggle
+  function toggleMobileMenu(){
+    const menu=document.getElementById('mobile-menu');
+    menu.classList.toggle('hidden');
+    document.body.classList.toggle('overflow-hidden');
+  }
+  document.addEventListener('click',function(e){
+    const menu=document.getElementById('mobile-menu');
+    const btn=e.target.closest('[onclick="toggleMobileMenu()"]');
+    if(!menu.classList.contains('hidden')&&!btn&&!e.target.closest('#mobile-menu')){
+      toggleMobileMenu();
+    }
+  });
+
+  // Auth
   const token = localStorage.getItem('edu_token');
   const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
   if (!token || !user) window.location.href = '/login.html';
-  function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+  
+  function logout() { localStorage.removeItem('edu_token'); localStorage.removeItem('edu_user'); window.location.href = '/login.html'; }
 
+  // Update navbar with user info
+  function updateNav(){
+    const nav=document.getElementById('nav-auth');
+    const dd=document.getElementById('profile-dropdown');
+    if(token&&user){
+      const ini=(user.name||user.username||'?').slice(0,2).toUpperCase();
+      nav.innerHTML=`
+        <a href="/dashboard.html" class="nav-link">Dashboard</a>
+        <button onclick="toggleDD(event)" style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#fff;display:flex;align-items:center;justify-content:center;">${esc(ini)}</button>`;
+      document.getElementById('dd-avatar').textContent=ini;
+      document.getElementById('dd-name').textContent=user.name||user.username;
+      document.getElementById('dd-role').textContent=user.role||'member';
+      nav.appendChild(dd);
+    }
+  }
+
+  let ddOpen=false;
+  function toggleDD(e){e.stopPropagation();ddOpen=!ddOpen;document.getElementById('profile-dropdown').classList.toggle('open',ddOpen);}
+  document.addEventListener('click',()=>{if(ddOpen){ddOpen=false;document.getElementById('profile-dropdown').classList.remove('open');}});
+
+  // Dashboard logic
   const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', other:'✨' };
   const typeColor = { course:'bg-indigo-100 text-indigo-700', meetup:'bg-pink-100 text-pink-700', workshop:'bg-orange-100 text-orange-700', seminar:'bg-teal-100 text-teal-700', other:'bg-slate-100 text-slate-600' };
   const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
   const schedLabel = { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
-
-  document.getElementById('nav-user').textContent = 'Hi, ' + user.username;
-
-  async function loadDashboard() {
-    const res  = await fetch('/api/dashboard', { headers:{ Authorization: 'Bearer ' + token } });
-    const data = await res.json();
-    renderDashboard(data);
-  }
 
   function statCard(value, label) {
     return '<div class="stat-card"><p class="stat-value" style="color:var(--teal);">' + value + '</p><p class="stat-label">' + label + '</p></div>';
@@ -333,6 +553,13 @@
     document.getElementById('joined-section').innerHTML = joinedHtml;
   }
 
+  async function loadDashboard() {
+    const res  = await fetch('/api/dashboard', { headers:{ Authorization: 'Bearer ' + token } });
+    const data = await res.json();
+    renderDashboard(data);
+  }
+
+  updateNav();
   loadDashboard().catch(e => {
     document.getElementById('activities-list').innerHTML =
       '<p style="color:#EF4444;font-size:.9rem;text-align:center;padding:2rem;">Failed to load dashboard: ' + e.message + '</p>';
