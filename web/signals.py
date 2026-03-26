@@ -67,3 +67,7 @@ def invalidate_session_cache(sender, instance, **kwargs):
     enrollments = Enrollment.objects.filter(course=instance.course)
     for enrollment in enrollments:
         invalidate_progress_cache(enrollment.student)
+
+
+# Import assignment reminder signal handlers
+from .assignment_reminders import check_and_send_assignment_reminders  # noqa

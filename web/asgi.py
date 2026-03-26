@@ -22,7 +22,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter  # type: ignore
 from django.core.asgi import get_asgi_application
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
-# Initialize Django settings
+# Initialize Django settings to ensure models and routing can be imported without issues
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "web.settings")
 django.setup()
 
