@@ -1,0 +1,56 @@
+{% extends "allauth/layouts/base.html" %}
+
+{% load socialaccount %}
+
+{% block content %}
+  <div class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+        <h2 class="text-center text-2xl font-bold leading-9 tracking-tight text-gray-900 dark:text-white mb-6">
+          <i class="fas fa-user-plus text-orange-500 mr-2"></i>
+          Complete Your Sign Up
+        </h2>
+        <p class="text-center text-sm text-gray-600 dark:text-gray-400 mb-6">
+          You're signing up using your
+          <strong>{{ account.get_provider.name }}</strong>
+          account
+          ({{ account.get_provider_account.to_str }}).
+        </p>
+        <form method="post" action="{% url 'socialaccount_signup' %}">
+          {% csrf_token %}
+          {% if form.errors %}
+            <div class="bg-red-50 dark:bg-red-900 p-4 rounded-md mb-4">
+              <div class="text-sm text-red-700 dark:text-red-200">
+                {% for field in form %}
+                  {% for error in field.errors %}<p>{{ error }}</p>{% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+              </div>
+            </div>
+          {% endif %}
+          {% for field in form %}
+            {% if field.name != "email" %}
+              <div class="mb-4">
+                <label for="{{ field.id_for_label }}"
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ field.label }}
+                </label>
+                <input type="{{ field.field.widget.input_type|default:'text' }}"
+                       name="{{ field.name }}"
+                       id="{{ field.id_for_label }}"
+                       value="{{ field.value|default:'' }}"
+                       class="block w-full rounded-md border-0 py-2 px-4 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-orange-500 dark:bg-gray-700 sm:text-sm" />
+                {% if field.errors %}<p class="mt-1 text-xs text-red-600">{{ field.errors|join:", " }}</p>{% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+          <button type="submit"
+                  class="flex w-full justify-center rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 transition duration-200">
+            <i class="fas fa-check mr-2"></i>
+            Continue
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

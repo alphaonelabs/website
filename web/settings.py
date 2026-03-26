@@ -142,6 +142,9 @@ INSTALLED_APPS = [
     "channels",
     "allauth",
     "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.github",
     "captcha",
     "markdownx",
     "web",
@@ -303,6 +306,35 @@ ACCOUNT_RATE_LIMITS = {
 ACCOUNT_FORMS = {
     "signup": "web.forms.UserRegistrationForm",
     "login": "web.forms.CustomLoginForm",
+}
+
+# Social account settings
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"  # Google/GitHub already verify emails
+SOCIALACCOUNT_ADAPTER = "web.adapters.CustomSocialAccountAdapter"
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# OAuth provider configuration
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": env.str("GOOGLE_OAUTH_CLIENT_ID", default=""),
+            "secret": env.str("GOOGLE_OAUTH_CLIENT_SECRET", default=""),
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "VERIFIED_EMAIL": True,
+    },
+    "github": {
+        "APP": {
+            "client_id": env.str("GITHUB_OAUTH_CLIENT_ID", default=""),
+            "secret": env.str("GITHUB_OAUTH_CLIENT_SECRET", default=""),
+        },
+        "SCOPE": ["user:email"],
+        "VERIFIED_EMAIL": True,
+    },
 }
 
 LANGUAGE_CODE = "en"
