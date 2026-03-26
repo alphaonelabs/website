@@ -82,4 +82,3 @@ def get_similar_courses(course, limit=3):
     )
 
     return similar_courses[:limit]
-    return similar_courses[:limit]
