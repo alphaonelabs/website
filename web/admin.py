@@ -28,6 +28,9 @@ from .models import (
     ForumTopic,
     Goods,
     LearningStreak,
+    MentorProfile,
+    MentorshipRequest,
+    MentorshipSession,
     MembershipPlan,
     MembershipSubscriptionEvent,
     Notification,
@@ -610,6 +613,27 @@ class ChallengeSubmissionAdmin(admin.ModelAdmin):
 
 # Unregister the default User admin and register our custom one
 admin.site.unregister(User)
+@admin.register(MentorProfile)
+class MentorProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "is_active", "is_free", "hourly_rate", "availability", "created_at")
+    list_filter = ("is_active", "is_free", "availability")
+    search_fields = ("user__username", "user__email")
+
+
+@admin.register(MentorshipRequest)
+class MentorshipRequestAdmin(admin.ModelAdmin):
+    list_display = ("student", "mentor", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("student__username", "mentor__user__username")
+
+
+@admin.register(MentorshipSession)
+class MentorshipSessionAdmin(admin.ModelAdmin):
+    list_display = ("mentor", "student", "scheduled_at", "status", "rating")
+    list_filter = ("status",)
+    search_fields = ("mentor__user__username", "student__username")
+
+
 admin.site.register(User, CustomUserAdmin)
 
 

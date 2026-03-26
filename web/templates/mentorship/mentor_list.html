@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Find a Mentor{% endblock title %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Find a Mentor</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-1">Connect with experienced mentors in your area of interest.</p>
+    </div>
+    <a href="{% url 'become_mentor' %}" class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-4 py-2 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+      <i class="fas fa-chalkboard-teacher mr-2" aria-hidden="true"></i> Become a Mentor
+    </a>
+  </div>
+  <form method="get" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6 flex flex-wrap gap-4 items-end">
+    <div>
+      <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
+      <select id="subject" name="subject" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300">
+        <option value="">All Subjects</option>
+        {% for s in subjects %}<option value="{{ s.id }}" {% if selected_subject == s.id|stringformat:"i" %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="availability" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Availability</label>
+      <select id="availability" name="availability" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-300">
+        <option value="">Any</option>
+        {% for val, label in availability_choices %}<option value="{{ val }}" {% if selected_availability == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="flex items-center">
+      <input type="checkbox" id="is_free" name="is_free" value="1" {% if is_free == "1" %}checked{% endif %} class="w-4 h-4 text-teal-500 border-gray-300 rounded focus:ring-teal-300">
+      <label for="is_free" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Free only</label>
+    </div>
+    <button type="submit" class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-4 py-2 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">Filter</button>
+    <a href="{% url 'mentor_list' %}" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 py-2">Clear</a>
+  </form>
+  {% if mentors %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for mentor in mentors %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col">
+      <div class="flex items-center space-x-4 mb-4">
+        {% if mentor.user.profile.avatar %}
+        <img src="{{ mentor.user.profile.avatar.url }}" alt="" class="w-14 h-14 rounded-full object-cover">
+        {% else %}
+        <div class="w-14 h-14 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center">
+          <i class="fas fa-user text-teal-500 dark:text-teal-300 text-xl" aria-hidden="true"></i>
+        </div>
+        {% endif %}
+        <div>
+          <h2 class="font-semibold text-gray-900 dark:text-white">{{ mentor.user.get_full_name|default:mentor.user.username }}</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ mentor.experience_years }} yr{{ mentor.experience_years|pluralize }} experience</p>
+          {% if mentor.average_rating %}
+          <span class="text-xs text-yellow-500"><i class="fas fa-star mr-1" aria-hidden="true"></i>{{ mentor.average_rating }} ({{ mentor.total_sessions }} sessions)</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if mentor.bio %}<p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{{ mentor.bio }}</p>{% endif %}
+      <div class="flex flex-wrap gap-1 mb-3">
+        {% for s in mentor.subjects.all %}<span class="px-2 py-0.5 text-xs bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 rounded-full">{{ s.name }}</span>{% endfor %}
+      </div>
+      <div class="flex items-center justify-between mt-auto pt-3 border-t border-gray-200 dark:border-gray-700">
+        <span class="text-sm font-semibold {% if mentor.is_free %}text-green-600 dark:text-green-400{% else %}text-gray-900 dark:text-white{% endif %}">
+          {% if mentor.is_free %}Free{% else %}${{ mentor.hourly_rate }}/hr{% endif %}
+        </span>
+        <a href="{% url 'mentor_profile_view' mentor.id %}" class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">View Profile</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+    <i class="fas fa-chalkboard-teacher text-4xl text-gray-300 dark:text-gray-600 mb-4" aria-hidden="true"></i>
+    <p class="text-gray-500 dark:text-gray-400">No mentors found. Try adjusting your filters.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock content %}

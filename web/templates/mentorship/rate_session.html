@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Rate Session{% endblock title %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-lg">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Rate Your Session</h1>
+    <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">
+      with {{ session.mentor.user.get_full_name|default:session.mentor.user.username }}
+      on {{ session.scheduled_at|date:"M d, Y" }}
+    </p>
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rating <span class="text-red-500">*</span></label>
+        <div class="flex space-x-4">
+          {% for i in "12345" %}
+          <label class="flex flex-col items-center cursor-pointer">
+            <input type="radio" name="rating" value="{{ forloop.counter }}" required class="sr-only">
+            <span class="text-2xl text-gray-300 dark:text-gray-600 hover:text-yellow-500 transition-colors">{{ forloop.counter }}</span>
+            <i class="fas fa-star text-gray-300 dark:text-gray-600 hover:text-yellow-500" aria-hidden="true"></i>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label for="review" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Review (optional)</label>
+        <textarea id="review" name="review" rows="4" placeholder="Share your experience..."
+          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button type="submit" class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-semibold px-6 py-2 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+          Submit Rating
+        </button>
+        <a href="{% url 'my_mentorship' %}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 text-sm">Skip</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock content %}

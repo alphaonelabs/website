@@ -114,6 +114,9 @@ from .marketing import (
 from .models import (
     Achievement,
     Badge,
+    MentorProfile,
+    MentorshipRequest,
+    MentorshipSession,
     BlogComment,
     BlogPost,
     CartItem,
@@ -8839,3 +8842,289 @@ def leave_session_waiting_room(request, course_slug):
         messages.info(request, "You are not in the session waiting room for this course.")
 
     return redirect("course_detail", slug=course_slug)
+
+
+# --- Mentorship Views ---
+
+
+@login_required
+def mentor_list(request):
+    mentors = MentorProfile.objects.filter(is_active=True).select_related(
+        "user", "user__profile"
+    ).prefetch_related("subjects")
+    subject_id = request.GET.get("subject")
+    availability = request.GET.get("availability")
+    is_free = request.GET.get("is_free")
+    if subject_id:
+        mentors = mentors.filter(subjects__id=subject_id)
+    if availability:
+        mentors = mentors.filter(availability=availability)
+    if is_free == "1":
+        mentors = mentors.filter(is_free=True)
+    subjects = Subject.objects.all()
+    return render(request, "mentorship/mentor_list.html", {
+        "mentors": mentors,
+        "subjects": subjects,
+        "selected_subject": subject_id,
+        "selected_availability": availability,
+        "is_free": is_free,
+        "availability_choices": MentorProfile.AVAILABILITY_CHOICES,
+    })
+
+
+@login_required
+def mentor_profile_view(request, mentor_id):
+    mentor = get_object_or_404(MentorProfile, id=mentor_id, is_active=True)
+    existing_request = MentorshipRequest.objects.filter(
+        mentor=mentor, student=request.user, status__in=["pending", "accepted"]
+    ).first()
+    reviews = MentorshipSession.objects.filter(
+        mentor=mentor, status="completed", rating__isnull=False
+    ).select_related("student").order_by("-scheduled_at")[:5]
+    return render(request, "mentorship/mentor_profile.html", {
+        "mentor": mentor,
+        "existing_request": existing_request,
+        "reviews": reviews,
+    })
+
+
+@login_required
+def request_mentorship(request, mentor_id):
+    mentor = get_object_or_404(MentorProfile, id=mentor_id, is_active=True)
+    if mentor.user == request.user:
+        messages.error(request, "You cannot request mentorship from yourself.")
+        return redirect("mentor_profile_view", mentor_id=mentor_id)
+    existing = MentorshipRequest.objects.filter(
+        mentor=mentor, student=request.user, status__in=["pending", "accepted"]
+    ).first()
+    if existing:
+        messages.error(request, "You have already sent a request to this mentor.")
+        return redirect("mentor_profile_view", mentor_id=mentor_id)
+    if request.method == "POST":
+        message = request.POST.get("message", "").strip()
+        subject_id = request.POST.get("subject")
+        if not message:
+            messages.error(request, "Please include a message with your request.")
+            return redirect("request_mentorship", mentor_id=mentor_id)
+        subject = None
+        if subject_id:
+            subject = mentor.subjects.filter(id=subject_id).first()
+            if not subject:
+                messages.error(request, "Please select a valid subject from the mentor profile.")
+                return redirect("request_mentorship", mentor_id=mentor_id)
+        MentorshipRequest.objects.create(
+            mentor=mentor, student=request.user, subject=subject, message=message
+        )
+        messages.success(request, "Mentorship request sent!")
+        return redirect("mentor_profile_view", mentor_id=mentor_id)
+    return render(request, "mentorship/request_mentorship.html", {
+        "mentor": mentor, "subjects": mentor.subjects.all()
+    })
+
+
+@login_required
+def my_mentorship(request):
+    requests_sent = MentorshipRequest.objects.filter(
+        student=request.user
+    ).select_related("mentor__user", "subject").order_by("-created_at")
+    sessions = MentorshipSession.objects.filter(
+        student=request.user
+    ).select_related("mentor__user", "subject").order_by("-scheduled_at")
+    return render(request, "mentorship/my_mentorship.html", {
+        "requests_sent": requests_sent,
+        "sessions": sessions,
+    })
+
+
+@login_required
+def cancel_mentorship_request(request, request_id):
+    mentorship_request = get_object_or_404(
+        MentorshipRequest, id=request_id, student=request.user, status="pending"
+    )
+    if request.method == "POST":
+        mentorship_request.status = "cancelled"
+        mentorship_request.save(update_fields=["status", "updated_at"])
+        messages.success(request, "Request cancelled.")
+    return redirect("my_mentorship")
+
+
+@login_required
+def become_mentor(request):
+    try:
+        mentor = request.user.mentor_profile
+    except MentorProfile.DoesNotExist:
+        mentor = None
+    if request.method == "POST":
+        bio = request.POST.get("bio", "").strip()
+        try:
+            experience_years = max(0, int(request.POST.get("experience_years", 0)))
+        except (ValueError, TypeError):
+            messages.error(request, "Please enter a valid number for years of experience.")
+            return redirect("become_mentor")
+        is_free = request.POST.get("is_free") == "on"
+        try:
+            hourly_rate = max(0.0, float(request.POST.get("hourly_rate", 0)))
+        except (ValueError, TypeError):
+            messages.error(request, "Please enter a valid hourly rate.")
+            return redirect("become_mentor")
+        availability = request.POST.get("availability", "flexible")
+        if availability not in dict(MentorProfile.AVAILABILITY_CHOICES):
+            availability = "flexible"
+        subject_ids = request.POST.getlist("subjects")
+        if mentor:
+            mentor.bio = bio
+            mentor.experience_years = experience_years
+            mentor.is_free = is_free
+            mentor.hourly_rate = hourly_rate
+            mentor.availability = availability
+            mentor.is_active = True
+            mentor.save()
+        else:
+            mentor = MentorProfile.objects.create(
+                user=request.user,
+                bio=bio,
+                experience_years=experience_years,
+                is_free=is_free,
+                hourly_rate=hourly_rate,
+                availability=availability,
+            )
+        mentor.subjects.set(Subject.objects.filter(id__in=subject_ids))
+        messages.success(request, "Mentor profile saved!")
+        return redirect("mentor_dashboard")
+    return render(request, "mentorship/become_mentor.html", {
+        "mentor": mentor,
+        "subjects": Subject.objects.all(),
+        "availability_choices": MentorProfile.AVAILABILITY_CHOICES,
+    })
+
+
+@login_required
+def mentor_dashboard(request):
+    try:
+        mentor = request.user.mentor_profile
+    except MentorProfile.DoesNotExist:
+        messages.error(request, "You do not have a mentor profile.")
+        return redirect("become_mentor")
+    pending_requests = mentor.requests.filter(status="pending").select_related("student", "subject")
+    accepted_requests = mentor.requests.filter(status="accepted").select_related("student", "subject")
+    upcoming_sessions = mentor.sessions.filter(
+        status="scheduled", scheduled_at__gte=timezone.now()
+    ).select_related("student", "subject").order_by("scheduled_at")
+    past_sessions = mentor.sessions.filter(
+        status="completed"
+    ).select_related("student", "subject").order_by("-scheduled_at")[:10]
+    return render(request, "mentorship/mentor_dashboard.html", {
+        "mentor": mentor,
+        "pending_requests": pending_requests,
+        "accepted_requests": accepted_requests,
+        "upcoming_sessions": upcoming_sessions,
+        "past_sessions": past_sessions,
+    })
+
+
+@login_required
+def respond_to_request(request, request_id):
+    try:
+        mentor = request.user.mentor_profile
+    except MentorProfile.DoesNotExist:
+        return redirect("become_mentor")
+    mentorship_request = get_object_or_404(
+        MentorshipRequest, id=request_id, mentor=mentor, status="pending"
+    )
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "accept":
+            mentorship_request.status = "accepted"
+            messages.success(request, f"Request from {mentorship_request.student.username} accepted.")
+        elif action == "decline":
+            mentorship_request.status = "declined"
+            messages.success(request, "Request declined.")
+        mentorship_request.save(update_fields=["status", "updated_at"])
+    return redirect("mentor_dashboard")
+
+
+@login_required
+def schedule_session(request, request_id):
+    try:
+        mentor = request.user.mentor_profile
+    except MentorProfile.DoesNotExist:
+        return redirect("become_mentor")
+    mentorship_request = get_object_or_404(
+        MentorshipRequest, id=request_id, mentor=mentor, status="accepted"
+    )
+    if request.method == "POST":
+        from django.utils.dateparse import parse_datetime
+        scheduled_at_raw = parse_datetime(request.POST.get("scheduled_at", "").strip())
+        if not scheduled_at_raw:
+            messages.error(request, "Please provide a valid date and time.")
+            return redirect("schedule_session", request_id=request_id)
+        import datetime
+        if timezone.is_naive(scheduled_at_raw):
+            scheduled_at = timezone.make_aware(scheduled_at_raw)
+        else:
+            scheduled_at = scheduled_at_raw
+        if scheduled_at <= timezone.now():
+            messages.error(request, "Session must be scheduled in the future.")
+            return redirect("schedule_session", request_id=request_id)
+        try:
+            duration = int(request.POST.get("duration_minutes", 60))
+            if duration < 15:
+                raise ValueError
+        except (ValueError, TypeError):
+            duration = 60
+        notes = request.POST.get("notes", "").strip()
+        MentorshipSession.objects.create(
+            mentor=mentor,
+            student=mentorship_request.student,
+            subject=mentorship_request.subject,
+            scheduled_at=scheduled_at,
+            duration_minutes=duration,
+            notes=notes,
+        )
+        messages.success(request, "Session scheduled!")
+        return redirect("mentor_dashboard")
+    return render(request, "mentorship/schedule_session.html", {
+        "mentor": mentor, "mentorship_request": mentorship_request
+    })
+
+
+@login_required
+def complete_session(request, session_id):
+    try:
+        mentor = request.user.mentor_profile
+    except MentorProfile.DoesNotExist:
+        return redirect("become_mentor")
+    session = get_object_or_404(MentorshipSession, id=session_id, mentor=mentor, status="scheduled")
+    if request.method == "POST":
+        if session.scheduled_at > timezone.now():
+            messages.error(request, "You cannot complete a session that has not started yet.")
+            return redirect("mentor_dashboard")
+        session.status = "completed"
+        session.notes = request.POST.get("notes", session.notes).strip()
+        session.save(update_fields=["status", "notes", "updated_at"])
+        messages.success(request, "Session marked as completed.")
+    return redirect("mentor_dashboard")
+
+
+@login_required
+def rate_session(request, session_id):
+    session = get_object_or_404(
+        MentorshipSession, id=session_id, student=request.user, status="completed"
+    )
+    if session.rating:
+        messages.error(request, "You have already rated this session.")
+        return redirect("my_mentorship")
+    if request.method == "POST":
+        try:
+            rating = int(request.POST.get("rating", 0))
+            if rating < 1 or rating > 5:
+                raise ValueError
+        except (ValueError, TypeError):
+            messages.error(request, "Rating must be between 1 and 5.")
+            return redirect("rate_session", session_id=session_id)
+        session.rating = rating
+        session.review = request.POST.get("review", "").strip()
+        session.save(update_fields=["rating", "review", "updated_at"])
+        messages.success(request, "Thank you for your feedback!")
+        return redirect("my_mentorship")
+    return render(request, "mentorship/rate_session.html", {"session": session})
