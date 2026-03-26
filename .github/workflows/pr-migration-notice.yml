@@ -1,25 +1,57 @@
 name: PR Migration Notice
 
 on:
-  pull_request_target:
-    types: [opened]
+  workflow_run:
+    workflows: ["Test"]
+    types: [requested]
 
 permissions:
   pull-requests: write
+  issues: write
 
 jobs:
   notify-and-close:
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'pull_request'
     steps:
       - name: Post migration notice and close PR
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const pr = context.payload.pull_request;
+            const workflowRun = context.payload.workflow_run;
+            const headBranch = workflowRun.head_branch;
+            const headOwner = workflowRun.head_repository.owner.login;
+            const repo = context.repo;
+
+            // Find the open PR associated with this workflow run.
+            // The pull_requests array is empty for fork PRs, so we search by head.
+            let prs;
+            try {
+              ({ data: prs } = await github.rest.pulls.list({
+                owner: repo.owner,
+                repo: repo.repo,
+                state: 'open',
+                head: `${headOwner}:${headBranch}`,
+              }));
+            } catch (err) {
+              console.error(`Failed to list pull requests: ${err.message}`);
+              return;
+            }
+
+            if (prs.length === 0) {
+              console.log('No open PRs found for this workflow run.');
+              return;
+            }
+
+            if (prs.length > 1) {
+              console.log(`Found ${prs.length} open PRs for ${headOwner}:${headBranch}; using the most recently updated one.`);
+              prs.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            }
+
+            const pr = prs[0];
             const prNumber = pr.number;
             const prAuthor = pr.user.login;
-            const repo = context.repo;
 
             const message =
               `## 🚚 This Repository Is Moving\n\n` +
