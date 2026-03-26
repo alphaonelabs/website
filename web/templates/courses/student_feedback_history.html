@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Your Feedback History
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Your Feedback History</h1>
+      <p class="text-gray-600 dark:text-gray-300 mb-6">
+        Track your learning journey and see your progress across all sessions.
+      </p>
+      <!-- Growth Visualization Chart -->
+      {% if growth_data %}
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Your Learning Growth</h2>
+          <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <canvas id="growthChart" class="w-full h-64"></canvas>
+          </div>
+        </div>
+      {% endif %}
+      <!-- Tabs for different feedback types -->
+      <div class="border-b border-gray-200 dark:border-gray-700">
+        <ul class="flex flex-wrap -mb-px" id="feedbackTabs" role="tablist">
+          <li class="mr-2" role="presentation">
+            <button class="inline-block py-2 px-4 text-teal-300 hover:text-teal-400 border-b-2 border-transparent hover:border-teal-300 rounded-t-lg"
+                    id="surveys-tab"
+                    data-tabs-target="#surveys"
+                    type="button"
+                    role="tab"
+                    aria-controls="surveys"
+                    aria-selected="true">Session Surveys ({{ surveys|length }})</button>
+          </li>
+          <li class="mr-2" role="presentation">
+            <button class="inline-block py-2 px-4 text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 border-b-2 border-transparent hover:border-gray-300 rounded-t-lg"
+                    id="feedback-tab"
+                    data-tabs-target="#feedback"
+                    type="button"
+                    role="tab"
+                    aria-controls="feedback"
+                    aria-selected="false">Rose-Bud-Thorn ({{ feedback|length }})</button>
+          </li>
+          <li role="presentation">
+            <button class="inline-block py-2 px-4 text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 border-b-2 border-transparent hover:border-gray-300 rounded-t-lg"
+                    id="checkins-tab"
+                    data-tabs-target="#checkins"
+                    type="button"
+                    role="tab"
+                    aria-controls="checkins"
+                    aria-selected="false">Self Check-ins ({{ checkins|length }})</button>
+          </li>
+        </ul>
+      </div>
+      <!-- Tab Content -->
+      <div id="feedbackTabContent" class="mt-6">
+        <!-- Session Surveys Tab -->
+        <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+             id="surveys"
+             role="tabpanel"
+             aria-labelledby="surveys-tab">
+          {% if surveys %}
+            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {% for survey in surveys %}
+                <div class="bg-white dark:bg-gray-700 rounded-lg shadow p-4">
+                  <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ survey.session.title }}</h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ survey.session.course.title }}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ survey.created_at|date:"M d, Y" }}</p>
+                  <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-gray-600 dark:text-gray-300">Content:</span>
+                      <div class="flex">
+                        {% for i in "12345" %}
+                          <span class="h-4 w-4 {% if forloop.counter <= survey.content_rating %}text-yellow-400{% else %}text-gray-300 dark:text-gray-600{% endif %}">★</span>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-gray-600 dark:text-gray-300">Teaching:</span>
+                      <div class="flex">
+                        {% for i in "12345" %}
+                          <span class="h-4 w-4 {% if forloop.counter <= survey.teaching_rating %}text-yellow-400{% else %}text-gray-300 dark:text-gray-600{% endif %}">★</span>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-gray-600 dark:text-gray-300">Pace:</span>
+                      <div class="flex">
+                        {% for i in "12345" %}
+                          <span class="h-4 w-4 {% if forloop.counter <= survey.pace_rating %}text-yellow-400{% else %}text-gray-300 dark:text-gray-600{% endif %}">★</span>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-gray-600 dark:text-gray-300">Materials:</span>
+                      <div class="flex">
+                        {% for i in "12345" %}
+                          <span class="h-4 w-4 {% if forloop.counter <= survey.materials_rating %}text-yellow-400{% else %}text-gray-300 dark:text-gray-600{% endif %}">★</span>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                  {% if survey.comments %}
+                    <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
+                      <p class="text-sm italic text-gray-600 dark:text-gray-300">{{ survey.comments }}</p>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-8">
+              <p class="text-gray-500 dark:text-gray-400">You haven't submitted any session surveys yet.</p>
+            </div>
+          {% endif %}
+        </div>
+        <!-- Rose-Bud-Thorn Tab -->
+        <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+             id="feedback"
+             role="tabpanel"
+             aria-labelledby="feedback-tab">
+          {% if feedback %}
+            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {% for item in feedback %}
+                <div class="bg-white dark:bg-gray-700 rounded-lg shadow p-4">
+                  <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ item.session.title }}</h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ item.session.course.title }}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ item.created_at|date:"M d, Y" }}</p>
+                  {% if item.rose %}
+                    <div class="mb-3">
+                      <h4 class="text-sm font-medium text-green-600 dark:text-green-400">🌹 Rose</h4>
+                      <p class="text-sm text-gray-600 dark:text-gray-300 ml-5">{{ item.rose }}</p>
+                    </div>
+                  {% endif %}
+                  {% if item.bud %}
+                    <div class="mb-3">
+                      <h4 class="text-sm font-medium text-blue-600 dark:text-blue-400">🌱 Bud</h4>
+                      <p class="text-sm text-gray-600 dark:text-gray-300 ml-5">{{ item.bud }}</p>
+                    </div>
+                  {% endif %}
+                  {% if item.thorn %}
+                    <div class="mb-3">
+                      <h4 class="text-sm font-medium text-red-600 dark:text-red-400">🌵 Thorn</h4>
+                      <p class="text-sm text-gray-600 dark:text-gray-300 ml-5">{{ item.thorn }}</p>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-8">
+              <p class="text-gray-500 dark:text-gray-400">You haven't submitted any Rose-Bud-Thorn feedback yet.</p>
+            </div>
+          {% endif %}
+        </div>
+        <!-- Self Check-ins Tab -->
+        <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+             id="checkins"
+             role="tabpanel"
+             aria-labelledby="checkins-tab">
+          {% if checkins %}
+            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {% for checkin in checkins %}
+                <div class="bg-white dark:bg-gray-700 rounded-lg shadow p-4">
+                  <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ checkin.session.title }}</h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ checkin.session.course.title }}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ checkin.created_at|date:"M d, Y" }}</p>
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Pre-session rating:</span>
+                    <div class="flex">
+                      {% for i in "12345" %}
+                        <span class="h-4 w-4 {% if forloop.counter <= checkin.pre_rating %}text-blue-400{% else %}text-gray-300 dark:text-gray-600{% endif %}">★</span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% if checkin.post_rating %}
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Post-session rating:</span>
+                      <div class="flex">
+                        {% for i in "12345" %}
+                          <span class="h-4 w-4 {% if forloop.counter <= checkin.post_rating %}text-green-400{% else %}text-gray-300 dark:text-gray-600{% endif %}">★</span>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between mb-3 p-2 {% if checkin.growth > 0 %}bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400{% elif checkin.growth < 0 %}bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400{% else %}bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400{% endif %} rounded">
+                      <span class="text-sm font-medium">Growth:</span>
+                      <span class="font-bold">
+                        {% if checkin.growth > 0 %}+{% endif %}
+                        {{ checkin.growth }}
+                      </span>
+                    </div>
+                  {% endif %}
+                  {% if checkin.notes %}
+                    <div class="mt-2 pt-3 border-t border-gray-200 dark:border-gray-600">
+                      <p class="text-sm italic text-gray-600 dark:text-gray-300">{{ checkin.notes }}</p>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-8">
+              <p class="text-gray-500 dark:text-gray-400">You haven't submitted any self check-ins yet.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% if growth_data %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize tabs
+            const tabs = document.querySelectorAll('[data-tabs-target]');
+            const tabContents = document.querySelectorAll('[role="tabpanel"]');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = document.querySelector(tab.dataset.tabsTarget);
+
+                    tabContents.forEach(tabContent => {
+                        tabContent.classList.add('hidden');
+                    });
+
+                    tabs.forEach(t => {
+                        t.classList.remove('text-teal-300', 'border-teal-300');
+                        t.classList.add('text-gray-500', 'dark:text-gray-400', 'border-transparent');
+                    });
+
+                    tab.classList.remove('text-gray-500', 'dark:text-gray-400', 'border-transparent');
+                    tab.classList.add('text-teal-300', 'border-teal-300');
+                    target.classList.remove('hidden');
+                });
+            });
+
+            // Show first tab by default
+            if (tabs.length > 0) {
+                tabs[0].click();
+            }
+
+            // Initialize growth chart
+            const growthData = {
+                {
+                    growth_data | safe
+                }
+            };
+            if (growthData.length > 0) {
+                const ctx = document.getElementById('growthChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: growthData.map(item => item.session),
+                        datasets: [{
+                            label: 'Pre-Session Rating',
+                            data: growthData.map(item => item.pre_rating),
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: 'Post-Session Rating',
+                            data: growthData.map(item => item.post_rating),
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: 'Growth',
+                            data: growthData.map(item => item.growth),
+                            backgroundColor: 'rgba(255, 206, 86, 0.5)',
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 1,
+                            type: 'line',
+                            fill: false,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 5
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Your Learning Progress Over Time',
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            legend: {
+                                position: 'top'
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+  {% endif %}
+{% endblock content %}

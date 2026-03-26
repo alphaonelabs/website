@@ -285,6 +285,13 @@ urlpatterns += i18n_patterns(
         views.remove_featured_review,
         name="remove_featured_review",
     ),
+    # Register for upcoming sessions
+    path("courses/<slug:slug>/register-sessions/", views.register_upcoming_sessions, name="register_upcoming_sessions"),
+    # Session feedback and check-in URLs
+    path("sessions/<int:session_id>/pre-checkin/", views.pre_session_checkin, name="pre_session_checkin"),
+    path("sessions/<int:session_id>/post-checkin/", views.post_session_checkin, name="post_session_checkin"),
+    path("sessions/<int:session_id>/feedback/", views.post_session_feedback, name="post_session_feedback"),
+    path("sessions/<int:session_id>/survey/", views.post_session_survey, name="post_session_survey"),
     path("groups/<int:group_id>/", views.study_group_detail, name="study_group_detail"),
     path("study-groups/", views.all_study_groups, name="all_study_groups"),
     path("sessions/<int:session_id>/", views.session_detail, name="session_detail"),
@@ -478,6 +485,13 @@ urlpatterns += i18n_patterns(
     # Map Urls
     path("classes-map/", views.classes_map, name="classes_map"),
     path("api/map-data/", views.map_data_api, name="map_data_api"),
+    # Student Feedback URLs
+    path("feedback/history/", views.student_feedback_history, name="student_feedback_history"),
+    path(
+        "courses/<slug:course_slug>/feedback-insights/",
+        views.teacher_feedback_insights,
+        name="teacher_feedback_insights",
+    ),
     # Features page
     path("features/", features_page, name="features"),
     path("features/vote/", feature_vote, name="feature_vote"),
