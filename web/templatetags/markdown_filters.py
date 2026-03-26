@@ -1,5 +1,6 @@
-import bleach
 from typing import Any, Optional
+
+import bleach
 from django import template
 from django.utils.safestring import mark_safe
 from markdownx.utils import markdownify
