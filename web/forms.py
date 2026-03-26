@@ -843,6 +843,7 @@ class EducationalVideoForm(forms.ModelForm):
         ),
         help_text="Optional – what this video is about",
     )
+    captcha = CaptchaField(widget=TailwindCaptchaTextInput)
 
     class Meta:
         model = EducationalVideo

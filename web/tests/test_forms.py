@@ -473,7 +473,8 @@ class MessageFormTests(TestCase):
 
 
 class LearningInquiryFormTests(TestCase):
-    def test_valid_inquiry_form(self):
+    @patch("captcha.fields.CaptchaField.clean", return_value="PASSED")
+    def test_valid_inquiry_form(self, _mock_captcha_clean):
         form_data = {
             "name": "John Doe",
             "email": "john@example.com",
@@ -481,11 +482,14 @@ class LearningInquiryFormTests(TestCase):
             "learning_goals": "I want to learn web development",
             "preferred_schedule": "Weekends",
             "experience_level": "beginner",
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         form = LearningInquiryForm(data=form_data)
         self.assertTrue(form.is_valid())
 
-    def test_invalid_inquiry_form(self):
+    @patch("captcha.fields.CaptchaField.clean", return_value="PASSED")
+    def test_invalid_inquiry_form(self, _mock_captcha_clean):
         form_data = {
             "name": "",  # Name is required
             "email": "invalid-email",  # Invalid email
@@ -493,6 +497,8 @@ class LearningInquiryFormTests(TestCase):
             "learning_goals": "",  # Learning goals are required
             "preferred_schedule": "",  # Schedule is required
             "experience_level": "invalid_level",  # Invalid level
+            "captcha_0": "dummy-hash",
+            "captcha_1": "PASSED",
         }
         form = LearningInquiryForm(data=form_data)
         self.assertFalse(form.is_valid())
