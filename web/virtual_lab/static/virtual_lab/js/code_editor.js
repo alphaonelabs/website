@@ -6,6 +6,28 @@ function getCookie(name) {
   return match ? decodeURIComponent(match[2]) : null;
 }
 
+// Language boilerplate templates:
+const BOILERPLATES = {
+  python: `print("Hello, World!")`,
+
+  javascript: `console.log("Hello, World!");`,
+
+  c: `#include <stdio.h>
+
+int main() {
+    printf("Hello, World!\\n");
+    return 0;
+}`,
+
+  cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Hello, World!\\n";
+    return 0;
+}`
+};
+
 // Bootstrap Ace
 const editor = ace.edit("editor");
 editor.setTheme("ace/theme/github");
@@ -16,6 +38,54 @@ const runBtn   = document.getElementById("run-btn");
 const outputEl = document.getElementById("output");
 const stdinEl  = document.getElementById("stdin-input");
 const langSel  = document.getElementById("language-select");
+
+function updateEditorMode(language) {
+  let mode;
+  switch(language) {
+    case 'python':
+      mode = 'ace/mode/python';
+      break;
+    case 'javascript':
+      mode = 'ace/mode/javascript';
+      break;
+    case 'c':
+    case 'cpp':
+      mode = 'ace/mode/c_cpp';
+      break;
+    default:
+      mode = 'ace/mode/text';
+  }
+  editor.session.setMode(mode);
+}
+
+function setBoilerplate(language) {
+  editor.setValue(BOILERPLATES[language] || '', -1);
+  editor.clearSelection();
+  editor.focus();
+}
+
+// Language change handler
+langSel.addEventListener("change", (e) => {
+  const language = e.target.value;
+
+  // Asking user if they want to replace current code with boilerplate:
+  if (editor.getValue().trim() &&
+    !confirm(`Switch to ${language}? This will replace your current code with a '${language}' boilerplate template.`)) {
+    e.target.value = e.target.dataset.lastValue || 'python';
+    return;
+  }
+
+  updateEditorMode(language);
+
+  setBoilerplate(language);
+
+  e.target.dataset.lastValue = language;
+});
+
+window.addEventListener('load', () => {
+  setBoilerplate('python');
+  langSel.dataset.lastValue = 'python';
+});
 
 runBtn.addEventListener("click", () => {
   const code     = editor.getValue();

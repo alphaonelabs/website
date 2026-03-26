@@ -13,8 +13,6 @@
       #editor {
           height: 400px;
           width: 100%;
-          border: 1px solid #ccc;
-          background-color: #f5f5f5;
       }
 
       /* Dark mode styles for Ace editor */
@@ -38,17 +36,21 @@
   <div class="max-w-4xl mx-auto py-8">
     <h1 class="text-2xl font-bold mb-4 dark:text-gray-100">Interactive Code Editor</h1>
     <!-- Editor -->
-    <div id="editor">print("Hello, world!")</div>
+    <div id="editor"
+         class="border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"></div>
     <!-- Language selector -->
-    <div class="mt-4 mb-2">
-      <label for="language-select" class="dark:text-gray-300">Language:</label>
-      <select id="language-select"
-              class="border px-2 py-1 rounded dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
-        <option value="python" selected>Python</option>
-        <option value="javascript">JavaScript</option>
-        <option value="c">C</option>
-        <option value="cpp">C++</option>
-      </select>
+    <div class="mt-4 mb-2 flex items-center gap-4">
+      <div>
+        <label for="language-select"
+               class="text-sm font-medium text-gray-700 dark:text-gray-300">Language:</label>
+        <select id="language-select"
+                class="border border-gray-300 dark:border-gray-600 px-2 py-1 rounded bg-white dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="python" selected>Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="c">C</option>
+          <option value="cpp">C++</option>
+        </select>
+      </div>
     </div>
     <!-- stdin input -->
     <div class="mt-2">
