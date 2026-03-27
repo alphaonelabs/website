@@ -186,6 +186,11 @@ urlpatterns += i18n_patterns(
         name="course_progress_overview",
     ),
     path(
+        "courses/<slug:slug>/progress/export/",
+        views.export_course_progress_csv,
+        name="export_course_progress_csv",
+    ),
+    path(
         "courses/<slug:slug>/materials/upload/",
         views.upload_material,
         name="upload_material",

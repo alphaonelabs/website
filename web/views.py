@@ -1,4 +1,5 @@
 import calendar
+import csv
 import html
 import ipaddress
 import json
@@ -1904,6 +1905,72 @@ def course_progress_overview(request, slug):
 
 
 @login_required
+def export_course_progress_csv(request, slug):
+    """Export student progress data for a course as a CSV file."""
+    course = get_object_or_404(Course, slug=slug)
+    if request.user != course.teacher:
+        messages.error(request, "Only the course teacher can export progress data.")
+        return redirect("course_detail", slug=slug)
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{course.slug}-progress.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        "Student Name",
+        "Username",
+        "Email",
+        "Enrollment Date",
+        "Completion %",
+        "Sessions Attended",
+        "Total Sessions",
+        "Attendance Rate %",
+        "Last Accessed",
+    ])
+    enrollments = course.enrollments.filter(status="approved").select_related("student")
+    total_sessions = course.sessions.count()
+
+    # Precompute progress map to avoid N+1 queries
+    progress_map = {
+        cp.enrollment_id: cp
+        for cp in CourseProgress.objects.filter(enrollment__in=enrollments)
+    }
+
+    # Precompute attendance map to avoid N+1 queries
+    attendance_qs = (
+        SessionAttendance.objects.filter(
+            session__course=course,
+            status__in=["present", "late"],
+        )
+        .values("student_id")
+        .annotate(count=Count("id"))
+    )
+    attendance_map = {row["student_id"]: row["count"] for row in attendance_qs}
+
+    def sanitize(value: object) -> str:
+        """Prevent CSV formula injection by prefixing dangerous characters."""
+        s = str(value)
+        if s.startswith(("=", "+", "-", "@")):
+            s = "'" + s
+        return s
+
+    for enrollment in enrollments:
+        progress = progress_map.get(enrollment.id)
+        completion_pct = progress.completion_percentage if progress else 0
+        attendance_rate = progress.attendance_rate if progress else 0
+        last_accessed = progress.last_accessed.strftime("%Y-%m-%d") if progress and progress.last_accessed else ""
+        attended = attendance_map.get(enrollment.student_id, 0)
+        writer.writerow([
+            sanitize(enrollment.student.get_full_name() or enrollment.student.username),
+            sanitize(enrollment.student.username),
+            sanitize(enrollment.student.email),
+            enrollment.enrollment_date.strftime("%Y-%m-%d"),
+            completion_pct,
+            attended,
+            total_sessions,
+            attendance_rate,
+            last_accessed,
+        ])
+    return response
+
 def upload_material(request, slug):
     course = get_object_or_404(Course, slug=slug)
     if request.user != course.teacher:
