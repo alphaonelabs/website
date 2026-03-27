@@ -63,6 +63,7 @@ urlpatterns += i18n_patterns(
     path("learn/", views.learn, name="learn"),
     path("waiting-rooms/", views.waiting_rooms, name="waiting_rooms"),
     path("teach/", views.teach, name="teach"),
+    path("robotics-playground/", views.robotics_playground, name="robotics_playground"),
     path("about/", views.about, name="about"),
     path("users/", views.users_list, name="users_list"),
     path("profile/<str:username>/", views.public_profile, name="public_profile"),
