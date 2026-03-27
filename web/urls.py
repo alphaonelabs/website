@@ -186,6 +186,11 @@ urlpatterns += i18n_patterns(
         name="course_progress_overview",
     ),
     path(
+        "courses/<slug:slug>/progress/<int:student_id>/",
+        views.student_progress_report,
+        name="student_progress_report",
+    ),
+    path(
         "courses/<slug:slug>/materials/upload/",
         views.upload_material,
         name="upload_material",
