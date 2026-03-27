@@ -166,7 +166,8 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
     try:
         key_bytes  = _derive_aes_key_bytes(secret)
         crypto_key = await _import_aes_key(key_bytes)
-        algo       = to_js({"name": "AES-GCM", "iv": to_js(iv)}, dict_converter=js.Object.fromEntries)
+        iv_array   = to_js(iv)
+        algo       = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
         data       = to_js(ct)
         pt_buf     = await js.crypto.subtle.decrypt(algo, crypto_key, data)
         return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
