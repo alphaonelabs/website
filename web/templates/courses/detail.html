@@ -594,6 +594,11 @@
                     <i class="fas fa-chart-line mr-2"></i>
                     Progress
                   </a>
+                  <a href="{% url 'course_assignments' course.slug %}"
+                     class="inline-flex items-center justify-center px-4 py-2 bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                    <i class="fas fa-tasks mr-2" aria-hidden="true"></i>
+                    Assignments
+                  </a>
                   <a href="{% url 'message_students' course.slug %}"
                      class="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition duration-200">
                     <i class="fas fa-envelope mr-2"></i>
