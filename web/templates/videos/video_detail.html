@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ video.title }} - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="w-full py-8 bg-white dark:bg-gray-900 transition-colors duration-300">
+    <div class="mx-auto max-w-5xl px-6">
+      <!-- Video Player -->
+      <div class="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-xl mb-6 flex items-center justify-center text-white">
+        {% if "youtube.com" in video.video_url or "youtu.be" in video.video_url %}
+          {% with video.video_url|cut:"https://www.youtube.com/watch?v="|cut:"https://youtu.be/" as raw_id %}
+            {% with raw_id|slice:":11" as video_id %}
+              <iframe src="https://www.youtube.com/embed/{{ video_id }}?rel=0&modestbranding=1"
+                      frameborder="0"
+                      title="YouTube video player - {{ video.title }}"
+                      allow="autoplay; encrypted-media"
+                      referrerpolicy="strict-origin-when-cross-origin"
+                      allowfullscreen
+                      class="w-full h-full">
+              </iframe>
+            {% endwith %}
+          {% endwith %}
+        {% else %}
+          <!-- Fallback for non-YouTube videos -->
+          <div class="text-center p-4">
+            <p class="mb-2 text-lg font-medium">Video cannot be played directly.</p>
+            {% if video.video_url %}
+              <a href="{{ video.video_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="inline-block bg-teal-300 hover:bg-teal-400 text-white px-6 py-2 rounded-lg transition duration-200">
+                Open Video in New Tab
+              </a>
+            {% else %}
+              <p>No video URL available.</p>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+      <!-- Title -->
+      <h1 class="text-2xl font-bold mb-3 text-gray-900 dark:text-white">{{ video.title }}</h1>
+      <!-- Meta Info -->
+      <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        {% if video.uploader %}
+          Uploaded by {{ video.uploader.get_full_name|default:video.uploader.username }}
+        {% elif video.submitter_name %}
+          Uploaded by {{ video.submitter_name }}
+        {% else %}
+          Uploaded by Anonymous
+        {% endif %}
+        • {{ video.uploaded_at|date:"F j, Y" }}
+        {% if video.category %}• {{ video.category.name }}{% endif %}
+      </div>
+      <!-- Description -->
+      <div class="text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ video.description }}</div>
+    </div>
+  </div>
+{% endblock content %}
