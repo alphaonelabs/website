@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .models import Course, VirtualClassroom, VirtualClassroomWhiteboard
+from .utils import can_access_classroom
 
 # Add logger configuration
 logger = logging.getLogger(__name__)
@@ -44,12 +45,9 @@ def classroom_whiteboard(request, classroom_id):
 
     # Check if user has access (teacher or enrolled student)
     is_teacher = classroom.teacher == request.user
-    is_enrolled = False
+    is_enrolled = can_access_classroom(request.user, classroom)
 
-    if course:
-        is_enrolled = course.enrollments.filter(student=request.user, status="approved").exists()
-
-    if not (is_teacher or is_enrolled):
+    if not is_enrolled:
         messages.error(request, "You don't have access to this classroom.")
         return redirect("virtual_classroom_list")
 
@@ -81,13 +79,7 @@ def save_whiteboard_data(request, classroom_id):
         classroom = get_object_or_404(VirtualClassroom, id=classroom_id)
 
         # Check permissions
-        is_teacher = classroom.teacher == request.user
-        is_enrolled = False
-
-        if classroom.course:
-            is_enrolled = classroom.course.enrollments.filter(student=request.user, status="approved").exists()
-
-        if not (is_teacher or is_enrolled):
+        if not can_access_classroom(request.user, classroom):
             return JsonResponse({"error": "Access denied"}, status=403)
 
         # Get whiteboard
@@ -134,13 +126,7 @@ def get_whiteboard_data(request, classroom_id):
         classroom = get_object_or_404(VirtualClassroom, id=classroom_id)
 
         # Check permissions
-        is_teacher = classroom.teacher == request.user
-        is_enrolled = False
-
-        if classroom.course:
-            is_enrolled = classroom.course.enrollments.filter(student=request.user, status="approved").exists()
-
-        if not (is_teacher or is_enrolled):
+        if not can_access_classroom(request.user, classroom):
             return JsonResponse({"error": "Access denied"}, status=403)
 
         # Get whiteboard

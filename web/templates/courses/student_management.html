@@ -196,7 +196,7 @@
       }
 
       .session-notes-textarea {
-          @apply flex-grow rounded-lg border border-gray-300 dark:border-gray-600 text-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm focus:ring-2 focus:ring-teal-300 focus:border-transparent transition-all duration-200;
+          @apply flex-grow w-full rounded-lg border border-gray-300 dark:border-gray-600 text-sm py-2 px-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm focus:ring-2 focus:ring-teal-300 focus:border-transparent transition-all duration-200;
       }
 
       /* Status indicator badges */
@@ -250,7 +250,7 @@
         </div>
       </div>
       <!-- Student Info Overview -->
-      <div class="px-6 py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
+      <div class="px-6 py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
         <!-- Student Profile -->
         <div class="flex items-center space-x-4">
           {% if student.profile_image %}
@@ -307,7 +307,7 @@
               <svg viewBox="0 0 36 36" class="w-full h-full">
                 <path class="stroke-current text-gray-200 dark:text-gray-700" stroke-width="4" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                 <path class="stroke-current text-teal-500" stroke-width="4" fill="none" stroke-dasharray="{{ attendance_rate }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <text x="18" y="20.35" class="fill-current text-gray-800 dark:text-gray-200 text-xs font-medium" text-anchor="middle">{{ attendance_rate }}%</text>
+                <text x="18" y="19" class="fill-current text-gray-800 dark:text-gray-200 text-xs font-medium" text-anchor="middle" dominant-baseline="middle">{{ attendance_rate }}%</text>
               </svg>
             </div>
             <div class="ml-4 text-sm text-gray-600 dark:text-gray-300">
@@ -332,14 +332,14 @@
       <!-- Progress and Attendance (Side by Side) -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Progress Tracking Section -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-blue-500">
           <h2 class="text-xl font-bold mb-4 flex items-center text-gray-800 dark:text-gray-200">
             <i class="fas fa-chart-line mr-2 text-green-500 dark:text-green-400"></i> Progress Tracking
           </h2>
           <!-- Progress Stats Summary -->
           <div class="flex flex-wrap gap-4 mb-4">
             <!-- Current Grade -->
-            <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-center">
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-center">
               <div class="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center mr-3">
                 <i class="fas fa-graduation-cap text-teal-600 dark:text-teal-400"></i>
               </div>
@@ -349,7 +349,7 @@
               </div>
             </div>
             <!-- Attendance Rate -->
-            <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-center">
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-center">
               <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mr-3">
                 <i class="fas fa-clipboard-check text-blue-600 dark:text-blue-400"></i>
               </div>
@@ -371,7 +371,7 @@
           <div class="mb-4">
             <div class="grid grid-cols-1 gap-3">
               <!-- Course Completion -->
-              <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+              <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                 <div class="flex items-center justify-between mb-1">
                   <h4 class="text-xs uppercase font-medium text-gray-500 dark:text-gray-400">Course Completion</h4>
                   <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-teal-600 bg-teal-200 dark:text-teal-400 dark:bg-teal-900">
@@ -395,7 +395,7 @@
               <form method="post"
                     action="{% url 'update_student_progress' enrollment.id %}"
                     id="progressForm"
-                    class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                    class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                 {% csrf_token %}
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -469,7 +469,7 @@
             {% csrf_token %}
             {% for session in sessions %}
               <div id="session-{{ session.id }}"
-                   class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm hover:shadow transition-shadow duration-200">
+                   class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm hover:shadow transition-shadow duration-200">
                 <div class="flex justify-between items-center mb-2">
                   <div>
                     <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200 flex items-center">
@@ -483,8 +483,8 @@
                   </div>
                   <!-- Current status badge -->
                   {% if attendance_data and attendance_data|get_item:session.id and attendance_data|get_item:session.id|get_item:'status' %}
-                    <div class="status-badge ml-auto {% if attendance_data|get_item:session.id|get_item:'status' == 'present' %} bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-300 border border-green-300 dark:border-green-700 {% elif attendance_data|get_item:session.id|get_item:'status' == 'absent' %} bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300 border border-red-300 dark:border-red-700 {% elif attendance_data|get_item:session.id|get_item:'status' == 'excused' %} bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700 {% else %} bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-300 border border-orange-300 dark:border-orange-700 {% endif %}">
-                      <i class="fas {% if attendance_data|get_item:session.id|get_item:'status' == 'present' %} fa-check-circle {% elif attendance_data|get_item:session.id|get_item:'status' == 'absent' %} fa-times-circle {% elif attendance_data|get_item:session.id|get_item:'status' == 'excused' %} fa-calendar-minus {% else %} fa-clock {% endif %} mr-1"></i>
+                    <div class="status-badge ml-auto px-3 rounded-full shadow-sm{% if attendance_data|get_item:session.id|get_item:'status' == 'present' %} bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-300 border border-green-300 dark:border-green-700{% elif attendance_data|get_item:session.id|get_item:'status' == 'absent' %} text-red-800 dark:text-red-300 bg-red-100 dark:bg-red-900/60 border border-red-300 dark:border-red-700{% elif attendance_data|get_item:session.id|get_item:'status' == 'excused' %} text-yellow-800 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/60 border border-yellow-300 dark:border-yellow-700{% else %} text-orange-800 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/60 border border-orange-300 dark:border-orange-700{% endif %}">
+                      <i class="{% if attendance_data|get_item:session.id|get_item:'status' == 'present' %}fas fa-check-circle{% elif attendance_data|get_item:session.id|get_item:'status' == 'absent' %}fas fa-times-circle{% elif attendance_data|get_item:session.id|get_item:'status' == 'excused' %}fas fa-calendar-minus{% else %}fas fa-clock{% endif %} mr-1"></i>
                       {{ attendance_data|get_item:session.id|get_item:'status'|title }}
                     </div>
                   {% endif %}
@@ -520,7 +520,7 @@
                   <textarea id="notes_{{ session.id }}"
                             name="notes_{{ session.id }}"
                             placeholder="Add notes about this student's attendance or participation..."
-                            class="session-notes-textarea"
+                            class="session-notes-textarea w-full rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 py-1 px-2 border border-gray-300 dark:border-gray-600"
                             rows="2">{% if attendance_data and attendance_data|get_item:session.id %}{{ attendance_data|get_item:session.id|get_item:'notes'|default:'' }}{% endif %}</textarea>
                   <button type="button"
                           class="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1.5 rounded-lg text-sm transition-all duration-200 shadow-sm border border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -560,7 +560,7 @@
           {% if badges %}
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {% for badge in badges %}
-                <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col items-center text-center">
+                <div class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col items-center text-center">
                   <img src="{{ badge.image.url }}"
                        alt="{{ badge.name }}"
                        class="w-16 h-16 object-contain mb-2"
@@ -575,7 +575,7 @@
               {% endfor %}
             </div>
           {% else %}
-            <div class="text-center py-6 bg-gray-50 dark:bg-gray-750 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div class="text-center py-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
               <div class="text-gray-400 dark:text-gray-500 mb-3">
                 <i class="fas fa-award text-3xl"></i>
               </div>
@@ -588,7 +588,7 @@
           <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Award a Badge</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <!-- Perfect Attendance Badge -->
-            <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div class="flex flex-col items-center text-center">
                 <div class="w-16 h-16 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center mb-2">
                   <i class="fas fa-calendar-check text-yellow-600 dark:text-yellow-400 text-2xl"></i>
@@ -605,7 +605,7 @@
               </div>
             </div>
             <!-- Outstanding Participation Badge -->
-            <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div class="flex flex-col items-center text-center">
                 <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-2">
                   <i class="fas fa-hand-paper text-blue-600 dark:text-blue-400 text-2xl"></i>
@@ -622,7 +622,7 @@
               </div>
             </div>
             <!-- Course Completion Badge -->
-            <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div class="flex flex-col items-center text-center">
                 <div class="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-2">
                   <i class="fas fa-graduation-cap text-green-600 dark:text-green-400 text-2xl"></i>
@@ -653,7 +653,7 @@
           </div>
         </div>
         <!-- Teacher Notes Form -->
-        <div class="bg-white dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+        <div class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
           <h4 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Teacher Notes</h4>
           <form method="post"
                 action="{% url 'update_teacher_notes' enrollment.id %}"
@@ -661,7 +661,7 @@
                 class="space-y-3">
             {% csrf_token %}
             <textarea name="teacher_notes"
-                      class="w-full rounded-lg border border-gray-300 dark:border-gray-600 py-2 px-3 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                      class="w-full rounded-lg border border-gray-300 dark:border-gray-600 py-2 px-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                       rows="6"
                       placeholder="Add your private notes about this student here...">{{ enrollment.teacher_notes|default:'' }}</textarea>
             <div class="flex justify-between items-center">
@@ -1103,18 +1103,18 @@
           // Update status badge style and content based on selected status
           currentStatusBadge.className = 'status-badge ml-auto shadow-sm border'; // Reset classes
 
-          // Add status-specific classes
+          // Add status-specific classes (order: layout → typography → visual → interactivity)
           if (status === 'present') {
-              currentStatusBadge.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900/60', 'dark:text-green-300', 'border-green-300', 'dark:border-green-700');
+              currentStatusBadge.classList.add('px-3', 'text-green-800', 'dark:text-green-300', 'bg-green-100', 'dark:bg-green-900/60', 'border', 'border-green-300', 'dark:border-green-700', 'rounded-full', 'shadow-sm');
               currentStatusBadge.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Present';
           } else if (status === 'absent') {
-              currentStatusBadge.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900/60', 'dark:text-red-300', 'border-red-300', 'dark:border-red-700');
+              currentStatusBadge.classList.add('px-3', 'text-red-800', 'dark:text-red-300', 'bg-red-100', 'dark:bg-red-900/60', 'border', 'border-red-300', 'dark:border-red-700', 'rounded-full', 'shadow-sm');
               currentStatusBadge.innerHTML = '<i class="fas fa-times-circle mr-1"></i> Absent';
           } else if (status === 'excused') {
-              currentStatusBadge.classList.add('bg-yellow-100', 'text-yellow-800', 'dark:bg-yellow-900/60', 'dark:text-yellow-300', 'border-yellow-300', 'dark:border-yellow-700');
+              currentStatusBadge.classList.add('px-3', 'text-yellow-800', 'dark:text-yellow-300', 'bg-yellow-100', 'dark:bg-yellow-900/60', 'border', 'border-yellow-300', 'dark:border-yellow-700', 'rounded-full', 'shadow-sm');
               currentStatusBadge.innerHTML = '<i class="fas fa-calendar-minus mr-1"></i> Excused';
           } else if (status === 'late') {
-              currentStatusBadge.classList.add('bg-orange-100', 'text-orange-800', 'dark:bg-orange-900/60', 'dark:text-orange-300', 'border-orange-300', 'dark:border-orange-700');
+              currentStatusBadge.classList.add('px-3', 'text-orange-800', 'dark:text-orange-300', 'bg-orange-100', 'dark:bg-orange-900/60', 'border', 'border-orange-300', 'dark:border-orange-700', 'rounded-full', 'shadow-sm');
               currentStatusBadge.innerHTML = '<i class="fas fa-clock mr-1"></i> Late';
           }
 

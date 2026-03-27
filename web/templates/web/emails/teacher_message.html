@@ -43,6 +43,45 @@
         .message-content {
             white-space: pre-wrap;
         }
+
+        .button-group {
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+
+        .button:focus {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
+
+        .button-primary {
+            background-color: #2dd4bf;
+            /* teal-300 */
+            color: #ffffff;
+        }
+
+        .button-primary:hover {
+            background-color: #14b8a6;
+            /* teal-400 */
+        }
+
+        .button-secondary {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+
+        .button-secondary:hover {
+            background-color: #e5e7eb;
+        }
     </style>
   </head>
   <body>
@@ -59,6 +98,18 @@
     </div>
     <div class="message-box">
       <div class="message-content">{{ message }}</div>
+    </div>
+    <div class="button-group">
+      {% if inbox_url %}
+        <a href="{{ inbox_url }}"
+           aria-label="View this message in your inbox"
+           class="button button-primary">View in Inbox</a>
+      {% endif %}
+      {% if messaging_dashboard_url %}
+        <a href="{{ messaging_dashboard_url }}"
+           aria-label="Open messaging dashboard"
+           class="button button-secondary">Messaging Dashboard</a>
+      {% endif %}
     </div>
   </body>
 </html>

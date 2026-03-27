@@ -299,6 +299,7 @@ urlpatterns += i18n_patterns(
     path("cart/add/session/<int:session_id>/", views.add_session_to_cart, name="add_session_to_cart"),
     path("cart/remove/<int:item_id>/", views.remove_from_cart, name="remove_from_cart"),
     path("cart/payment-intent/", views.create_cart_payment_intent, name="create_cart_payment_intent"),
+    path("cart/checkout/free/", views.free_cart_checkout, name="free_cart_checkout"),
     path("cart/checkout/success/", views.checkout_success, name="checkout_success"),
     # Course Invitation URLs
     path("courses/<int:course_id>/invite/", views.invite_student, name="invite_student"),

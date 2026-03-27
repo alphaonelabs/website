@@ -114,7 +114,78 @@ The workflow has `contents: write` permission to:
 **Issue:** Permission denied when creating release
 - **Solution:** Ensure the workflow has `contents: write` permission
 
+## Close Issues from Non-Maintainers Workflow
+
+**File:** `.github/workflows/close-non-maintainer-issues.yml`
+
+**Trigger:** When a new issue is opened (`issues: opened`)
+
+### Purpose
+
+This project follows a **PR-first** contribution model. Maintainers manage the issue tracker internally; external contributors are encouraged to submit changes directly as Pull Requests. This workflow enforces that policy by automatically closing issues opened by users who are not repository maintainers (owners, org members, or collaborators) and leaving a comment directing them to open a Pull Request instead.
+
+**What to contribute via PR:**
+- Bug fixes
+- New features or improvements
+- Documentation updates
+- Any other code or content changes
+
+### How it works
+
+1. Checks the `author_association` of the issue creator from the GitHub event payload (no extra API calls needed).
+2. Allows issues from users with `OWNER`, `MEMBER`, or `COLLABORATOR` association.
+3. For all other users, it:
+   - Leaves a friendly comment explaining that issues are not accepted from external contributors and asking them to open a PR directly.
+   - Closes the issue automatically.
+
+### Allowed roles
+
+| `author_association` | Description | Allowed to open issues |
+|---|---|---|
+| `OWNER` | Repository owner | ✅ Yes |
+| `MEMBER` | Organization member | ✅ Yes |
+| `COLLABORATOR` | Outside collaborator with write access | ✅ Yes |
+| `CONTRIBUTOR` / `FIRST_TIME_CONTRIBUTOR` / `NONE` | External user | ❌ No — asked to open a PR directly |
+
+---
+
 ## Other Workflows
+
+### Label Issues by Creation Date Workflow
+**File:** `.github/workflows/label-issues-by-date.yml`
+
+**Triggers:**
+- Daily at midnight UTC (scheduled)
+- Manual trigger via workflow_dispatch
+
+**Purpose:** Automatically labels issues with their creation date in YYYY-MM format (e.g., 2024-01, 2024-02).
+
+**Features:**
+- Processes all issues (both open and closed) in the repository
+- Creates date labels automatically if they don't exist
+- Uses color-coded labels based on the month
+- Skips issues that already have a date label
+- Skips pull requests (only processes issues)
+- Runs daily to label new issues automatically
+
+**How it works:**
+1. Fetches all issues from the repository
+2. Extracts the creation date of each issue
+3. Formats the date as YYYY-MM (e.g., 2024-12)
+4. Creates the label if it doesn't exist with a month-specific color
+5. Adds the label to the issue
+
+**Manual Trigger:**
+1. Go to the [Actions](../../actions) tab in GitHub
+2. Select "Label Issues by Creation Date" workflow
+3. Click "Run workflow"
+4. Click "Run workflow" button
+
+**Use Cases:**
+- Track when issues were created
+- Filter and organize issues by time period
+- Generate reports based on issue creation dates
+- Monitor issue trends over time
 
 ### Test Workflow
 **File:** `.github/workflows/test.yml`

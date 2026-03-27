@@ -7,24 +7,25 @@
   <div class="relative">
     {# ---------------- Pre-Lab Tutorial Overlay ---------------- #}
     <div id="tutorial-overlay"
-         class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
-        <h3 class="text-2xl font-bold text-gray-800 mb-2">
+         class="fixed inset-0 bg-gray-800 dark:bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
           Step <span id="step-number">1</span> of 5
         </h3>
-        <ul id="step-list" class="space-y-2 mt-4 text-gray-700">
+        <ul id="step-list"
+            class="space-y-2 mt-4 text-gray-700 dark:text-gray-300">
           {# JS will inject bullet points here with fade-in #}
         </ul>
         <div class="mt-6 flex justify-end space-x-2">
           <button id="tutorial-prev"
-                  class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 disabled:opacity-50 transition-opacity duration-300"
+                  class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 transition-opacity duration-300"
                   disabled>Previous</button>
           <button id="tutorial-next"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-opacity duration-300">
+                  class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800 transition-opacity duration-300">
             Next
           </button>
           <button id="tutorial-skip"
-                  class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-opacity duration-300">
+                  class="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700 transition-opacity duration-300">
             Skip Tutorial
           </button>
         </div>
@@ -32,11 +33,11 @@
     </div>
     {# -------------- End Tutorial Overlay -------------- #}
     <div class="max-w-5xl mx-auto px-6 py-8 space-y-8">
-      <div class="bg-white shadow-md rounded-lg overflow-hidden">
+      <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
         <!-- Header / Pre-lab Info -->
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-2xl font-bold text-gray-800 mb-2">Projectile Motion</h2>
-          <p class="text-gray-600">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Projectile Motion</h2>
+          <p class="text-gray-600 dark:text-gray-300">
             Click‐and‐drag from the <strong>launch pad</strong> (white circle) at left to set speed and angle.
             <br />
             Release to fire. Adjust gravity or wind on the fly.
@@ -53,15 +54,15 @@
                     height="400"
                     role="img"
                     aria-label="Projectile motion simulation canvas showing launch pad and trajectory"
-                    class="border border-gray-300 rounded bg-gradient-to-b from-blue-100 to-white"></canvas>
+                    class="border border-gray-300 dark:border-gray-600 rounded bg-gradient-to-b from-blue-100 dark:from-blue-900 to-white dark:to-gray-800"></canvas>
             {# Launch Pad Icon (white circle)—drawn via JS, but reserve a tooltip #}
-            <div class="absolute bottom-4 left-4 text-xs text-gray-700">
+            <div class="absolute bottom-4 left-4 text-xs text-gray-700 dark:text-gray-300">
               <span class="inline-block w-4 h-4 bg-white border-2 border-gray-400 rounded-full"></span>
               <span class="ml-1">Launch Pad</span>
             </div>
             {# Numeric Readouts (top-left) #}
             <div id="info-panel"
-                 class="absolute top-4 left-4 bg-white bg-opacity-75 p-2 rounded shadow text-xs text-gray-800 space-y-1">
+                 class="absolute top-4 left-4 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-90 p-2 rounded shadow text-xs text-gray-800 dark:text-gray-300 space-y-1">
               <div>
                 t = <span id="time-readout">0.00</span> s
               </div>
@@ -82,21 +83,21 @@
           </div>
           {# ---------------- Live Plot: y vs x ---------------- #}
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Trajectory: y vs x</h3>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Trajectory: y vs x</h3>
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <canvas id="trajectory-chart"
                     width="250"
                     height="200"
-                    class="border border-gray-300 rounded"></canvas>
+                    class="border border-gray-300 dark:border-gray-600 rounded"></canvas>
           </div>
         </div>
         {# -------- End Simulation + Plot -------- #}
         {# -------- Mid-Flight “What-If” Controls -------- #}
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 space-y-4">
-          <div class="text-gray-700 font-medium mb-1">Mid-Flight Controls:</div>
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 space-y-4">
+          <div class="text-gray-700 dark:text-gray-300 font-medium mb-1">Mid-Flight Controls:</div>
           <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
             <div class="flex flex-col">
-              <label for="gravity-slider" class="text-gray-700 mb-1">
+              <label for="gravity-slider" class="text-gray-700 dark:text-gray-300 mb-1">
                 Gravity (m/s²): <span id="gravity-value">9.81</span>
               </label>
               <input type="range"
@@ -108,7 +109,7 @@
                      class="w-48" />
             </div>
             <div class="flex flex-col">
-              <label for="wind-slider" class="text-gray-700 mb-1">
+              <label for="wind-slider" class="text-gray-700 dark:text-gray-300 mb-1">
                 Wind Accel (m/s²): <span id="wind-value">0.00</span>
               </label>
               <input type="range"
@@ -121,24 +122,25 @@
             </div>
             <div class="flex items-center space-x-2">
               <button id="reset-button"
-                      class="px-5 py-2 bg-yellow-500 text-white font-medium rounded hover:bg-yellow-600 transition-opacity duration-300">
+                      class="px-5 py-2 bg-yellow-500 dark:bg-yellow-600 text-white font-medium rounded hover:bg-yellow-600 dark:hover:bg-yellow-700 transition-opacity duration-300">
                 Reset
               </button>
-              <div id="hit-status" class="text-gray-800 font-semibold"></div>
+              <div id="hit-status"
+                   class="text-gray-800 dark:text-gray-300 font-semibold"></div>
             </div>
           </div>
         </div>
         {# -------- End Mid-Flight Controls -------- #}
         {# -------- Post-Lab Quiz / Target Info (hidden initially) -------- #}
         <div id="postlab-quiz"
-             class="hidden px-6 py-4 border-t border-gray-200 space-y-2">
-          <h3 class="text-xl font-semibold text-gray-800 mb-2">Results & Quiz</h3>
-          <div id="target-info" class="text-gray-700">
+             class="hidden px-6 py-4 border-t border-gray-200 dark:border-gray-600 space-y-2">
+          <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Results & Quiz</h3>
+          <div id="target-info" class="text-gray-700 dark:text-gray-300">
             Target was at x = <span id="target-x">--</span> m.
             You landed at x = <span id="land-x">--</span> m.
             <span id="hit-text" class="font-bold"></span>
           </div>
-          <ol class="list-decimal list-inside text-gray-700 space-y-2">
+          <ol class="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2">
             <li>
               Explain why changing the <strong>gravity</strong> slider mid-flight altered your arc the way it did.
             </li>

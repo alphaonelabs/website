@@ -7,24 +7,25 @@
   <div class="relative">
     {# ---------------- Tutorial Overlay (unchanged) ---------------- #}
     <div id="tutorial-overlay"
-         class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
-        <h3 class="text-2xl font-bold text-gray-800 mb-2">
+         class="fixed inset-0 bg-gray-800 dark:bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
           Step <span id="step-number">1</span> of 5
         </h3>
-        <ul id="step-list" class="space-y-2 mt-4 text-gray-700">
+        <ul id="step-list"
+            class="space-y-2 mt-4 text-gray-700 dark:text-gray-300">
           {# Animated bullet points inserted by JS #}
         </ul>
         <div class="mt-6 flex justify-end space-x-2">
           <button id="tutorial-prev"
-                  class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 disabled:opacity-50 transition-opacity duration-300"
+                  class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50 transition-opacity duration-300"
                   disabled>Previous</button>
           <button id="tutorial-next"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-opacity duration-300">
+                  class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800 transition-opacity duration-300">
             Next
           </button>
           <button id="tutorial-skip"
-                  class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-opacity duration-300">
+                  class="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700 transition-opacity duration-300">
             Skip Tutorial
           </button>
         </div>
@@ -32,11 +33,11 @@
     </div>
     {# -------------- End Tutorial Overlay -------------- #}
     <div class="max-w-3xl mx-auto px-6 py-8 space-y-8">
-      <div class="bg-white shadow-md rounded-lg overflow-hidden">
+      <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
         <!-- Pre-lab Tutorial Section -->
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-2xl font-bold text-gray-800 mb-2">Pendulum Motion</h2>
-          <p class="text-gray-600">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Pendulum Motion</h2>
+          <p class="text-gray-600 dark:text-gray-300">
             Follow the animated tutorial above, then start the simulation. Watch the pendulum swing and see its trail. Numerical readouts appear at top‐left.
           </p>
         </div>
@@ -46,10 +47,10 @@
           <canvas id="pendulum-canvas"
                   width="600"
                   height="400"
-                  class="border border-gray-300 rounded bg-white"></canvas>
+                  class="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"></canvas>
           {# Numerical Readouts in top-left corner #}
           <div id="info-panel"
-               class="absolute top-4 left-4 bg-white bg-opacity-75 p-2 rounded shadow text-sm text-gray-800">
+               class="absolute top-4 left-4 bg-white dark:bg-gray-800 bg-opacity-75 dark:bg-opacity-90 p-2 rounded shadow text-sm text-gray-800 dark:text-gray-300">
             <div>
               t = <span id="time-readout">0.00</span> s
             </div>
@@ -61,27 +62,27 @@
             </div>
           </div>
           {# Small graph overlaid in top-right #}
-          <div class="absolute top-4 right-2 bg-white bg-opacity-90 border border-gray-200 rounded shadow-lg p-2">
-            <h4 class="text-sm font-semibold text-gray-800 mb-1">θ vs t</h4>
+          <div class="absolute top-4 right-2 bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 border border-gray-200 dark:border-gray-600 rounded shadow-lg p-2">
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">θ vs t</h4>
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <canvas id="angle-chart"
                     width="250"
                     height="150"
-                    class="border border-gray-300 rounded"></canvas>
+                    class="border border-gray-300 dark:border-gray-600 rounded"></canvas>
           </div>
         </div>
         {# -------- End Pendulum area -------- #}
         {# -------- Energy Bars -------- #}
         <div class="px-6 py-4 space-y-4">
           <div>
-            <div class="text-gray-700 font-medium mb-1">Potential Energy</div>
-            <div class="w-full bg-gray-200 h-4 rounded">
+            <div class="text-gray-700 dark:text-gray-300 font-medium mb-1">Potential Energy</div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 h-4 rounded">
               <div id="pe-bar" class="bg-red-500 h-4 rounded" style="width: 0%"></div>
             </div>
           </div>
           <div>
-            <div class="text-gray-700 font-medium mb-1">Kinetic Energy</div>
-            <div class="w-full bg-gray-200 h-4 rounded">
+            <div class="text-gray-700 dark:text-gray-300 font-medium mb-1">Kinetic Energy</div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 h-4 rounded">
               <div id="ke-bar" class="bg-green-500 h-4 rounded" style="width: 0%"></div>
             </div>
           </div>
@@ -90,7 +91,8 @@
         <!-- Controls: Length Slider + Start/Stop -->
         <div class="px-6 py-4 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
           <div class="flex items-center space-x-2">
-            <label for="length-slider" class="font-medium text-gray-700">Length (m):</label>
+            <label for="length-slider"
+                   class="font-medium text-gray-700 dark:text-gray-300">Length (m):</label>
             <input type="range"
                    id="length-slider"
                    min="0.5"
@@ -98,19 +100,21 @@
                    step="0.1"
                    value="1.0"
                    class="w-48" />
-            <span id="length-value" class="ml-2 font-semibold text-gray-800">1.0 m</span>
+            <span id="length-value"
+                  class="ml-2 font-semibold text-gray-800 dark:text-gray-100">1.0 m</span>
           </div>
           <button id="start-pendulum"
-                  class="px-5 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-opacity duration-300"
+                  class="px-5 py-2 bg-blue-600 dark:bg-blue-700 text-white font-medium rounded hover:bg-blue-700 dark:hover:bg-blue-800 transition-opacity duration-300"
                   disabled>Start</button>
           <button id="stop-pendulum"
-                  class="px-5 py-2 bg-red-600 text-white font-medium rounded hover:bg-red-700 transition-opacity duration-300"
+                  class="px-5 py-2 bg-red-600 dark:bg-red-700 text-white font-medium rounded hover:bg-red-700 dark:hover:bg-red-800 transition-opacity duration-300"
                   disabled>Stop</button>
         </div>
         <!-- Post-Lab Quiz (hidden for now) -->
-        <div id="postlab-quiz" class="hidden px-6 py-4 border-t border-gray-200">
-          <h3 class="text-xl font-semibold text-gray-800 mb-2">Post-Lab Quiz</h3>
-          <ol class="list-decimal list-inside text-gray-700 space-y-2">
+        <div id="postlab-quiz"
+             class="hidden px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Post-Lab Quiz</h3>
+          <ol class="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2">
             <li>If you double the length of the pendulum, does the period increase, decrease, or stay the same? Explain why.</li>
             <li>Calculate the theoretical period for a length of 1.0 m and compare it to what you observed.</li>
           </ol>

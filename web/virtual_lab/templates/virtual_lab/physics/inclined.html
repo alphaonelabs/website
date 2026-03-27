@@ -7,32 +7,36 @@
   <div class="relative">
     <!-- ===== Tutorial Overlay ===== -->
     <div id="tutorial-overlay"
-         class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
-        <h3 class="text-2xl font-bold text-gray-800 mb-2">
+         class="fixed inset-0 bg-gray-800 dark:bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-11/12 sm:w-3/4 md:w-1/2 lg:w-2/5">
+        <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
           Step <span id="step-number">1</span> of 4
         </h3>
         <ul id="step-list"
-            class="mt-4 text-gray-700 list-disc list-inside space-y-2">
+            class="mt-4 text-gray-700 dark:text-gray-300 list-disc list-inside space-y-2">
           <!-- Filled by JS -->
         </ul>
         <div class="mt-6 flex justify-end space-x-2">
           <button id="tutorial-prev"
-                  class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 disabled:opacity-50"
+                  class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-400 dark:hover:bg-gray-500 disabled:opacity-50"
                   disabled>Previous</button>
           <button id="tutorial-next"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Next</button>
+                  class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800">
+            Next
+          </button>
           <button id="tutorial-skip"
-                  class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Skip Tutorial</button>
+                  class="px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700">
+            Skip Tutorial
+          </button>
         </div>
       </div>
     </div>
     <!-- ===== End Tutorial Overlay ===== -->
     <div class="max-w-5xl mx-auto px-6 py-8 space-y-8">
-      <div class="bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-2xl font-bold text-gray-800 mb-2">Inclined Plane Dynamics</h2>
-          <p class="text-gray-600">
+      <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Inclined Plane Dynamics</h2>
+          <p class="text-gray-600 dark:text-gray-300">
             Drag the block to any starting point, adjust angle, friction, and mass.
             Click “Launch” to let it slide, watch live readouts, energy bars, force vectors, and a real-time graph.
             Once it reaches the bottom, a short quiz will appear.
@@ -40,9 +44,10 @@
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6 py-4">
           <div class="space-y-4">
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-wrap gap-4">
+            <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4 flex flex-wrap gap-4">
               <div class="flex items-center space-x-2">
-                <label for="angle-slider" class="font-medium text-gray-700">Angle (°):</label>
+                <label for="angle-slider"
+                       class="font-medium text-gray-700 dark:text-gray-300">Angle (°):</label>
                 <input type="range"
                        id="angle-slider"
                        min="0"
@@ -50,10 +55,12 @@
                        step="1"
                        value="30"
                        class="w-40" />
-                <span id="angle-value" class="ml-2 font-semibold text-gray-800">30°</span>
+                <span id="angle-value"
+                      class="ml-2 font-semibold text-gray-800 dark:text-gray-100">30°</span>
               </div>
               <div class="flex items-center space-x-2">
-                <label for="friction-slider" class="font-medium text-gray-700">Friction μ:</label>
+                <label for="friction-slider"
+                       class="font-medium text-gray-700 dark:text-gray-300">Friction μ:</label>
                 <input type="range"
                        id="friction-slider"
                        min="0"
@@ -61,10 +68,12 @@
                        step="0.01"
                        value="0.00"
                        class="w-40" />
-                <span id="friction-value" class="ml-2 font-semibold text-gray-800">0.00</span>
+                <span id="friction-value"
+                      class="ml-2 font-semibold text-gray-800 dark:text-gray-100">0.00</span>
               </div>
               <div class="flex items-center space-x-2">
-                <label for="mass-slider" class="font-medium text-gray-700">Mass (kg):</label>
+                <label for="mass-slider"
+                       class="font-medium text-gray-700 dark:text-gray-300">Mass (kg):</label>
                 <input type="range"
                        id="mass-slider"
                        min="0.1"
@@ -72,27 +81,28 @@
                        step="0.1"
                        value="1.0"
                        class="w-40" />
-                <span id="mass-value" class="ml-2 font-semibold text-gray-800">1.0 kg</span>
+                <span id="mass-value"
+                      class="ml-2 font-semibold text-gray-800 dark:text-gray-100">1.0 kg</span>
               </div>
               <div class="flex space-x-4 pt-1">
                 <button id="start-inclined"
-                        class="px-4 py-2 bg-yellow-500 text-black font-medium rounded hover:bg-yellow-600 transition">
+                        class="px-4 py-2 bg-yellow-500 dark:bg-yellow-600 text-black font-medium rounded hover:bg-yellow-600 dark:hover:bg-yellow-700 transition">
                   Launch
                 </button>
                 <button id="stop-inclined"
-                        class="px-4 py-2 bg-red-500 text-white font-medium rounded hover:bg-red-600 transition disabled:opacity-50"
+                        class="px-4 py-2 bg-red-500 dark:bg-red-600 text-white font-medium rounded hover:bg-red-600 dark:hover:bg-red-700 transition disabled:opacity-50"
                         disabled>Stop</button>
                 <button id="reset-inclined"
-                        class="px-4 py-2 bg-gray-500 text-white font-medium rounded hover:bg-gray-600 transition">
+                        class="px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white font-medium rounded hover:bg-gray-600 dark:hover:bg-gray-700 transition">
                   Reset
                 </button>
               </div>
             </div>
             <!-- Canvas + Readouts + Energy Bars -->
-            <div class="relative bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-xl border border-gray-300">
+            <div class="relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-xl border border-gray-300 dark:border-gray-600">
               <canvas id="inclined-canvas" width="600" height="400" class="rounded-lg"></canvas>
               <!-- Numeric Readouts (overlay top-left) -->
-              <div class="absolute top-2 left-2 bg-white bg-opacity-80 p-2 rounded text-sm">
+              <div class="absolute top-2 left-2 bg-white dark:bg-gray-800 bg-opacity-80 dark:bg-opacity-90 p-2 rounded text-sm dark:text-gray-300">
                 <p>
                   <strong>Distance ↓</strong>: <span id="readout-s">0.00</span> m
                 </p>
@@ -111,7 +121,7 @@
               </div>
             </div>
             <!-- Force Vectors Legend -->
-            <div class="flex space-x-4 text-sm">
+            <div class="flex space-x-4 text-sm dark:text-gray-300">
               <div class="flex items-center space-x-1">
                 <div class="h-3 w-6 bg-red-500"></div>
                 <span>mg sin α</span>
@@ -129,30 +139,30 @@
           <!-- ===== Right Column: Position vs Time Graph + Quiz + Energy Bars ===== -->
           <div class="space-y-6">
             <!-- Real-Time Graph: Position vs Time -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Position vs Time</h3>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Position vs Time</h3>
               <canvas id="position-chart" height="200"></canvas>
             </div>
             <!-- Energy Bars (moved below the graph) -->
             <div class="flex space-x-4 items-end">
               <div class="w-1/2">
-                <p class="text-center text-sm font-semibold">Potential Energy</p>
-                <div class="h-40 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                <p class="text-center text-sm font-semibold dark:text-gray-300">Potential Energy</p>
+                <div class="h-40 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
                   <div id="bar-pe" class="bg-green-500 w-full h-0"></div>
                 </div>
               </div>
               <div class="w-1/2">
-                <p class="text-center text-sm font-semibold">Kinetic Energy</p>
-                <div class="h-40 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                <p class="text-center text-sm font-semibold dark:text-gray-300">Kinetic Energy</p>
+                <div class="h-40 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
                   <div id="bar-ke" class="bg-indigo-500 w-full h-0"></div>
                 </div>
               </div>
             </div>
             <!-- Post-Lab Quiz (hidden until bottom) -->
             <div id="postlab-quiz"
-                 class="hidden bg-gray-50 border-t border-gray-200 p-4 rounded-lg">
-              <h3 class="text-xl font-semibold text-gray-800 mb-2">Post-Lab Quiz</h3>
-              <ol class="list-decimal list-inside text-gray-700 space-y-2">
+                 class="hidden bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 p-4 rounded-lg">
+              <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Post-Lab Quiz</h3>
+              <ol class="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-2">
                 <li>Explain how changing μ affects the block’s motion. What’s the threshold μ below which it moves at α = 15°?</li>
                 <li>If α = 30°, μ = 0.10, and m = 2 kg, calculate the theoretical acceleration and compare to the simulation.</li>
               </ol>

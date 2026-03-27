@@ -10,6 +10,7 @@
       document.addEventListener('DOMContentLoaded', function() {
           const questionTypeField = document.getElementById('id_question_type');
           const optionsSection = document.getElementById('options-section');
+          const optionsContainer = document.getElementById('options-container');
 
           // Function to toggle options visibility
           function toggleOptionsVisibility() {
@@ -26,13 +27,51 @@
           // Add event listener for changes
           questionTypeField.addEventListener('change', toggleOptionsVisibility);
 
+          function getVisibleOptionForms() {
+              if (!optionsContainer) {
+                  return [];
+              }
+
+              return Array.from(optionsContainer.querySelectorAll('.option-form')).filter(form => {
+                  if (form.classList.contains('hidden')) {
+                      return false;
+                  }
+                  const deleteField = form.querySelector('.option-delete-field');
+                  return !(deleteField && deleteField.checked);
+              });
+          }
+
+          function updateDeleteButtons() {
+              const visibleForms = getVisibleOptionForms();
+              const shouldDisable = visibleForms.length <= 2;
+
+              visibleForms.forEach(form => {
+                  const deleteBtn = form.querySelector('.delete-option-btn');
+                  if (!deleteBtn) {
+                      return;
+                  }
+
+                  deleteBtn.disabled = shouldDisable;
+                  deleteBtn.classList.toggle('opacity-50', shouldDisable);
+                  deleteBtn.classList.toggle('cursor-not-allowed', shouldDisable);
+                  if (shouldDisable) {
+                      deleteBtn.setAttribute('title', 'At least two options are required');
+                  } else {
+                      deleteBtn.removeAttribute('title');
+                  }
+              });
+          }
+
           // Add option button functionality
           const addOptionBtn = document.getElementById('add-option-btn');
           if (addOptionBtn) {
               addOptionBtn.addEventListener('click', function(e) {
                   e.preventDefault();
                   const totalFormsField = document.getElementById('id_options-TOTAL_FORMS');
-                  const optionsContainer = document.getElementById('options-container');
+
+                  if (!totalFormsField || !optionsContainer) {
+                      return;
+                  }
 
                   // Get current form count
                   let formCount = parseInt(totalFormsField.value);
@@ -43,8 +82,16 @@
                   // Update all IDs and names to use the new index
                   const inputs = formTemplate.querySelectorAll('input, select, textarea');
                   inputs.forEach(input => {
-                      input.id = input.id.replace('-0-', `-${formCount}-`);
-                      input.name = input.name.replace('-0-', `-${formCount}-`);
+                      if (input.id) {
+                          input.id = input.id.replace('-0-', `-${formCount}-`);
+                      }
+                      if (input.name) {
+                          input.name = input.name.replace('-0-', `-${formCount}-`);
+                      }
+
+                      if (input.hasAttribute('required')) {
+                          input.removeAttribute('required');
+                      }
 
                       // Clear values except for hidden inputs
                       if (!input.classList.contains('keep-value')) {
@@ -57,13 +104,59 @@
                       }
                   });
 
+                  const labels = formTemplate.querySelectorAll('label[for]');
+                  labels.forEach(label => {
+                      const currentFor = label.getAttribute('for');
+                      if (!currentFor) {
+                          return;
+                      }
+                      label.setAttribute('for', currentFor.replace('-0-', `-${formCount}-`));
+                  });
+
+                  // Ensure delete field is unchecked for new form
+                  const deleteField = formTemplate.querySelector('.option-delete-field');
+                  if (deleteField) {
+                      deleteField.checked = false;
+                  }
+
                   // Update form count
                   totalFormsField.value = formCount + 1;
 
                   // Add the new form
                   optionsContainer.appendChild(formTemplate);
+                  updateDeleteButtons();
               });
           }
+
+          if (optionsContainer) {
+              optionsContainer.addEventListener('click', function(event) {
+                  const target = event.target.closest('.delete-option-btn');
+                  if (!target) {
+                      return;
+                  }
+
+                  event.preventDefault();
+                  const visibleForms = getVisibleOptionForms();
+                  if (visibleForms.length <= 2) {
+                      return;
+                  }
+
+                  const optionForm = target.closest('.option-form');
+                  if (!optionForm) {
+                      return;
+                  }
+
+                  const deleteField = optionForm.querySelector('.option-delete-field');
+                  if (deleteField) {
+                      deleteField.checked = true;
+                  }
+
+                  optionForm.classList.add('hidden');
+                  updateDeleteButtons();
+              });
+          }
+
+          updateDeleteButtons();
       });
   </script>
 {% endblock extra_head %}
@@ -184,7 +277,7 @@
               {% for option_form in formset %}
                 <div class="option-form bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                   <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-10">
+                    <div class="col-span-9 md:col-span-10">
                       <label for="{{ option_form.text.id_for_label }}"
                              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Option Text
@@ -200,19 +293,31 @@
                         <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ option_form.text.errors.0 }}</p>
                       {% endif %}
                     </div>
-                    <div class="col-span-2 flex items-center justify-center pt-6">
+                    <div class="col-span-3 flex items-center justify-center pt-6 md:col-span-2">
                       <div class="flex items-center">
-                        <input type="checkbox"
-                               name="{{ option_form.is_correct.html_name }}"
-                               id="{{ option_form.is_correct.id_for_label }}"
-                               {% if option_form.is_correct.value %}checked{% endif %}
-                               class="h-5 w-5 text-teal-600 focus:ring-teal-500 border-gray-300 rounded" />
-                        <label for="{{ option_form.is_correct.id_for_label }}"
-                               class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Correct</label>
+                        <div class="flex items-center">
+                          <input type="checkbox"
+                                 name="{{ option_form.is_correct.html_name }}"
+                                 id="{{ option_form.is_correct.id_for_label }}"
+                                 {% if option_form.is_correct.value %}checked{% endif %}
+                                 class="h-5 w-5 text-teal-600 focus:ring-teal-500 border-gray-300 rounded" />
+                          <label for="{{ option_form.is_correct.id_for_label }}"
+                                 class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Correct</label>
+                        </div>
+                        <button type="button"
+                                class="delete-option-btn ml-4 rounded text-red-600 hover:text-red-700 focus:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400 dark:hover:text-red-300 dark:focus:ring-red-500 sm:ml-6 md:ml-8"
+                                aria-label="Remove option">
+                          <i class="fas fa-trash-alt"></i>
+                        </button>
                       </div>
                     </div>
                   </div>
                   <!-- Hidden fields -->
+                  <input type="checkbox"
+                         name="{{ option_form.DELETE.html_name }}"
+                         id="{{ option_form.DELETE.id_for_label }}"
+                         class="option-delete-field hidden"
+                         {% if option_form.DELETE.value %}checked{% endif %} />
                   {% for hidden in option_form.hidden_fields %}{{ hidden }}{% endfor %}
                 </div>
               {% endfor %}

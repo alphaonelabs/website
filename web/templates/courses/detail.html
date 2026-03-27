@@ -442,11 +442,13 @@
                   <h3 class="text-sm font-semibold">Session Calendar</h3>
                   <div class="flex items-center space-x-4">
                     <button id="prev-month-btn"
+                            onclick="loadCalendar({{ prev_month.year }}, {{ prev_month.month }})"
                             class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
                       <i class="fas fa-chevron-left"></i>
                     </button>
                     <span class="text-sm font-medium" id="current-month">{{ current_month|date:"F Y" }}</span>
                     <button id="next-month-btn"
+                            onclick="loadCalendar({{ next_month.year }}, {{ next_month.month }})"
                             class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
                       <i class="fas fa-chevron-right"></i>
                     </button>
@@ -489,7 +491,7 @@
           <!-- Middle and Right Columns - Course Info -->
           <div class="md:col-span-2 space-y-6">
             <!-- Improved Course Header -->
-            <div class="bg-gradient-to-r from-teal-50 to-blue-50 dark:from-gray-750 dark:to-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700">
+            <div class="p-6 bg-gradient-to-r from-teal-50 via-teal-200 to-gray-100 dark:from-teal-900 dark:via-teal-800/60 dark:to-gray-900 rounded-xl shadow-md">
               <!-- Course Title and Status -->
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
@@ -787,161 +789,141 @@
                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Currently Active</div>
                       </div>
                     </div>
-                    <!-- Students Table -->
+                    <!-- Students Cards -->
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                       <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 class="font-semibold text-lg text-gray-800 dark:text-gray-200">
-                          <i class="fas fa-users text-teal-500 dark:text-teal-400 mr-2"></i>
-                          Student Details
-                        </h3>
+                        <h3 class="font-semibold text-lg text-gray-800 dark:text-gray-200">Student Details</h3>
                         {% if user == course.teacher %}
                           <a href="{% url 'add_student_to_course' course.slug %}"
-                             class="inline-flex items-center px-3 py-1.5 text-sm bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200">
+                             class="inline-flex items-center px-3 py-1.5 text-sm bg-teal-300 hover:bg-teal-400 text-white dark:text-white rounded-lg transition duration-200">
                             <i class="fas fa-user-plus mr-2"></i>
                             Add Students
                           </a>
                         {% endif %}
                       </div>
                       {% if course.enrollments.exists %}
-                        <div class="relative overflow-hidden">
-                          <div class="overflow-x-auto scrollbar-hide">
-                            <table class="w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
-                              <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                  <th scope="col"
-                                      class="w-1/4 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Student
-                                  </th>
-                                  <th scope="col"
-                                      class="w-1/6 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Enrollment Date
-                                  </th>
-                                  <th scope="col"
-                                      class="w-1/6 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Progress
-                                  </th>
-                                  <th scope="col"
-                                      class="w-1/6 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Attendance
-                                  </th>
-                                  <th scope="col"
-                                      class="w-1/12 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Status
-                                  </th>
-                                  <th scope="col"
-                                      class="w-1/12 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                    Actions
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                {% for enrollment in course.enrollments.all %}
-                                  <tr class="{% cycle 'bg-white' 'bg-gray-50' %} dark:{% cycle 'bg-gray-800' 'bg-gray-750' %}">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                      <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                          {% if enrollment.student.profile.avatar %}
-                                            <img src="{{ enrollment.student.profile.avatar.url }}"
-                                                 alt="{{ enrollment.student.username }}"
-                                                 class="h-10 w-10 rounded-full object-cover"
-                                                 width="40"
-                                                 height="40" />
-                                          {% else %}
-                                            <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                                              <i class="fas fa-user text-gray-400 dark:text-gray-400"></i>
-                                            </div>
-                                          {% endif %}
+                        <div class="p-6">
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for enrollment in course.enrollments.all %}
+                              <div class="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 p-3.5 shadow">
+                                <!-- Header: Avatar + Name + Actions -->
+                                <div class="flex items-center justify-between gap-2.5 mb-3 pb-3 border-b border-gray-100 dark:border-gray-600">
+                                  <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                    <!-- Avatar -->
+                                    <div class="flex-shrink-0">
+                                      {% if enrollment.student.profile.avatar %}
+                                        <img src="{{ enrollment.student.profile.avatar.url }}"
+                                             alt="{{ enrollment.student.username }}"
+                                             class="h-11 w-11 rounded-full object-cover border border-gray-300 dark:border-gray-500"
+                                             width="44"
+                                             height="44" />
+                                      {% else %}
+                                        <div class="h-11 w-11 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center border border-gray-300 dark:border-gray-500">
+                                          <i class="fas fa-user text-teal-600 dark:text-teal-400 text-xs"></i>
                                         </div>
-                                        <div class="ml-4 overflow-hidden">
-                                          <div class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                            {{ enrollment.student.get_full_name|default:enrollment.student.username }}
-                                          </div>
-                                          <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ enrollment.student.username }}</div>
-                                          {% if enrollment.student.profile.expertise %}
-                                            <div class="text-xs text-gray-500 dark:text-gray-500 italic truncate">
-                                              {{ enrollment.student.profile.expertise|truncatechars:30 }}
-                                            </div>
-                                          {% endif %}
+                                      {% endif %}
+                                    </div>
+                                    <!-- Name -->
+                                    <div class="flex-1 min-w-0">
+                                      <h4 class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                        {{ enrollment.student.get_full_name|default:enrollment.student.username }}
+                                      </h4>
+                                      <p class="text-xs text-gray-500 dark:text-gray-400 truncate">@{{ enrollment.student.username }}</p>
+                                    </div>
+                                  </div>
+                                  <!-- Actions -->
+                                  {% if user == course.teacher %}
+                                    <div class="flex gap-2 flex-shrink-0">
+                                      {% if enrollment.student.profile.is_profile_public %}
+                                        <a href="{% url 'public_profile' enrollment.student.username %}"
+                                           class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-700 transition-colors"
+                                           title="View profile">
+                                          <i class="fas fa-user-circle"></i>
+                                        </a>
+                                      {% endif %}
+                                      <a href="{% url 'student_management' course.slug enrollment.student.id %}"
+                                         class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-700 transition-colors"
+                                         title="Manage student"
+                                         aria-label="Manage student">
+                                        <i class="fas fa-cog" aria-hidden="true"></i>
+                                        <span class="sr-only">Manage student</span>
+                                      </a>
+                                      <a href="{% url 'message_students' course.slug %}?student={{ enrollment.student.id }}"
+                                         class="text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-700 transition-colors"
+                                         title="Message student"
+                                         aria-label="Message student">
+                                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                                        <span class="sr-only">Message student</span>
+                                      </a>
+                                    </div>
+                                  {% endif %}
+                                </div>
+                                <!-- Content: Details -->
+                                <div class="space-y-2.5 text-xs">
+                                  <!-- Enrollment Date -->
+                                  <div class="flex items-center justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400 font-medium">Enrolled</span>
+                                    <span class="text-gray-900 dark:text-gray-100 font-medium">{{ enrollment.enrollment_date|date:"M d, Y" }}</span>
+                                  </div>
+                                  <!-- Progress -->
+                                  <div class="flex items-center gap-2">
+                                    <span class="flex-shrink-0 font-medium text-gray-600 dark:text-gray-400">Progress</span>
+                                    <div class="flex flex-1 items-center gap-2 mt-0.5">
+                                      <div class="flex-1 overflow-hidden rounded-full h-1.5 bg-gray-200 dark:bg-gray-600">
+                                        <div class="h-full bg-teal-500 dark:bg-teal-400 transition-all duration-300"
+                                             role="progressbar"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100"
+                                             aria-valuenow="{% if enrollment.progress %}{{ enrollment.progress.completion_percentage }}{% else %}0{% endif %}"
+                                             aria-label="Course completion: {% if enrollment.progress %}{{ enrollment.progress.completion_percentage }}{% else %}0{% endif %}%"
+                                             aria-valuetext="Course completion: {% if enrollment.progress %}{{ enrollment.progress.completion_percentage }}{% else %}0{% endif %}%"
+                                             style="width: {% if enrollment.progress %}{{ enrollment.progress.completion_percentage }}{% else %}0{% endif %}%">
                                         </div>
                                       </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                      <div class="text-sm text-gray-900 dark:text-white">{{ enrollment.enrollment_date|date:"M d, Y" }}</div>
-                                      <div class="text-xs text-gray-500 dark:text-gray-400">{{ enrollment.enrollment_date|timesince }} ago</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                      {% if enrollment.progress %}
-                                        <div class="flex items-center">
-                                          <div class="min-w-[4.5rem] w-[4.5rem] h-2 bg-gray-200 dark:bg-gray-700 rounded-full mr-2 overflow-hidden">
-                                            <div class="h-full bg-teal-500 dark:bg-teal-400 progress-bar"
-                                                 style="width: {{ enrollment.progress.completion_percentage }}%"
-                                                 data-progress="{{ enrollment.progress.completion_percentage }}"></div>
-                                          </div>
-                                          <span class="text-sm text-gray-600 dark:text-gray-400">{{ enrollment.progress.completion_percentage }}%</span>
-                                        </div>
-                                      {% else %}
-                                        <span class="text-sm text-gray-500 dark:text-gray-400">No progress data</span>
-                                      {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                      <span class="flex-shrink-0 text-xs font-semibold text-teal-600 dark:text-teal-400">
+                                        {% if enrollment.progress %}
+                                          {{ enrollment.progress.completion_percentage }}%
+                                        {% else %}
+                                          0%
+                                        {% endif %}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <!-- Attendance -->
+                                  <div class="flex items-center justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400 font-medium">Attendance</span>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-gray-100 font-medium">
+                                      <i class="fas fa-calendar-check text-blue-600 dark:text-blue-400 text-xs"></i>
                                       {% if student_attendance and student_attendance|get_item:enrollment.student.id %}
-                                        <div class="text-sm">
-                                          <span class="px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium">
-                                            <i class="fas fa-calendar-check text-blue-600 dark:text-blue-400 mr-1"></i>
-                                            {{ student_attendance|get_item:enrollment.student.id|get_item:'attended' }}/{{ student_attendance|get_item:enrollment.student.id|get_item:'total' }}
-                                          </span>
-                                        </div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                          {% with attendance_rate=student_attendance|get_item:enrollment.student.id|get_item:'attended'|floatformat:0 %}
-                                            {{ attendance_rate }}% attendance rate
-                                          {% endwith %}
-                                        </div>
+                                        {{ student_attendance|get_item:enrollment.student.id|get_item:'attended' }}/{{ student_attendance|get_item:enrollment.student.id|get_item:'total' }}
                                       {% else %}
-                                        <span class="text-sm text-gray-500 dark:text-gray-400">No data</span>
+                                        N/A
                                       {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                      {% if enrollment.status == 'completed' %}
-                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                          <i class="fas fa-check-circle mr-1"></i>Completed
-                                        </span>
-                                      {% elif enrollment.status == 'in_progress' %}
-                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                          <i class="fas fa-spinner mr-1"></i>In Progress
-                                        </span>
-                                      {% else %}
-                                        <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                          {{ enrollment.status|title|default:"Unknown" }}
-                                        </span>
-                                      {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                      <div class="flex space-x-2">
-                                        {% if enrollment.student.profile.is_profile_public %}
-                                          <a href="{% url 'public_profile' enrollment.student.username %}"
-                                             class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                                             title="View profile">
-                                            <i class="fas fa-user-circle"></i>
-                                          </a>
-                                        {% endif %}
-                                        {% if user == course.teacher %}
-                                          <a href="{% url 'student_management' course.slug enrollment.student.id %}"
-                                             class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                             title="Manage student">
-                                            <i class="fas fa-cog"></i>
-                                          </a>
-                                          <a href="{% url 'message_students' course.slug %}?student={{ enrollment.student.id }}"
-                                             class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                                             title="Message student">
-                                            <i class="fas fa-envelope"></i>
-                                          </a>
-                                        {% endif %}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                {% endfor %}
-                              </tbody>
-                            </table>
+                                    </span>
+                                  </div>
+                                  <!-- Status -->
+                                  <div class="flex items-center justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400 font-medium">Status</span>
+                                    {% if enrollment.status == 'completed' %}
+                                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium">
+                                        <i class="fas fa-check-circle text-xs"></i>Completed
+                                      </span>
+                                    {% elif enrollment.status == 'in_progress' %}
+                                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium">
+                                        <i class="fas fa-circle-notch motion-safe:animate-spin text-xs"
+                                           aria-hidden="true"></i>
+                                        <span class="sr-only">In Progress</span>
+                                        In Progress
+                                      </span>
+                                    {% else %}
+                                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-600/30 text-gray-700 dark:text-gray-300 font-medium">
+                                        <i class="fas fa-info-circle text-xs"></i>{{ enrollment.status|title|default:"Unknown" }}
+                                      </span>
+                                    {% endif %}
+                                  </div>
+                                </div>
+                              </div>
+                            {% endfor %}
                           </div>
                         </div>
                       {% else %}
@@ -1235,7 +1217,7 @@
               </div>
             </div>
             <section id="course_reviews"
-                     class="bg-gradient-to-r from-teal-50 to-blue-50 dark:from-gray-750 dark:to-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700 mb-6">
+                     class="p-6 mb-6 bg-gradient-to-r from-teal-50 to-blue-50 dark:from-teal-900/30 dark:to-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-teal-800/50">
               <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-gray-800 dark:text-white">Course Reviews</h2>
                 {% if is_enrolled and not user_review %}
@@ -1525,7 +1507,7 @@
       }
 
       function loadCalendar(year, month) {
-          fetch(`/courses/{{ course.slug }}/calendar/?year=${year}&month=${month}`)
+          fetch(`{% url 'course_calendar' course.slug %}?year=${year}&month=${month}`)
               .then(response => response.json())
               .then(data => {
                   // Update month display

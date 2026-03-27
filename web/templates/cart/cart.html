@@ -201,8 +201,23 @@
                 console.log('[Initialize] Payment intent response:', {
                     status: response.status,
                     hasClientSecret: !!data.clientSecret,
+                    isFreeCart: !!data.free_cart,
                     error: data.error
                 });
+
+                // Handle free cart (no payment needed)
+                if (data.free_cart) {
+                    console.log('[Initialize] Free cart detected, bypassing Stripe setup');
+                    // Hide payment element container and show a message
+                    const paymentElement = document.getElementById('payment-element');
+                    if (paymentElement) {
+                        paymentElement.style.display = 'none';
+                    }
+                    // Mark that this is a free checkout
+                    window.isFreeCheckout = true;
+                    showMessage("Your cart contains only free items. Click Checkout to enroll!");
+                    return;
+                }
 
                 const {
                     clientSecret
@@ -246,6 +261,36 @@
             console.log('[Submit] Starting form submission');
             e.preventDefault();
             setLoading(true);
+
+            // Handle free checkout
+            if (window.isFreeCheckout) {
+                console.log('[Submit] Processing free checkout');
+                try {
+                    const form = document.getElementById('checkout-form');
+                    const formData = new FormData(form);
+
+                    const response = await fetch("{% url 'free_cart_checkout' %}", {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                        }
+                    });
+
+                    if (response.ok) {
+                        // Redirect to the response URL (receipt page)
+                        window.location.href = response.url;
+                    } else {
+                        showMessage("Failed to process free checkout. Please try again.");
+                        setLoading(false);
+                    }
+                } catch (error) {
+                    console.error('[Submit] Free checkout error:', error);
+                    showMessage("An error occurred. Please try again.");
+                    setLoading(false);
+                }
+                return;
+            }
 
             const form = document.getElementById('checkout-form');
             const isAuthenticated = form.dataset.isAuthenticated === 'true';

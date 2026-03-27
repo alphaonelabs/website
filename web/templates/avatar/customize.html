@@ -37,7 +37,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Style</label>
               <select name="style"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for style in avatar_options.styles %}<option value="{{ style }}">{{ style|title }}</option>{% endfor %}
               </select>
             </div>
@@ -46,14 +46,14 @@
               <label class="block text-sm font-medium mb-1">Background Color</label>
               <input type="color"
                      name="background_color"
-                     class="w-full h-10 rounded-lg"
+                     class="w-full h-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400"
                      value="#FFFFFF" />
             </div>
             <!-- Hair Style -->
             <div>
               <label class="block text-sm font-medium mb-1">Hair Style</label>
               <select name="top"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for style in avatar_options.hair_styles %}<option value="{{ style }}">{{ style|title }}</option>{% endfor %}
               </select>
             </div>
@@ -62,14 +62,14 @@
               <label class="block text-sm font-medium mb-1">Hair Color</label>
               <input type="color"
                      name="hair_color"
-                     class="w-full h-10 rounded-lg"
+                     class="w-full h-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400"
                      value="#000000" />
             </div>
             <!-- Skin Color -->
             <div>
               <label class="block text-sm font-medium mb-1">Skin Color</label>
               <select name="skin_color"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for color in avatar_options.skin_colors %}<option value="{{ color }}">{{ color|title }}</option>{% endfor %}
               </select>
             </div>
@@ -77,7 +77,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Eyes</label>
               <select name="eyes"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for type in avatar_options.eye_types %}<option value="{{ type }}">{{ type|title }}</option>{% endfor %}
               </select>
             </div>
@@ -85,7 +85,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Eyebrows</label>
               <select name="eyebrows"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for type in avatar_options.eyebrow_types %}<option value="{{ type }}">{{ type|title }}</option>{% endfor %}
               </select>
             </div>
@@ -93,7 +93,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Nose</label>
               <select name="nose"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for type in avatar_options.nose_types %}<option value="{{ type }}">{{ type|title }}</option>{% endfor %}
               </select>
             </div>
@@ -101,7 +101,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Mouth</label>
               <select name="mouth"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for type in avatar_options.mouth_types %}<option value="{{ type }}">{{ type|title }}</option>{% endfor %}
               </select>
             </div>
@@ -109,7 +109,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Facial Hair</label>
               <select name="facial_hair"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for type in avatar_options.facial_hair_types %}<option value="{{ type }}">{{ type|title }}</option>{% endfor %}
               </select>
             </div>
@@ -117,7 +117,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Accessories</label>
               <select name="accessory"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for type in avatar_options.accessory_types %}<option value="{{ type }}">{{ type|title }}</option>{% endfor %}
               </select>
             </div>
@@ -125,7 +125,7 @@
             <div>
               <label class="block text-sm font-medium mb-1">Clothing</label>
               <select name="clothing"
-                      class="w-full rounded-lg border-gray-300 dark:border-gray-600">
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400">
                 {% for type in avatar_options.clothing_types %}<option value="{{ type }}">{{ type|title }}</option>{% endfor %}
               </select>
             </div>
@@ -134,7 +134,7 @@
               <label class="block text-sm font-medium mb-1">Clothing Color</label>
               <input type="color"
                      name="clothing_color"
-                     class="w-full h-10 rounded-lg"
+                     class="w-full h-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border-gray-300 dark:border-gray-600 dark:focus:ring-blue-400"
                      value="#0000FF" />
             </div>
           </form>
