@@ -3,10 +3,10 @@ import random
 import string
 import time
 import uuid
+import logging
 from datetime import datetime, timedelta
 from io import BytesIO
 from urllib.parse import parse_qs, urlparse
-
 from allauth.account.signals import user_signed_up
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -26,6 +26,8 @@ from markdownx.models import MarkdownxField
 from PIL import Image
 
 from web.utils import calculate_and_update_user_streak
+
+logger = logging.getLogger(__name__)
 
 
 class Notification(models.Model):
@@ -487,17 +489,14 @@ class Session(models.Model):
             coordinates = geocode_address(self.location)
             if coordinates:
                 self.latitude, self.longitude = coordinates
-                print("location store:", self.latitude, self.longitude)
+                logger.debug("location store: %s %s", self.latitude, self.longitude)
             else:
-                print(
+                logger.debug(
                     f"Skipping session {self.id} due to invalid coordinates:",
                     f"lat={self.latitude}, \n lng={self.longitude}",
                 )
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error("Error geocoding session %s location '%s': %s", self.id, self.location, str(e))
+            logger.exception("Error geocoding session %s location '%s'", self.id, self.location)
 
     def is_live(self):
         """Returns True if the session is live right now."""
