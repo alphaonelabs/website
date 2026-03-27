@@ -2353,6 +2353,7 @@ class WaitingRoom(models.Model):
     description = models.TextField(blank=True)
     subject = models.CharField(max_length=100, blank=True)
     topics = models.TextField(help_text="Comma-separated list of topics", blank=True)
+    email = models.EmailField(blank=True, help_text="Email for anonymous users")
     creator = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="created_waiting_rooms", null=True, blank=True
     )

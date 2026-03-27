@@ -961,6 +961,56 @@ class LearnForm(forms.ModelForm):
         return topics
 
 
+class AnonymousLearnForm(forms.ModelForm):
+    """Form for anonymous users to create waiting rooms with email only."""
+
+    email = forms.EmailField(
+        label="Email",
+        widget=TailwindInput(attrs={"placeholder": "Enter your email address"}),
+        help_text="We'll use this to contact you about your learning request"
+    )
+
+    class Meta:
+        model = WaitingRoom
+        fields = ["title", "description", "subject", "topics", "email"]
+
+        widgets = {
+            "title": TailwindInput(attrs={"placeholder": "What would you like to learn?"}),
+            "description": TailwindTextarea(attrs={"rows": 4, "placeholder": "Describe what you want to learn"}),
+            "subject": TailwindInput(attrs={"placeholder": "Main subject (e.g., Mathematics, Programming)"}),
+            "topics": TailwindInput(
+                attrs={"placeholder": "e.g., Python, Machine Learning, Data Science", "class": "tag-input"}
+            ),
+        }
+        help_texts = {
+            "title": "Give your waiting room a descriptive title",
+            "subject": "The main subject area for this waiting room",
+            "topics": "Enter topics separated by commas",
+            "email": "We'll contact you at this email address",
+        }
+
+    def clean_topics(self):
+        """Validate and clean the topics field."""
+        topics = self.cleaned_data.get("topics")
+        if not topics:
+            raise forms.ValidationError("Please enter at least one topic.")
+
+        # Ensure we have at least one non-empty topic after splitting
+        topic_list = [t.strip() for t in topics.split(",") if t.strip()]
+        if not topic_list:
+            raise forms.ValidationError("Please enter at least one valid topic.")
+
+        return topics
+
+    def save(self, commit=True):
+        """Save the form with creator set to None for anonymous users."""
+        instance = super().save(commit=False)
+        instance.creator = None  # Ensure creator is None for anonymous users
+        if commit:
+            instance.save()
+        return instance
+
+
 class TeachForm(forms.Form):
     """Form for creating course draft by both authenticated and unauthenticated users."""
 
