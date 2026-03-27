@@ -26,6 +26,9 @@ from .models import (
     ForumCategory,
     ForumReply,
     ForumTopic,
+    Gathering,
+    GatheringAnnouncement,
+    GatheringRegistration,
     Goods,
     LearningStreak,
     MembershipPlan,
@@ -889,3 +892,47 @@ class VideoRequestAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "category", "requester", "created_at")
     list_filter = ("status", "category")
     search_fields = ("title", "description", "requester__username")
+
+
+@admin.register(Gathering)
+class GatheringAdmin(admin.ModelAdmin):
+    list_display = ("title", "gathering_type", "organizer", "start_datetime", "status", "visibility", "attendee_count")
+    list_filter = ("gathering_type", "status", "visibility", "is_virtual")
+    search_fields = ("title", "description", "organizer__username", "organizer__email")
+    prepopulated_fields = {"slug": ("title",)}
+    raw_id_fields = ("organizer",)
+    readonly_fields = ("created_at", "updated_at")
+    date_hierarchy = "start_datetime"
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "description", "gathering_type", "organizer", "image", "tags")}),
+        ("Schedule", {"fields": ("start_datetime", "end_datetime")}),
+        ("Location", {"fields": ("is_virtual", "meeting_link", "location", "latitude", "longitude")}),
+        (
+            "Registration",
+            {"fields": ("registration_required", "max_attendees", "price")},
+        ),
+        ("Visibility", {"fields": ("status", "visibility")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    def attendee_count(self, obj):
+        return obj.attendee_count
+
+    attendee_count.short_description = "Attendees"
+
+
+@admin.register(GatheringRegistration)
+class GatheringRegistrationAdmin(admin.ModelAdmin):
+    list_display = ("gathering", "attendee", "status", "registered_at")
+    list_filter = ("status",)
+    search_fields = ("gathering__title", "attendee__username", "attendee__email")
+    raw_id_fields = ("gathering", "attendee")
+    readonly_fields = ("registered_at", "updated_at")
+
+
+@admin.register(GatheringAnnouncement)
+class GatheringAnnouncementAdmin(admin.ModelAdmin):
+    list_display = ("gathering", "title", "author", "created_at")
+    search_fields = ("gathering__title", "title", "author__username")
+    raw_id_fields = ("gathering", "author")
+    readonly_fields = ("created_at", "updated_at")

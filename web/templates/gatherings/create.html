@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% if editing %}
+    {% trans "Edit Gathering" %}
+  {% else %}
+    {% trans "Create Gathering" %}
+  {% endif %}
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-3xl mx-auto px-4 md:px-6 py-8">
+    <div class="mb-6">
+      <nav class="text-sm text-gray-500 dark:text-gray-400 mb-3"
+           aria-label="{% trans 'Breadcrumb' %}">
+        <a href="{% url 'gathering_list' %}"
+           class="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{% trans "Gatherings" %}</a>
+        <span class="mx-2">/</span>
+        {% if editing %}
+          <a href="{% url 'gathering_detail' slug=gathering.slug %}"
+             class="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{{ gathering.title }}</a>
+          <span class="mx-2">/</span>
+          <span class="text-gray-700 dark:text-gray-300">{% trans "Edit" %}</span>
+        {% else %}
+          <span class="text-gray-700 dark:text-gray-300">{% trans "Create" %}</span>
+        {% endif %}
+      </nav>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <i class="fas {% if editing %}fa-edit{% else %}fa-calendar-plus{% endif %} text-teal-500"
+           aria-hidden="true"></i>
+        {% if editing %}
+          {% trans "Edit Gathering" %}
+        {% else %}
+          {% trans "Create a Gathering" %}
+        {% endif %}
+      </h1>
+      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        {% if editing %}
+          {% trans "Update the details of your gathering." %}
+        {% else %}
+          {% trans "Organize a meetup, class, workshop, webinar, or any other gathering." %}
+        {% endif %}
+      </p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 md:p-8">
+      <form method="post"
+            enctype="multipart/form-data"
+            class="space-y-6"
+            novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 text-sm text-red-700 dark:text-red-300">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+        {# Basic info #}
+        <fieldset class="space-y-4">
+          <legend class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 w-full">
+            {% trans "Basic Information" %}
+          </legend>
+          <div>
+            <label for="{{ form.title.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.title.label }} <span class="text-red-500">*</span>
+            </label>
+            {{ form.title }}
+            {% if form.title.errors %}
+              <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.title.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="{{ form.gathering_type.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.gathering_type.label }} <span class="text-red-500">*</span>
+            </label>
+            {{ form.gathering_type }}
+            {% if form.gathering_type.errors %}
+              <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.gathering_type.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="{{ form.description.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.description.label }} <span class="text-red-500">*</span>
+            </label>
+            {{ form.description }}
+            {% if form.description.errors %}
+              <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.description.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="{{ form.tags.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.tags.label }}
+            </label>
+            {{ form.tags }}
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.tags.help_text }}</p>
+            {% if form.tags.errors %}
+              <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.tags.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="{{ form.image.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.image.label }}
+            </label>
+            {{ form.image }}
+            {% if form.image.errors %}
+              <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.image.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </fieldset>
+        {# Date & time #}
+        <fieldset class="space-y-4">
+          <legend class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 w-full">
+            {% trans "Date & Time" %}
+          </legend>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="{{ form.start_datetime.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ form.start_datetime.label }} <span class="text-red-500">*</span>
+              </label>
+              {{ form.start_datetime }}
+              {% if form.start_datetime.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.start_datetime.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.end_datetime.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ form.end_datetime.label }} <span class="text-red-500">*</span>
+              </label>
+              {{ form.end_datetime }}
+              {% if form.end_datetime.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.end_datetime.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </fieldset>
+        {# Location #}
+        <fieldset class="space-y-4"
+                  x-data="{ virtual: {{ form.is_virtual.value|yesno:'true,false' }} }">
+          <legend class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 w-full">
+            {% trans "Location & Format" %}
+          </legend>
+          <div class="flex items-center gap-3">
+            {{ form.is_virtual }}
+            <label for="{{ form.is_virtual.id_for_label }}"
+                   class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                   @click="virtual = !virtual">{{ form.is_virtual.label }}</label>
+          </div>
+          <div x-show="virtual">
+            <label for="{{ form.meeting_link.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.meeting_link.label }}
+            </label>
+            {{ form.meeting_link }}
+            {% if form.meeting_link.errors %}
+              <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.meeting_link.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div x-show="!virtual">
+            <label for="{{ form.location.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.location.label }}
+            </label>
+            {{ form.location }}
+            {% if form.location.errors %}
+              <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.location.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </fieldset>
+        {# Registration & capacity #}
+        <fieldset class="space-y-4">
+          <legend class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 w-full">
+            {% trans "Registration & Capacity" %}
+          </legend>
+          <div class="flex items-center gap-3">
+            {{ form.registration_required }}
+            <label for="{{ form.registration_required.id_for_label }}"
+                   class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ form.registration_required.label }}
+            </label>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="{{ form.max_attendees.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ form.max_attendees.label }}
+              </label>
+              {{ form.max_attendees }}
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.max_attendees.help_text }}</p>
+              {% if form.max_attendees.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.max_attendees.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.price.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ form.price.label }}
+              </label>
+              {{ form.price }}
+              {% if form.price.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.price.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </fieldset>
+        {# Visibility & status #}
+        <fieldset class="space-y-4">
+          <legend class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700 pb-2 w-full">
+            {% trans "Visibility & Status" %}
+          </legend>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="{{ form.visibility.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ form.visibility.label }}
+              </label>
+              {{ form.visibility }}
+              {% if form.visibility.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.visibility.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label for="{{ form.status.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ form.status.label }}
+              </label>
+              {{ form.status }}
+              {% if form.status.errors %}
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ form.status.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </fieldset>
+        {# Submit #}
+        <div class="flex gap-3 pt-2">
+          <button type="submit"
+                  class="px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg transition-colors">
+            {% if editing %}
+              {% trans "Save Changes" %}
+            {% else %}
+              {% trans "Create Gathering" %}
+            {% endif %}
+          </button>
+          <a href="{% if editing %}{% url 'gathering_detail' slug=gathering.slug %}{% else %}{% url 'gathering_list' %}{% endif %}"
+             class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold rounded-lg transition-colors">
+            {% trans "Cancel" %}
+          </a>
+        </div>
+      </form>
+    </div>
+  </main>
+{% endblock content %}
