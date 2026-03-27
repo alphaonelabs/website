@@ -1943,6 +1943,21 @@ def download_material(request, slug, material_id):
     if not material.is_downloadable and request.user != material.course.teacher:
         return HttpResponseForbidden("This material is not available for download.")
 
+    if material.requires_enrollment:
+        is_teacher = request.user == material.course.teacher
+        is_enrolled = Enrollment.objects.filter(
+            student=request.user,
+            course=material.course,
+            status="approved",
+        ).exists()
+
+        if not (is_teacher or is_enrolled):
+            return HttpResponseForbidden("You must be enrolled to download this material.")
+
+    if not material.file:
+        messages.error(request, "This material does not have a downloadable file.")
+        return redirect("course_detail", slug=slug)
+
     try:
         return FileResponse(material.file, as_attachment=True)
     except FileNotFoundError:
