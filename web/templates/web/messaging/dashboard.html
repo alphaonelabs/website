@@ -5,60 +5,519 @@
 {% endblock title %}
 {% block content %}
   <div class="container mx-auto px-4 py-8">
-    <div class="bg-gradient-to-r from-blue-500 to-teal-500 rounded-xl shadow-lg p-8 text-white">
-      <h1 class="text-4xl font-bold mb-4">Your Inbox</h1>
-      <p class="text-lg mb-6">
-        You have <span class="font-semibold">{{ inbox_count }}</span> messages in your inbox
-        (<span class="font-semibold">{{ unread_count }}</span> unread).
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
-        <a href="{% url 'compose_message' %}"
-           class="inline-block bg-green-600 text-white px-6 py-3 rounded-full shadow transition-colors hover:bg-green-700">
-          Compose Message
-        </a>
+    <div id="message-tabs-row" class="mb-4 ml-6 flex items-center gap-2">
+      <button type="button"
+              id="tab-inbox"
+              class="px-3 py-1 rounded-lg text-sm font-medium bg-teal-600 text-white">Inbox</button>
+      <button type="button"
+              id="tab-starred"
+              class="px-3 py-1 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+        Starred Messages
+      </button>
+    </div>
+    <div class="flex flex-col md:flex-row bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-8">
+      <!-- People List -->
+      <div id="people-panel"
+           class="w-full md:w-1/3 lg:w-1/4 flex flex-col gap-4 md:border-r md:border-gray-300 md:dark:border-gray-700 md:pr-6">
+        <p class="text-xs text-gray-600 dark:text-gray-300 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg px-3 py-2">
+          Messages are stored for 7 days only.
+        </p>
+        <div id="inbox-list" class="flex flex-col gap-2">
+          {% for person in people %}
+            <button type="button"
+                    class="flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 hover:bg-teal-200 dark:hover:bg-teal-800 transition group"
+                    data-person-btn
+                    data-person="{{ person.username }}">
+              {% if person.avatar_url %}
+                <img src="{{ person.avatar_url }}"
+                     alt="Avatar"
+                     class="w-8 h-8 rounded-full object-cover border-2 border-teal-500 mr-2"
+                     width="32"
+                     height="32" />
+              {% else %}
+                <div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold border-2 border-teal-500 mr-2">
+                  {{ person.display_name|first|upper }}
+                </div>
+              {% endif %}
+              <span class="font-medium">{{ person.display_name }}</span>
+              {% if person.has_unread %}
+                <span class="ml-2 bg-teal-600 text-white text-xs font-semibold px-2 py-0.5 rounded dark:bg-teal-700"
+                      data-person-unread-badge>New</span>
+              {% endif %}
+            </button>
+          {% endfor %}
+        </div>
+        <div id="starred-list"
+             class="hidden space-y-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 max-h-[460px] overflow-y-auto">
+          <p class="text-sm text-gray-500 dark:text-gray-400 text-center">No starred messages yet.</p>
+        </div>
+        <button type="button"
+                id="compose-btn"
+                class="mt-4 bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-lg transition duration-200 text-center w-full"
+                aria-label="Compose new chat">+compose</button>
+        <!-- Compose Modal -->
+        <div id="compose-modal"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden"
+             tabindex="-1"
+             aria-modal="true"
+             role="dialog">
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-sm flex flex-col gap-4">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Start New Chat</h2>
+            <form id="compose-form" class="flex flex-col gap-3">
+              <label for="compose-username"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+              <input type="text"
+                     id="compose-username"
+                     name="username"
+                     class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-600 dark:focus:ring-teal-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                     placeholder="Enter username..."
+                     required
+                     autocomplete="off" />
+              <div class="flex gap-2 justify-end mt-2">
+                <button type="button"
+                        id="compose-cancel"
+                        class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
+                  Cancel
+                </button>
+                <button type="submit"
+                        class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg">Open Chat</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- Chat Area (single box) -->
+      <div id="chat-panel"
+           class="w-full md:w-2/3 lg:w-3/4 hidden md:flex flex-col gap-0">
+        <div class="flex flex-col h-[560px] bg-gray-100 dark:bg-gray-700 rounded-lg p-0 overflow-hidden">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-600 flex items-center gap-3 rounded-t-lg">
+            <button type="button"
+                    id="chat-back-btn"
+                    class="md:hidden bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 py-1 rounded-lg">
+              Back
+            </button>
+            <span id="chat-person-avatar"></span>
+            <span id="chat-person-name"
+                  class="text-xl font-bold text-gray-900 dark:text-white">Select a person</span>
+          </div>
+          <div id="chat-history"
+               class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 p-4 space-y-4">
+            <p class="text-gray-500 dark:text-gray-400 text-center">Select a person to view chat history.</p>
+          </div>
+          <form id="chat-form"
+                method="post"
+                action=""
+                class="flex gap-2 p-4 border-t border-gray-200 dark:border-gray-600 hidden">
+            {% csrf_token %}
+            <input type="hidden" id="chat-recipient" name="recipient" value="" />
+            <input type="text"
+                   id="chat-input"
+                   name="message"
+                   class="flex-1 w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-600 dark:focus:ring-teal-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                   placeholder="Type your message..."
+                   autocomplete="off" />
+            <button type="submit"
+                    class="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-lg transition duration-200">
+              send
+            </button>
+          </form>
+        </div>
       </div>
     </div>
-    <div class="mt-8 bg-white dark:bg-gray-800 shadow-lg rounded-xl p-8">
-      {% if messages %}
-        <ul class="space-y-6">
-          {% for msg in messages %}
-            <li class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col md:flex-row md:justify-between items-start md:items-center">
-              <div>
-                <p class="font-semibold text-gray-800 dark:text-gray-200">From: {{ msg.sender }}</p>
-                <p class="text-gray-700 dark:text-gray-300">{{ msg.content }}</p>
-                <div class="text-xs text-gray-500 mt-2">
-                  <span>Sent at: {{ msg.sent_at|date:"M d, Y h:ia" }}</span>
-                  <br />
-                  <span>Expires in: {{ msg.expires_in }}</span>
-                </div>
-              </div>
-              <div class="flex flex-col gap-2 mt-4 md:mt-0">
-                <form method="post" action="{% url 'download_message' msg.id %}">
-                  {% csrf_token %}
-                  <button type="submit"
-                          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-                          onclick="return confirm('Downloading will delete this message from the server if it is not starred. Continue?');">
-                    Download
-                  </button>
-                </form>
-                <form method="post" action="{% url 'toggle_star_message' msg.id %}">
-                  {% csrf_token %}
-                  <button type="submit"
-                          class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-                    {% if msg.starred %}
-                      Unstar
-                    {% else %}
-                      Star
-                    {% endif %}
-                  </button>
-                </form>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-center text-gray-600 dark:text-gray-300">No messages in your inbox.</p>
-      {% endif %}
-    </div>
   </div>
+  {# djlint:off #}
+  <script>
+      // Example data: replace with Django context in production
+      const chatData = {};
+      {% for person in people %}
+      chatData["{{ person.username|escapejs }}"] = [
+      {% for msg in person.messages %}
+      {
+          id: {{ msg.id }},
+          sender: "{{ msg.sender|escapejs }}",
+          content: "{{ msg.content|escapejs }}",
+          sent_at: "{{ msg.sent_at|date:'c' }}",
+          starred: {{ msg.starred|yesno:'true,false' }}
+      },
+      {% endfor %}
+      ];
+      {% endfor %}
+
+      // Open a new chat UI for a username not in people list
+      function openNewChatUI(username) {
+          // Set chat person name and avatar (generic)
+          const chatPersonName = document.getElementById('chat-person-name');
+          const chatPersonAvatar = document.getElementById('chat-person-avatar');
+          chatPersonName.textContent = username;
+          chatPersonAvatar.innerHTML = `<div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold border-2 border-teal-500">${username.charAt(0).toUpperCase()}</div>`;
+          // Set recipient for form POST
+          document.getElementById('chat-recipient').value = username;
+          // Show blank chat history
+          renderChatHistory(username);
+          // Show chat form
+          document.getElementById('chat-form').classList.remove('hidden');
+          showMobileChatView();
+          // Scroll to chat area
+          document.getElementById('chat-history').scrollIntoView({
+              behavior: 'smooth'
+          });
+      }
+
+      const peopleBtns = document.querySelectorAll('[data-person-btn]');
+      const peoplePanel = document.getElementById('people-panel');
+      const chatPanel = document.getElementById('chat-panel');
+      const chatBackBtn = document.getElementById('chat-back-btn');
+      const chatHistory = document.getElementById('chat-history');
+      const chatPersonName = document.getElementById('chat-person-name');
+      const chatForm = document.getElementById('chat-form');
+      const chatInput = document.getElementById('chat-input');
+      const tabInbox = document.getElementById('tab-inbox');
+      const tabStarred = document.getElementById('tab-starred');
+      const messageTabsRow = document.getElementById('message-tabs-row');
+      const inboxList = document.getElementById('inbox-list');
+      const starredList = document.getElementById('starred-list');
+      const composeButtonForTabs = document.getElementById('compose-btn');
+      const toggleStarUrlTemplate = "{% url 'toggle_star_message' 0 %}";
+      let currentPerson = null;
+      let activeListTab = 'inbox';
+
+      function escapeHTML(value) {
+          const container = document.createElement('div');
+          container.textContent = value == null ? '' : String(value);
+          return container.innerHTML;
+      }
+
+      function updateLeftTabs() {
+          if (activeListTab === 'starred') {
+              tabStarred.classList.add('bg-teal-600', 'text-white');
+              tabStarred.classList.remove('bg-gray-100', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+              tabInbox.classList.remove('bg-teal-600', 'text-white');
+              tabInbox.classList.add('bg-gray-100', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+              inboxList.classList.add('hidden');
+              starredList.classList.remove('hidden');
+              composeButtonForTabs.classList.add('hidden');
+
+              chatPanel.classList.add('hidden');
+              chatPanel.classList.remove('md:flex', 'flex');
+              peoplePanel.classList.remove('md:w-1/3', 'lg:w-1/4', 'md:border-r', 'md:dark:border-gray-700', 'md:pr-6');
+              peoplePanel.classList.add('md:w-full', 'lg:w-full');
+              return;
+          }
+
+          tabInbox.classList.add('bg-teal-600', 'text-white');
+          tabInbox.classList.remove('bg-gray-100', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+          tabStarred.classList.remove('bg-teal-600', 'text-white');
+          tabStarred.classList.add('bg-gray-100', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+          inboxList.classList.remove('hidden');
+          starredList.classList.add('hidden');
+          composeButtonForTabs.classList.remove('hidden');
+
+          chatPanel.classList.remove('hidden');
+          chatPanel.classList.add('md:flex');
+          peoplePanel.classList.remove('md:w-full', 'lg:w-full');
+          peoplePanel.classList.add('md:w-1/3', 'lg:w-1/4', 'md:border-r', 'md:dark:border-gray-700', 'md:pr-6');
+
+          if (isMobileView()) {
+              showMobileListView();
+          }
+      }
+
+      function collectGlobalStarredMessages() {
+          const items = [];
+          Object.entries(chatData).forEach(([username, messages]) => {
+              (messages || []).forEach(msg => {
+                  if (msg.starred) {
+                      items.push({
+                          ...msg,
+                          username,
+                      });
+                  }
+              });
+          });
+          return items.sort((first, second) => new Date(second.sent_at) - new Date(first.sent_at));
+      }
+
+      function renderGlobalStarredList() {
+          const starredMessages = collectGlobalStarredMessages();
+          if (starredMessages.length === 0) {
+              starredList.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 text-center">No starred messages yet.</p>';
+              return;
+          }
+
+          starredList.textContent = '';
+          starredMessages.forEach(msg => {
+              const sentAtDate = new Date(msg.sent_at);
+              const sentAt = Number.isNaN(sentAtDate.getTime()) ?
+                  msg.sent_at :
+                  new Intl.DateTimeFormat(undefined, {
+                      month: 'short',
+                      day: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                  }).format(sentAtDate);
+
+              const itemContainer = document.createElement('div');
+              itemContainer.className = 'rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2';
+
+              const contentNode = document.createElement('p');
+              contentNode.className = 'text-sm text-gray-900 dark:text-gray-100 break-words';
+              contentNode.textContent = msg.content;
+
+              const metaNode = document.createElement('p');
+              metaNode.className = 'mt-1 text-xs text-gray-500 dark:text-gray-400';
+              metaNode.textContent = `${msg.username} • ${sentAt}`;
+
+              itemContainer.appendChild(contentNode);
+              itemContainer.appendChild(metaNode);
+              starredList.appendChild(itemContainer);
+          });
+      }
+
+      function isMobileView() {
+          return window.innerWidth < 768;
+      }
+
+      function showMobileChatView() {
+          if (!isMobileView()) {
+              return;
+          }
+          messageTabsRow.classList.add('hidden');
+          peoplePanel.classList.add('hidden');
+          chatPanel.classList.remove('hidden');
+          chatPanel.classList.add('flex');
+      }
+
+      function showMobileListView() {
+          if (!isMobileView()) {
+              return;
+          }
+          messageTabsRow.classList.remove('hidden');
+          chatPanel.classList.add('hidden');
+          chatPanel.classList.remove('flex');
+          peoplePanel.classList.remove('hidden');
+      }
+
+      const chatPersonAvatar = document.getElementById('chat-person-avatar');
+      peopleBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+              const username = btn.getAttribute('data-person');
+              currentPerson = username;
+              // Set name
+              chatPersonName.textContent = btn.querySelector('.font-medium').textContent;
+              // Set avatar
+              const img = btn.querySelector('img');
+              const fallback = btn.querySelector('div.w-8.h-8');
+              if (img) {
+                  chatPersonAvatar.innerHTML = `<img src="${img.src}" alt="Avatar" class="w-8 h-8 rounded-full object-cover border-2 border-teal-500" />`;
+              } else if (fallback) {
+                  chatPersonAvatar.innerHTML = `<div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold border-2 border-teal-500">${fallback.textContent.trim()}</div>`;
+              } else {
+                  chatPersonAvatar.innerHTML = '';
+              }
+              peopleBtns.forEach(personBtn => {
+                  personBtn.classList.remove('bg-teal-600', 'text-white', 'border-teal-700', 'dark:bg-teal-700', 'dark:text-white');
+                  personBtn.classList.add('bg-gray-50', 'dark:bg-gray-900', 'text-gray-800', 'dark:text-gray-200');
+              });
+              btn.classList.remove('bg-gray-50', 'dark:bg-gray-900', 'text-gray-800', 'dark:text-gray-200');
+              btn.classList.add('bg-teal-600', 'text-white', 'border-teal-700', 'dark:bg-teal-700', 'dark:text-white');
+              const badge = btn.querySelector('[data-person-unread-badge]');
+              // Mark messages as read in backend
+              fetch('{% url "mark_messages_read" %}', {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                          'X-CSRFToken': (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || ''
+                      },
+                      body: JSON.stringify({
+                          username: username
+                      })
+                  })
+                  .then(response => {
+                      if (!response.ok) {
+                          throw new Error('Failed to mark messages as read.');
+                      }
+                      return response.json();
+                  })
+                  .then(data => {
+                      if (!data.success) {
+                          throw new Error('Backend rejected mark-as-read request.');
+                      }
+                      if (badge) {
+                          badge.remove();
+                      }
+                  })
+                  .catch(error => {
+                      console.error(error);
+                  });
+              // Set recipient hidden field for form POST
+              document.getElementById('chat-recipient').value = username;
+              renderChatHistory(username);
+              chatForm.classList.remove('hidden');
+              showMobileChatView();
+          });
+      });
+
+      chatBackBtn.addEventListener('click', function() {
+          showMobileListView();
+      });
+
+      window.addEventListener('resize', function() {
+          if (!isMobileView() && activeListTab === 'inbox') {
+              messageTabsRow.classList.remove('hidden');
+              peoplePanel.classList.remove('hidden');
+              chatPanel.classList.remove('hidden');
+              chatPanel.classList.add('flex');
+          } else if (!isMobileView() && activeListTab === 'starred') {
+              messageTabsRow.classList.remove('hidden');
+              peoplePanel.classList.remove('hidden');
+              chatPanel.classList.add('hidden');
+              chatPanel.classList.remove('flex');
+          } else if (!currentPerson) {
+              showMobileListView();
+          }
+      });
+
+      function renderChatHistory(username) {
+          const messages = chatData[username] || [];
+          if (messages.length === 0) {
+              chatHistory.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">No messages yet.</p>';
+              return;
+          }
+          chatHistory.innerHTML = '';
+          messages.forEach(msg => {
+              const align = msg.sender === '{{ request.user.username|escapejs }}' ? 'justify-end' : '';
+              const bg = msg.sender === '{{ request.user.username|escapejs }}' ? 'bg-teal-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+              const timeColor = msg.sender === '{{ request.user.username|escapejs }}' ? 'text-teal-100' : 'text-gray-500 dark:text-gray-300';
+              const starColor = msg.starred ? 'text-yellow-500' : 'text-gray-400';
+              const starLabel = msg.starred ? 'Unstar message' : 'Star message';
+              const sentAtDate = new Date(msg.sent_at);
+              const sentAt = Number.isNaN(sentAtDate.getTime()) ?
+                  msg.sent_at :
+                  new Intl.DateTimeFormat(undefined, {
+                      month: 'short',
+                      day: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                  }).format(sentAtDate);
+              const safeContent = escapeHTML(msg.content);
+              const safeSentAt = escapeHTML(sentAt);
+              const safeStarLabel = escapeHTML(starLabel);
+              chatHistory.innerHTML += `<div class="flex ${align} mb-2"><div class="flex items-start gap-2 max-w-[76%]"><div class="max-w-[100%] ${bg} rounded-lg px-4 py-2"><div class="break-words">${safeContent}</div><div class="text-xs mt-1 ${timeColor}">${safeSentAt}</div></div><button type="button" data-message-star-btn class="${starColor} hover:text-yellow-500 self-center" data-message-id="${msg.id}" title="${safeStarLabel}" aria-label="${safeStarLabel}"><i class="fa-solid fa-star"></i></button></div></div>`;
+          });
+
+          document.querySelectorAll('[data-message-star-btn]').forEach(button => {
+              button.addEventListener('click', function() {
+                  const messageId = this.getAttribute('data-message-id');
+                  const csrfToken = (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+
+                  const toggleStarUrl = toggleStarUrlTemplate.replace('/0/', `/${messageId}/`);
+
+                  fetch(toggleStarUrl, {
+                          method: 'POST',
+                          headers: {
+                              'X-CSRFToken': csrfToken,
+                          },
+                      })
+                      .then(response => response.json())
+                      .then(data => {
+                          if (!data.success) {
+                              return;
+                          }
+
+                          Object.values(chatData).forEach(personMessages => {
+                              const target = (personMessages || []).find(message => String(message.id) === String(data.message_id));
+                              if (target) {
+                                  target.starred = data.starred;
+                              }
+                          });
+
+                          renderChatHistory(currentPerson);
+                          renderGlobalStarredList();
+                      })
+                      .catch(() => {
+                          // no-op
+                      });
+              });
+          });
+
+          chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+
+      function clearSelectedConversationState() {
+          currentPerson = null;
+          peopleBtns.forEach(personBtn => {
+              personBtn.classList.remove('bg-teal-600', 'text-white', 'border-teal-700', 'dark:bg-teal-700', 'dark:text-white');
+              personBtn.classList.add('bg-gray-50', 'dark:bg-gray-900', 'text-gray-800', 'dark:text-gray-200');
+          });
+          chatPersonName.textContent = 'Select a person';
+          chatPersonAvatar.innerHTML = '';
+          chatHistory.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Select a person to view chat history.</p>';
+          chatForm.classList.add('hidden');
+          document.getElementById('chat-recipient').value = '';
+      }
+
+      tabInbox.addEventListener('click', function() {
+          clearSelectedConversationState();
+          activeListTab = 'inbox';
+          updateLeftTabs();
+      });
+
+      tabStarred.addEventListener('click', function() {
+          clearSelectedConversationState();
+          activeListTab = 'starred';
+          updateLeftTabs();
+          renderGlobalStarredList();
+      });
+
+      updateLeftTabs();
+      renderGlobalStarredList();
+
+      if (isMobileView() && activeListTab === 'inbox' && !currentPerson) {
+          showMobileListView();
+      }
+
+      // Remove custom JS submit handler: let the form submit normally
+</script>
+  {# djlint:on #}
+  <script>
+      // Compose button: open modal
+      const composeBtn = document.getElementById('compose-btn');
+      const composeModal = document.getElementById('compose-modal');
+      const composeForm = document.getElementById('compose-form');
+      const composeUsername = document.getElementById('compose-username');
+      const composeCancel = document.getElementById('compose-cancel');
+
+      composeBtn.addEventListener('click', function() {
+          composeModal.classList.remove('hidden');
+          composeUsername.value = '';
+          composeUsername.focus();
+      });
+
+      composeCancel.addEventListener('click', function() {
+          composeModal.classList.add('hidden');
+      });
+
+      composeForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const username = composeUsername.value.trim();
+          if (username) {
+              composeModal.classList.add('hidden');
+              const btn = Array.from(document.querySelectorAll('[data-person-btn]')).find(personButton => personButton.dataset.person === username);
+              if (btn) {
+                  btn.click();
+              } else {
+                  openNewChatUI(username);
+              }
+          }
+      });
+
+      // Close modal on Escape key
+      document.addEventListener('keydown', function(e) {
+          if (!composeModal.classList.contains('hidden') && e.key === 'Escape') {
+              composeModal.classList.add('hidden');
+          }
+      });
+  </script>
 {% endblock content %}

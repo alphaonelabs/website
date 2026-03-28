@@ -104,11 +104,12 @@ class SecureMessagingViewTestCase(TestCase):
         """
         Test that the messaging dashboard view renders correctly with messages.
         """
+        sender = User.objects.create_user(username="peer_user", email="peer@example.com", password="password")
         # Create a message for the user
         original_message = "Dashboard test message"
         encrypted_message, encrypted_key = encrypt_message_with_random_key(original_message)
         PeerMessage.objects.create(
-            sender=self.user,
+            sender=sender,
             receiver=self.user,
             content=encrypted_message,
             encrypted_key=encrypted_key,
@@ -120,3 +121,22 @@ class SecureMessagingViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         # Check that the original plaintext appears in the rendered HTML
         self.assertContains(response, original_message)
+
+    def test_dashboard_deletes_messages_older_than_seven_days(self):
+        """Messages older than 7 days are deleted on dashboard access."""
+        sender = User.objects.create_user(username="sender", email="sender@example.com", password="password")
+        original_message = "Old message"
+        encrypted_message, encrypted_key = encrypt_message_with_random_key(original_message)
+
+        msg = PeerMessage.objects.create(
+            sender=sender,
+            receiver=self.user,
+            content=encrypted_message,
+            encrypted_key=encrypted_key,
+            is_read=False,
+        )
+        PeerMessage.objects.filter(id=msg.id).update(created_at=timezone.now() - datetime.timedelta(days=8))
+
+        response = self.client.get(reverse("messaging_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(PeerMessage.objects.filter(id=msg.id).exists())
