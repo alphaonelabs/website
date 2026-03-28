@@ -43,6 +43,8 @@ from urllib.parse import urlparse, parse_qs
 
 from workers import Response
 
+import js
+from pyodide.ffi import to_js
 
 def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
     """Best-effort exception logging with full traceback and request context."""
@@ -109,8 +111,6 @@ def _derive_aes_key_bytes(secret: str) -> bytes:
 
 async def _import_aes_key(key_bytes: bytes) -> object:
     """Import raw bytes as a Web Crypto AES-GCM CryptoKey."""
-    import js
-    from pyodide.ffi import to_js
     key_buf = to_js(key_bytes, create_pyproxies=False)
     algo    = to_js({"name": "AES-GCM"}, dict_converter=js.Object.fromEntries)
     usages  = to_js(["encrypt", "decrypt"])
@@ -126,8 +126,6 @@ async def encrypt_aes(plaintext: str, secret: str) -> str:
     if not plaintext:
         return ""
     try:
-        import js
-        from pyodide.ffi import to_js
         key_bytes  = _derive_aes_key_bytes(secret)
         crypto_key = await _import_aes_key(key_bytes)
 
@@ -155,8 +153,6 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         return ""
     if not ciphertext.startswith("v1:"):
         return _decrypt_xor(ciphertext, secret)
-    import js
-    from pyodide.ffi import to_js
     try:
         raw        = base64.b64decode(ciphertext[3:])
         iv, ct     = raw[:12], raw[12:]
