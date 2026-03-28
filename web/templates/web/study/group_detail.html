@@ -81,7 +81,7 @@
                 </form>
               </div>
             {% endif %}
-            {% if request.user in group.members.all %}
+            {% if is_member %}
               <div class="bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-200 p-4 rounded-lg">
                 <div class="flex justify-between items-center">
                   <div>You are a member of this group</div>
@@ -126,7 +126,7 @@
             </h2>
           </div>
           <div class="divide-y divide-gray-200 dark:divide-gray-700">
-            {% for member in group.members.all %}
+            {% for member in members %}
               <div class="p-4">
                 <div class="flex items-center">
                   {% if member.profile.avatar %}
@@ -158,6 +158,22 @@
           </div>
         </div>
       </div>
+      {% if is_member %}
+        <div class="mt-6">
+          <div class="border border-gray-300 rounded p-4">
+            <h2 class="text-lg font-semibold mb-2">Invite Friends</h2>
+            <form method="post" action="{% url 'invite_to_study_group' group.id %}">
+              {% csrf_token %}
+              <div class="flex items-center">
+                <input type="text"
+                       name="email_or_username"
+                       placeholder="Enter email or username"
+                       required
+                       class="flex-1 border border-gray-400 rounded p-2 mr-2" />
+                <button type="submit"
+                        class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">Send Invite</button>
+              </div>
+            </form>
       {% if request.user in group.members.all %}
         <div class="md:col-span-8 mb-6">
           <div class="border border-gray-200 dark:border-gray-700 rounded-lg">

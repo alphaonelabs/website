@@ -2278,7 +2278,18 @@ def study_group_detail(request, group_id):
                 group.members.remove(request.user)
                 messages.info(request, f"You have left {group.name}.")
 
-    return render(request, "web/study/group_detail.html", {"group": group})
+    members = list(group.members.all())
+    is_member = request.user in members
+
+    return render(
+        request,
+        "web/study/group_detail.html",
+        {
+            "group": group,
+            "members": members,
+            "is_member": is_member,
+        },
+    )
 
 
 # API Views
