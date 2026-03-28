@@ -63,19 +63,36 @@
                   </div>
                 {% endif %}
               {% endif %}
-              <label for="avatar-upload"
-                     class="cursor-pointer mb-4 text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300">
-                <span class="flex items-center">
-                  <i class="fas fa-camera mr-2"></i>
-                  Change Avatar
-                </span>
-                <input type="file"
-                       id="avatar-upload"
-                       name="avatar"
-                       accept="image/*"
-                       class="hidden"
-                       onchange="this.form.submit()" />
-              </label>
+              <!-- Avatar Action Buttons -->
+              <div class="flex flex-col items-center gap-2 mb-4">
+                <label for="avatar-upload"
+                       class="cursor-pointer text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300">
+                  <span class="flex items-center">
+                    <i class="fas fa-upload mr-2"></i>
+                    Change Avatar
+                  </span>
+                  <input type="file"
+                         id="avatar-upload"
+                         name="avatar"
+                         accept="image/*"
+                         class="hidden" />
+                </label>
+                <button type="button"
+                        id="take-photo-btn"
+                        class="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hidden"
+                        aria-label="Take photo for avatar">
+                  <span class="flex items-center">
+                    <i class="fas fa-camera mr-2"></i>
+                    Take Photo
+                  </span>
+                </button>
+              </div>
+              <!-- Success message for photo capture -->
+              <div id="photo-upload-success"
+                   class="hidden mb-2 text-sm text-green-600 dark:text-green-400">
+                <i class="fas fa-check-circle mr-1"></i>
+                Photo updated successfully!
+              </div>
               <h3 class="text-lg font-medium">{{ user.username }}</h3>
               {% if user.get_full_name %}<p class="text-sm text-gray-500 dark:text-gray-400">{{ user.get_full_name }}</p>{% endif %}
             </div>
@@ -526,14 +543,44 @@
         {% endif %}
       </div>
     </div>
+    {% if discount_codes %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
+        <h2 class="text-xl font-bold mb-4">Your Discount Codes</h2>
+        <ul class="space-y-2">
+          {% for discount in discount_codes %}
+            <li class="flex items-center justify-between">
+              <div>
+                <span class="font-semibold text-teal-600">{{ discount.code }}</span>
+                <span class="text-gray-600 dark:text-gray-300">– {{ discount.discount_percentage }}% off</span>
+              </div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">(valid until {{ discount.valid_until|date:"M j, Y" }})</div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
   </div>
+{% endblock content %}
+{% block extra_js %}
+  <!-- Camera Service and Photo Capture Modal Scripts -->
+  <script src="{% static 'js/services/camera-service.js' %}"></script>
+  <script src="{% static 'js/photo-capture-modal.js' %}"></script>
   <script>
       const avatarInput = document.getElementById('avatar-upload');
       const mainForm = document.getElementById('main-form');
+      const takePhotoBtn = document.getElementById('take-photo-btn');
+      const photoUploadSuccess = document.getElementById('photo-upload-success');
+
+      // Show Take Photo button if camera is supported
+      if (typeof CameraService !== 'undefined' && CameraService.isSupported()) {
+          takePhotoBtn.classList.remove('hidden');
+      }
 
       avatarInput.addEventListener('change', function() {
           // Set a flag indicating the avatar was changed
           sessionStorage.setItem('avatarChanged', 'true');
+          // Submit the form when a file is selected
+          mainForm.submit();
       });
 
       mainForm.addEventListener('submit', function(e) {
@@ -549,21 +596,80 @@
 
           mainForm.submit()
       });
+
+      // Take Photo button click handler
+      if (takePhotoBtn) {
+          takePhotoBtn.addEventListener('click', function() {
+              PhotoCaptureModal.open(handlePhotoCapture);
+          });
+      }
+
+      /**
+       * Handle captured photo - upload to server
+       * @param {Blob} blob - The captured image blob
+       */
+      async function handlePhotoCapture(blob) {
+          try {
+              const formData = new FormData();
+              formData.append('avatar', blob, 'avatar-photo.jpg');
+
+              // Get CSRF token with null check
+              const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+              if (!csrfElement) {
+                  throw new Error('Security token not found. Please refresh the page.');
+              }
+              const csrfToken = csrfElement.value;
+
+              // Upload to dedicated avatar endpoint
+              const response = await fetch('{% url "upload_avatar_photo" %}', {
+                  method: 'POST',
+                  headers: {
+                      'X-CSRFToken': csrfToken
+                  },
+                  body: formData
+              });
+
+              // Check for HTTP errors before parsing JSON
+              if (!response.ok) {
+                  let errorMsg = `Upload failed: ${response.status}`;
+                  try {
+                      const errData = await response.json();
+                      if (errData.error) {
+                          errorMsg = errData.error;
+                      } else if (errData.message) {
+                          errorMsg = errData.message;
+                      } else if (errData.detail) {
+                          errorMsg = errData.detail;
+                      }
+                  } catch {
+                      // JSON parse failed, use generic message with status
+                      if (response.statusText) {
+                          errorMsg = `Upload failed: ${response.status} ${response.statusText}`;
+                      }
+                  }
+                  throw new Error(errorMsg);
+              }
+
+              const data = await response.json();
+
+              if (data.success) {
+                  // Success - close modal
+                  PhotoCaptureModal.showSuccess();
+
+                  // Show success message briefly, then reload
+                  photoUploadSuccess.classList.remove('hidden');
+
+                  // Reload to show updated avatar (ensures all avatar instances are updated)
+                  setTimeout(() => {
+                      window.location.reload();
+                  }, 500);
+              } else {
+                  throw new Error(data.error || 'Upload failed');
+              }
+          } catch (error) {
+              console.error('Photo upload error:', error);
+              PhotoCaptureModal.showError(error.message || 'Failed to upload photo. Please try again.');
+          }
+      }
   </script>
-  {% if discount_codes %}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-6">
-      <h2 class="text-xl font-bold mb-4">Your Discount Codes</h2>
-      <ul class="space-y-2">
-        {% for discount in discount_codes %}
-          <li class="flex items-center justify-between">
-            <div>
-              <span class="font-semibold text-teal-600">{{ discount.code }}</span>
-              <span class="text-gray-600">– {{ discount.discount_percentage }}% off</span>
-            </div>
-            <div class="text-sm text-gray-500">(valid until {{ discount.valid_until|date:"M j, Y" }})</div>
-          </li>
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
-{% endblock content %}
+{% endblock extra_js %}
