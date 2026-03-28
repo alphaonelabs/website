@@ -45,6 +45,7 @@ This workflow automates the deployment of the application to the production serv
 ### Release Notes
 
 Release notes are automatically generated and include:
+
 - Production deployment title with version number
 - Deployment date and time (UTC)
 - List of commits since the last release
@@ -52,6 +53,7 @@ Release notes are automatically generated and include:
 - Footer indicating automated creation
 
 Example release notes:
+
 ```markdown
 ## Production Deployment - v1.1
 
@@ -64,6 +66,7 @@ Example release notes:
 - Update dependencies (ghi9012)
 
 ---
+
 _This release was automatically created by the production deployment workflow._
 ```
 
@@ -76,6 +79,7 @@ _This release was automatically created by the production deployment workflow._
 5. Click "Run workflow" button
 
 The workflow will:
+
 1. Deploy the code to production
 2. Verify the deployment
 3. Create a new release (e.g., v1.0 → v1.1)
@@ -92,6 +96,7 @@ The workflow requires the following GitHub secrets to be configured:
 ### Permissions
 
 The workflow has `contents: write` permission to:
+
 - Create and push version tags
 - Create GitHub releases
 
@@ -106,12 +111,15 @@ The workflow has `contents: write` permission to:
 ### Troubleshooting
 
 **Issue:** Deployment fails at SSH connection
+
 - **Solution:** Verify server secrets are correctly configured
 
 **Issue:** Version tag already exists
+
 - **Solution:** Manually delete the tag or increment the version scheme
 
 **Issue:** Permission denied when creating release
+
 - **Solution:** Ensure the workflow has `contents: write` permission
 
 ## Close Issues from Non-Maintainers Workflow
@@ -125,6 +133,7 @@ The workflow has `contents: write` permission to:
 This project follows a **PR-first** contribution model. Maintainers manage the issue tracker internally; external contributors are encouraged to submit changes directly as Pull Requests. This workflow enforces that policy by automatically closing issues opened by users who are not repository maintainers (owners, org members, or collaborators) and leaving a comment directing them to open a Pull Request instead.
 
 **What to contribute via PR:**
+
 - Bug fixes
 - New features or improvements
 - Documentation updates
@@ -140,27 +149,119 @@ This project follows a **PR-first** contribution model. Maintainers manage the i
 
 ### Allowed roles
 
-| `author_association` | Description | Allowed to open issues |
-|---|---|---|
-| `OWNER` | Repository owner | ✅ Yes |
-| `MEMBER` | Organization member | ✅ Yes |
-| `COLLABORATOR` | Outside collaborator with write access | ✅ Yes |
-| `CONTRIBUTOR` / `FIRST_TIME_CONTRIBUTOR` / `NONE` | External user | ❌ No — asked to open a PR directly |
+| `author_association`                              | Description                            | Allowed to open issues              |
+| ------------------------------------------------- | -------------------------------------- | ----------------------------------- |
+| `OWNER`                                           | Repository owner                       | ✅ Yes                              |
+| `MEMBER`                                          | Organization member                    | ✅ Yes                              |
+| `COLLABORATOR`                                    | Outside collaborator with write access | ✅ Yes                              |
+| `CONTRIBUTOR` / `FIRST_TIME_CONTRIBUTOR` / `NONE` | External user                          | ❌ No — asked to open a PR directly |
+
+---
+
+## PR Review Reminder Workflow
+
+**File:** `.github/workflows/pr-review-reminder.yml`
+
+**Triggers:**
+
+- When a PR review is submitted (`pull_request_review: submitted`)
+- Every 6 hours via cron schedule
+- Manual trigger via workflow_dispatch
+
+### Purpose
+
+This workflow automatically notifies maintainers when a PR has only been reviewed by bots (like CodeRabbit AI) and no human review has occurred within a specified time threshold (default: 24 hours). It helps ensure that PRs don't get overlooked when they need human attention.
+
+### Features
+
+✅ Detects PRs with only bot reviews
+✅ Automatically requests maintainer reviews
+✅ Posts notification comments tagging maintainers
+✅ Runs every 6 hours + on PR review events
+✅ **No labels required** - uses comment tracking instead
+✅ **Zero setup required** - works out of the box
+✅ **Skips draft PRs** - only processes ready-for-review PRs
+
+### Configuration
+
+Current settings in the workflow:
+
+- **Maintainers:** A1L13N
+- **Time threshold:** 24 hours
+- **Check frequency:** Every 6 hours
+- **Tracking method:** Comment history (no labels needed)
+- **Exempt bots:** coderabbitai[bot], github-actions[bot], dependabot[bot], copilot[bot], github-copilot[bot], copilot-swe-agent[bot]
+
+### How It Works
+
+1. **Triggers:**
+   - When any PR review is submitted
+   - Every 6 hours via cron schedule
+   - Manual trigger from Actions tab
+
+2. **For each open PR, checks:**
+   - Is it older than the time threshold (default 24 hours)?
+   - Is it not a draft PR?
+   - Has it received no human reviews or comments?
+   - Have we already posted a notification? (checks comment history)
+
+3. **If yes to all above:**
+   - Posts comment mentioning maintainers (with hidden tracking marker)
+   - Requests reviews from maintainers
+
+4. **Prevents spam:**
+   - Won't notify same PR twice (detects previous notification comments)
+   - Skips PRs with human comments/reviews
+   - Skips draft PRs
+
+### Manual Testing
+
+1. Go to the [Actions](../../actions) tab in GitHub
+2. Select "PR Review Reminder" workflow
+3. Click "Run workflow"
+4. Set "hours_threshold" to `0` (for immediate testing)
+5. Click "Run workflow"
+6. Check logs in Actions tab
+
+### Customization
+
+To add more maintainers, edit the `MAINTAINERS` environment variable:
+
+```yaml
+MAINTAINERS: "A1L13N,maintainer2,maintainer3"
+```
+
+To change the time threshold, edit the `DEFAULT_HOURS_THRESHOLD` environment variable:
+
+```yaml
+DEFAULT_HOURS_THRESHOLD: 48 # Change to 48 hours
+```
+
+### Permissions
+
+The workflow requires:
+
+- `pull-requests: write` - To request reviews
+- `issues: write` - To post comments
+- `contents: read` - To read repository data
 
 ---
 
 ## Other Workflows
 
 ### Label Issues by Creation Date Workflow
+
 **File:** `.github/workflows/label-issues-by-date.yml`
 
 **Triggers:**
+
 - Daily at midnight UTC (scheduled)
 - Manual trigger via workflow_dispatch
 
 **Purpose:** Automatically labels issues with their creation date in YYYY-MM format (e.g., 2024-01, 2024-02).
 
 **Features:**
+
 - Processes all issues (both open and closed) in the repository
 - Creates date labels automatically if they don't exist
 - Uses color-coded labels based on the month
@@ -169,6 +270,7 @@ This project follows a **PR-first** contribution model. Maintainers manage the i
 - Runs daily to label new issues automatically
 
 **How it works:**
+
 1. Fetches all issues from the repository
 2. Extracts the creation date of each issue
 3. Formats the date as YYYY-MM (e.g., 2024-12)
@@ -176,35 +278,45 @@ This project follows a **PR-first** contribution model. Maintainers manage the i
 5. Adds the label to the issue
 
 **Manual Trigger:**
+
 1. Go to the [Actions](../../actions) tab in GitHub
 2. Select "Label Issues by Creation Date" workflow
 3. Click "Run workflow"
 4. Click "Run workflow" button
 
 **Use Cases:**
+
 - Track when issues were created
 - Filter and organize issues by time period
 - Generate reports based on issue creation dates
 - Monitor issue trends over time
 
 ### Test Workflow
+
 **File:** `.github/workflows/test.yml`
+
 - Runs linting checks
 - Executes unit tests
 - Performs security scans
 
 ### Pre-commit Workflow
+
 **File:** `.github/workflows/pre-commit.yml`
+
 - Validates code formatting
 - Checks code quality
 
 ### CodeQL Workflow
+
 **File:** `.github/workflows/codeql.yml`
+
 - Performs security analysis
 - Detects vulnerabilities
 
 ### Check Migrations Workflow
+
 **File:** `.github/workflows/check-migrations.yml`
+
 - Validates Django migrations
 - Checks for migration conflicts
 
