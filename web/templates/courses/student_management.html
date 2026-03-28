@@ -696,6 +696,48 @@
       </div>
     </div>
   </div>
+  <!-- Award Badge Modal -->
+  <div id="awardBadgeModal"
+       class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">Award Badge</h3>
+        <button onclick="closeAwardBadgeModal()"
+                class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div class="mb-4">
+        <div class="flex items-center space-x-3 mb-3">
+          <div id="modalBadgeIcon" class="w-12 h-12 rounded-full flex items-center justify-center"></div>
+          <div>
+            <h4 id="modalBadgeName" class="font-semibold text-gray-800 dark:text-gray-200"></h4>
+            <p id="modalBadgeDescription" class="text-sm text-gray-500 dark:text-gray-400"></p>
+          </div>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label for="badgeMessage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Message (Optional)
+        </label>
+        <textarea id="badgeMessage"
+                  rows="3"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:border-teal-500 dark:focus:border-teal-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder="Add an optional message for the student..."></textarea>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button onclick="closeAwardBadgeModal()"
+                class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition duration-150">Cancel</button>
+        <button id="confirmAwardButton"
+                onclick="confirmAwardBadge()"
+                class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition duration-150 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50">
+          <span class="inline-flex items-center">
+            <i class="fas fa-award mr-2"></i> Award Badge
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- Notification Container -->
   <div id="notificationContainer" class="fixed top-4 right-4 z-50 max-w-md"></div>
   <script>
@@ -733,7 +775,7 @@
       function awardBadge(badgeType, badgeName) {
           const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
           const studentId = new URLSearchParams(window.location.search).get('student_id') || "{{ student.id }}";
-          const courseId = "{{ course.id }}";
+          const courseSlug = "{{ course.slug }}";
 
           // Disable all award buttons temporarily
           const awardButtons = document.querySelectorAll('button[onclick^="awardBadge"]');
@@ -747,9 +789,10 @@
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/x-www-form-urlencoded',
-                      'X-CSRFToken': csrfToken
+                      'X-CSRFToken': csrfToken,
+                      'X-Requested-With': 'XMLHttpRequest'
                   },
-                  body: `badge_type=${badgeType}&student_id=${studentId}&course_id=${courseId}`
+                  body: `badge_type=${badgeType}&student_id=${studentId}&course_slug=${courseSlug}`
               })
               .then(response => response.json())
               .then(data => {
