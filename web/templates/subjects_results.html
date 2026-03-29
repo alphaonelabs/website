@@ -1,0 +1,90 @@
+{% if subjects|length %}
+  <!-- Subjects Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+    {% for subject in subjects %}
+      <div class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow-lg hover:shadow-xl transition-shadow">
+        <!-- Subject Icon/Name -->
+        <div class="flex items-center space-x-2 mb-2">
+          {% if subject.icon %}
+            <i class="{{ subject.icon }}" aria-hidden="true"></i>
+          {% else %}
+            <i class="fa-solid fa-book text-gray-500"></i>
+          {% endif %}
+          <h2 class="text-xl font-bold text-gray-700 dark:text-gray-300">{{ subject.name }}</h2>
+        </div>
+        <!-- Stats -->
+        <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-1 mb-4">
+          <li>
+            <strong>Interested:</strong> {{ subject.a_interested_students|default:0 }} learner{{ subject.a_interested_students|pluralize }}
+          </li>
+          <li>
+            <strong>Teacher Available:</strong>
+            {% if subject.a_teacher_available %}
+              <span class="text-green-600 dark:text-green-400">Yes</span>
+            {% else %}
+              <span class="text-red-600 dark:text-red-400">No</span>
+            {% endif %}
+          </li>
+          <li>
+            <strong>Courses:</strong> {{ subject.a_courses_count|default:0 }}
+          </li>
+        </ul>
+        <!-- Teach or Learn Buttons -->
+        <div class="flex space-x-2 mt-auto">
+          <a href="{% url 'teach' %}?subject={{ subject.slug }}"
+             class="bg-teal-300 hover:bg-teal-400 text-white px-3 py-1.5 rounded-lg text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">Teach</a>
+          <a href="{% url 'learn' %}?subject={{ subject.slug }}"
+             class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">Learn</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <!-- Pagination -->
+  {% if subjects_page.has_other_pages %}
+    <div class="mt-8 flex justify-center">
+      <nav class="flex items-center space-x-2" aria-label="Pagination">
+        {% if subjects_page.has_previous %}
+          <a href="?{{ base_query }}page={{ subjects_page.previous_page_number }}"
+             data-ajax="1"
+             rel="prev"
+             class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700">
+            Previous
+          </a>
+        {% endif %}
+        <span class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
+              aria-current="page">Page {{ subjects_page.number }} of {{ subjects_page.paginator.num_pages }}</span>
+        {% if subjects_page.has_next %}
+          <a href="?{{ base_query }}page={{ subjects_page.next_page_number }}"
+             data-ajax="1"
+             rel="next"
+             class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700">
+            Next
+          </a>
+        {% endif %}
+      </nav>
+    </div>
+  {% endif %}
+{% else %}
+  <!-- No Results Message -->
+  <div class="text-center py-12">
+    <div class="max-w-md mx-auto">
+      <i class="fa-solid fa-search text-6xl text-gray-300 dark:text-gray-600 mb-4"
+         aria-hidden="true"></i>
+      <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">No subjects found</h3>
+      <p class="text-gray-500 dark:text-gray-400 mb-4">
+        {% if filter_active %}
+          No subjects match your current filters. Try adjusting your search criteria.
+        {% else %}
+          No subjects are available at the moment. Check back later!
+        {% endif %}
+      </p>
+      {% if filter_active %}
+        <a href="{% url 'subjects' %}"
+           class="inline-flex items-center px-6 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-teal-300">
+          <i class="fa-solid fa-rotate-right mr-2" aria-hidden="true"></i>
+          Clear All Filters
+        </a>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

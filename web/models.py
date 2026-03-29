@@ -27,6 +27,13 @@ from PIL import Image
 
 from web.utils import calculate_and_update_user_streak
 
+# Level choices used by both Subject and Course models
+LEVEL_CHOICES = [
+    ("beginner", "Beginner"),
+    ("intermediate", "Intermediate"),
+    ("advanced", "Advanced"),
+]
+
 
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
@@ -202,6 +209,13 @@ class Subject(models.Model):
     description = models.TextField(blank=True)
     icon = models.CharField(max_length=50, help_text="Font Awesome icon class", blank=True)
     order = models.IntegerField(default=0)
+    level = models.CharField(
+        max_length=20,
+        choices=LEVEL_CHOICES,
+        default="beginner",
+        blank=True,
+        db_index=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -210,6 +224,21 @@ class Subject(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def interested_students_count(self):
+        """Count of students interested in this subject"""
+        return self.courses.aggregate(total=models.Count("enrollments__student", distinct=True))["total"] or 0
+
+    @property
+    def courses_count(self):
+        """Count of courses in this subject"""
+        return self.courses.count()
+
+    @property
+    def teacher_available(self):
+        """Check if there are teachers for this subject"""
+        return self.courses.filter(teacher__isnull=False).exists()
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -268,12 +297,9 @@ class Course(models.Model):
 
     level = models.CharField(
         max_length=20,
-        choices=[
-            ("beginner", "Beginner"),
-            ("intermediate", "Intermediate"),
-            ("advanced", "Advanced"),
-        ],
+        choices=LEVEL_CHOICES,
         default="beginner",
+        db_index=True,
     )
     tags = models.CharField(max_length=200, blank=True, help_text="Comma-separated tags")
     is_featured = models.BooleanField(default=False)
