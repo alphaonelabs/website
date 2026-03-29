@@ -16,6 +16,7 @@ Alpha One Labs is an education platform designed to facilitate both learning and
 - 💬 Interactive discussion forums
 - 📊 Progress tracking and analytics
 - 🌟 Submit links and receive grades with feedback
+- 🔓 **Share to Unlock** - Access bonus materials by sharing on social media
 - 🌙 Dark mode support
 - 📱 Responsive design for all devices
 

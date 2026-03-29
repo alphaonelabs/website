@@ -113,6 +113,13 @@ urlpatterns += i18n_patterns(
     path("courses/<slug:slug>/confirm-rolled-sessions/", views.confirm_rolled_sessions, name="confirm_rolled_sessions"),
     path("courses/<slug:slug>/message-students/", views.message_enrolled_students, name="message_students"),
     path("courses/<slug:slug>/add-student/", views.add_student_to_course, name="add_student_to_course"),
+    # Share unlock URLs
+    path(
+        "material/<int:material_id>/create-share-token/",
+        views.create_material_share_token,
+        name="create_material_share_token",
+    ),
+    path("material/share/<str:share_token>/", views.verify_material_share, name="verify_material_share"),
     path(
         "courses/<slug:course_slug>/manage-student/<int:student_id>/",
         views.student_management,
