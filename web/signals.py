@@ -3,7 +3,7 @@ from django.core.cache import cache
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
-from .models import CourseProgress, Enrollment, LearningStreak, Session, SessionAttendance
+from .models import CourseProgress, Enrollment, LearningStreak, PeerMessage, Session, SessionAttendance
 from .utils import send_slack_message
 
 
@@ -67,3 +67,12 @@ def invalidate_session_cache(sender, instance, **kwargs):
     enrollments = Enrollment.objects.filter(course=instance.course)
     for enrollment in enrollments:
         invalidate_progress_cache(enrollment.student)
+
+
+@receiver(post_save, sender=PeerMessage)
+def send_new_message_notification(sender, instance, created, **kwargs):
+    """Send email notification when a new message is created."""
+    if created:
+        from .notifications import send_new_message_email
+
+        send_new_message_email(instance)
