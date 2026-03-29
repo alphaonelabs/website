@@ -4259,13 +4259,19 @@ class StoreAnalyticsView(LoginRequiredMixin, UserPassesTestMixin, generic.Templa
         storefront = get_object_or_404(Storefront, store_slug=self.kwargs["store_slug"])
 
         # Store-specific analytics
-        orders = Order.objects.filter(storefront=storefront, status="completed")
+        orders = Order.objects.filter(storefront=storefront, status__in=["completed", "shipped"])
+        total_orders = orders.count()
+        total_visits = WebRequest.objects.filter(
+            path__exact=f"/storefront/{storefront.store_slug}/"
+        ).aggregate(total=Sum("count"))["total"] or 0
+        conversion_rate = round((total_orders / total_visits * 100), 2) if total_visits > 0 else 0.00
 
         context.update(
             {
-                "total_sales": orders.count(),
+                "total_orders": total_orders,
                 "total_revenue": orders.aggregate(Sum("total_price"))["total_price__sum"] or 0,
-                "top_products": OrderItem.objects.filter(order__storefront=storefront)
+                "conversion_rate": conversion_rate,
+                "best_selling_products": OrderItem.objects.filter(order__storefront=storefront)
                 .values("goods__name")
                 .annotate(total_sold=Sum("quantity"))
                 .order_by("-total_sold")[:5],
@@ -4306,14 +4312,17 @@ def sales_analytics(request):
     storefront = get_object_or_404(Storefront, teacher=request.user)
 
     # Get completed orders for this storefront
-    orders = Order.objects.filter(storefront=storefront, status="completed")
+    orders = Order.objects.filter(storefront=storefront, status__in=["completed", "shipped"])
 
     # Calculate metrics
     total_revenue = orders.aggregate(total=Sum("total_price"))["total"] or 0
     total_orders = orders.count()
 
-    # Placeholder conversion rate (to be implemented properly later)
-    conversion_rate = 0.00  # Temporary placeholder
+    # Calculate conversion rate: completed orders / storefront page visits * 100
+    total_visits = WebRequest.objects.filter(
+        path__exact=f"/storefront/{storefront.store_slug}/"
+    ).aggregate(total=Sum("count"))["total"] or 0
+    conversion_rate = round((total_orders / total_visits * 100), 2) if total_visits > 0 else 0.00
 
     # Best selling products
     best_selling_products = (
@@ -4347,9 +4356,11 @@ def sales_data(request):
     # Calculate total orders
     total_orders = orders.count()
 
-    # Calculate conversion rate (orders / visits * 100)
-    total_visits = WebRequest.objects.filter(path__contains="ref=").count()  # Adjust based on visit tracking
-    conversion_rate = (total_orders / total_visits * 100) if total_visits > 0 else 0.00
+    # Calculate conversion rate: completed/shipped orders / storefront page visits * 100
+    total_visits = WebRequest.objects.filter(
+        path__exact=f"/storefront/{storefront.store_slug}/"
+    ).aggregate(total=Sum("count"))["total"] or 0
+    conversion_rate = round((total_orders / total_visits * 100), 2) if total_visits > 0 else 0.00
 
     # Get best-selling products
     best_selling_products = (
