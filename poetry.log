@@ -1,0 +1,134 @@
+Skipping virtualenv creation, as specified in config file.
+Checking keyring availability: Available
+Installing dependencies from lock file
+
+Finding the necessary packages for the current system
+
+Package operations: 1 install, 0 updates, 0 removals, 78 skipped
+
+  - Installing asgiref (3.9.1): Skipped for the following reason: Already installed
+  - Installing bleach (6.2.0): Skipped for the following reason: Already installed
+  - Installing cachetools (5.5.1): Skipped for the following reason: Already installed
+  - Installing cffi (1.17.1): Skipped for the following reason: Already installed
+  - Installing cfgv (3.4.0): Skipped for the following reason: Already installed
+  - Installing channels-redis (4.3.0): Skipped for the following reason: Already installed
+  - Installing charset-normalizer (3.4.1): Skipped for the following reason: Already installed
+  - Installing colorama (0.4.6): Skipped for the following reason: Already installed
+  - Installing cryptography (44.0.2): Skipped for the following reason: Already installed
+  - Installing distlib (0.3.9): Skipped for the following reason: Already installed
+  - Installing django (5.1.15): Skipped for the following reason: Already installed
+  - Installing click (8.1.8): Skipped for the following reason: Already installed
+  - Installing django-markdownx (4.0.7): Skipped for the following reason: Already installed
+  - Installing channels (4.3.1): Skipped for the following reason: Already installed
+  - Installing cssbeautifier (1.15.3): Skipped for the following reason: Already installed
+  - Installing django-simple-captcha (0.5.20): Skipped for the following reason: Already installed
+  - Installing django-storages (1.14.4): Skipped for the following reason: Already installed
+  - Installing djlint (1.36.4): Skipped for the following reason: Already installed
+  - Installing editorconfig (0.17.0): Skipped for the following reason: Already installed
+  - Installing filelock (3.17.0): Skipped for the following reason: Already installed
+  - Installing google-api-core (2.24.1): Skipped for the following reason: Already installed
+  - Installing google-api-python-client (2.161.0): Skipped for the following reason: Already installed
+  - Installing google-auth (2.38.0): Skipped for the following reason: Already installed
+  - Installing google-auth-httplib2 (0.2.0): Skipped for the following reason: Already installed
+  - Installing google-auth-oauthlib (1.2.1): Skipped for the following reason: Already installed
+  - Installing googleapis-common-protos (1.67.0): Skipped for the following reason: Already installed
+  - Installing h11 (0.14.0): Skipped for the following reason: Already installed
+  - Installing httplib2 (0.22.0): Skipped for the following reason: Already installed
+  - Installing icalendar (5.0.13): Skipped for the following reason: Already installed
+  - Installing identify (2.6.7): Skipped for the following reason: Already installed
+  - Installing idna (3.10): Skipped for the following reason: Already installed
+  - Installing jsbeautifier (1.15.3): Skipped for the following reason: Already installed
+  - Installing json5 (0.10.0): Skipped for the following reason: Already installed
+  - Installing markdown (3.7): Skipped for the following reason: Already installed
+  - Installing msgpack (1.1.1): Skipped for the following reason: Already installed
+  - Installing mysqlclient (2.2.7)
+  - Installing nodeenv (1.9.1): Skipped for the following reason: Already installed
+  - Installing django-ranged-response (0.2.0): Skipped for the following reason: Already installed
+  - Installing django-redis (5.4.0): Skipped for the following reason: Already installed
+  - Installing certifi (2025.1.31): Skipped for the following reason: Already installed
+  - Installing django-allauth (65.4.1): Skipped for the following reason: Already installed
+  - Installing django-browser-reload (1.18.0): Skipped for the following reason: Already installed
+  - Installing django-environ (0.11.2): Skipped for the following reason: Already installed
+  - Installing proto-plus (1.26.0): Skipped for the following reason: Already installed
+  - Installing protobuf (5.29.3): Skipped for the following reason: Already installed
+  - Installing pathspec (0.12.1): Skipped for the following reason: Already installed
+  - Installing pillow (12.1.1): Skipped for the following reason: Already installed
+  - Installing platformdirs (4.3.6): Skipped for the following reason: Already installed
+  - Installing pre-commit (3.8.0): Skipped for the following reason: Already installed
+  - Installing oauth2client (4.1.3): Skipped for the following reason: Already installed
+  - Installing oauthlib (3.2.2): Skipped for the following reason: Already installed
+  - Installing psutil (7.1.3): Skipped for the following reason: Already installed
+  - Installing pyasn1 (0.6.1): Skipped for the following reason: Already installed
+  - Installing pyasn1-modules (0.4.1): Skipped for the following reason: Already installed
+  - Installing pyyaml (6.0.2): Skipped for the following reason: Already installed
+  - Installing redis (6.4.0): Skipped for the following reason: Already installed
+  - Installing regex (2024.11.6): Skipped for the following reason: Already installed
+  - Installing requests (2.32.4): Skipped for the following reason: Already installed
+  - Installing requests-oauthlib (2.0.0): Skipped for the following reason: Already installed
+  - Installing rsa (4.9): Skipped for the following reason: Already installed
+  - Installing pycparser (2.22): Skipped for the following reason: Already installed
+  - Installing pyopenssl (25.0.0): Skipped for the following reason: Already installed
+  - Installing pyparsing (3.2.1): Skipped for the following reason: Already installed
+  - Installing python-avatars (1.4.1): Skipped for the following reason: Already installed
+  - Installing python-dateutil (2.9.0.post0): Skipped for the following reason: Already installed
+  - Installing pytz (2025.1): Skipped for the following reason: Already installed
+  - Installing sentry-sdk (2.25.1): Skipped for the following reason: Already installed
+  - Installing six (1.17.0): Skipped for the following reason: Already installed
+  - Installing sqlparse (0.5.3): Skipped for the following reason: Already installed
+  - Installing uvicorn (0.34.0): Skipped for the following reason: Already installed
+  - Installing virtualenv (20.29.2): Skipped for the following reason: Already installed
+  - Installing tweepy (4.15.0): Skipped for the following reason: Already installed
+  - Installing typing-extensions (4.12.2): Skipped for the following reason: Already installed
+  - Installing urllib3 (2.6.0): Skipped for the following reason: Already installed
+  - Installing tqdm (4.67.1): Skipped for the following reason: Already installed
+  - Installing webencodings (0.5.1): Skipped for the following reason: Already installed
+  - Installing uritemplate (4.1.1): Skipped for the following reason: Already installed
+  - Installing stripe (11.5.0): Skipped for the following reason: Already installed
+  - Installing whitenoise (6.9.0): Skipped for the following reason: Already installed
+
+PEP517 build of a dependency failed
+
+Backend subprocess exited when trying to invoke get_requires_for_build_wheel
+
+    | Command '['/var/folders/x7/4r10tkc17szdx7mbfqys57880000gn/T/tmpl8auqv0s/.venv/bin/python', '/Users/arnavvv.20/Library/Application Support/pypoetry/venv/lib/python3.14/site-packages/pyproject_hooks/_in_process/_in_process.py', 'get_requires_for_build_wheel', '/var/folders/x7/4r10tkc17szdx7mbfqys57880000gn/T/tmp14qzap9l']' returned non-zero exit status 1.
+    |
+    | Trying pkg-config --exists mysqlclient
+    | Command 'pkg-config --exists mysqlclient' returned non-zero exit status 1.
+    | Trying pkg-config --exists mariadb
+    | Command 'pkg-config --exists mariadb' returned non-zero exit status 1.
+    | Trying pkg-config --exists libmariadb
+    | Command 'pkg-config --exists libmariadb' returned non-zero exit status 1.
+    | Trying pkg-config --exists perconaserverclient
+    | Command 'pkg-config --exists perconaserverclient' returned non-zero exit status 1.
+    | Traceback (most recent call last):
+    |   File "/Users/arnavvv.20/Library/Application Support/pypoetry/venv/lib/python3.14/site-packages/pyproject_hooks/_in_process/_in_process.py", line 389, in <module>
+    |     main()
+    |     ~~~~^^
+    |   File "/Users/arnavvv.20/Library/Application Support/pypoetry/venv/lib/python3.14/site-packages/pyproject_hooks/_in_process/_in_process.py", line 373, in main
+    |     json_out["return_val"] = hook(**hook_input["kwargs"])
+    |                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/arnavvv.20/Library/Application Support/pypoetry/venv/lib/python3.14/site-packages/pyproject_hooks/_in_process/_in_process.py", line 143, in get_requires_for_build_wheel
+    |     return hook(config_settings)
+    |   File "/private/var/folders/x7/4r10tkc17szdx7mbfqys57880000gn/T/tmpl8auqv0s/.venv/lib/python3.14/site-packages/setuptools/build_meta.py", line 333, in get_requires_for_build_wheel
+    |     return self._get_build_requires(config_settings, requirements=[])
+    |            ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/private/var/folders/x7/4r10tkc17szdx7mbfqys57880000gn/T/tmpl8auqv0s/.venv/lib/python3.14/site-packages/setuptools/build_meta.py", line 301, in _get_build_requires
+    |     self.run_setup()
+    |     ~~~~~~~~~~~~~~^^
+    |   File "/private/var/folders/x7/4r10tkc17szdx7mbfqys57880000gn/T/tmpl8auqv0s/.venv/lib/python3.14/site-packages/setuptools/build_meta.py", line 317, in run_setup
+    |     exec(code, locals())
+    |     ~~~~^^^^^^^^^^^^^^^^
+    |   File "<string>", line 156, in <module>
+    |   File "<string>", line 49, in get_config_posix
+    |   File "<string>", line 28, in find_package_name
+    | Exception: Can not find valid pkg-config name.
+    | Specify MYSQLCLIENT_CFLAGS and MYSQLCLIENT_LDFLAGS env vars manually
+
+Note: This error originates from the build backend, and is likely not a problem with poetry but one of the following issues with mysqlclient (2.2.7)
+
+  - not supporting PEP 517 builds
+  - not specifying PEP 517 build requirements correctly
+  - the build requirements are incompatible with your operating system or Python version
+  - the build requirements are missing system dependencies (eg: compilers, libraries, headers).
+
+You can verify this by running pip wheel --no-cache-dir --use-pep517 "mysqlclient (==2.2.7)".

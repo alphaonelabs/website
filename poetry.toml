@@ -1,2 +1,2 @@
 [virtualenvs]
-create = false
+create = true
