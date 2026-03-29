@@ -69,20 +69,38 @@
         function updateDarkModeIcon() {
             const isDark = document.documentElement.classList.contains('dark');
             const icon = document.getElementById('darkModeIcon');
+            const label = document.getElementById('darkModeLabel');
             log(`Updating icon. Dark mode is: ${isDark}`);
 
             if (icon) {
-                icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+                icon.className = 'fas w-5 text-teal-500 ' + (isDark ? 'fa-sun' : 'fa-moon');
                 icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
                 log('Icon updated successfully');
-            } else {
-                log('Warning: Dark mode icon element not found');
+            }
+            if (label) {
+                label.textContent = isDark ? 'Light mode' : 'Dark mode';
             }
         }
 
         // Initialize dark mode immediately and after DOM content loads
         initializeDarkMode();
         document.addEventListener('DOMContentLoaded', initializeDarkMode);
+
+        // Navbar scroll effect: backdrop blur + shadow on scroll
+        function updateNavbarOnScroll() {
+            const header = document.getElementById('main-header');
+            if (!header) return;
+            const scrollClasses = ['bg-teal-600/95', 'dark:bg-teal-800/95', 'backdrop-blur-md', 'shadow-lg'];
+            if (window.scrollY > 10) {
+                scrollClasses.forEach(c => header.classList.add(c));
+            } else {
+                scrollClasses.forEach(c => header.classList.remove(c));
+            }
+        }
+        window.addEventListener('scroll', updateNavbarOnScroll, {
+            passive: true
+        });
+        document.addEventListener('DOMContentLoaded', updateNavbarOnScroll);
     </script>
     <!-- Font Awesome (Free CDN) -->
     <link rel="stylesheet"
@@ -95,27 +113,36 @@
             integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
             crossorigin="anonymous"></script>
     <script>
-        // Toggle the language dropdown
-        function toggleLanguageDropdown() {
-            document.getElementById('language-dropdown').classList.toggle('hidden');
-        }
         // Toggle the user dropdown
         function toggleUserDropdown() {
             document.getElementById('user-dropdown').classList.toggle('hidden');
         }
+        // Toggle the more dropdown (language, dark mode, messages)
+        function toggleMoreDropdown() {
+            document.getElementById('more-dropdown').classList.toggle('hidden');
+            document.getElementById('language-subdropdown').classList.add('hidden');
+        }
+        // Toggle the language sub-dropdown inside more dropdown
+        function toggleLanguageSubdropdown() {
+            const sub = document.getElementById('language-subdropdown');
+            const chevron = document.getElementById('language-chevron');
+            sub.classList.toggle('hidden');
+            if (chevron) chevron.classList.toggle('rotate-180', !sub.classList.contains('hidden'));
+        }
         // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {
-            const languageDropdown = document.getElementById('language-dropdown');
             const userDropdown = document.getElementById('user-dropdown');
-            const languageButton = event.target.closest('[onclick="toggleLanguageDropdown()"]');
+            const moreDropdown = document.getElementById('more-dropdown');
             const userButton = event.target.closest('[onclick="toggleUserDropdown()"]');
-
-            if (!languageButton && !languageDropdown.contains(event.target)) {
-                languageDropdown.classList.add('hidden');
-            }
+            const moreButton = event.target.closest('[onclick="toggleMoreDropdown()"]');
 
             if (userDropdown && !userButton && !userDropdown.contains(event.target)) {
                 userDropdown.classList.add('hidden');
+            }
+            if (moreDropdown && !moreButton && !moreDropdown.contains(event.target)) {
+                moreDropdown.classList.add('hidden');
+                const langSub = document.getElementById('language-subdropdown');
+                if (langSub) langSub.classList.add('hidden');
             }
         });
     </script>
@@ -152,387 +179,416 @@
     <link rel="stylesheet" href="{% static 'css/markdown.css' %}" />
   </head>
   <body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden {% if user.is_authenticated %}user-authenticated{% endif %}">
-    <header class="w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md">
-      <div class="max-w-[90rem] mx-auto px-4 md:px-6 flex items-center justify-between h-[70px] relative gap-2">
+    <header id="main-header"
+            class="sticky top-0 z-50 w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md transition-all duration-300 ease-out">
+      <div class="max-w-[90rem] mx-auto px-4 md:px-8 flex items-center justify-between h-16 relative">
         <!-- Logo and Title -->
         <a href="{% url 'index' %}"
-           class="flex flex-1 min-w-[150px] max-w-[50%] items-center space-x-2">
+           class="flex-shrink-0 flex items-center gap-3 group/logo">
           <img src="{% static 'images/logo.png' %}"
                alt="Alpha One Labs Logo"
                height="40"
                width="40"
-               class="h-10 w-10" />
-          <span class="text-xl font-bold text-white ">Alpha One Labs</span>
+               class="h-9 w-9" />
+          <span class="text-lg font-bold text-white hidden sm:inline">Alpha One Labs</span>
         </a>
         <!-- Mobile Menu Button -->
-        <button class="md:hidden p-2 hover:bg-teal-700 rounded-lg"
-                onclick="toggleMobileMenu()">
-          <i class="fas fa-bars text-xl"></i>
+        <button class="md:hidden p-2.5 hover:bg-teal-700/80 rounded-lg transition-colors"
+                onclick="toggleMobileMenu()"
+                aria-label="Toggle menu">
+          <i class="fas fa-bars text-lg"></i>
         </button>
-        <!-- Nav and additional actions -->
-        <nav class="hidden md:flex items-center space-x-3">
-          <!-- Main navigation links with dropdowns -->
-          <div class="flex space-x-2 items-center">
-            <!-- LEARN Dropdown -->
-            <div class="relative group">
-              <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
-                <span class="font-medium">LEARN</span>
-                <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
-              </button>
-              <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
-                <div class="py-2 px-1">
-                  <a href="{% url 'classes_map' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-map-marker-alt mr-2 text-teal-500"></i>Classes Near Me
-                  </a>
-                  <a href="{% url 'course_search' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-book-open mr-2 text-teal-500"></i>Courses
-                  </a>
-                  <a href="{% url 'subjects' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-list-check mr-2 text-teal-500"></i>Subjects
-                  </a>
-                  <a href="{% url 'quiz_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-question-circle mr-2 text-teal-500"></i>Quizzes
-                  </a>
-                  <a href="{% url 'educational_videos_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-video mr-2 text-teal-500"></i>Videos
-                  </a>
-                  <a href="{% url 'challenge_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-trophy mr-2 text-teal-500"></i>Challenges
-                  </a>
-                  <a href="{% url 'graphing_calculator' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-calculator mr-2 text-teal-500"></i>Graphing Calculator
-                  </a>
-                  <a href="{% url 'whiteboard' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-palette mr-2 text-teal-500"></i>Whiteboard
-                  </a>
-                  <a href="{% url 'all_study_groups' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-users mr-2 text-teal-500"></i>Study Groups
-                  </a>
+        <!-- Desktop Nav: centered links + right actions -->
+        <nav class="hidden md:flex items-center flex-1 min-w-0">
+          <!-- Centered nav links -->
+          <div class="flex-1 flex justify-center">
+            <div class="flex items-center gap-1">
+              <!-- LEARN Dropdown -->
+              <div class="relative group">
+                <button class="flex items-center gap-1 text-white hover:text-teal-100 focus:outline-none py-2.5 px-3 rounded-lg hover:bg-teal-700/60 transition-colors">
+                  <span class="text-sm font-medium">Learn</span>
+                  <i class="fas fa-chevron-down text-[10px] transition-transform duration-200 group-hover:rotate-180"></i>
+                </button>
+                <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-50 origin-top-left border border-gray-100 dark:border-gray-700">
+                  <div class="py-2 px-1">
+                    <a href="{% url 'classes_map' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300 transition-all duration-150 hover:translate-x-0.5">
+                      <i class="fas fa-map-marker-alt mr-2 text-teal-500"></i>Classes Near Me
+                    </a>
+                    <a href="{% url 'course_search' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-book-open mr-2 text-teal-500"></i>Courses
+                    </a>
+                    <a href="{% url 'subjects' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-list-check mr-2 text-teal-500"></i>Subjects
+                    </a>
+                    <a href="{% url 'quiz_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-question-circle mr-2 text-teal-500"></i>Quizzes
+                    </a>
+                    <a href="{% url 'educational_videos_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-video mr-2 text-teal-500"></i>Videos
+                    </a>
+                    <a href="{% url 'challenge_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-trophy mr-2 text-teal-500"></i>Challenges
+                    </a>
+                    <a href="{% url 'graphing_calculator' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-calculator mr-2 text-teal-500"></i>Graphing Calculator
+                    </a>
+                    <a href="{% url 'whiteboard' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-palette mr-2 text-teal-500"></i>Whiteboard
+                    </a>
+                    <a href="{% url 'all_study_groups' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-users mr-2 text-teal-500"></i>Study Groups
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
-            <!-- COMMUNITY Dropdown -->
-            <div class="relative group">
-              <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
-                <span class="font-medium">COMMUNITY</span>
-                <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
-              </button>
-              <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
-                <div class="py-2 px-1">
-                  <a href="{% url 'waiting_rooms' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-chalkboard-teacher mr-2 text-teal-500"></i>Learning Requests
-                  </a>
-                  <a href="{% url 'surveys' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300 ">
-                    <i class="fas fa-square-poll-vertical mr-2 text-teal-500"></i>Surveys
-                  </a>
-                  <a href="{% url 'waiting_room_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-door-open mr-2 text-teal-500"></i>Waiting Rooms
-                  </a>
-                  <a href="{% url 'forum_categories' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-comments mr-2 text-teal-500"></i>Forum
-                  </a>
-                  <a href="{% url 'blog_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-blog mr-2 text-teal-500"></i>Blog
-                  </a>
-                  <a href="{% url 'meme_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-face-smile mr-2 text-teal-500"></i>Edu Memes
-                  </a>
-                  <a href="{% url 'features' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-lightbulb mr-2 text-teal-500"></i>Features
-                  </a>
-                  <a href="{% url 'users_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-users mr-2 text-teal-500"></i>Users
-                  </a>
-                  <a href="{% url 'success_story_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-star mr-2 text-teal-500"></i>Success Stories
-                  </a>
-                  <a href="{% url 'team_goals' %}?view=teams"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-users-cog mr-2 text-teal-500"></i>Teams
-                  </a>
+              <!-- COMMUNITY Dropdown -->
+              <div class="relative group">
+                <button class="flex items-center gap-1 text-white hover:text-teal-100 focus:outline-none py-2.5 px-3 rounded-lg hover:bg-teal-700/60 transition-colors">
+                  <span class="text-sm font-medium">Community</span>
+                  <i class="fas fa-chevron-down text-[10px] transition-transform duration-200 group-hover:rotate-180"></i>
+                </button>
+                <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-50 origin-top-left border border-gray-100 dark:border-gray-700">
+                  <div class="py-2 px-1">
+                    <a href="{% url 'waiting_rooms' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-chalkboard-teacher mr-2 text-teal-500"></i>Learning Requests
+                    </a>
+                    <a href="{% url 'surveys' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300 ">
+                      <i class="fas fa-square-poll-vertical mr-2 text-teal-500"></i>Surveys
+                    </a>
+                    <a href="{% url 'waiting_room_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-door-open mr-2 text-teal-500"></i>Waiting Rooms
+                    </a>
+                    <a href="{% url 'forum_categories' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-comments mr-2 text-teal-500"></i>Forum
+                    </a>
+                    <a href="{% url 'blog_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-blog mr-2 text-teal-500"></i>Blog
+                    </a>
+                    <a href="{% url 'meme_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-face-smile mr-2 text-teal-500"></i>Edu Memes
+                    </a>
+                    <a href="{% url 'features' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-lightbulb mr-2 text-teal-500"></i>Features
+                    </a>
+                    <a href="{% url 'users_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-users mr-2 text-teal-500"></i>Users
+                    </a>
+                    <a href="{% url 'success_story_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-star mr-2 text-teal-500"></i>Success Stories
+                    </a>
+                    <a href="{% url 'team_goals' %}?view=teams"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-users-cog mr-2 text-teal-500"></i>Teams
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
-            <!-- RESOURCES Dropdown -->
-            <div class="relative group">
-              <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
-                <span class="font-medium">RESOURCES</span>
-                <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
-              </button>
-              <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
-                <div class="py-2 px-1">
-                  <a href="{% url 'virtual_lab:virtual_lab_home' %}"
-                     class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                    <i class="fas fa-flask mr-2 text-teal-500"></i>
-                    <span>Virtual Lab</span>
-                  </a>
-                  <a href="{% url 'progress_visualization' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-chart-line mr-2 text-teal-500"></i>Progress Trackers
-                  </a>
-                  <a href="{% url 'gradeable_link_list' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-link mr-2 text-teal-500"></i>Grade Links
-                  </a>
-                  <a href="{% url 'goods_listing' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-store mr-2 text-teal-500"></i>Products
-                  </a>
-                  <a href="{% url 'goods_listing' %}?type=storefront"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-shopping-basket mr-2 text-teal-500"></i>Storefronts
-                  </a>
-                  <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas"
-                     target="_blank"
-                     rel="noopener"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-code mr-2 text-teal-500"></i>GSOC'26
-                  </a>
+              <!-- RESOURCES Dropdown -->
+              <div class="relative group">
+                <button class="flex items-center gap-1 text-white hover:text-teal-100 focus:outline-none py-2.5 px-3 rounded-lg hover:bg-teal-700/60 transition-colors">
+                  <span class="text-sm font-medium">Resources</span>
+                  <i class="fas fa-chevron-down text-[10px] transition-transform duration-200 group-hover:rotate-180"></i>
+                </button>
+                <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-50 origin-top-left border border-gray-100 dark:border-gray-700">
+                  <div class="py-2 px-1">
+                    <a href="{% url 'virtual_lab:virtual_lab_home' %}"
+                       class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                      <i class="fas fa-flask mr-2 text-teal-500"></i>
+                      <span>Virtual Lab</span>
+                    </a>
+                    <a href="{% url 'progress_visualization' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-chart-line mr-2 text-teal-500"></i>Progress Trackers
+                    </a>
+                    <a href="{% url 'gradeable_link_list' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-link mr-2 text-teal-500"></i>Grade Links
+                    </a>
+                    <a href="{% url 'goods_listing' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-store mr-2 text-teal-500"></i>Products
+                    </a>
+                    <a href="{% url 'goods_listing' %}?type=storefront"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-shopping-basket mr-2 text-teal-500"></i>Storefronts
+                    </a>
+                    <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas"
+                       target="_blank"
+                       rel="noopener"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-code mr-2 text-teal-500"></i>GSOC'26
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
-            <!-- ABOUT Dropdown -->
-            <div class="relative group">
-              <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
-                <span class="font-medium">ABOUT</span>
-                <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
-              </button>
-              <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
-                <div class="py-2 px-1">
-                  <a href="{% url 'about' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-circle-info mr-2 text-teal-500"></i>Our Mission
-                  </a>
-                  <a href="{% url 'terms' %}#general"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-file-contract mr-2 text-teal-500"></i>Terms
-                  </a>
-                  <a href="{% url 'system_status' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-chart-line mr-2 text-teal-500"></i>Status
-                  </a>
-                  <a href="{% url 'feedback' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-comment-dots mr-2 text-teal-500"></i>Feedback
-                  </a>
-                  <a href="{% url 'donate' %}"
-                     class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                    <i class="fas fa-hand-holding-heart mr-2 text-teal-500"></i>Donate
-                  </a>
+              <!-- ABOUT Dropdown -->
+              <div class="relative group">
+                <button class="flex items-center gap-1 text-white hover:text-teal-100 focus:outline-none py-2.5 px-3 rounded-lg hover:bg-teal-700/60 transition-colors">
+                  <span class="text-sm font-medium">About</span>
+                  <i class="fas fa-chevron-down text-[10px] transition-transform duration-200 group-hover:rotate-180"></i>
+                </button>
+                <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible -translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-50 origin-top-left border border-gray-100 dark:border-gray-700">
+                  <div class="py-2 px-1">
+                    <a href="{% url 'about' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-circle-info mr-2 text-teal-500"></i>Our Mission
+                    </a>
+                    <a href="{% url 'terms' %}#general"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-file-contract mr-2 text-teal-500"></i>Terms
+                    </a>
+                    <a href="{% url 'system_status' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-chart-line mr-2 text-teal-500"></i>Status
+                    </a>
+                    <a href="{% url 'feedback' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-comment-dots mr-2 text-teal-500"></i>Feedback
+                    </a>
+                    <a href="{% url 'donate' %}"
+                       class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                      <i class="fas fa-hand-holding-heart mr-2 text-teal-500"></i>Donate
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <!-- Search bar (persistent element) -->
-          <div class="relative hidden lg:inline-block w-[250px]">
-            <form action="{% url 'course_search' %}" method="get" class="m-0">
-              <input type="text"
-                     name="q"
-                     placeholder="What do you want to learn?"
-                     class="rounded-full w-[250px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700" />
-              <button type="submit"
-                      class="absolute right-3 top-2 text-gray-500 dark:text-gray-300">
-                <i class="fas fa-search"></i>
-              </button>
-            </form>
-          </div>
-          <!-- Messaging Button -->
-          <a href="{% url 'inbox' %}"
-             title="Messages"
-             class="flex items-center p-2 hover:bg-teal-700 rounded-lg">
-            <i class="fas fa-comments text-xl"></i>
-          </a> <!-- Language and Dark Mode -->
-          <div class="flex items-center space-x-2">
-            <!-- Cart Icon -->
-            <a href="{% url 'cart_view' %}"
-               class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
-              <i class="fa-solid fa-shopping-cart"></i>
-              {% if request.user.cart.item_count > 0 or request.session.session_key and request.session.session_key|get_cart_item_count > 0 %}
-                <span class="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {% if request.user.is_authenticated %}
-                    {{ request.user.cart.item_count }}
-                  {% else %}
-                    {{ request.session.session_key|get_cart_item_count }}
-                  {% endif %}
-                </span>
-              {% endif %}
-            </a>
-            <!-- New Notification Button for Invitations -->
-            <a href="{% url 'user_invitations' %}"
-               class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
-              <i class="fas fa-bell"></i>
-              {% if pending_invites_count %}
-                <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-600 flex items-center justify-center text-white text-xs">
-                  {{ pending_invites_count }}
-                </span>
-              {% endif %}
-            </a>
-            <div class="relative">
-              <button class="focus:outline-none hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg"
-                      onclick="toggleLanguageDropdown()">
-                <i class="fa-solid fa-globe"></i>
-              </button>
-              <!-- Language dropdown content -->
-              <div id="language-dropdown"
-                   class="hidden absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 shadow-lg rounded-md py-2 z-50">
-                <form action="{% url 'set_language' %}" method="post" class="m-0">
-                  {% csrf_token %}
-                  <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-                  <button type="submit"
-                          name="language"
-                          value="en"
-                          class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    English
-                  </button>
-                  <button type="submit"
-                          name="language"
-                          value="es"
-                          class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    Spanish
-                  </button>
-                  <button type="submit"
-                          name="language"
-                          value="fr"
-                          class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    French
-                  </button>
-                  <button type="submit"
-                          name="language"
-                          value="de"
-                          class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    German
-                  </button>
-                  <button type="submit"
-                          name="language"
-                          value="zh-hans"
-                          class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    Chinese
-                  </button>
-                </form>
-              </div>
+          <!-- Right actions -->
+          <div class="flex-1 flex justify-end items-center gap-3 pl-6">
+            <!-- Search bar -->
+            <div class="relative hidden xl:inline-block w-52 flex-shrink-0 group/search">
+              <form action="{% url 'course_search' %}" method="get" class="m-0">
+                <input type="text"
+                       name="q"
+                       placeholder="What do you want to learn?"
+                       class="rounded-full w-full bg-white/95 dark:bg-gray-700/95 text-gray-900 dark:text-gray-100 px-3 py-1.5 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 placeholder:text-gray-500 dark:placeholder:text-gray-400" />
+                <button type="submit"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-300 transition-colors duration-200 group-hover/search:text-teal-600 dark:group-hover/search:text-teal-300">
+                  <i class="fas fa-search"></i>
+                </button>
+              </form>
             </div>
-            <button class="focus:outline-none flex items-center hover:underline p-2 rounded-lg hover:bg-teal-700 transition-colors"
-                    title="Switch to Dark Mode"
-                    onclick="toggleDarkMode()">
-              <i id="darkModeIcon" class="fas fa-moon"></i>
-            </button>
-          </div>
-          <!-- Auth Buttons -->
-          {% if user.is_authenticated %}
-            <!-- User Avatar and Dropdown -->
-            <div class="relative">
-              <button onclick="toggleUserDropdown()"
-                      class="flex items-center space-x-2 focus:outline-none">
-                {% if user.profile.custom_avatar %}
-                  <div class="w-12 h-12 p-1.5 transform hover:scale-105 transition-transform duration-200">
-                    <div class="w-full h-full overflow-hidden rounded-full flex items-center justify-center">
-                      {{ user.profile.custom_avatar.svg|safe }}
+            <!-- Right actions: divider + icons -->
+            <div class="h-6 w-px bg-teal-500/40 hidden lg:block"></div>
+            <div class="flex items-center gap-1">
+              <a href="{% url 'cart_view' %}"
+                 class="relative flex items-center justify-center w-9 h-9 hover:bg-teal-700/80 rounded-lg transition-colors">
+                <i class="fa-solid fa-shopping-cart"></i>
+                {% if request.user.cart.item_count > 0 or request.session.session_key and request.session.session_key|get_cart_item_count > 0 %}
+                  <span class="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                    {% if request.user.is_authenticated %}
+                      {{ request.user.cart.item_count }}
+                    {% else %}
+                      {{ request.session.session_key|get_cart_item_count }}
+                    {% endif %}
+                  </span>
+                {% endif %}
+              </a>
+              <a href="{% url 'user_invitations' %}"
+                 class="relative flex items-center justify-center w-9 h-9 hover:bg-teal-700/80 rounded-lg transition-colors">
+                <i class="fas fa-bell"></i>
+                {% if pending_invites_count %}
+                  <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-600 flex items-center justify-center text-white text-xs">
+                    {{ pending_invites_count }}
+                  </span>
+                {% endif %}
+              </a>
+              <!-- More dropdown: Messages, Language, Dark mode -->
+              <div class="relative">
+                <button class="focus:outline-none flex items-center justify-center w-9 h-9 hover:bg-teal-700/80 rounded-lg transition-colors"
+                        onclick="toggleMoreDropdown()"
+                        aria-label="More options"
+                        title="More options">
+                  <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div id="more-dropdown"
+                     class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-lg py-2 z-50 border border-gray-100 dark:border-gray-700">
+                  <a href="{% url 'inbox' %}"
+                     class="flex items-center gap-2 px-4 py-2.5 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-comments w-5 text-teal-500"></i>
+                    <span>Messages</span>
+                  </a>
+                  <div class="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+                  <!-- Language: expandable sub-dropdown -->
+                  <div class="relative">
+                    <button type="button"
+                            onclick="toggleLanguageSubdropdown()"
+                            class="w-full text-left flex items-center justify-between gap-2 px-4 py-2.5 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <div class="flex items-center gap-2">
+                        <i class="fas fa-globe w-5 text-teal-500"></i>
+                        <span>Language</span>
+                      </div>
+                      <i id="language-chevron"
+                         class="fas fa-chevron-down text-xs text-gray-500 transition-transform duration-200"></i>
+                    </button>
+                    <div id="language-subdropdown"
+                         class="hidden pl-4 mt-1 border-l-2 border-teal-200 dark:border-teal-700 ml-4">
+                      <form action="{% url 'set_language' %}" method="post" class="m-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+                        <button type="submit"
+                                name="language"
+                                value="en"
+                                class="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                          English
+                        </button>
+                        <button type="submit"
+                                name="language"
+                                value="es"
+                                class="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                          Spanish
+                        </button>
+                        <button type="submit"
+                                name="language"
+                                value="fr"
+                                class="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                          French
+                        </button>
+                        <button type="submit"
+                                name="language"
+                                value="de"
+                                class="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                          German
+                        </button>
+                        <button type="submit"
+                                name="language"
+                                value="zh-hans"
+                                class="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                          Chinese
+                        </button>
+                      </form>
                     </div>
                   </div>
-                {% elif user.profile.avatar %}
-                  <img src="{{ user.profile.avatar.url }}"
-                       alt="User Avatar"
-                       class="h-8 w-8 rounded-full object-cover border-2 border-white"
-                       height="32"
-                       width="32" />
-                {% else %}
-                  <div class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center text-white border-2 border-white">
-                    {{ user.first_name|first|default:user.username|first|upper }}
-                  </div>
-                {% endif %}
-                <span class="text-white font-medium hidden sm:block truncate max-w-[100px]">{{ user.username }}</span>
-                <i class="fas fa-chevron-down text-white text-xs"></i>
-              </button>
-              <!-- User Dropdown Menu -->
-              <div id="user-dropdown"
-                   class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50">
-                <div class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
-                  <div class="font-semibold truncate" title="{{ user.username }}">{{ user.username }}</div>
-                  <div class="text-sm text-gray-500 dark:text-gray-400 truncate"
-                       title="{{ user.email }}">{{ user.email }}</div>
-                </div>
-                <a href="{% url 'profile' %}"
-                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-user-edit mr-2"></i> Edit Profile
-                </a>
-                <a href="{% url 'create_course' %}"
-                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-plus-circle mr-2"></i> Create Course
-                </a>
-                {% if user.is_superuser %}
-                  <a href="{% url 'admin:index' %}"
-                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-cog mr-2"></i> Admin Panel
-                  </a>
-                {% endif %}
-                <a href="{% url 'messaging_dashboard' %}"
-                   title="Messages"
-                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-comments mr-2 text-xl"></i>Messages
-                </a>
-                <!-- Add the Notification Preferences link here -->
-                <a href="{% url 'notification_preferences' %}"
-                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-bell mr-2"></i> Notification Preferences
-                </a>
-                <a href="{% url 'teacher_dashboard' %}"
-                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-chalkboard-teacher mr-2"></i> Teacher Dashboard
-                </a>
-                <a href="{% url 'student_dashboard' %}"
-                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-graduation-cap mr-2"></i> Student Dashboard
-                </a>
-                <a href="{% url 'progress_visualization' %}"
-                   class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <i class="fas fa-chart-line mr-2"></i> Progress Chart
-                </a>
-                <form method="post" action="{% url 'account_logout' %}" class="block">
-                  {% csrf_token %}
-                  <button type="submit"
-                          class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                  <div class="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+                  <button type="button"
+                          onclick="toggleDarkMode(); document.getElementById('more-dropdown').classList.add('hidden');"
+                          class="w-full text-left flex items-center gap-2 px-4 py-2.5 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i id="darkModeIcon" class="fas fa-moon w-5 text-teal-500"></i>
+                    <span id="darkModeLabel">Dark mode</span>
                   </button>
-                </form>
+                </div>
               </div>
             </div>
-          {% else %}
-            <div class="flex items-center space-x-2">
-              <a href="{% url 'account_login' %}"
-                 class="hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
-                <i class="fa-solid fa-right-to-bracket mr-1"></i>
-                <span class="hidden sm:inline">Login</span>
-              </a>
-              <a href="{% url 'account_signup' %}"
-                 class="px-3 py-1 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-semibold flex items-center">
-                <i class="fa-solid fa-user-plus mr-2"></i>
-                <span class="hidden sm:inline">Signup</span>
-              </a>
-            </div>
-          {% endif %}
+            <!-- User / Auth -->
+            <div class="h-6 w-px bg-teal-500/40 hidden lg:block"></div>
+            {% if user.is_authenticated %}
+              <div class="relative flex-shrink-0">
+                <button onclick="toggleUserDropdown()"
+                        class="flex items-center gap-2 focus:outline-none p-1.5 rounded-lg hover:bg-teal-700/80 transition-colors">
+                  {% if user.profile.custom_avatar %}
+                    <div class="w-12 h-12 p-1.5 transform hover:scale-105 transition-transform duration-200">
+                      <div class="w-full h-full overflow-hidden rounded-full flex items-center justify-center">
+                        {{ user.profile.custom_avatar.svg|safe }}
+                      </div>
+                    </div>
+                  {% elif user.profile.avatar %}
+                    <img src="{{ user.profile.avatar.url }}"
+                         alt="User Avatar"
+                         class="h-8 w-8 rounded-full object-cover border-2 border-white"
+                         height="32"
+                         width="32" />
+                  {% else %}
+                    <div class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center text-white border-2 border-white">
+                      {{ user.first_name|first|default:user.username|first|upper }}
+                    </div>
+                  {% endif %}
+                  <span class="text-white text-sm font-medium hidden lg:block truncate max-w-[80px]">{{ user.username }}</span>
+                  <i class="fas fa-chevron-down text-white text-xs"></i>
+                </button>
+                <!-- User Dropdown Menu -->
+                <div id="user-dropdown"
+                     class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-100 dark:border-gray-700">
+                  <div class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
+                    <div class="font-semibold truncate" title="{{ user.username }}">{{ user.username }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 truncate"
+                         title="{{ user.email }}">{{ user.email }}</div>
+                  </div>
+                  <a href="{% url 'profile' %}"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-user-edit mr-2"></i> Edit Profile
+                  </a>
+                  <a href="{% url 'create_course' %}"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-plus-circle mr-2"></i> Create Course
+                  </a>
+                  {% if user.is_superuser %}
+                    <a href="{% url 'admin:index' %}"
+                       class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <i class="fas fa-cog mr-2"></i> Admin Panel
+                    </a>
+                  {% endif %}
+                  <a href="{% url 'messaging_dashboard' %}"
+                     title="Messages"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-comments mr-2 text-xl"></i>Messages
+                  </a>
+                  <!-- Add the Notification Preferences link here -->
+                  <a href="{% url 'notification_preferences' %}"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-bell mr-2"></i> Notification Preferences
+                  </a>
+                  <a href="{% url 'teacher_dashboard' %}"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-chalkboard-teacher mr-2"></i> Teacher Dashboard
+                  </a>
+                  <a href="{% url 'student_dashboard' %}"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-graduation-cap mr-2"></i> Student Dashboard
+                  </a>
+                  <a href="{% url 'progress_visualization' %}"
+                     class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-chart-line mr-2"></i> Progress Chart
+                  </a>
+                  <form method="post" action="{% url 'account_logout' %}" class="block">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </button>
+                  </form>
+                </div>
+              </div>
+            {% else %}
+              <div class="flex items-center gap-4">
+                <a href="{% url 'account_login' %}"
+                   class="px-5 py-2.5 rounded-lg hover:bg-teal-700/80 transition-colors text-base font-semibold">
+                  Login
+                </a>
+                <a href="{% url 'account_signup' %}"
+                   class="px-5 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-base font-semibold whitespace-nowrap transition-colors">
+                  Sign up
+                </a>
+              </div>
+            {% endif %}
+          </div>
         </nav>
         <!-- Mobile Menu (hidden by default) -->
         <div id="mobile-menu"
-             class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden">
-          <div class="absolute right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 shadow-lg overflow-y-auto mobile-menu-content">
+             class="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end opacity-0 pointer-events-none transition-opacity duration-300 ease-out">
+          <div class="absolute inset-0 bg-black/50"
+               onclick="toggleMobileMenu()"
+               aria-hidden="true"></div>
+          <div id="mobile-menu-panel"
+               class="absolute right-0 top-0 h-full w-72 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl overflow-y-auto mobile-menu-content translate-x-full transition-transform duration-300 ease-out">
             <!-- Close button -->
             <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     onclick="toggleMobileMenu()">
@@ -1073,17 +1129,28 @@
     <script>
         function toggleMobileMenu() {
             const menu = document.getElementById('mobile-menu');
-            menu.classList.toggle('hidden');
-            document.body.classList.toggle('overflow-hidden');
+            const panel = document.getElementById('mobile-menu-panel');
+            const isOpen = menu.classList.contains('mobile-menu-open');
+            if (isOpen) {
+                menu.classList.remove('mobile-menu-open', 'opacity-100', 'pointer-events-auto');
+                menu.classList.add('opacity-0', 'pointer-events-none');
+                if (panel) panel.classList.add('translate-x-full');
+                document.body.classList.remove('overflow-hidden');
+            } else {
+                menu.classList.add('mobile-menu-open', 'opacity-100', 'pointer-events-auto');
+                menu.classList.remove('opacity-0', 'pointer-events-none');
+                if (panel) panel.classList.remove('translate-x-full');
+                document.body.classList.add('overflow-hidden');
+            }
         }
 
-        // Close mobile menu when clicking outside
+        // Close mobile menu when clicking overlay
         document.addEventListener('click', function(event) {
             const menu = document.getElementById('mobile-menu');
             const menuButton = event.target.closest('[onclick="toggleMobileMenu()"]');
             const menuContent = event.target.closest('.mobile-menu-content');
 
-            if (!menu.classList.contains('hidden') && !menuButton && !menuContent) {
+            if (menu.classList.contains('mobile-menu-open') && !menuButton && !menuContent) {
                 toggleMobileMenu();
             }
         });
