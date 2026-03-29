@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% load static i18n %}
+
+{% block title %}
+  Classroom Crowdfunding
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-[90rem] mx-auto mt-6 px-4 md:px-6">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <i class="fa-solid fa-hand-holding-heart text-teal-300 mr-2"></i>
+        {% trans "Classroom Crowdfunding" %}
+      </h1>
+      <p class="text-lg text-gray-600 dark:text-gray-300">
+        {% trans "Support teachers and empower classrooms with the resources they need to succeed." %}
+      </p>
+    </div>
+    <!-- Search and Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+      <form method="get" class="flex flex-col md:flex-row gap-4">
+        <div class="flex-1">
+          <input type="text"
+                 name="q"
+                 value="{{ search_query|default:'' }}"
+                 placeholder="{% trans 'Search campaigns...' %}"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <button type="submit"
+                class="px-6 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200">
+          <i class="fa-solid fa-search mr-2"></i>
+          {% trans "Search" %}
+        </button>
+        {% if user.profile.is_teacher %}
+          <a href="{% url 'campaign_create' %}"
+             class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition duration-200 text-center">
+            <i class="fa-solid fa-plus mr-2"></i>
+            {% trans "Create Campaign" %}
+          </a>
+        {% endif %}
+      </form>
+    </div>
+    <!-- Campaign Grid -->
+    {% if campaigns %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for campaign in campaigns %}
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition duration-300">
+            <!-- Campaign Image -->
+            <div class="relative h-48 bg-gray-200 dark:bg-gray-700">
+              {% if campaign.images.first %}
+                <img src="{{ campaign.images.first.image.url }}"
+                     alt="{{ campaign.title }}"
+                     class="w-full h-full object-cover" />
+              {% else %}
+                <div class="w-full h-full flex items-center justify-center">
+                  <i class="fa-solid fa-graduation-cap text-6xl text-gray-400"></i>
+                </div>
+              {% endif %}
+              {% if campaign.school_verified %}
+                <div class="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                  <i class="fa-solid fa-check-circle mr-1"></i>
+                  {% trans "Verified" %}
+                </div>
+              {% endif %}
+            </div>
+            <!-- Campaign Content -->
+            <div class="p-6">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                <a href="{% url 'campaign_detail' campaign.slug %}"
+                   class="hover:text-teal-300 transition duration-200">{{ campaign.title }}</a>
+              </h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                <i class="fa-solid fa-user mr-1"></i>
+                {{ campaign.teacher.username }}
+                {% if campaign.school_name %}| <i class="fa-solid fa-school mr-1"></i>{{ campaign.school_name }}{% endif %}
+              </p>
+              <!-- Progress Bar -->
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="font-semibold text-gray-900 dark:text-white">${{ campaign.current_amount|floatformat:0 }}</span>
+                  <span class="text-gray-600 dark:text-gray-400">of ${{ campaign.funding_goal|floatformat:0 }}</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div class="bg-teal-300 h-2 rounded-full transition-all duration-300"
+                       style="width: {{ campaign.progress_percentage }}%"></div>
+                </div>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  {{ campaign.progress_percentage|floatformat:0 }}% funded • {{ campaign.donors_count }} donor{{ campaign.donors_count|pluralize }}
+                </p>
+              </div>
+              <!-- Matching Grant Badge -->
+              {% if campaign.matching_enabled %}
+                <div class="mb-4 p-2 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-600 rounded-lg">
+                  <p class="text-xs font-semibold text-yellow-800 dark:text-yellow-300">
+                    <i class="fa-solid fa-hands-helping mr-1"></i>
+                    {{ campaign.matching_multiplier }}x Matching Available!
+                  </p>
+                </div>
+              {% endif %}
+              <!-- Action Button -->
+              <a href="{% url 'campaign_detail' campaign.slug %}"
+                 class="block w-full py-2 bg-teal-300 hover:bg-teal-400 text-white text-center rounded-lg transition duration-200 font-semibold">
+                <i class="fa-solid fa-arrow-right mr-2"></i>
+                {% trans "View Campaign" %}
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+        <i class="fa-solid fa-inbox text-6xl text-gray-400 mb-4"></i>
+        <p class="text-xl text-gray-600 dark:text-gray-300">
+          {% if search_query %}
+            {% trans "No campaigns found matching your search." %}
+          {% else %}
+            {% trans "No active campaigns at the moment. Check back soon!" %}
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </main>
+{% endblock content %}

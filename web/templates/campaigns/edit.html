@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% load static i18n %}
+
+{% block title %}
+  Edit Campaign
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-4xl mx-auto mt-6 px-4 md:px-6">
+    <div class="mb-6">
+      <a href="{% url 'campaign_detail' campaign.slug %}"
+         class="text-teal-300 hover:text-teal-400 transition duration-200">
+        <i class="fa-solid fa-arrow-left mr-2"></i>
+        {% trans "Back to Campaign" %}
+      </a>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 md:p-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+        <i class="fa-solid fa-edit text-teal-300 mr-2"></i>
+        {% trans "Edit Campaign" %}
+      </h1>
+      <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        <div>
+          <label for="title"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Campaign Title" %}</label>
+          <input type="text"
+                 id="title"
+                 name="title"
+                 value="{{ campaign.title }}"
+                 required
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <div>
+          <label for="description"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Description" %}</label>
+          <textarea id="description"
+                    name="description"
+                    rows="8"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300">{{ campaign.description }}</textarea>
+        </div>
+        <div>
+          <label for="funding_goal"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Funding Goal ($)" %}</label>
+          <input type="number"
+                 id="funding_goal"
+                 name="funding_goal"
+                 step="0.01"
+                 value="{{ campaign.funding_goal }}"
+                 required
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <div>
+          <label for="budget_breakdown"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Budget Breakdown" %}</label>
+          <textarea id="budget_breakdown"
+                    name="budget_breakdown"
+                    rows="6"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300">{{ campaign.budget_breakdown }}</textarea>
+        </div>
+        <div>
+          <label for="school_name"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "School or Institution Name" %}</label>
+          <input type="text"
+                 id="school_name"
+                 name="school_name"
+                 value="{{ campaign.school_name }}"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <div>
+          <label for="video_url"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Video Pitch URL" %}</label>
+          <input type="url"
+                 id="video_url"
+                 name="video_url"
+                 value="{{ campaign.video_url }}"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <div>
+          <label for="deadline"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Campaign Deadline" %}</label>
+          <input type="date"
+                 id="deadline"
+                 name="deadline"
+                 value="{{ campaign.deadline|date:'Y-m-d' }}"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <div>
+          <label for="images"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Add More Images" %}</label>
+          <input type="file"
+                 id="images"
+                 name="images"
+                 multiple
+                 accept="image/*"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <div class="flex gap-4">
+          <button type="submit"
+                  class="flex-1 py-3 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200 font-bold">
+            <i class="fa-solid fa-save mr-2"></i>
+            {% trans "Save Changes" %}
+          </button>
+          <a href="{% url 'campaign_detail' campaign.slug %}"
+             class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition duration-200 font-bold">{% trans "Cancel" %}</a>
+        </div>
+      </form>
+    </div>
+  </main>
+{% endblock content %}

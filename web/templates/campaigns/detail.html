@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% load static i18n markdownify %}
+
+{% block title %}
+  {{ campaign.title }}
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-[90rem] mx-auto mt-6 px-4 md:px-6">
+    <!-- Back Button -->
+    <div class="mb-4">
+      <a href="{% url 'campaign_list' %}"
+         class="text-teal-300 hover:text-teal-400 transition duration-200">
+        <i class="fa-solid fa-arrow-left mr-2"></i>
+        {% trans "Back to Campaigns" %}
+      </a>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Content -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Campaign Header -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <!-- Primary Image -->
+          {% if campaign.images.first %}
+            <img src="{{ campaign.images.first.image.url }}"
+                 alt="{{ campaign.title }}"
+                 class="w-full h-64 object-cover" />
+          {% else %}
+            <div class="w-full h-64 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+              <i class="fa-solid fa-graduation-cap text-8xl text-gray-400"></i>
+            </div>
+          {% endif %}
+          <div class="p-6">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ campaign.title }}</h1>
+                <p class="text-gray-600 dark:text-gray-400">
+                  <i class="fa-solid fa-user mr-1"></i>
+                  by {{ campaign.teacher.username }}
+                  {% if campaign.school_name %}
+                    <br />
+                    <i class="fa-solid fa-school mr-1"></i>
+                    {{ campaign.school_name }}
+                    {% if campaign.school_verified %}
+                      <i class="fa-solid fa-check-circle text-blue-600 ml-1"
+                         title="{% trans 'Verified School' %}"></i>
+                    {% endif %}
+                  {% endif %}
+                </p>
+              </div>
+              {% if is_owner %}
+                <a href="{% url 'campaign_edit' campaign.slug %}"
+                   class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-200">
+                  <i class="fa-solid fa-edit mr-2"></i>
+                  {% trans "Edit" %}
+                </a>
+              {% endif %}
+            </div>
+            <!-- Description -->
+            <div class="prose dark:prose-invert max-w-none">{{ campaign.description|markdownify }}</div>
+            <!-- Budget Breakdown -->
+            {% if campaign.budget_breakdown %}
+              <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2">
+                  <i class="fa-solid fa-calculator mr-2"></i>
+                  {% trans "Budget Breakdown" %}
+                </h3>
+                <div class="text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ campaign.budget_breakdown }}</div>
+              </div>
+            {% endif %}
+            <!-- Video -->
+            {% if campaign.video_url %}
+              <div class="mt-6">
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2">
+                  <i class="fa-solid fa-video mr-2"></i>
+                  {% trans "Campaign Video" %}
+                </h3>
+                <div class="aspect-w-16 aspect-h-9">
+                  <iframe src="{{ campaign.video_url }}"
+                          class="w-full h-64 rounded-lg"
+                          frameborder="0"
+                          allowfullscreen></iframe>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        <!-- Updates -->
+        {% if campaign.updates.all %}
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              <i class="fa-solid fa-bullhorn mr-2"></i>
+              {% trans "Campaign Updates" %}
+            </h2>
+            <div class="space-y-4">
+              {% for update in campaign.updates.all %}
+                <div class="border-l-4 border-teal-300 pl-4 py-2">
+                  <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ update.title }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">{{ update.created_at|date:"M d, Y" }}</p>
+                  <div class="prose dark:prose-invert max-w-none">{{ update.content|markdownify }}</div>
+                  {% if update.image %}
+                    <img src="{{ update.image.url }}"
+                         alt="{{ update.title }}"
+                         class="mt-2 rounded-lg max-w-md" />
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        <!-- Recent Donors -->
+        {% if recent_donations %}
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              <i class="fa-solid fa-users mr-2"></i>
+              {% trans "Recent Donors" %}
+            </h2>
+            <div class="space-y-3">
+              {% for donation in recent_donations %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <div>
+                    <p class="font-semibold text-gray-900 dark:text-white">{{ donation.display_name }}</p>
+                    {% if donation.message %}
+                      <p class="text-sm text-gray-600 dark:text-gray-400 italic">"{{ donation.message }}"</p>
+                    {% endif %}
+                  </div>
+                  <div class="text-right">
+                    <p class="font-bold text-teal-300">${{ donation.amount }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ donation.created_at|date:"M d" }}</p>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Funding Progress -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 sticky top-6">
+          <div class="text-center mb-4">
+            <p class="text-4xl font-bold text-teal-300">${{ campaign.current_amount|floatformat:0 }}</p>
+            <p class="text-gray-600 dark:text-gray-400">{% trans "raised of" %} ${{ campaign.funding_goal|floatformat:0 }}</p>
+          </div>
+          <!-- Progress Bar -->
+          <div class="mb-4">
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+              <div class="bg-teal-300 h-3 rounded-full transition-all duration-300"
+                   style="width: {{ campaign.progress_percentage }}%"></div>
+            </div>
+            <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">{{ campaign.progress_percentage|floatformat:0 }}% funded</p>
+          </div>
+          <!-- Stats -->
+          <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ campaign.donors_count }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Donors" %}</p>
+            </div>
+            {% if campaign.deadline %}
+              <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ campaign.deadline|timeuntil }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Left" %}</p>
+              </div>
+            {% endif %}
+          </div>
+          <!-- Matching Grant -->
+          {% if campaign.matching_enabled %}
+            <div class="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-600 rounded-lg">
+              <p class="font-bold text-yellow-800 dark:text-yellow-300 mb-1">
+                <i class="fa-solid fa-hands-helping mr-2"></i>
+                {% trans "Matching Grant Active!" %}
+              </p>
+              <p class="text-sm text-yellow-700 dark:text-yellow-400">
+                {% blocktrans with multiplier=campaign.matching_multiplier %}
+                  Your donation will be matched {{ multiplier }}x
+                {% endblocktrans %}
+                {% if campaign.matching_sponsor %}by {{ campaign.matching_sponsor }}{% endif %}!
+              </p>
+            </div>
+          {% endif %}
+          <!-- Donate Button -->
+          {% if campaign.status == "active" %}
+            <a href="{% url 'campaign_donate' campaign.slug %}"
+               class="block w-full py-3 bg-teal-300 hover:bg-teal-400 text-white text-center rounded-lg transition duration-200 font-bold text-lg">
+              <i class="fa-solid fa-heart mr-2"></i>
+              {% trans "Donate Now" %}
+            </a>
+          {% elif campaign.is_fully_funded %}
+            <div class="w-full py-3 bg-green-600 text-white text-center rounded-lg font-bold">
+              <i class="fa-solid fa-check-circle mr-2"></i>
+              {% trans "Fully Funded!" %}
+            </div>
+          {% endif %}
+          <!-- Post Update Button (for teacher) -->
+          {% if is_owner %}
+            <a href="{% url 'campaign_update_create' campaign.slug %}"
+               class="block w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-lg transition duration-200 font-semibold mt-3">
+              <i class="fa-solid fa-plus mr-2"></i>
+              {% trans "Post Update" %}
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </main>
+{% endblock content %}

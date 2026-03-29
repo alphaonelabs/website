@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% load static i18n %}
+
+{% block title %}
+  Create Campaign
+{% endblock title %}
+{% block content %}
+  <main class="flex-1 w-full max-w-4xl mx-auto mt-6 px-4 md:px-6">
+    <div class="mb-6">
+      <a href="{% url 'campaign_list' %}"
+         class="text-teal-300 hover:text-teal-400 transition duration-200">
+        <i class="fa-solid fa-arrow-left mr-2"></i>
+        {% trans "Back to Campaigns" %}
+      </a>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 md:p-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+        <i class="fa-solid fa-plus-circle text-teal-300 mr-2"></i>
+        {% trans "Create Classroom Campaign" %}
+      </h1>
+      <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        <!-- Title -->
+        <div>
+          <label for="title"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {% trans "Campaign Title" %} <span class="text-red-500">*</span>
+          </label>
+          <input type="text"
+                 id="title"
+                 name="title"
+                 required
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300"
+                 placeholder="{% trans 'e.g., New Science Lab Equipment for Our Students' %}" />
+        </div>
+        <!-- Description -->
+        <div>
+          <label for="description"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {% trans "Description" %} <span class="text-red-500">*</span>
+          </label>
+          <textarea id="description"
+                    name="description"
+                    rows="8"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300"
+                    placeholder="{% trans 'Tell your story. What do you need and why? How will it impact your students?' %}"></textarea>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{% trans "Supports Markdown formatting" %}</p>
+        </div>
+        <!-- Funding Goal -->
+        <div>
+          <label for="funding_goal"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {% trans "Funding Goal ($)" %} <span class="text-red-500">*</span>
+          </label>
+          <input type="number"
+                 id="funding_goal"
+                 name="funding_goal"
+                 step="0.01"
+                 min="1"
+                 required
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300"
+                 placeholder="{% trans 'e.g., 2500.00' %}" />
+        </div>
+        <!-- Budget Breakdown -->
+        <div>
+          <label for="budget_breakdown"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Budget Breakdown" %}</label>
+          <textarea id="budget_breakdown"
+                    name="budget_breakdown"
+                    rows="6"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300"
+                    placeholder="{% trans 'List how the funds will be used, e.g.,&#10;- Microscopes (4): $800&#10;- Lab supplies: $300&#10;- Safety equipment: $150' %}"></textarea>
+        </div>
+        <!-- School Name -->
+        <div>
+          <label for="school_name"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "School or Institution Name" %}</label>
+          <input type="text"
+                 id="school_name"
+                 name="school_name"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300"
+                 placeholder="{% trans 'e.g., Lincoln Elementary School' %}" />
+        </div>
+        <!-- Video URL -->
+        <div>
+          <label for="video_url"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Video Pitch URL (Optional)" %}</label>
+          <input type="url"
+                 id="video_url"
+                 name="video_url"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300"
+                 placeholder="{% trans 'e.g., https://youtube.com/watch?v=...' %}" />
+        </div>
+        <!-- Deadline -->
+        <div>
+          <label for="deadline"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Campaign Deadline (Optional)" %}</label>
+          <input type="date"
+                 id="deadline"
+                 name="deadline"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+        </div>
+        <!-- Images -->
+        <div>
+          <label for="images"
+                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Campaign Images" %}</label>
+          <input type="file"
+                 id="images"
+                 name="images"
+                 multiple
+                 accept="image/*"
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-300" />
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {% trans "Upload photos of your classroom, students (with permission), or items needed. First image will be the cover photo." %}
+          </p>
+        </div>
+        <!-- Info Box -->
+        <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-600 rounded-lg">
+          <p class="text-sm text-blue-800 dark:text-blue-300">
+            <i class="fa-solid fa-info-circle mr-2"></i>
+            {% trans "Your campaign will be reviewed by our team before going live. This ensures quality and compliance with our community guidelines." %}
+          </p>
+        </div>
+        <!-- Submit Button -->
+        <div class="flex gap-4">
+          <button type="submit"
+                  class="flex-1 py-3 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition duration-200 font-bold">
+            <i class="fa-solid fa-check mr-2"></i>
+            {% trans "Create Campaign" %}
+          </button>
+          <a href="{% url 'campaign_list' %}"
+             class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition duration-200 font-bold">{% trans "Cancel" %}</a>
+        </div>
+      </form>
+    </div>
+  </main>
+{% endblock content %}
