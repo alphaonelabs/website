@@ -19,5 +19,9 @@ def last_modified(request):
 def invitation_notifications(request):
     if request.user.is_authenticated:
         pending_invites = request.user.received_group_invites.filter(status="pending").count()
-        return {"pending_invites_count": pending_invites}
+        unread_notifications = request.user.notifications.filter(read=False).count()
+        return {
+            "pending_invites_count": pending_invites,
+            "unread_notifications_count": unread_notifications,
+        }
     return {}
