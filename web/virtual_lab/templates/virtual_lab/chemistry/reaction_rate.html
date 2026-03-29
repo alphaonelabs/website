@@ -50,5 +50,18 @@
   </div>
 {% endblock %}
 {% block extra_scripts %}
+  {% translate "Reaction has completed!" as reaction_has_completed %}
+  {% translate "Half-life reached." as half_life_reached %}
+  {% translate "Reaction proceeding..." as reaction_proceeding %}
+  {% translate "Reaction Complete" as reaction_complete %}
+  <script>
+      // Pass translated strings to JavaScript (addressing CodeRabbit and Copilot security concerns)
+      window.translations = {
+          'reaction_has_completed': '{{ reaction_has_completed|escapejs }}',
+          'half_life_reached': '{{ half_life_reached|escapejs }}',
+          'reaction_proceeding': '{{ reaction_proceeding|escapejs }}',
+          'reaction_complete': '{{ reaction_complete|escapejs }}'
+      };
+  </script>
   <script src="{% static 'virtual_lab/js/chemistry/reaction_rate.js' %}"></script>
 {% endblock %}
