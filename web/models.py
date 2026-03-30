@@ -3087,6 +3087,59 @@ class Response(models.Model):
         return f"Response by {self.user.username} to {self.question.text}"
 
 
+class FlashcardDeck(models.Model):
+    """Model for flashcard decks."""
+
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name="flashcard_decks")
+    is_public = models.BooleanField(default=False, help_text="Make this deck visible to other users")
+    slug = models.SlugField(unique=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+            # Ensure slug is unique
+            original_slug = self.slug
+            counter = 1
+            while FlashcardDeck.objects.filter(slug=self.slug).exists():
+                self.slug = f"{original_slug}-{counter}"
+                counter += 1
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("flashcard_deck_detail", kwargs={"slug": self.slug})
+
+    @property
+    def card_count(self):
+        return self.flashcards.count()
+
+
+class Flashcard(models.Model):
+    """Model for individual flashcards within a deck."""
+
+    deck = models.ForeignKey(FlashcardDeck, on_delete=models.CASCADE, related_name="flashcards")
+    front_text = models.TextField(help_text="Question or term")
+    back_text = models.TextField(help_text="Answer or definition")
+    order = models.PositiveIntegerField(default=0, help_text="Order of card in deck")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        return f"{self.deck.name} - Card {self.order}"
+
+
 class VirtualClassroom(models.Model):
     """Model for storing virtual classroom instances."""
 

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}
+  Flashcards
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto">
+      <div class="mb-8 flex justify-between items-center">
+        <div>
+          <h1 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
+            <i class="fas fa-layer-group mr-3 text-teal-500"></i>Flashcards
+          </h1>
+          <p class="text-gray-600 dark:text-gray-300">Create and study flashcard decks to enhance your learning</p>
+        </div>
+        <a href="{% url 'flashcard_deck_create' %}"
+           class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 inline-flex items-center">
+          <i class="fas fa-plus mr-2"></i>Create New Deck
+        </a>
+      </div>
+      <!-- Your Decks Section -->
+      <div class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
+          <i class="fas fa-user-circle mr-2 text-teal-500"></i>Your Decks
+        </h2>
+        {% if user_decks %}
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for deck in user_decks %}
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-200 dark:border-gray-700">
+                <div class="p-6">
+                  <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                      <a href="{% url 'flashcard_deck_detail' deck.slug %}"
+                         class="hover:text-teal-600 dark:hover:text-teal-400">{{ deck.name }}</a>
+                    </h3>
+                    {% if deck.is_public %}
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        <i class="fas fa-globe mr-1"></i>Public
+                      </span>
+                    {% else %}
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                        <i class="fas fa-lock mr-1"></i>Private
+                      </span>
+                    {% endif %}
+                  </div>
+                  {% if deck.description %}
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{{ deck.description }}</p>
+                  {% endif %}
+                  <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    <span><i class="fas fa-layer-group mr-1"></i>{{ deck.card_count }} cards</span>
+                    <span><i class="fas fa-clock mr-1"></i>{{ deck.updated_at|timesince }} ago</span>
+                  </div>
+                  <div class="flex space-x-2">
+                    {% if deck.card_count > 0 %}
+                      <a href="{% url 'flashcard_study' deck.slug %}"
+                         class="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-center py-2 px-3 rounded-md text-sm font-medium transition duration-200">
+                        <i class="fas fa-play mr-1"></i>Study
+                      </a>
+                    {% endif %}
+                    <a href="{% url 'flashcard_deck_detail' deck.slug %}"
+                       class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-center py-2 px-3 rounded-md text-sm font-medium transition duration-200">
+                      <i class="fas fa-eye mr-1"></i>View
+                    </a>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <i class="fas fa-layer-group text-4xl text-gray-400 mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No flashcard decks yet</h3>
+            <p class="text-gray-500 dark:text-gray-400 mb-4">Create your first flashcard deck to get started!</p>
+            <a href="{% url 'flashcard_deck_create' %}"
+               class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 inline-flex items-center">
+              <i class="fas fa-plus mr-2"></i>Create Your First Deck
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      <!-- Public Decks Section -->
+      {% if public_decks %}
+        <div>
+          <h2 class="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
+            <i class="fas fa-globe mr-2 text-teal-500"></i>Public Decks
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for deck in public_decks %}
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-200 dark:border-gray-700">
+                <div class="p-6">
+                  <div class="flex items-start justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                      <a href="{% url 'flashcard_deck_detail' deck.slug %}"
+                         class="hover:text-teal-600 dark:hover:text-teal-400">{{ deck.name }}</a>
+                    </h3>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      <i class="fas fa-globe mr-1"></i>Public
+                    </span>
+                  </div>
+                  {% if deck.description %}
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{{ deck.description }}</p>
+                  {% endif %}
+                  <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    <span><i class="fas fa-layer-group mr-1"></i>{{ deck.card_count }} cards</span>
+                    <span><i class="fas fa-user mr-1"></i>{{ deck.creator.username }}</span>
+                  </div>
+                  <div class="flex space-x-2">
+                    {% if deck.card_count > 0 %}
+                      <a href="{% url 'flashcard_study' deck.slug %}"
+                         class="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-center py-2 px-3 rounded-md text-sm font-medium transition duration-200">
+                        <i class="fas fa-play mr-1"></i>Study
+                      </a>
+                    {% endif %}
+                    <a href="{% url 'flashcard_deck_detail' deck.slug %}"
+                       class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-center py-2 px-3 rounded-md text-sm font-medium transition duration-200">
+                      <i class="fas fa-eye mr-1"></i>View
+                    </a>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}
