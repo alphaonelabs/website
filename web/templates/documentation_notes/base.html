@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Documentation | Alpha One Labs{% endblock %}
+{% block content %}
+  <div class="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+    {% include "documentation_notes/components/breadcrumb.html" %}
+    <div class="mx-auto max-w-7xl">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 py-8 px-4 md:px-6">
+        <!-- Sidebar -->
+        <div class="md:col-span-1">{% include "documentation_notes/components/sidebar.html" %}</div>
+        <!-- Main Content -->
+        <div class="md:col-span-3">
+          {% block doc_content %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  {% block doc_scripts %}{% endblock %}
+{% endblock %}
