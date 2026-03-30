@@ -5,9 +5,12 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import models
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
+
+from web.encrypted_fields import make_hash
 
 from .models import (
     Achievement,
@@ -51,6 +54,7 @@ from .models import (
     Subject,
     SuccessStory,
     UserBadge,
+    UserEncryptedData,
     UserMembership,
     VideoRequest,
     WaitingRoom,
@@ -889,3 +893,27 @@ class VideoRequestAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "category", "requester", "created_at")
     list_filter = ("status", "category")
     search_fields = ("title", "description", "requester__username")
+
+
+@admin.register(UserEncryptedData)
+class UserEncryptedDataAdmin(admin.ModelAdmin):
+    """
+    Admin for UserEncryptedData.
+
+    Because email and username are stored as Fernet ciphertext, ordinary SQL
+    LIKE searches are useless.  Instead, the admin hashes the search term with
+    the same HMAC-SHA256 key used when the row was written, then looks for an
+    exact match in the ``email_hash`` / ``username_hash`` index columns.
+    """
+
+    list_display = ("user", "updated_at")
+    readonly_fields = ("user", "encrypted_email", "encrypted_username", "email_hash", "username_hash", "updated_at")
+    search_fields = ("email_hash", "username_hash")
+    ordering = ("-updated_at",)
+
+    def get_search_results(self, request, queryset, search_term):
+        """Hash the search term before querying so lookups work against the stored digests."""
+        if not search_term or not search_term.strip():
+            return queryset, False
+        hashed = make_hash(search_term.strip())
+        return queryset.filter(Q(email_hash=hashed) | Q(username_hash=hashed)), False

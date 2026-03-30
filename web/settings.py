@@ -21,6 +21,10 @@ env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 MESSAGE_ENCRYPTION_KEY = env.str("MESSAGE_ENCRYPTION_KEY", default=Fernet.generate_key()).strip()
 SECURE_MESSAGE_KEY = MESSAGE_ENCRYPTION_KEY
 
+# Encryption key used to encrypt user PII fields (email, username).
+# Defaults to MESSAGE_ENCRYPTION_KEY so existing installs work without extra configuration.
+FIELD_ENCRYPTION_KEY = env.str("FIELD_ENCRYPTION_KEY", default=MESSAGE_ENCRYPTION_KEY).strip()
+
 if os.path.exists(env_file):
     environ.Env.read_env(env_file)
 else:

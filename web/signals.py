@@ -1,10 +1,15 @@
 from allauth.account.signals import user_signed_up
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
-from .models import CourseProgress, Enrollment, LearningStreak, Session, SessionAttendance
+from web.encrypted_fields import make_hash
+
+from .models import CourseProgress, Enrollment, LearningStreak, Session, SessionAttendance, UserEncryptedData
 from .utils import send_slack_message
+
+User = get_user_model()
 
 
 @receiver(user_signed_up)
@@ -67,3 +72,23 @@ def invalidate_session_cache(sender, instance, **kwargs):
     enrollments = Enrollment.objects.filter(course=instance.course)
     for enrollment in enrollments:
         invalidate_progress_cache(enrollment.student)
+
+
+@receiver(post_save, sender=User)
+def sync_user_encrypted_data(sender, instance, **kwargs):
+    """Keep UserEncryptedData in sync whenever a User's email or username changes."""
+    update_fields = kwargs.get("update_fields")
+    # If update_fields is specified and neither email nor username is in it, skip.
+    if update_fields is not None and not ({"email", "username"} & set(update_fields)):
+        return
+    UserEncryptedData.objects.update_or_create(
+        user=instance,
+        defaults={
+            "encrypted_email": instance.email,
+            "encrypted_username": instance.username,
+            "email_hash": make_hash(instance.email.strip()) if instance.email and instance.email.strip() else "",
+            "username_hash": (
+                make_hash(instance.username.strip()) if instance.username and instance.username.strip() else ""
+            ),
+        },
+    )
