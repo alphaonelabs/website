@@ -127,10 +127,11 @@ setup_steps:
     name: "Run Development Server"
     description: "Start the Django development server"
     commands:
-      - "python manage.py runserver"
+      - "poetry run uvicorn web.asgi:application --host 127.0.0.1 --port 8000 --reload"
     notes:
-      - "Server runs at http://localhost:8000"
-      - "Admin panel available at http://localhost:8000/admin"
+      - "Server runs at http://127.0.0.1:8000/en/"
+      - "Use Uvicorn for local WebSocket support"
+      - "Admin panel path is controlled by ADMIN_URL in .env"
       - "Press Ctrl+C to stop the server"
 
 docker_setup:
@@ -211,7 +212,7 @@ tech_stack:
     - "Nginx"
     - "Uvicorn (ASGI)"
     - "Django Channels (WebSockets)"
-    - "SendGrid for emails"
+    - "Mailgun with Slack notification fallback"
     - "Stripe for payments"
 
 important_notes:
@@ -225,7 +226,7 @@ important_notes:
 
 useful_commands:
   development:
-    run_server: "python manage.py runserver"
+    run_server: "poetry run uvicorn web.asgi:application --host 127.0.0.1 --port 8000 --reload"
     make_migrations: "python manage.py makemigrations"
     migrate: "python manage.py migrate"
     create_superuser: "python manage.py createsuperuser"

@@ -1,226 +1,167 @@
 # Alpha One Labs Education Platform
 
-A modern, feature-rich education platform built with Django and Tailwind CSS that enables seamless learning experiences through course creation, peer connections, study groups, and interactive forums.
-
-## Project Overview
-
-Alpha One Labs is an education platform designed to facilitate both learning and teaching. The platform provides a comprehensive environment where educators can create and manage courses, while students can learn, collaborate, and engage with peers. With features like study groups, peer connections, and discussion forums, we aim to create a collaborative learning environment that goes beyond traditional online education.
-
-## Features
-
-### For Students
-
-- 📚 Course enrollment and management
-- 👥 Peer-to-peer connections and messaging
-- 📝 Study group creation and participation
-- 💬 Interactive discussion forums
-- 📊 Progress tracking and analytics
-- 🌟 Submit links and receive grades with feedback
-- 🌙 Dark mode support
-- 📱 Responsive design for all devices
-
-### For Teachers
-
-- 📝 Course creation and management
-- 📊 Student progress monitoring
-- 📈 Analytics dashboard
-- 📣 Marketing tools for course promotion
-- 💯 Grade submitted links and provide feedback
-- 💰 Payment integration with Stripe
-- 📧 Email marketing capabilities
-- 🔔 Automated notifications
-
-### Technical Features
-
-- 🔒 Secure authentication system
-- 🌐 Internationalization support
-- 🚀 Performance optimized
-- 📦 Modular architecture
-- ⚡ Real-time updates
-- 🔍 Search functionality
-- 🎨 Customizable UI
-- 🏆 "Get a Grade" system with academic grading scale
+Alpha One Labs is a Django-based learning platform for running courses, managing enrollments, supporting peer collaboration, and powering interactive community features such as forums, study groups, progress tracking, and virtual labs.
 
 ## Tech Stack
 
-### Backend
-
 - Python 3.10+
 - Django 5.x
-- Redis (channels + caching)
-- MySQL (production) / SQLite (development optional)
+- Django Channels + Uvicorn for ASGI/WebSockets
+- Redis for channels and shared cache
+- SQLite for local development, MySQL for production-like environments
+- Poetry for dependency management
 
-### Frontend
-
-- Tailwind CSS
-- Alpine.js
-- Font Awesome icons
-- JavaScript (Vanilla)
-
-### Infrastructure
-
-- Docker support
-- Nginx
-- Uvicorn (ASGI)
-- Django Channels (WebSockets)
-- SendGrid for emails (graceful fallback)
-- Stripe for payments
-
-## Setup Instructions
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.10 or higher
-- pip or poetry for package management
+- Python 3.10 or newer
 - Git
+- Poetry 1.8.3
+- Redis (optional for local real-time features)
+- MySQL (optional; SQLite works out of the box for local development)
 
-### Local Development Setup
+### 1. Clone the repository
 
-1. Clone the repository:
+```bash
+git clone https://github.com/alphaonelabs/alphaonelabs-education-website.git
+cd alphaonelabs-education-website
+```
 
-   ```bash
-   git clone https://github.com/alphaonelabs/alphaonelabs-education-website.git
-   cd alphaonelabs-education-website
-   ```
+### 2. Create and activate a virtual environment
 
-2. Set up virtual environment:
+macOS/Linux:
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
 
-3. Install dependencies (Poetry is the single source of truth):
+Windows PowerShell:
 
-   ```bash
-   # Ensure Poetry installed (once)
-   pip install --upgrade pip
-   pip install poetry==1.8.3
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-   # Install project deps into local venv (recommended)
-   poetry install
+### 3. Install dependencies
 
-   # Activate virtualenv (Poetry 1.8 auto-detects)
-   poetry shell  # or just use: poetry run <command>
-   ```
+```bash
+python -m pip install --upgrade pip
+pip install poetry==1.8.3
+poetry install
+```
 
-4. Set up environment variables:
+You can run project commands either from your activated virtual environment or with `poetry run`.
 
-   ```bash
-   cp .env.sample .env
-   # Edit .env with your configuration
-   ```
+### 4. Create your local environment file
 
-5. Run migrations:
+macOS/Linux:
 
-   ```bash
-   python manage.py migrate
-   ```
+```bash
+cp .env.sample .env
+```
 
-6. Create a superuser:
+Windows PowerShell:
 
-   ```bash
-   python manage.py createsuperuser
-   ```
+```powershell
+Copy-Item .env.sample .env
+```
 
-7. Create test data:
+Then review `.env` before starting the app. For most local work, the sample values are enough to boot with SQLite.
 
-   ```bash
-   python manage.py create_test_data
-   ```
+If you want a fresh secure messaging key, generate one with:
 
-8. Run the development server with ASGI support (required for WebSockets):
+```bash
+python web/master_key.py
+```
 
-   ```bash
-   poetry run uvicorn web.asgi:application --host 127.0.0.1 --port 8000 --reload
-   ```
+### 5. Run migrations
 
-   **Note:** WebSocket features (Live Avatars, Real-time Chat) require ASGI. Django's `runserver` command uses WSGI and will not support WebSockets.
+```bash
+poetry run python manage.py migrate
+```
 
-9. Visit [http://localhost:8000](http://localhost:8000) in your browser.
+### 6. Optional bootstrap commands
 
-### Docker Setup
+Create an admin account:
 
-1. Build the Docker image:
+```bash
+poetry run python manage.py createsuperuser
+```
 
-   ```bash
-   docker build -t education-website .
-   ```
+Load sample data:
 
-2. Run the Docker container:
+```bash
+poetry run python manage.py create_test_data
+```
 
-   ```bash
-   docker run -d -p 8000:8000 education-website
-   ```
+### 7. Start the development server
 
-3. Visit [http://localhost:8000](http://localhost:8000) in your browser.
+Recommended for full local development, including WebSockets:
 
-### Admin Credentials:
+```bash
+poetry run uvicorn web.asgi:application --host 127.0.0.1 --port 8000 --reload
+```
 
-- **Email:** `admin@example.com`
-- **Password:** `adminpassword`
+If you only need standard Django pages and do not need WebSockets, this also works:
 
-## Environment Variables Configuration
+```bash
+poetry run python manage.py runserver
+```
 
-Copy `.env.sample` to `.env` and configure the variables.
+Open the app at [http://127.0.0.1:8000/en/](http://127.0.0.1:8000/en/).
 
-## Development Guidelines
+The admin lives behind the `ADMIN_URL` value from your `.env` file. With the default sample config, that is:
 
-### Code Style
+`http://127.0.0.1:8000/en/a-dmin-url123/`
 
-- Follow PEP 8 guidelines for Python code.
-- Use **Black** for code formatting.
-- Use **isort** for import sorting.
-- Follow Django's coding style guide.
-- Use **ESLint** for JavaScript code.
+## Environment Variables
 
-### Git Workflow
+`.env.sample` is the source of truth for local configuration. It includes comments for each variable and groups them by purpose.
 
-1. Create a new branch for each feature/bugfix.
-2. Follow **conventional commits** for commit messages.
-3. Submit **pull requests** for review.
-4. Ensure all **tests pass** before merging.
+The most important variables for local development are:
 
-### Testing
+- `ENVIRONMENT`: use `development` locally
+- `SECRET_KEY`: Django secret key
+- `MESSAGE_ENCRYPTION_KEY`: required for secure messaging features
+- `DATABASE_URL`: leave on SQLite for the easiest local setup
+- `ALLOWED_HOSTS`: comma-separated hostnames the app will serve
+- `CSRF_TRUSTED_ORIGINS`: comma-separated origins for local forms/admin access
+- `ADMIN_URL`: custom admin path segment
+- `REDIS_URL`: Redis endpoint for channels and shared cache
 
-- Write unit tests for new features.
-- Run tests before committing:
+Most other values are optional unless you are actively working on integrations such as Stripe, Mailgun, GitHub webhooks, Google Cloud Storage, or social publishing.
 
-  ```bash
-  python manage.py test
-  ```
+## Testing and Linting
 
-### Pre-commit Hooks (Important)
+Run the Django test suite:
 
-We use pre-commit to enforce formatting (black, isort), linting (flake8, djlint), etc.
+```bash
+poetry run python manage.py test
+```
+
+Install and run pre-commit hooks:
 
 ```bash
 poetry run pre-commit install
-poetry run pre-commit run --hook-stage commit
 poetry run pre-commit run --all-files
 ```
 
-### Documentation
+## Common Errors
 
-- Document all new features and API endpoints
-- Update README.md when adding major features
-- Use docstrings for Python functions and classes
-- Comment complex logic
+- WebSockets or live updates are not working: run the app with `uvicorn web.asgi:application`, not only `manage.py runserver`.
+- You see `DisallowedHost` or CSRF failures on a custom host/port: update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in `.env`.
+- Redis connection warnings appear locally: most pages can still work, but real-time features need a reachable `REDIS_URL`.
+- MySQL client build errors occur during setup: keep `DATABASE_URL` on SQLite for local work, or install the MySQL client libraries required by `mysqlclient`.
+- Google Cloud Storage errors appear in local development: leave `GS_BUCKET_NAME`, `GS_PROJECT_ID`, and `SERVICE_ACCOUNT_FILE` blank unless you are testing GCS integration.
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the project.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
 ## Support
 
-If you encounter any issues or need support, please:
-
-1. Search existing [Issues](https://github.com/alphaonelabs/education-website/issues)
-2. Create a new issue if your problem persists
-3. Join us on [Slack](https://join.slack.com/t/alphaonelabs/shared_invite/zt-7dvtocfr-1dYWOL0XZwEEPUeWXxrB1A)
-4. Join us on [Discord](https://discord.gg/HJtuzTJN3h)
-
-## Acknowledgments
-
-- Thanks to all contributors who have helped shape this project
-- Built with ❤️ by the Alpha One Labs team
+- Search existing [GitHub issues](https://github.com/alphaonelabs/education-website/issues)
+- Join the community on [Slack](https://join.slack.com/t/alphaonelabs/shared_invite/zt-7dvtocfr-1dYWOL0XZwEEPUeWXxrB1A)
+- Join the community on [Discord](https://discord.gg/HJtuzTJN3h)
