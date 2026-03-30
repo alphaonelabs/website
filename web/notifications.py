@@ -28,13 +28,16 @@ def send_notification(user, notification_data):
         "emails/notification.html",
         {"user": user, "notification": notification},
     )
-    send_mail(
-        subject,
-        "",
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        html_message=html_message,
-    )
+    try:
+        send_mail(
+            subject,
+            "",
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_message,
+        )
+    except Exception as e:
+        logger.error(f"Failed to send notification email to {user.email}: {str(e)}")
     return notification
 
 
