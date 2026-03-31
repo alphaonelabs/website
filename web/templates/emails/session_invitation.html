@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Session invitation from Alpha One Labs" />
+    <meta name="keywords" content="education, session, invitation, learning, webinar, meetup" />
+    <title>Session Invitation - Alpha One Labs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #5eead4;
+        }
+
+        .content {
+            padding: 20px 0;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #5eead4;
+            color: #1f2937;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+
+        .button:hover {
+            background-color: #2dd4bf;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            color: #666;
+            font-size: 0.9em;
+            border-top: 1px solid #ddd;
+        }
+
+        .message {
+            background-color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-style: italic;
+        }
+
+        .session-details {
+            background-color: #ecfeff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🎓 Session Invitation</h1>
+    </div>
+    <div class="content">
+      <p>Hello,</p>
+      <p>{{ inviter.get_full_name|default:inviter.username }} has invited you to join an upcoming session:</p>
+      <h2>{{ session.title }}</h2>
+      {% if message %}
+        <div class="message">
+          <p>{{ message }}</p>
+        </div>
+      {% endif %}
+      <div class="session-details">
+        <p><strong>Session Details:</strong></p>
+        <ul>
+          <li>
+            <strong>Course:</strong> {{ session.course.title }}
+          </li>
+          <li>
+            <strong>Date:</strong> {{ session.start_time|date:"F d, Y" }}
+          </li>
+          <li>
+            <strong>Time:</strong> {{ session.start_time|date:"g:i A" }} - {{ session.end_time|date:"g:i A" }}
+          </li>
+          {% if session.is_virtual %}
+            <li>
+              <strong>Type:</strong> Virtual Session
+            </li>
+            {% if session.meeting_link %}
+              <li>
+                <strong>Meeting Link:</strong> <a href="{{ session.meeting_link }}">{{ session.meeting_link }}</a>
+              </li>
+            {% endif %}
+          {% else %}
+            <li>
+              <strong>Location:</strong> {{ session.location }}
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+      <p>To view the session details and join, click the button below:</p>
+      <center>
+        <a href="{{ session_url }}" class="button">View Session</a>
+      </center>
+    </div>
+    <div class="footer">
+      <p>This message was sent from Alpha One Labs Learning Platform</p>
+      <p>If you received this by mistake, please ignore this email.</p>
+    </div>
+  </body>
+</html>

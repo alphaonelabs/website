@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="max-w-2xl mx-auto px-4 py-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+      <h1 class="text-2xl font-bold mb-6">Invite Friend to {{ session.title }}</h1>
+      <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+        <h2 class="font-semibold text-blue-900 dark:text-blue-100 mb-2">Session Details</h2>
+        <div class="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+          <p><strong>Course:</strong> {{ session.course.title }}</p>
+          <p><strong>Date:</strong> {{ session.start_time|date:"F d, Y" }}</p>
+          <p><strong>Time:</strong> {{ session.start_time|date:"g:i A" }} - {{ session.end_time|date:"g:i A" }}</p>
+          {% if session.is_virtual %}
+            <p><strong>Type:</strong> Virtual Session</p>
+          {% else %}
+            <p><strong>Location:</strong> {{ session.location }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="p-4 mb-4 rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-100{% else %}bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-100{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+        {% if form.non_field_errors %}
+          <div class="p-4 mb-4 rounded-lg bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-100">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+        <div class="space-y-4">
+          <div>
+            <label for="{{ form.email.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.email.label }}
+            </label>
+            {{ form.email }}
+            {% if form.email.errors %}
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.email.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="{{ form.message.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {{ form.message.label }}
+            </label>
+            {{ form.message }}
+            {% if form.message.errors %}
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.message.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="flex justify-end space-x-4 mt-6">
+          <a href="{% url 'session_detail' session.id %}"
+             class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            Cancel
+          </a>
+          <button type="submit"
+                  class="px-4 py-2 bg-teal-300 hover:bg-teal-400 text-white rounded-lg transition-colors">
+            Send Invitation
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock content %}
