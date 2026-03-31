@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  AI Scientific Discovery Engine - Alpha One Labs
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <!-- Hero Section -->
+    <div class="bg-gradient-to-r from-teal-300 to-teal-400 dark:from-teal-600 dark:to-teal-700 rounded-lg shadow-xl p-8 mb-8">
+      <h1 class="text-4xl font-bold text-white mb-4">
+        <i class="fas fa-brain mr-3"></i>AI Scientific Discovery Engine
+      </h1>
+      <p class="text-white text-lg mb-6">
+        Leverage AI to participate in the scientific discovery process – generating hypotheses,
+        designing experiments, and analyzing results with minimal human intervention.
+      </p>
+      <a href="{% url 'ai_discovery:project_create' %}"
+         class="bg-white text-teal-600 dark:bg-gray-800 dark:text-teal-300 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200 inline-block">
+        <i class="fas fa-plus mr-2"></i>Start New Discovery Project
+      </a>
+    </div>
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Projects</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.total_projects }}</p>
+          </div>
+          <div class="bg-blue-100 dark:bg-blue-900 rounded-full p-3">
+            <i class="fas fa-project-diagram text-blue-600 dark:text-blue-300 text-2xl"></i>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Hypotheses</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.total_hypotheses }}</p>
+          </div>
+          <div class="bg-green-100 dark:bg-green-900 rounded-full p-3">
+            <i class="fas fa-lightbulb text-green-600 dark:text-green-300 text-2xl"></i>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Experiments</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.total_experiments }}</p>
+          </div>
+          <div class="bg-purple-100 dark:bg-purple-900 rounded-full p-3">
+            <i class="fas fa-flask text-purple-600 dark:text-purple-300 text-2xl"></i>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">Discoveries</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ stats.total_discoveries }}</p>
+          </div>
+          <div class="bg-yellow-100 dark:bg-yellow-900 rounded-full p-3">
+            <i class="fas fa-star text-yellow-600 dark:text-yellow-300 text-2xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Your Projects -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+            <i class="fas fa-folder-open mr-2 text-teal-300"></i>Your Projects
+          </h2>
+          <a href="{% url 'ai_discovery:project_list' %}"
+             class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200 text-sm">
+            View All <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+        {% if user_projects %}
+          <div class="space-y-4">
+            {% for project in user_projects %}
+              <a href="{% url 'ai_discovery:project_detail' project.slug %}"
+                 class="block bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-200">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-1">{{ project.title }}</h3>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">{{ project.description|truncatewords:15 }}</p>
+                    <div class="flex items-center space-x-4 text-xs">
+                      <span class="bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-2 py-1 rounded">{{ project.get_domain_display }}</span>
+                      <span class="text-gray-500 dark:text-gray-400">
+                        <i class="far fa-clock mr-1"></i>{{ project.updated_at|timesince }} ago
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span class="{% if project.status == 'active' %}bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200{% elif project.status == 'paused' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-2 py-1 rounded text-xs">
+                      {{ project.get_status_display }}
+                    </span>
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-8">
+            <i class="fas fa-folder-open text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">You haven't created any projects yet.</p>
+            <a href="{% url 'ai_discovery:project_create' %}"
+               class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-4 py-2 rounded-lg transition duration-200 inline-block">
+              Create Your First Project
+            </a>
+          </div>
+        {% endif %}
+      </div>
+      <!-- Recent Discoveries -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+            <i class="fas fa-star mr-2 text-yellow-500"></i>Recent Discoveries
+          </h2>
+          <a href="{% url 'ai_discovery:discovery_list' %}"
+             class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200 text-sm">
+            View All <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+        {% if recent_discoveries %}
+          <div class="space-y-4">
+            {% for discovery in recent_discoveries %}
+              <a href="{% url 'ai_discovery:discovery_detail' discovery.pk %}"
+                 class="block bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-200">
+                <div class="flex items-start">
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-1">{{ discovery.title|truncatewords:10 }}</h3>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">{{ discovery.summary|truncatewords:15 }}</p>
+                    <div class="flex items-center space-x-4 text-xs">
+                      <span class="{% if discovery.significance == 'breakthrough' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% elif discovery.significance == 'significant' %}bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200{% elif discovery.significance == 'moderate' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-2 py-1 rounded">
+                        {{ discovery.get_significance_display }}
+                      </span>
+                      <span class="text-gray-500 dark:text-gray-400">
+                        <i class="far fa-clock mr-1"></i>{{ discovery.created_at|timesince }} ago
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-8">
+            <i class="fas fa-star text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+            <p class="text-gray-600 dark:text-gray-400">No discoveries yet. Start experimenting to make your first discovery!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <!-- Public Projects -->
+    {% if public_projects %}
+      <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+          <i class="fas fa-globe mr-2 text-teal-300"></i>Public Discovery Projects
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for project in public_projects %}
+            <a href="{% url 'ai_discovery:project_detail' project.slug %}"
+               class="block bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-200">
+              <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ project.title }}</h3>
+              <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">{{ project.description|truncatewords:15 }}</p>
+              <div class="flex items-center justify-between text-xs">
+                <span class="bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-2 py-1 rounded">{{ project.get_domain_display }}</span>
+                <span class="text-gray-500 dark:text-gray-400">by {{ project.user.username }}</span>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <!-- Quick Links -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <a href="{% url 'ai_discovery:knowledge_base' %}"
+         class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition duration-200">
+        <div class="flex items-center mb-4">
+          <div class="bg-indigo-100 dark:bg-indigo-900 rounded-full p-3 mr-4">
+            <i class="fas fa-book text-indigo-600 dark:text-indigo-300 text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white">Knowledge Base</h3>
+        </div>
+        <p class="text-gray-600 dark:text-gray-400 text-sm">Browse scientific literature, papers, and databases that power the AI engine.</p>
+      </a>
+      <a href="{% url 'ai_discovery:project_list' %}"
+         class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition duration-200">
+        <div class="flex items-center mb-4">
+          <div class="bg-green-100 dark:bg-green-900 rounded-full p-3 mr-4">
+            <i class="fas fa-list text-green-600 dark:text-green-300 text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white">All Projects</h3>
+        </div>
+        <p class="text-gray-600 dark:text-gray-400 text-sm">View and manage all your discovery projects in one place.</p>
+      </a>
+      <a href="{% url 'ai_discovery:discovery_list' %}"
+         class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition duration-200">
+        <div class="flex items-center mb-4">
+          <div class="bg-yellow-100 dark:bg-yellow-900 rounded-full p-3 mr-4">
+            <i class="fas fa-trophy text-yellow-600 dark:text-yellow-300 text-2xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white">Your Discoveries</h3>
+        </div>
+        <p class="text-gray-600 dark:text-gray-400 text-sm">Review all discoveries you've made through AI-driven research.</p>
+      </a>
+    </div>
+  </div>
+{% endblock content %}

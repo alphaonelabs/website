@@ -146,6 +146,7 @@ INSTALLED_APPS = [
     "markdownx",
     "web",
     "web.virtual_lab.apps.VirtualLabConfig",
+    "web.ai_discovery.apps.AiDiscoveryConfig",
 ]
 
 if DEBUG and not TESTING:

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  Create Discovery Project - AI Discovery Engine
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-3xl mx-auto">
+      <div class="mb-6">
+        <a href="{% url 'ai_discovery:home' %}"
+           class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200">
+          <i class="fas fa-arrow-left mr-2"></i>Back to Discovery Engine
+        </a>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+          <i class="fas fa-plus-circle mr-3 text-teal-300"></i>Create New Discovery Project
+        </h1>
+        <form method="post" class="space-y-6">
+          {% csrf_token %}
+          <!-- Title -->
+          <div>
+            <label for="title"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Project Title *</label>
+            <input type="text"
+                   id="title"
+                   name="title"
+                   required
+                   class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                   placeholder="e.g., Exploring Prime Number Patterns" />
+          </div>
+          <!-- Description -->
+          <div>
+            <label for="description"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description *</label>
+            <textarea id="description"
+                      name="description"
+                      required
+                      rows="5"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Describe the problem area or research question you want to investigate..."></textarea>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Provide a clear description of what you want to discover. The AI will use this to generate relevant hypotheses.
+            </p>
+          </div>
+          <!-- Domain -->
+          <div>
+            <label for="domain"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Scientific Domain *</label>
+            <select id="domain"
+                    name="domain"
+                    required
+                    class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="">Select a domain...</option>
+              {% for value, label in domain_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <!-- Public Visibility -->
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input id="is_public"
+                     name="is_public"
+                     type="checkbox"
+                     class="w-4 h-4 text-teal-300 bg-gray-100 border-gray-300 rounded focus:ring-teal-300 dark:focus:ring-teal-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600" />
+            </div>
+            <div class="ml-3">
+              <label for="is_public" class="font-medium text-gray-700 dark:text-gray-300">Make this project public</label>
+              <p class="text-sm text-gray-600 dark:text-gray-400">Allow other users to view your project and its discoveries</p>
+            </div>
+          </div>
+          <!-- Submit Button -->
+          <div class="flex items-center justify-end space-x-4 pt-4">
+            <a href="{% url 'ai_discovery:home' %}"
+               class="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">Cancel</a>
+            <button type="submit"
+                    class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-3 rounded-lg font-semibold transition duration-200">
+              <i class="fas fa-rocket mr-2"></i>Create Project
+            </button>
+          </div>
+        </form>
+      </div>
+      <!-- Info Cards -->
+      <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-lightbulb text-blue-600 dark:text-blue-300 mr-2"></i>
+            <h3 class="font-semibold text-blue-900 dark:text-blue-100">AI Hypothesis Generation</h3>
+          </div>
+          <p class="text-sm text-blue-800 dark:text-blue-200">The AI will analyze your description and generate testable hypotheses</p>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-4">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-flask text-green-600 dark:text-green-300 mr-2"></i>
+            <h3 class="font-semibold text-green-900 dark:text-green-100">Automated Testing</h3>
+          </div>
+          <p class="text-sm text-green-800 dark:text-green-200">Design and run experiments to validate your hypotheses</p>
+        </div>
+        <div class="bg-purple-50 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 rounded-lg p-4">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-star text-purple-600 dark:text-purple-300 mr-2"></i>
+            <h3 class="font-semibold text-purple-900 dark:text-purple-100">Discovery Synthesis</h3>
+          </div>
+          <p class="text-sm text-purple-800 dark:text-purple-200">AI compiles findings into comprehensive research reports</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}

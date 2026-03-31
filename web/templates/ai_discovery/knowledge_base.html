@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  Knowledge Base - AI Discovery Engine
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="{% url 'ai_discovery:home' %}"
+         class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Discovery Engine
+      </a>
+    </div>
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+        <i class="fas fa-book mr-3 text-indigo-500"></i>Scientific Knowledge Base
+      </h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-2">
+        Browse the scientific literature, papers, and databases that power the AI discovery engine
+      </p>
+    </div>
+    <!-- Search and Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+      <form method="get" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-3">
+            <label for="q" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+            <input type="text"
+                   id="q"
+                   name="q"
+                   value="{{ request.GET.q }}"
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                   placeholder="Search titles, abstracts, and content..." />
+          </div>
+          <div>
+            <label for="domain" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Domain</label>
+            <select id="domain"
+                    name="domain"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="">All Domains</option>
+              <option value="mathematics" {% if domain_filter == 'mathematics' %}selected{% endif %}>Mathematics</option>
+              <option value="physics" {% if domain_filter == 'physics' %}selected{% endif %}>Physics</option>
+              <option value="chemistry" {% if domain_filter == 'chemistry' %}selected{% endif %}>Chemistry</option>
+              <option value="biology" {% if domain_filter == 'biology' %}selected{% endif %}>Biology</option>
+              <option value="computer_science" {% if domain_filter == 'computer_science' %}selected{% endif %}>Computer Science</option>
+              <option value="materials_science" {% if domain_filter == 'materials_science' %}selected{% endif %}>Materials Science</option>
+              <option value="social_sciences" {% if domain_filter == 'social_sciences' %}selected{% endif %}>Social Sciences</option>
+            </select>
+          </div>
+          <div>
+            <label for="content_type"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content Type</label>
+            <select id="content_type"
+                    name="content_type"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="">All Types</option>
+              <option value="paper" {% if content_type_filter == 'paper' %}selected{% endif %}>Research Paper</option>
+              <option value="textbook" {% if content_type_filter == 'textbook' %}selected{% endif %}>Textbook</option>
+              <option value="database" {% if content_type_filter == 'database' %}selected{% endif %}>Database Entry</option>
+              <option value="theorem" {% if content_type_filter == 'theorem' %}selected{% endif %}>Mathematical Theorem</option>
+              <option value="experimental_data" {% if content_type_filter == 'experimental_data' %}selected{% endif %}>Experimental Data</option>
+            </select>
+          </div>
+          <div class="flex items-end space-x-2">
+            <button type="submit"
+                    class="flex-1 bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-4 py-2 rounded-lg font-semibold transition duration-200">
+              <i class="fas fa-search mr-2"></i>Search
+            </button>
+            <a href="{% url 'ai_discovery:knowledge_base' %}"
+               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">Clear</a>
+          </div>
+        </div>
+      </form>
+    </div>
+    <!-- Knowledge Items -->
+    {% if page_obj %}
+      <div class="space-y-4 mb-8">
+        {% for item in page_obj %}
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex-1">
+                <div class="flex items-center mb-2">
+                  <span class="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-2 py-1 rounded text-xs mr-2">{{ item.get_content_type_display }}</span>
+                  <span class="bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-2 py-1 rounded text-xs">{{ item.get_domain_display }}</span>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{{ item.title }}</h3>
+                {% if item.abstract %}
+                  <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">{{ item.abstract|truncatewords:50 }}</p>
+                {% endif %}
+                {% if item.metadata %}
+                  <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                    {% if item.metadata.authors %}
+                      <span>
+                        <i class="fas fa-user mr-1"></i>{{ item.metadata.authors|join:", "|truncatewords:3 }}
+                      </span>
+                    {% endif %}
+                    {% if item.metadata.publication_date %}
+                      <span>
+                        <i class="far fa-calendar mr-1"></i>{{ item.metadata.publication_date }}
+                      </span>
+                    {% endif %}
+                    {% if item.metadata.doi %}
+                      <span>
+                        <i class="fas fa-link mr-1"></i>DOI: {{ item.metadata.doi }}
+                      </span>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <!-- Pagination -->
+      {% if page_obj.has_other_pages %}
+        <div class="flex items-center justify-center space-x-2">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if domain_filter %}&domain={{ domain_filter }}{% endif %}{% if content_type_filter %}&content_type={{ content_type_filter }}{% endif %}"
+               class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          {% endif %}
+          <span class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if domain_filter %}&domain={{ domain_filter }}{% endif %}{% if content_type_filter %}&content_type={{ content_type_filter }}{% endif %}"
+               class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 text-center">
+        <i class="fas fa-book-open text-gray-300 dark:text-gray-600 text-6xl mb-4"></i>
+        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Knowledge Items Found</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          {% if request.GET.q or domain_filter or content_type_filter %}Try adjusting your search filters{% else %}The knowledge base is currently being populated. Check back soon!{% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}

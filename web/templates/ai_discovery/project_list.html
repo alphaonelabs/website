@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  All Projects - AI Discovery Engine
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="{% url 'ai_discovery:home' %}"
+         class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Discovery Engine
+      </a>
+    </div>
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+        <i class="fas fa-project-diagram mr-3 text-teal-300"></i>Your Discovery Projects
+      </h1>
+      <a href="{% url 'ai_discovery:project_create' %}"
+         class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-3 rounded-lg font-semibold transition duration-200">
+        <i class="fas fa-plus mr-2"></i>New Project
+      </a>
+    </div>
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+      <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label for="domain" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Domain</label>
+          <select id="domain"
+                  name="domain"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onchange="this.form.submit()">
+            <option value="">All Domains</option>
+            <option value="mathematics" {% if domain_filter == 'mathematics' %}selected{% endif %}>Mathematics</option>
+            <option value="physics" {% if domain_filter == 'physics' %}selected{% endif %}>Physics</option>
+            <option value="chemistry" {% if domain_filter == 'chemistry' %}selected{% endif %}>Chemistry</option>
+            <option value="biology" {% if domain_filter == 'biology' %}selected{% endif %}>Biology</option>
+            <option value="computer_science" {% if domain_filter == 'computer_science' %}selected{% endif %}>Computer Science</option>
+            <option value="materials_science" {% if domain_filter == 'materials_science' %}selected{% endif %}>Materials Science</option>
+            <option value="social_sciences" {% if domain_filter == 'social_sciences' %}selected{% endif %}>Social Sciences</option>
+            <option value="interdisciplinary" {% if domain_filter == 'interdisciplinary' %}selected{% endif %}>Interdisciplinary</option>
+          </select>
+        </div>
+        <div>
+          <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+          <select id="status"
+                  name="status"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onchange="this.form.submit()">
+            <option value="">All Status</option>
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+            <option value="paused" {% if status_filter == 'paused' %}selected{% endif %}>Paused</option>
+            <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <a href="{% url 'ai_discovery:project_list' %}"
+             class="w-full text-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">Clear Filters</a>
+        </div>
+      </form>
+    </div>
+    <!-- Projects Grid -->
+    {% if page_obj %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {% for project in page_obj %}
+          <a href="{% url 'ai_discovery:project_detail' project.slug %}"
+             class="bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition duration-200 overflow-hidden">
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <span class="bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-3 py-1 rounded-full text-xs">{{ project.get_domain_display }}</span>
+                <span class="{% if project.status == 'active' %}bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200{% elif project.status == 'paused' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-3 py-1 rounded-full text-xs">
+                  {{ project.get_status_display }}
+                </span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">{{ project.title }}</h3>
+              <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{{ project.description|truncatewords:20 }}</p>
+              <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>
+                  <i class="far fa-calendar mr-1"></i>{{ project.updated_at|date:"M d, Y" }}
+                </span>
+                {% if project.is_public %}
+                  <span class="text-teal-300">
+                    <i class="fas fa-globe mr-1"></i>Public
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+      <!-- Pagination -->
+      {% if page_obj.has_other_pages %}
+        <div class="flex items-center justify-center space-x-2">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if domain_filter %}&domain={{ domain_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+               class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          {% endif %}
+          <span class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if domain_filter %}&domain={{ domain_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+               class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-200">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 text-center">
+        <i class="fas fa-folder-open text-gray-300 dark:text-gray-600 text-6xl mb-4"></i>
+        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">No Projects Found</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">You haven't created any projects yet. Start your first discovery project!</p>
+        <a href="{% url 'ai_discovery:project_create' %}"
+           class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-3 rounded-lg font-semibold transition duration-200 inline-block">
+          <i class="fas fa-plus mr-2"></i>Create Your First Project
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}

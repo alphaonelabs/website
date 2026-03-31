@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}
+  Hypothesis Details - AI Discovery Engine
+{% endblock title %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="{% url 'ai_discovery:project_detail' project.slug %}"
+         class="text-teal-300 hover:text-teal-400 dark:text-teal-300 dark:hover:text-teal-200">
+        <i class="fas fa-arrow-left mr-2"></i>Back to {{ project.title }}
+      </a>
+    </div>
+    <!-- Hypothesis Header -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 mb-8">
+      <div class="flex items-start justify-between mb-6">
+        <div class="flex-1">
+          <div class="flex items-center mb-4">
+            <span class="{% if hypothesis.status == 'proposed' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% elif hypothesis.status == 'testing' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% elif hypothesis.status == 'supported' %}bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200{% elif hypothesis.status == 'rejected' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-3 py-1 rounded-full text-sm mr-2">
+              {{ hypothesis.get_status_display }}
+            </span>
+            {% if hypothesis.is_ai_generated %}
+              <span class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-3 py-1 rounded-full text-sm">
+                <i class="fas fa-robot mr-1"></i>AI Generated
+              </span>
+            {% endif %}
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">{{ hypothesis.statement }}</h1>
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+              <i class="fas fa-brain mr-2"></i>Rationale
+            </h3>
+            <p class="text-gray-700 dark:text-gray-300">{{ hypothesis.rationale }}</p>
+          </div>
+          <div class="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
+            <span>
+              <i class="fas fa-tachometer-alt mr-1"></i>Confidence: {{ hypothesis.confidence_score|floatformat:2 }}
+            </span>
+            <span>
+              <i class="far fa-calendar mr-1"></i>Created {{ hypothesis.created_at|date:"M d, Y" }}
+            </span>
+          </div>
+        </div>
+      </div>
+      {% if is_owner %}
+        <div class="flex items-center space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <button onclick="showExperimentModal()"
+                  class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold transition duration-200">
+            <i class="fas fa-flask mr-2"></i>Create Experiment
+          </button>
+          {% if experiments %}
+            <form method="post" action="{% url 'ai_discovery:synthesize_discovery' hypothesis.pk %}">
+              {% csrf_token %}
+              <button type="submit"
+                      class="bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-500 text-white px-6 py-2 rounded-lg font-semibold transition duration-200">
+                <i class="fas fa-star mr-2"></i>Synthesize Discovery
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+    <!-- Experiments Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 mb-8">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+        <i class="fas fa-flask mr-2 text-teal-300"></i>Experiments
+      </h2>
+      {% if experiments %}
+        <div class="space-y-4">
+          {% for experiment in experiments %}
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+              <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                  <div class="flex items-center mb-2">
+                    <span class="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-2 py-1 rounded text-xs mr-2">{{ experiment.get_experiment_type_display }}</span>
+                    <span class="{% if experiment.status == 'completed' %}bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200{% elif experiment.status == 'running' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% elif experiment.status == 'failed' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-2 py-1 rounded text-xs">
+                      {{ experiment.get_status_display }}
+                    </span>
+                  </div>
+                  <p class="text-gray-700 dark:text-gray-300 mb-2">{{ experiment.description }}</p>
+                  {% if experiment.results %}
+                    <div class="bg-white dark:bg-gray-800 rounded p-4 mt-4">
+                      <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Results:</h4>
+                      <div class="space-y-2 text-sm">
+                        <div class="flex items-center">
+                          <span class="text-gray-600 dark:text-gray-400 w-32">Success:</span>
+                          <span class="{% if experiment.results.success %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                            {{ experiment.results.success|yesno:"Yes,No" }}
+                          </span>
+                        </div>
+                        <div class="flex items-center">
+                          <span class="text-gray-600 dark:text-gray-400 w-32">Confidence:</span>
+                          <span class="text-gray-900 dark:text-white">{{ experiment.results.confidence|floatformat:2 }}</span>
+                        </div>
+                        <div class="flex items-center">
+                          <span class="text-gray-600 dark:text-gray-400 w-32">Data Points:</span>
+                          <span class="text-gray-900 dark:text-white">{{ experiment.results.data_points }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                </div>
+                {% if is_owner and experiment.status == 'planned' %}
+                  <form method="post" action="{% url 'ai_discovery:run_experiment' experiment.pk %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition duration-200">
+                      <i class="fas fa-play mr-1"></i>Run
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-8">
+          <i class="fas fa-flask text-gray-300 dark:text-gray-600 text-5xl mb-4"></i>
+          <p class="text-gray-600 dark:text-gray-400 mb-4">No experiments created yet.</p>
+          {% if is_owner %}
+            <button onclick="showExperimentModal()"
+                    class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold transition duration-200">
+              <i class="fas fa-flask mr-2"></i>Create First Experiment
+            </button>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+    <!-- Iteration History -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 mb-8">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+        <i class="fas fa-history mr-2 text-teal-300"></i>Iteration History
+      </h2>
+      {% if iterations %}
+        <div class="space-y-4">
+          {% for iteration in iterations %}
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-full flex items-center justify-center mr-4">
+                <span class="text-teal-600 dark:text-teal-300 font-bold">{{ iteration.iteration_number }}</span>
+              </div>
+              <div class="flex-1 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div class="flex items-center mb-2">
+                  <span class="font-semibold text-gray-900 dark:text-white mr-2">{{ iteration.get_action_display }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ iteration.created_at|date:"M d, Y H:i" }}</span>
+                </div>
+                <p class="text-gray-700 dark:text-gray-300 text-sm mb-2">{{ iteration.details }}</p>
+                {% if iteration.ai_reasoning %}
+                  <div class="bg-purple-50 dark:bg-purple-900 border-l-4 border-purple-500 p-3 mt-2">
+                    <p class="text-purple-900 dark:text-purple-200 text-sm">
+                      <i class="fas fa-robot mr-1"></i>
+                      <strong>AI Reasoning:</strong> {{ iteration.ai_reasoning }}
+                    </p>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-600 dark:text-gray-400 text-center py-4">No iteration history available yet.</p>
+      {% endif %}
+    </div>
+    <!-- Discoveries -->
+    {% if discoveries %}
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+          <i class="fas fa-star mr-2 text-yellow-500"></i>Discoveries
+        </h2>
+        <div class="space-y-4">
+          {% for discovery in discoveries %}
+            <a href="{% url 'ai_discovery:discovery_detail' discovery.pk %}"
+               class="block bg-gray-50 dark:bg-gray-700 rounded-lg p-6 hover:bg-gray-100 dark:hover:bg-gray-600 transition duration-200">
+              <div class="flex items-center mb-2">
+                <span class="{% if discovery.significance == 'breakthrough' %}bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200{% elif discovery.significance == 'significant' %}bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200{% elif discovery.significance == 'moderate' %}bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% else %}bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200{% endif %} px-2 py-1 rounded text-xs">
+                  {{ discovery.get_significance_display }}
+                </span>
+              </div>
+              <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ discovery.title }}</h3>
+              <p class="text-gray-600 dark:text-gray-400 text-sm">{{ discovery.summary|truncatewords:30 }}</p>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+  <!-- Experiment Creation Modal -->
+  <div id="experimentModal"
+       class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 max-w-2xl w-full mx-4">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Create New Experiment</h2>
+      <form method="post" action="{% url 'ai_discovery:create_experiment' hypothesis.pk %}">
+        {% csrf_token %}
+        <div class="space-y-4">
+          <div>
+            <label for="experiment_type"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Experiment Type</label>
+            <select id="experiment_type"
+                    name="experiment_type"
+                    required
+                    class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="simulation">Simulation</option>
+              <option value="computation">Computation</option>
+              <option value="theorem_proving">Theorem Proving</option>
+              <option value="data_analysis">Data Analysis</option>
+              <option value="literature_search">Literature Search</option>
+              <option value="physical">Physical Experiment (Proposed)</option>
+            </select>
+          </div>
+          <div>
+            <label for="description"
+                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+            <textarea id="description"
+                      name="description"
+                      required
+                      rows="4"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-300 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Describe the experimental setup and methodology..."></textarea>
+          </div>
+        </div>
+        <div class="flex items-center justify-end space-x-4 mt-6">
+          <button type="button"
+                  onclick="hideExperimentModal()"
+                  class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">Cancel</button>
+          <button type="submit"
+                  class="bg-teal-300 hover:bg-teal-400 dark:bg-teal-600 dark:hover:bg-teal-500 text-white px-6 py-2 rounded-lg font-semibold transition duration-200">Create Experiment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+    function showExperimentModal() {
+        document.getElementById('experimentModal').classList.remove('hidden');
+    }
+
+    function hideExperimentModal() {
+        document.getElementById('experimentModal').classList.add('hidden');
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            hideExperimentModal();
+        }
+    });
+
+    // Close modal on background click
+    document.getElementById('experimentModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            hideExperimentModal();
+        }
+    });
+  </script>
+{% endblock content %}
