@@ -8197,49 +8197,120 @@ def users_list(request: HttpRequest) -> HttpResponse:
     """
     Display a list of users who have their profile set to public,
     ordered by most recent updates.
+    Optimized to avoid N+1 query problems using database aggregation.
     """
-    profiles = Profile.objects.filter(is_profile_public=True).select_related("user").order_by("-updated_at")
+    from django.db.models import Avg, Count, Prefetch, Q
 
-    # Add statistics for each user to create fun scorecards
-    for profile in profiles:
-        if profile.is_teacher:
-            # Teacher stats
-            courses = Course.objects.filter(teacher=profile.user).prefetch_related("enrollments", "reviews")
-            profile.total_courses = courses.count()
-            profile.total_students = sum(course.enrollments.filter(status="approved").count() for course in courses)
-            # Get average rating across all courses
-            course_ratings = [course.average_rating for course in courses if course.average_rating > 0]
-            profile.avg_rating = round(sum(course_ratings) / len(course_ratings), 1) if course_ratings else 0
-        else:
-            # Student stats
-            enrollments = Enrollment.objects.filter(student=profile.user).select_related("course")
-            profile.total_courses = enrollments.count()
-            completed_enrollments = enrollments.filter(status="completed")
-            profile.total_completed = completed_enrollments.count()
-
-            # Calculate average progress across all courses
-            total_progress = 0
-            progress_count = 0
-            enrollment_ids = [e.id for e in enrollments]
-            existing_progresses = {
-                p.enrollment_id: p for p in CourseProgress.objects.filter(enrollment_id__in=enrollment_ids)
-            }
-
-            for enrollment in enrollments:
-                progress = existing_progresses.get(enrollment.id)
-                if not progress:
-                    progress = CourseProgress.objects.create(enrollment=enrollment)
-                total_progress += progress.completion_percentage
-                progress_count += 1
-            profile.avg_progress = round(total_progress / progress_count) if progress_count > 0 else 0
-
-            # Add achievements count
-            profile.achievements_count = Achievement.objects.filter(student=profile.user).count()
-
-    # Pagination: 12 profiles per page
-    paginator = Paginator(profiles, 12)
+    # Pagination first to limit the dataset
+    profiles_queryset = Profile.objects.filter(is_profile_public=True).select_related("user").order_by("-updated_at")
+    paginator = Paginator(profiles_queryset, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    # Get only the profiles for current page to optimize queries
+    current_profiles = page_obj.object_list
+
+    # Separate teacher and student profiles for different optimization strategies
+    teacher_profiles = [p for p in current_profiles if p.is_teacher]
+    student_profiles = [p for p in current_profiles if not p.is_teacher]
+    teacher_user_ids = [p.user.id for p in teacher_profiles]
+    student_user_ids = [p.user.id for p in student_profiles]
+
+    # TEACHER STATS OPTIMIZATION
+    if teacher_user_ids:
+        # Get all teacher courses with aggregated stats in one query
+        teacher_course_stats = (
+            Course.objects.filter(teacher_id__in=teacher_user_ids)
+            .values("teacher_id")
+            .annotate(
+                total_courses=Count("id"),
+                total_students=Count("enrollments", filter=Q(enrollments__status="approved")),
+                avg_rating=Avg("average_rating", filter=Q(average_rating__gt=0)),
+            )
+        )
+
+        # Create lookup dictionary for O(1) access
+        teacher_stats_lookup = {
+            stats["teacher_id"]: {
+                "total_courses": stats["total_courses"],
+                "total_students": stats["total_students"],
+                "avg_rating": round(stats["avg_rating"], 1) if stats["avg_rating"] else 0,
+            }
+            for stats in teacher_course_stats
+        }
+
+        # Apply stats to teacher profiles
+        for profile in teacher_profiles:
+            stats = teacher_stats_lookup.get(
+                profile.user.id, {"total_courses": 0, "total_students": 0, "avg_rating": 0}
+            )
+            profile.total_courses = stats["total_courses"]
+            profile.total_students = stats["total_students"]
+            profile.avg_rating = stats["avg_rating"]
+
+    # STUDENT STATS OPTIMIZATION
+    if student_user_ids:
+        # Get enrollment stats with aggregation
+        student_enrollment_stats = (
+            Enrollment.objects.filter(student_id__in=student_user_ids)
+            .values("student_id")
+            .annotate(total_courses=Count("id"), total_completed=Count("id", filter=Q(status="completed")))
+        )
+
+        enrollment_stats_lookup = {
+            stats["student_id"]: {"total_courses": stats["total_courses"], "total_completed": stats["total_completed"]}
+            for stats in student_enrollment_stats
+        }
+
+        # Get all enrollments for progress calculation with prefetched progress
+        enrollments_with_progress = (
+            Enrollment.objects.filter(student_id__in=student_user_ids)
+            .select_related("course")
+            .prefetch_related(Prefetch("progress", queryset=CourseProgress.objects.all()))
+        )
+
+        # Group enrollments by student for progress calculation
+        student_enrollments = {}
+        for enrollment in enrollments_with_progress:
+            if enrollment.student_id not in student_enrollments:
+                student_enrollments[enrollment.student_id] = []
+            student_enrollments[enrollment.student_id].append(enrollment)
+
+        # Get achievement counts in one query
+        achievement_counts = (
+            Achievement.objects.filter(student_id__in=student_user_ids).values("student_id").annotate(count=Count("id"))
+        )
+        achievement_lookup = {item["student_id"]: item["count"] for item in achievement_counts}
+
+        # Apply stats to student profiles
+        for profile in student_profiles:
+            # Basic enrollment stats
+            enrollment_stats = enrollment_stats_lookup.get(profile.user.id, {"total_courses": 0, "total_completed": 0})
+            profile.total_courses = enrollment_stats["total_courses"]
+            profile.total_completed = enrollment_stats["total_completed"]
+
+            # Calculate average progress
+            enrollments = student_enrollments.get(profile.user.id, [])
+            if enrollments:
+                total_progress = 0
+                progress_count = 0
+
+                for enrollment in enrollments:
+                    # Get or create progress (this is unavoidable but minimized)
+                    try:
+                        progress = enrollment.progress
+                    except CourseProgress.DoesNotExist:
+                        progress = CourseProgress.objects.create(enrollment=enrollment)
+
+                    total_progress += progress.completion_percentage
+                    progress_count += 1
+
+                profile.avg_progress = round(total_progress / progress_count) if progress_count > 0 else 0
+            else:
+                profile.avg_progress = 0
+
+            # Achievement count
+            profile.achievements_count = achievement_lookup.get(profile.user.id, 0)
 
     context = {
         "page_obj": page_obj,
