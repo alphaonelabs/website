@@ -1,0 +1,144 @@
+<!-- web/templates/mass_class/teacher_broadcast.html -->
+{% extends "base.html" %}
+
+{% block title %}Mass Class Broadcast Studio{% endblock %}
+{% load static %}
+
+{% block content %}
+  <div class="broadcast-studio p-6 bg-gray-100 min-h-screen">
+    <div class="studio-header mb-6">
+      <h1 class="text-3xl font-bold text-gray-800">Mass Class Broadcast Studio</h1>
+      <div class="stream-controls flex items-center gap-4 mt-4">
+        <button id="startStream"
+                class="btn btn-primary bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+          Start Streaming
+        </button>
+        <button id="stopStream"
+                class="btn btn-danger bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                disabled
+                data-confirm="Are you sure you want to stop streaming? This will end the session for all students.">Stop Streaming</button>
+        <div class="stream-status text-gray-700">
+          Status: <span id="streamStatus" class="font-semibold">Offline</span>
+        </div>
+      </div>
+    </div>
+    <div class="studio-container grid grid-cols-3 gap-6">
+      <div class="preview-container col-span-2 bg-white shadow-md rounded p-4">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Live Preview</h3>
+        <div class="video-preview relative bg-black rounded overflow-hidden">
+          <video id="localVideo" autoplay playsinline muted class="w-full h-64">
+            <p>Your browser doesn't support HTML5 video. Please upgrade to a modern browser.</p>
+          </video>
+          <div class="webcam-container absolute inset-0 flex justify-center items-center">
+            <video id="webcamVideo" autoplay playsinline muted class="w-1/2 h-1/2">
+              <p>Your browser doesn't support HTML5 video. Please upgrade to a modern browser.</p>
+            </video>
+          </div>
+        </div>
+        <div class="stream-info mt-4 grid grid-cols-2 gap-4">
+          <div class="info-box bg-gray-100 p-4 rounded shadow">
+            <span class="block text-gray-700">Viewers: <span id="viewerCount" class="font-semibold">0</span></span>
+            <span class="block text-gray-700">Stream Duration: <span id="streamDuration" class="font-semibold">00:00:00</span></span>
+          </div>
+          <div class="info-box bg-gray-100 p-4 rounded shadow">
+            <span class="block text-gray-700">Resolution: <span id="streamResolution" class="font-semibold">-</span></span>
+            <span class="block text-gray-700">Bitrate: <span id="streamBitrate" class="font-semibold">-</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="interaction-panel bg-white shadow-md rounded p-4">
+        <div class="tabs flex gap-4 mb-4">
+          <button class="tab-button active bg-blue-500 text-white px-4 py-2 rounded"
+                  data-tab="chat">Chat</button>
+          <button class="tab-button bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+                  data-tab="questions">Questions</button>
+          <button class="tab-button bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+                  data-tab="polls">Polls</button>
+        </div>
+        <div class="tab-content" id="chatTab">
+          <div class="chat-messages h-40 overflow-y-auto border border-gray-300 rounded p-2 mb-4"
+               id="chatMessages"></div>
+          <div class="chat-controls flex gap-2">
+            <input type="text"
+                   id="chatMessage"
+                   placeholder="Send a message to all students..."
+                   class="flex-grow border border-gray-300 rounded px-2 py-1" />
+            <button id="sendChat"
+                    class="btn btn-sm bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Send</button>
+          </div>
+        </div>
+        <div class="tab-content hidden" id="questionsTab">
+          <div class="questions-list h-40 overflow-y-auto border border-gray-300 rounded p-2 mb-4"
+               id="questionsList"></div>
+          <div class="questions-controls flex gap-2">
+            <button id="answerQuestion"
+                    class="btn btn-sm bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    disabled>Answer Selected</button>
+            <button id="dismissQuestion"
+                    class="btn btn-sm bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                    disabled>Dismiss</button>
+          </div>
+        </div>
+        <div class="tab-content hidden" id="pollsTab">
+          <div class="poll-creator mb-4">
+            <h4 class="text-lg font-semibold text-gray-800 mb-2">Create Poll</h4>
+            <input type="text"
+                   id="pollQuestion"
+                   placeholder="Poll question..."
+                   class="w-full border border-gray-300 rounded px-2 py-1 mb-2" />
+            <div id="pollOptions" class="space-y-2">
+              <div class="poll-option">
+                <input type="text"
+                       placeholder="Option 1"
+                       class="w-full border border-gray-300 rounded px-2 py-1" />
+              </div>
+              <div class="poll-option">
+                <input type="text"
+                       placeholder="Option 2"
+                       class="w-full border border-gray-300 rounded px-2 py-1" />
+              </div>
+            </div>
+            <button id="addPollOption"
+                    class="btn btn-sm bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+              + Add Option
+            </button>
+            <button id="launchPoll"
+                    class="btn btn-sm bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Launch Poll</button>
+          </div>
+          <div class="active-poll hidden" id="activePoll">
+            <h4 class="text-lg font-semibold text-gray-800 mb-2">Active Poll</h4>
+            <div class="poll-question text-gray-700 font-semibold mb-2"
+                 id="activePollQuestion"></div>
+            <div class="poll-results space-y-2" id="pollResults"></div>
+            <button id="endPoll"
+                    class="btn btn-sm bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">End Poll</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="streamingModal"
+       class="modal fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="modal-content bg-white p-6 rounded shadow-md">
+      <h3 class="text-xl font-semibold text-gray-800 mb-4">Starting Stream</h3>
+      <p class="text-gray-700 mb-4">Connecting to YouTube Live...</p>
+      <div class="progress bg-gray-200 rounded h-2">
+        <div class="progress-bar bg-blue-500 h-2" id="streamProgress"></div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block extra_js %}
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js" onerror="handleScriptError('WebRTC adapter')"></script>
+  <script src="{% static 'js/mass_class/teacher_broadcast.js' %}"></script>
+  <script>
+    function handleScriptError(scriptName) {
+      console.error(`Failed to load ${scriptName} script. Some features may not work.`);
+      // Display a user-friendly notification
+      const notification = document.createElement('div');
+      notification.className = 'alert alert-warning';
+      notification.innerHTML = `<strong>Warning:</strong> Some broadcast features may not work properly. Please refresh the page or try a different browser.`;
+      document.querySelector('.studio-header').appendChild(notification);
+    }
+  </script>
+{% endblock %}

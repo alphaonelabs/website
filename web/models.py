@@ -65,6 +65,9 @@ class Profile(models.Model):
     discord_username = models.CharField(max_length=50, blank=True, help_text="Your Discord username (e.g., User#1234)")
     slack_username = models.CharField(max_length=50, blank=True, help_text="Your Slack username")
     github_username = models.CharField(max_length=50, blank=True, help_text="Your GitHub username (without @)")
+    youtube_stream_key = models.CharField(
+        max_length=100, blank=True, help_text="Your YouTube Live stream key for broadcasting"
+    )
     referral_code = models.CharField(max_length=20, unique=True, blank=True)
     referred_by = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="referrals")
     referral_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -3087,6 +3090,47 @@ class Response(models.Model):
         return f"Response by {self.user.username} to {self.question.text}"
 
 
+# Mass Class Models for live streaming feature
+class MassClassStream(models.Model):
+    """Model for mass virtual classroom streaming sessions"""
+
+    STATUS_CHOICES = [
+        ("initializing", "Initializing"),
+        ("active", "Active"),
+        ("ended", "Ended"),
+        ("error", "Error"),
+    ]
+
+    stream_id = models.UUIDField(unique=True, default=uuid.uuid4)
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mass_class_streams")
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mass_class_streams",
+    )
+    session = models.ForeignKey(
+        Session,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mass_class_streams",
+    )
+    title = models.CharField(max_length=200, blank=True)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="initializing")
+    youtube_url = models.URLField(blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Stream by {self.teacher.username} ({self.status})"
+
 class VirtualClassroom(models.Model):
     """Model for storing virtual classroom instances."""
 
@@ -3103,6 +3147,104 @@ class VirtualClassroom(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+
+
+class MassClassViewer(models.Model):
+    """Model for tracking viewers in a mass class stream"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mass_class_views")
+    stream = models.ForeignKey(MassClassStream, on_delete=models.CASCADE, related_name="viewers")
+    joined_at = models.DateTimeField(auto_now_add=True)
+    last_active = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["user", "stream"]
+
+    def __str__(self):
+        return f"{self.user.username} viewing {self.stream.stream_id}"
+
+
+class MassClassPoll(models.Model):
+    """Model for polls created during a mass class stream"""
+
+    stream = models.ForeignKey(MassClassStream, on_delete=models.CASCADE, related_name="polls")
+    poll_id = models.UUIDField(unique=True, default=uuid.uuid4)
+    question = models.TextField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Poll: {self.question[:50]}{'...' if len(self.question) > 50 else ''}"
+
+
+class MassClassPollOption(models.Model):
+    """Options for a poll"""
+
+    poll = models.ForeignKey(MassClassPoll, on_delete=models.CASCADE, related_name="options")
+    text = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.text
+
+
+class MassClassPollVote(models.Model):
+    """Votes cast for poll options"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mass_class_poll_votes")
+    option = models.ForeignKey(MassClassPollOption, on_delete=models.CASCADE, related_name="votes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["user", "option"]
+
+    def __str__(self):
+        return f"{self.user.username} voted for {self.option.text}"
+
+
+class MassClassQuestion(models.Model):
+    """Questions asked during a mass class stream"""
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("answered", "Answered"),
+        ("dismissed", "Dismissed"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mass_class_questions")
+    stream = models.ForeignKey(MassClassStream, on_delete=models.CASCADE, related_name="questions")
+    question = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Question by {self.user.username}: {self.question[:50]}{'...' if len(self.question) > 50 else ''}"
+
+
+class MassClassHandRaise(models.Model):
+    """Hand raises during a mass class stream"""
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("acknowledged", "Acknowledged"),
+        ("dismissed", "Dismissed"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="mass_class_hand_raises")
+    stream = models.ForeignKey(MassClassStream, on_delete=models.CASCADE, related_name="hand_raises")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} raised hand at {self.created_at}"
     def __str__(self) -> str:
         return f"{self.name} - {self.teacher.username}"
 
