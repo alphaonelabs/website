@@ -22,21 +22,6 @@
           scroll-behavior: smooth;
       }
 
-      .notification {
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          z-index: 1000;
-          max-width: 350px;
-          transform: translateY(30px);
-          opacity: 0;
-          transition: transform 0.3s, opacity 0.3s;
-      }
-
-      .notification.show {
-          transform: translateY(0);
-          opacity: 1;
-      }
 
       /* Hide scrollbar but keep functionality */
       .scrollbar-hide {
@@ -541,30 +526,38 @@
                     </button>
                     <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10"
                          x-show="open"
-                         @click.away="open = false">
+                         @click.away="open = false"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 transform scale-95"
+                         x-transition:enter-end="opacity-100 transform scale-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 transform scale-100"
+                         x-transition:leave-end="opacity-0 transform scale-95">
                       <div class="p-2 space-y-1">
                         <a href="https://twitter.com/intent/tweet?text=Check%20out%20this%20course%3A%20{{ course.title|urlencode }}&url={{ request.build_absolute_uri|urlencode }}"
                            target="_blank"
-                           class="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                           class="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
                           <i class="fab fa-twitter text-blue-400 mr-2"></i>
-                          <span class="text-sm">Share on Twitter</span>
+                          <span class="text-sm text-gray-700 dark:text-gray-300">Share on Twitter</span>
                         </a>
                         <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}"
                            target="_blank"
-                           class="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                           class="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
                           <i class="fab fa-facebook text-blue-600 mr-2"></i>
-                          <span class="text-sm">Share on Facebook</span>
+                          <span class="text-sm text-gray-700 dark:text-gray-300">Share on Facebook</span>
                         </a>
                         <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ request.build_absolute_uri|urlencode }}"
                            target="_blank"
-                           class="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                           class="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
                           <i class="fab fa-linkedin text-blue-700 mr-2"></i>
-                          <span class="text-sm">Share on LinkedIn</span>
+                          <span class="text-sm text-gray-700 dark:text-gray-300">Share on LinkedIn</span>
                         </a>
-                        <button class="w-full flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                                @click="navigator.clipboard.writeText('{{ request.build_absolute_uri }}'); $dispatch('notification', {message: 'Link copied!'})">
+                        <button id="copyLinkBtn"
+                                type="button"
+                                class="w-full flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                                @click="copyToClipboard(); open = false">
                           <i class="fas fa-link text-gray-600 dark:text-gray-400 mr-2"></i>
-                          <span class="text-sm">Copy Link</span>
+                          <span class="text-sm text-gray-700 dark:text-gray-300">Copy Link</span>
                         </button>
                       </div>
                     </div>
@@ -1443,13 +1436,57 @@
       </div>
     </div>
   </div>
-  <!-- Notification -->
+  <!-- Toast Notification -->
   <div id="notification"
-       class="notification bg-blue-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center">
-    <i class="fas fa-info-circle notification-icon mr-2"></i>
-    <span class="notification-message">This is a notification</span>
+       role="alert"
+       aria-live="assertive"
+       class="fixed bottom-5 right-5 z-[1000] max-w-[350px] translate-y-[30px] opacity-0 transition-all duration-300 bg-gray-600 dark:bg-gray-700 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3">
+    <i class="fas fa-check-circle notification-icon text-xl"></i>
+    <span class="notification-message font-medium"></span>
   </div>
   <script>
+      function copyToClipboard() {
+          const url = '{{ request.build_absolute_uri|escapejs }}';
+
+          if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(url).then(() => {
+                  showNotification('Link copied to clipboard!', 'success');
+              }).catch(err => {
+                  console.error('Failed to copy:', err);
+                  fallbackCopyTextToClipboard(url);
+              });
+          } else {
+              fallbackCopyTextToClipboard(url);
+          }
+      }
+
+      // Fallback copy method for older browsers
+      function fallbackCopyTextToClipboard(text) {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          textArea.style.position = "fixed";
+          textArea.style.top = "-9999px";
+          textArea.style.left = "-9999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+
+          try {
+              const successful = document.execCommand('copy');
+              if (successful) {
+                  showNotification('Link copied to clipboard!', 'success');
+              } else {
+                  showNotification('Failed to copy link', 'error');
+              }
+          } catch (err) {
+              console.error('Fallback: Could not copy text', err);
+              showNotification('Failed to copy link', 'error');
+          } finally {
+              document.body.removeChild(textArea);
+          }
+
+      }
+
       document.addEventListener('keydown', function(event) {
           if (event.key === 'Escape') {
               closeDeleteModal();
@@ -1548,37 +1585,39 @@
               });
       }
 
+      let notificationTimer = null;
+
       function showNotification(message, type = 'info') {
           const notification = document.getElementById('notification');
           const iconEl = notification.querySelector('.notification-icon');
           const messageEl = notification.querySelector('.notification-message');
 
-          // Set icon based on notification type
+          // Set icon and colors based on notification type
           let icon = 'fa-info-circle';
-          let bgColor = 'bg-blue-500';
+          let bgColor = 'bg-gray-600 dark:bg-gray-700';
 
           if (type === 'success') {
               icon = 'fa-check-circle';
-              bgColor = 'bg-green-500';
+              bgColor = 'bg-green-600 dark:bg-green-700';
           } else if (type === 'error') {
               icon = 'fa-exclamation-circle';
-              bgColor = 'bg-red-500';
+              bgColor = 'bg-red-600 dark:bg-red-700';
           } else if (type === 'warning') {
               icon = 'fa-exclamation-triangle';
-              bgColor = 'bg-yellow-500';
+              bgColor = 'bg-yellow-600 dark:bg-yellow-700';
           }
 
+          if (notificationTimer) clearTimeout(notificationTimer);
+
           // Update notification content
-          iconEl.className = `fas ${icon} notification-icon mr-2`;
-          notification.className = `notification ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center`;
+          iconEl.className = `fas ${icon} notification-icon text-xl`;
+          notification.className = `fixed bottom-5 right-5 z-[1000] max-w-[350px] transition-all duration-300 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 translate-y-0 opacity-100`;
           messageEl.textContent = message;
 
-          // Show notification
-          notification.classList.add('show');
-
           // Hide after 3 seconds
-          setTimeout(() => {
-              notification.classList.remove('show');
+          notificationTimer = setTimeout(() => {
+              notification.className = `fixed bottom-5 right-5 z-[1000] max-w-[350px] transition-all duration-300 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 translate-y-[30px] opacity-0`;
+              notificationTimer = null;
           }, 3000);
       }
 
