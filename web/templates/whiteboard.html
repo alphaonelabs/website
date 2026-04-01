@@ -4,14 +4,28 @@
   Advanced Whiteboard
 {% endblock title %}
 {% block content %}
+  <script>
+    (function() {
+      const root = document.documentElement;
+      const computedStyle = getComputedStyle(root);
+      
+      if (!computedStyle.getPropertyValue('--canvas-bg-light').trim()) {
+        root.style.setProperty('--canvas-bg-light', '#FFFFFF');
+      }
+      if (!computedStyle.getPropertyValue('--canvas-bg-dark').trim()) {
+        root.style.setProperty('--canvas-bg-dark', '#1F2937');
+      }
+    })();
+  </script>
+  <!-- Canvas -->
   <div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Advanced Whiteboard</h1>
+    <h1 class="text-2xl font-bold mb-4 dark:text-gray-200">Advanced Whiteboard</h1>
+    <div id="currentToolDisplay" class="mb-3 text-sm dark:text-gray-300">Current Tool: <span class="font-semibold">Pen</span></div>
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-4 mb-4">
       <div class="flex items-center gap-2">
-        <label for="toolSelect" class="font-medium">Tool:</label>
-        <select id="toolSelect"
-                class="border rounded p-1 dark:bg-gray-800 dark:text-white">
+        <label for="toolSelect" class="font-medium dark:text-gray-300">Tool:</label>
+        <select id="toolSelect" class="border rounded p-1 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
           <option value="pen">Pen</option>
           <option value="eraser">Eraser</option>
           <option value="highlighter">Highlighter</option>
@@ -24,17 +38,17 @@
       </div>
       <!-- Color picker -->
       <div class="flex items-center gap-2">
-        <label for="penColor" class="font-medium">Color:</label>
-        <input type="color" id="penColor" value="#000000" class="border rounded p-1" />
+        <label for="penColor" class="font-medium dark:text-gray-300">Color:</label>
+        <input type="color" id="penColor" value="#000000" class="border rounded p-1 dark:border-gray-600" />
       </div>
       <!-- Pen width -->
       <div class="flex items-center gap-2">
-        <label for="penWidth" class="font-medium">Width:</label>
+        <label for="penWidth" class="font-medium dark:text-gray-300">Width:</label>
         <input type="range" id="penWidth" min="1" max="10" value="2" class="w-24" />
       </div>
       <!-- Image Scale (for background image) -->
       <div class="flex items-center gap-2">
-        <label for="imageScale" class="font-medium">Image Scale (%):</label>
+        <label for="imageScale" class="font-medium dark:text-gray-300">Image Scale (%):</label>
         <input type="range"
                id="imageScale"
                min="10"
@@ -55,7 +69,7 @@
     <!-- Canvas -->
     <div class="overflow-auto">
       <canvas id="whiteboard"
-              class="border border-gray-300"
+              class="border border-gray-300 dark:border-gray-600 bg-[var(--canvas-bg-light)] dark:bg-[var(--canvas-bg-dark)]"
               width="1500"
               height="600">
         Your browser does not support the HTML5 canvas.
@@ -69,6 +83,7 @@
       let startX = 0;
       let startY = 0;
       let snapshot = null;
+      
       const toolSelect = document.getElementById('toolSelect');
       const penColorInput = document.getElementById('penColor');
       const penWidthInput = document.getElementById('penWidth');
@@ -77,14 +92,52 @@
       const uploadBtn = document.getElementById('uploadBoard');
       const loadInput = document.getElementById('loadInput');
       const downloadBtn = document.getElementById('downloadBoard');
+      const currentToolDisplaySpan = document.querySelector('#currentToolDisplay span');
+      
+      const root = document.documentElement;
+      const rootStyles = getComputedStyle(root);
+      const canvasComputedStyle = getComputedStyle(canvas);
+      
       let currentTool = toolSelect.value;
       let penColor = penColorInput.value;
       let penWidth = parseInt(penWidthInput.value, 10);
       let imageScale = 1.0;
       let uploadedImage = null;
+      
+      function updateCurrentToolDisplay() {
+          currentToolDisplaySpan.textContent = toolSelect.options[toolSelect.selectedIndex].text;
+      }
+      
+
+      function getCanvasBackgroundColor() {
+          const isDark = root.classList.contains('dark') || 
+                      window.matchMedia('(prefers-color-scheme: dark)').matches;
+          
+
+          const cssVarName = isDark ? '--canvas-bg-dark' : '--canvas-bg-light';
+          let bgColor = rootStyles.getPropertyValue(cssVarName).trim();
+          
+          if (!bgColor) {
+              bgColor = canvasComputedStyle.backgroundColor;
+          }
+          
+          if (!bgColor || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
+              return isDark ? '#1F2937' : '#FFFFFF';
+          }
+          
+          return bgColor;
+      }
+      
+      function updateEraserColor() {
+          if (currentTool === 'eraser') {
+              ctx.strokeStyle = getCanvasBackgroundColor();
+          }
+      }
 
       toolSelect.addEventListener('change', function() {
           currentTool = this.value;
+          updateCurrentToolDisplay();
+          
           if (currentTool === 'pen') {
               ctx.globalCompositeOperation = 'source-over';
               ctx.globalAlpha = 1.0;
@@ -98,6 +151,7 @@
               ctx.globalCompositeOperation = 'source-over';
               ctx.globalAlpha = 1.0;
           }
+          updateEraserColor();
       });
 
       penColorInput.addEventListener('change', function() {
@@ -147,6 +201,10 @@
           ctx.drawImage(uploadedImage, 0, 0, newWidth, newHeight);
       }
       window.addEventListener('load', () => {
+          updateCurrentToolDisplay();
+          
+          updateEraserColor();
+          
           const dataURL = localStorage.getItem('whiteboardImage');
           if (dataURL) {
               const img = new Image();
@@ -219,6 +277,7 @@
 
           if (currentTool === 'pen' || currentTool === 'eraser' || currentTool === 'highlighter') {
               if (currentTool === 'eraser') {
+                  updateEraserColor(); 
                   ctx.globalCompositeOperation = 'destination-out';
                   ctx.globalAlpha = 1.0;
               } else if (currentTool === 'pen') {
@@ -297,6 +356,29 @@
 
       canvas.addEventListener('mouseleave', () => {
           drawing = false;
+      });
+      
+      if (window.matchMedia) {
+          const mql = window.matchMedia('(prefers-color-scheme: dark)');
+
+          if (mql.addEventListener) {
+              mql.addEventListener('change', updateEraserColor);
+          } else {
+              mql.addListener(updateEraserColor);
+          }
+      }
+      
+      const observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+              if (mutation.attributeName === 'class') {
+                  updateEraserColor();
+              }
+          });
+      });
+      
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
       });
   </script>
 {% endblock content %}
