@@ -15,16 +15,27 @@
     <!-- Subject filter -->
     <div class="mb-6">
       <div class="flex flex-wrap items-center gap-2">
+        <span class="font-semibold">Filter by user:</span>
+        <select name="users"
+                id="memes-creators"
+                class="border rounded px-3 py-2 text-sm">
+          <option hidden>Select user</option>
+          <option value="">All users</option>
+          {% for key, value in memes_creators %}
+            <option value="{{ key }}" {% if key == selected_user_id %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
         <span class="font-semibold">Filter by subject:</span>
         <a href="{% url 'meme_list' %}"
            class="px-3 py-1 rounded-full {% if not selected_subject %}bg-teal-600 text-white{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
           All
         </a>
         {% for subject in subjects %}
-          <a href="{% url 'meme_list' %}?subject={{ subject.slug }}"
-             class="px-3 py-1 rounded-full {% if selected_subject == subject.slug %}bg-teal-600 text-white{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
-            {{ subject.name }}
-          </a>
+          <button data-value="{{ subject.slug }}" class="subject-button">
+            <h1 class="px-3 py-1 rounded-full {% if selected_subject == subject.slug %}bg-teal-600 text-white{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
+              {{ subject.name }}
+            </h1>
+          </button>
         {% endfor %}
       </div>
     </div>
@@ -83,4 +94,34 @@
       </div>
     {% endif %}
   </div>
+  <script>
+      let selectedSubject = "{{ selected_subject }}"
+      let selectedUserId = "{{ selected_user_id }}"
+      const baseUrl = "{% url 'meme_list' %}";
+
+      document.querySelectorAll(".subject-button").forEach(element => {
+          element.addEventListener("click", function() {
+              const selectedSubject = this.dataset.value;
+              // Create URL object for proper encoding of parameters
+              const url = new URL(baseUrl, window.location.origin);
+              url.searchParams.append('user', selectedUserId);
+              if (selectedSubject) {
+                  url.searchParams.append('subject', selectedSubject);
+              }
+              window.location.href = url.toString();
+          })
+      });
+
+      document.getElementById('memes-creators').addEventListener('change', function() {
+          const selectedUser = this.value;
+
+          // Create URL object for proper encoding of parameters
+          const url = new URL(baseUrl, window.location.origin);
+          url.searchParams.append('user', selectedUser);
+          if (selectedSubject) {
+              url.searchParams.append('subject', selectedSubject);
+          }
+          window.location.href = url.toString();
+      });
+  </script>
 {% endblock content %}

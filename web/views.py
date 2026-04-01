@@ -4597,15 +4597,36 @@ def graphing_calculator(request):
 def meme_list(request):
     memes = Meme.objects.all().order_by("-created_at")
     subjects = Subject.objects.filter(memes__isnull=False).distinct()
+
     # Filter by subject if provided
     subject_filter = request.GET.get("subject")
-    if subject_filter:
+
+    # Filter by user if provided
+    user_filter = request.GET.get("user")
+
+    # Get distinct uploaders from the database
+    uploaders = memes.values("uploader__id", "uploader__username").distinct()
+    memes_creators = {str(uploader["uploader__id"]): uploader["uploader__username"] for uploader in uploaders}
+
+    if subject_filter and subject_filter != "None":
         memes = memes.filter(subject__slug=subject_filter)
+
+    if user_filter and user_filter != "None":
+        memes = memes.filter(uploader_id=user_filter)
+
     paginator = Paginator(memes, 12)  # Show 12 memes per page
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    return render(request, "memes.html", {"memes": page_obj, "subjects": subjects, "selected_subject": subject_filter})
+    context = {
+        "memes": page_obj,
+        "subjects": subjects,
+        "selected_subject": subject_filter,
+        "selected_user_id": user_filter,
+        "memes_creators": memes_creators.items(),
+    }
+
+    return render(request, "memes.html", context)
 
 
 def meme_detail(request: HttpRequest, slug: str) -> HttpResponse:
