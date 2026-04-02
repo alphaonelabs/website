@@ -207,6 +207,43 @@ poetry run pre-commit run --all-files
 - Use docstrings for Python functions and classes
 - Comment complex logic
 
+## Deployment
+
+### Production Deployment
+
+The project includes an automated GitHub Actions workflow for deploying to production servers. The workflow:
+
+1. Connects to the production server via SSH
+2. Pulls the latest code from the main branch
+3. Installs/updates Poetry dependencies
+4. Runs database migrations
+5. Collects static files
+6. Restarts the application and web server
+7. Automatically creates a GitHub release with version tracking
+
+#### How to Deploy
+
+1. Go to the **Actions** tab in GitHub
+2. Select **"Deploy to Production"** workflow
+3. Click **"Run workflow"**
+4. Select the **main** branch
+5. Click **"Run workflow"** button
+
+#### Required GitHub Secrets
+
+Before running the deployment workflow, configure these secrets in your repository settings:
+
+- `PRODUCTION_SERVER_IP`: IP address of your production server
+- `PRODUCTION_SERVER_USER`: SSH username for the server
+- `PRODUCTION_SERVER_PASSWORD`: SSH password for the server
+
+To set up secrets:
+1. Go to **Settings** → **Secrets and variables** → **Actions**
+2. Click **"New repository secret"**
+3. Add each required secret
+
+For more details, see [.github/WORKFLOWS.md](.github/WORKFLOWS.md).
+
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and contribute to the project.
