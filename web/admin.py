@@ -22,6 +22,7 @@ from .models import (
     CourseMaterial,
     CourseProgress,
     Donation,
+    EmailEvent,
     Enrollment,
     ForumCategory,
     ForumReply,
@@ -56,6 +57,7 @@ from .models import (
     WaitingRoom,
     WebRequest,
 )
+from .utils import get_email_status
 
 admin.site.unregister(EmailAddress)
 
@@ -120,12 +122,23 @@ class WaitingRoomAdmin(admin.ModelAdmin):
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "is_teacher", "expertise", "created_at", "updated_at")
+    list_display = ("user", "is_teacher", "expertise", "email_status", "created_at", "updated_at")
     list_filter = ("is_teacher", "created_at", "updated_at")
     search_fields = ("user__username", "user__email", "expertise", "bio")
     ordering = ("-created_at",)
     raw_id_fields = ("user",)
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "last_email_event",
+        "last_email_event_time",
+        "email_bounce_count",
+        "email_delivered_count",
+        "email_open_count",
+        "email_click_count",
+        "email_drop_count",
+        "email_spam_report_count",
+    )
     fieldsets = (
         (None, {"fields": ("user", "is_teacher")}),
         (
@@ -134,10 +147,32 @@ class ProfileAdmin(admin.ModelAdmin):
         ),
         ("Stripe Information", {"fields": ("stripe_account_id", "stripe_account_status", "commission_rate")}),
         (
+            "Email Status",
+            {
+                "fields": (
+                    "last_email_sent_at",
+                    "last_email_event",
+                    "last_email_event_time",
+                    "email_bounce_count",
+                    "email_delivered_count",
+                    "email_open_count",
+                    "email_click_count",
+                    "email_drop_count",
+                    "email_spam_report_count",
+                )
+            },
+        ),
+        (
             "Timestamps",
             {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
+
+    def email_status(self, obj):
+        color, label, time_str = get_email_status(obj)
+        return format_html('<span style="color: {}">● {}</span> {}', color, label, time_str)
+
+    email_status.short_description = "Email Status"
 
 
 class EmailVerifiedFilter(admin.SimpleListFilter):
@@ -171,12 +206,19 @@ class CustomUserAdmin(BaseUserAdmin):
         "last_name",
         "is_staff",
         "email_verified",
+        "email_status",
         "get_enrollment_count",
         "formatted_date_joined",
         "formatted_last_login",
         "rate_limit_status",
     )
-    list_filter = BaseUserAdmin.list_filter + (EmailVerifiedFilter, "date_joined", "last_login")
+    list_filter = (
+        *BaseUserAdmin.list_filter,
+        EmailVerifiedFilter,
+        "date_joined",
+        "last_login",
+        "profile__last_email_event",
+    )
     actions = ["unlock_user"]
 
     # Add email to the add_fieldsets
@@ -358,6 +400,20 @@ class CustomUserAdmin(BaseUserAdmin):
             return format_html('<span style="color: green;">&#x1F513; Unlocked</span>')
 
     rate_limit_status.short_description = "Login Status"
+
+    def email_status(self, obj):
+        """Display email delivery status from the profile."""
+        try:
+            profile = obj.profile
+            if not profile.last_email_event:
+                return "-"
+
+            color, label, time_str = get_email_status(profile)
+            return format_html('<span style="color: {};">● {}</span> {}', color, label, time_str)
+        except Profile.DoesNotExist:
+            return "-"
+
+    email_status.short_description = "Email Status"
 
 
 class SessionInline(admin.TabularInline):
@@ -889,3 +945,32 @@ class VideoRequestAdmin(admin.ModelAdmin):
     list_display = ("title", "status", "category", "requester", "created_at")
     list_filter = ("status", "category")
     search_fields = ("title", "description", "requester__username")
+
+
+@admin.register(EmailEvent)
+class EmailEventAdmin(admin.ModelAdmin):
+    list_display = ("email", "user", "event_type", "timestamp", "created_at")
+    list_filter = ("event_type", "timestamp", "created_at")
+    search_fields = ("email", "user__username", "user__email", "mg_message_id", "mg_event_id")
+    readonly_fields = (
+        "email",
+        "user",
+        "event_type",
+        "timestamp",
+        "mg_message_id",
+        "mg_event_id",
+        "event_data",
+        "created_at",
+    )
+    fieldsets = (
+        (None, {"fields": ("email", "user", "event_type", "timestamp")}),
+        ("Mailgun Information", {"fields": ("mg_message_id", "mg_event_id")}),
+        ("Event Data", {"fields": ("event_data",)}),
+        ("Metadata", {"fields": ("created_at",)}),
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

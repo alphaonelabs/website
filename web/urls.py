@@ -7,6 +7,8 @@ from django.urls import include, path
 from django.views.generic.base import RedirectView
 
 from . import admin_views, peer_challenge_views, quiz_views, views, views_avatar, views_whiteboard
+from .mailgun_webhooks import mailgun_webhook
+
 from .secure_messaging import (
     compose_message,
     download_message,
@@ -307,6 +309,7 @@ urlpatterns += i18n_patterns(
     path("feedback/", views.feedback, name="feedback"),
     path("stripe/connect/onboarding/", views.stripe_connect_onboarding, name="stripe_connect_onboarding"),
     path("stripe/connect/webhook/", views.stripe_connect_webhook, name="stripe_connect_webhook"),
+    path("mailgun-webhook/", mailgun_webhook, name="mailgun_webhook"),
     path("courses/<slug:slug>/calendar/", views.get_course_calendar, name="course_calendar"),
     # Calendar URLs
     path("calendar/create/", views.create_calendar, name="create_calendar"),

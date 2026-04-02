@@ -953,3 +953,26 @@ def geocode_address(address):
     except Exception as e:
         logger.error(f"Geocoding error: {e}")
         return None
+
+
+def get_email_status(profile):
+    """Return a tuple (color, label, time_str) for the profile's last_email_event."""
+    if not profile.last_email_event:
+        return ("gray", "No events", "")
+
+    status_classes = {
+        "delivered": "success",
+        "opened": "success",
+        "clicked": "success",
+        "accepted": "success",
+        "failed": "danger",
+        "rejected": "danger",
+        "complained": "danger",
+        "unsubscribed": "warning",
+        "stored": "info",
+    }
+    status_class = status_classes.get(profile.last_email_event, "info")
+    color = {"success": "green", "danger": "red", "warning": "orange", "info": "blue"}.get(status_class, "gray")
+    last_event_time = getattr(profile, "last_email_event_time", None)
+    time_str = last_event_time.strftime("%Y-%m-%d %H:%M") if last_event_time else ""
+    return (color, profile.last_email_event.title(), time_str)
