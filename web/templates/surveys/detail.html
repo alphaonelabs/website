@@ -109,6 +109,7 @@
           if (!form) return; // Prevent error if no form (e.g., already submitted)
 
           form.addEventListener('submit', function(e) {
+              // Build required checkbox questions array properly
               const requiredCheckboxQuestions = [{
                   %
                   for question in object.question_set.all %
@@ -119,7 +120,13 @@
               } {
                   id: "question_{{ question.id }}",
                   text: "{{ question.text|escapejs }}"
+              } {
+                  %
+                  if not forloop.last %
               }, {
+                  %
+                  endif %
+              } {
                   %
                   endif %
               } {
@@ -127,13 +134,26 @@
                   endfor %
               }];
 
-              requiredCheckboxQuestions.forEach(function(question) {
-                  if (!document.querySelectorAll(`input[name="${question.id}"]:checked`).length) {
+              // Validate each required checkbox question
+              for (let i = 0; i < requiredCheckboxQuestions.length; i++) {
+                  const question = requiredCheckboxQuestions[i];
+                  const checkedInputs = document.querySelectorAll(`input[name="${question.id}"]:checked`);
+
+                  if (checkedInputs.length === 0) {
                       e.preventDefault();
                       alert(`Please answer: ${question.text}`);
+                      // Focus on the first checkbox of this question for better UX
+                      const firstCheckbox = document.querySelector(`input[name="${question.id}"]`);
+                      if (firstCheckbox) {
+                          firstCheckbox.focus();
+                          firstCheckbox.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'center'
+                          });
+                      }
                       return false;
                   }
-              });
+              }
           });
       });
   </script>
