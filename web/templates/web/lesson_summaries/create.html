@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Create Lesson Summary{% endblock %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-3xl mx-auto">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">What I Learned Today</h1>
+        <p class="text-gray-600 dark:text-gray-400">Create a summary of your learning journey</p>
+      </div>
+      <!-- Form -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <form method="post">
+          {% csrf_token %}
+          <div class="space-y-6">
+            <!-- Title -->
+            <div>
+              <label for="{{ form.title.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Title <span class="text-red-500">*</span>
+              </label>
+              {{ form.title }}
+              {% if form.title.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.title.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Course and Session -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="{{ form.course.id_for_label }}"
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Course (Optional)
+                </label>
+                {{ form.course }}
+                {% if form.course.errors %}
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.course.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div>
+                <label for="{{ form.session.id_for_label }}"
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Session (Optional)
+                </label>
+                {{ form.session }}
+                {% if form.session.errors %}
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.session.errors.0 }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Key Learnings -->
+            <div>
+              <label for="{{ form.key_learnings.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Key Learnings <span class="text-red-500">*</span>
+              </label>
+              {{ form.key_learnings }}
+              {% if form.key_learnings.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.key_learnings.errors.0 }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">List your main learnings, one per line</p>
+            </div>
+            <!-- Additional Notes -->
+            <div>
+              <label for="{{ form.additional_notes.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Additional Notes (Optional)
+              </label>
+              {{ form.additional_notes }}
+              {% if form.additional_notes.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.additional_notes.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Background Style -->
+            <div>
+              <label for="{{ form.background_style.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Background Style
+              </label>
+              {{ form.background_style }}
+              {% if form.background_style.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.background_style.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Is Public -->
+            <div class="flex items-center">
+              {{ form.is_public }}
+              <label for="{{ form.is_public.id_for_label }}" class="ml-3 text-sm text-gray-700 dark:text-gray-300">
+                Make this summary public for others to see
+              </label>
+              {% if form.is_public.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.is_public.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Buttons -->
+            <div class="flex justify-end space-x-4 pt-4">
+              <a href="{% url 'lesson_summary_list' %}"
+                 class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200">
+                Cancel
+              </a>
+              <button type="submit"
+                      class="px-6 py-2 bg-teal-300 hover:bg-teal-400 text-gray-900 rounded-lg transition duration-200">
+                <i class="fas fa-save mr-2"></i> Create Summary
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

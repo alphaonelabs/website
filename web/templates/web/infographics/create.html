@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Create Infographic{% endblock %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <div class="max-w-3xl mx-auto">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Educational Infographic</h1>
+        <p class="text-gray-600 dark:text-gray-400">Share quick educational tips or "Did you know?" facts</p>
+      </div>
+      <!-- Form -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="space-y-6">
+            <!-- Title -->
+            <div>
+              <label for="{{ form.title.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Title <span class="text-red-500">*</span>
+              </label>
+              {{ form.title }}
+              {% if form.title.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.title.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Category -->
+            <div>
+              <label for="{{ form.category.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Category <span class="text-red-500">*</span>
+              </label>
+              {{ form.category }}
+              {% if form.category.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.category.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Content -->
+            <div>
+              <label for="{{ form.content.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Content <span class="text-red-500">*</span>
+              </label>
+              {{ form.content }}
+              {% if form.content.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.content.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Subject -->
+            <div>
+              <label for="{{ form.subject.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Subject (Optional)
+              </label>
+              {{ form.subject }}
+              {% if form.subject.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.subject.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <!-- Colors -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="{{ form.background_color.id_for_label }}"
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Background Color
+                </label>
+                {{ form.background_color }}
+                {% if form.background_color.errors %}
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.background_color.errors.0 }}</p>
+                {% endif %}
+              </div>
+              <div>
+                <label for="{{ form.text_color.id_for_label }}"
+                       class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Text Color
+                </label>
+                {{ form.text_color }}
+                {% if form.text_color.errors %}
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.text_color.errors.0 }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Image -->
+            <div>
+              <label for="{{ form.image.id_for_label }}"
+                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Background Image (Optional)
+              </label>
+              {{ form.image }}
+              {% if form.image.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.image.errors.0 }}</p>
+              {% endif %}
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Upload an image to use as background</p>
+            </div>
+            <!-- Buttons -->
+            <div class="flex justify-end space-x-4 pt-4">
+              <a href="{% url 'infographic_list' %}"
+                 class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200">
+                Cancel
+              </a>
+              <button type="submit"
+                      class="px-6 py-2 bg-teal-300 hover:bg-teal-400 text-gray-900 rounded-lg transition duration-200">
+                <i class="fas fa-save mr-2"></i> Create Infographic
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

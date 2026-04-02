@@ -3087,6 +3087,76 @@ class Response(models.Model):
         return f"Response by {self.user.username} to {self.question.text}"
 
 
+class Infographic(models.Model):
+    """Model for storing educational infographics with tips and facts."""
+
+    CATEGORY_CHOICES = [
+        ("tip", "Educational Tip"),
+        ("fact", "Did You Know?"),
+        ("summary", "Quick Summary"),
+        ("guide", "How-To Guide"),
+    ]
+
+    title = models.CharField(max_length=200, help_text="Title of the infographic")
+    content = models.TextField(help_text="Main content or fact to display")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="tip")
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="infographics", null=True, blank=True)
+    image = models.ImageField(upload_to="infographics/", blank=True, help_text="Optional background image")
+    background_color = models.CharField(
+        max_length=7, default="#5EEAD4", help_text="Hex color for background (e.g., #5EEAD4 for teal-300)"
+    )
+    text_color = models.CharField(max_length=7, default="#1F2937", help_text="Hex color for text (e.g., #1F2937)")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="infographics")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_published = models.BooleanField(default=True)
+    views = models.IntegerField(default=0)
+    shares = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Infographic"
+        verbose_name_plural = "Infographics"
+
+    def __str__(self):
+        return f"{self.get_category_display()}: {self.title}"
+
+
+class LessonSummary(models.Model):
+    """Model for storing 'What I Learned Today' summaries from lessons."""
+
+    title = models.CharField(max_length=200, help_text="Title of the lesson summary")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="lesson_summaries", null=True, blank=True)
+    session = models.ForeignKey(
+        Session, on_delete=models.CASCADE, related_name="lesson_summaries", null=True, blank=True
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="lesson_summaries")
+    key_learnings = models.TextField(help_text="Main points learned (one per line)")
+    additional_notes = models.TextField(blank=True, help_text="Additional notes or thoughts")
+    date = models.DateField(default=timezone.now)
+    background_style = models.CharField(
+        max_length=20,
+        choices=[
+            ("gradient1", "Teal Gradient"),
+            ("gradient2", "Blue Gradient"),
+            ("gradient3", "Purple Gradient"),
+            ("solid", "Solid Color"),
+        ],
+        default="gradient1",
+    )
+    is_public = models.BooleanField(default=False, help_text="Make this summary public for others to see")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+        verbose_name = "Lesson Summary"
+        verbose_name_plural = "Lesson Summaries"
+
+    def __str__(self):
+        return f"{self.title} by {self.user.username} on {self.date}"
+
+
 class VirtualClassroom(models.Model):
     """Model for storing virtual classroom instances."""
 

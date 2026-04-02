@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Educational Infographics{% endblock %}
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Educational Infographics</h1>
+      <p class="text-gray-600 dark:text-gray-400">Quick educational tips and "Did you know?" facts in visual formats</p>
+    </div>
+    <!-- Create Button -->
+    <div class="mb-6">
+      <a href="{% url 'infographic_create' %}"
+         class="inline-flex items-center px-4 py-2 bg-teal-300 hover:bg-teal-400 text-gray-900 rounded-lg transition duration-200">
+        <i class="fas fa-plus mr-2"></i> Create Infographic
+      </a>
+    </div>
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+      <form method="get" class="flex flex-wrap gap-4">
+        <div class="flex-1 min-w-[200px]">
+          <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+          <select name="category"
+                  id="category"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-teal-300">
+            <option value="">All Categories</option>
+            {% for value, label in categories %}<option value="{{ value }}" {% if value == selected_category %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
+          <select name="subject"
+                  id="subject"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-teal-300">
+            <option value="">All Subjects</option>
+            {% for subject in subjects %}<option value="{{ subject.id }}" {% if subject.id|stringformat:"s" == selected_subject %}selected{% endif %}>{{ subject.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button type="submit"
+                  class="px-6 py-2 bg-teal-300 hover:bg-teal-400 text-gray-900 rounded-lg transition duration-200">
+            <i class="fas fa-filter mr-2"></i> Filter
+          </button>
+        </div>
+      </form>
+    </div>
+    <!-- Infographics Grid -->
+    {% if infographics %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for infographic in infographics %}
+          <a href="{% url 'infographic_detail' infographic.pk %}"
+             class="block bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-200">
+            <div class="p-6" style="background-color: {{ infographic.background_color }};">
+              <div class="mb-2">
+                <span class="inline-block px-3 py-1 bg-white dark:bg-gray-900 bg-opacity-80 rounded-full text-xs font-medium text-gray-900 dark:text-white">
+                  {{ infographic.get_category_display }}
+                </span>
+              </div>
+              <h3 class="text-xl font-bold mb-3" style="color: {{ infographic.text_color }};">{{ infographic.title }}</h3>
+              <p class="line-clamp-3" style="color: {{ infographic.text_color }};">{{ infographic.content|truncatewords:20 }}</p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-900 px-6 py-4">
+              <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                <div class="flex items-center">
+                  <i class="fas fa-eye mr-2"></i>
+                  <span>{{ infographic.views }}</span>
+                </div>
+                <div class="flex items-center">
+                  <i class="fas fa-share-alt mr-2"></i>
+                  <span>{{ infographic.shares }}</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+      <!-- Pagination -->
+      {% if infographics.has_other_pages %}
+        <div class="mt-8 flex justify-center">
+          <nav class="flex items-center space-x-2">
+            {% if infographics.has_previous %}
+              <a href="?page={{ infographics.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}"
+                 class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                Previous
+              </a>
+            {% endif %}
+            <span class="px-4 py-2 bg-teal-300 text-gray-900 rounded-lg">Page {{ infographics.number }} of {{ infographics.paginator.num_pages }}</span>
+            {% if infographics.has_next %}
+              <a href="?page={{ infographics.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_subject %}&subject={{ selected_subject }}{% endif %}"
+                 class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                Next
+              </a>
+            {% endif %}
+          </nav>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="text-center py-12">
+        <i class="fas fa-image text-6xl text-gray-400 dark:text-gray-600 mb-4"></i>
+        <p class="text-gray-600 dark:text-gray-400 text-lg">No infographics found. Create the first one!</p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
