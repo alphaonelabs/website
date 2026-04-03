@@ -3176,3 +3176,18 @@ class VirtualClassroomWhiteboard(models.Model):
         ordering = ["-last_updated"]
         verbose_name = "Virtual Classroom Whiteboard"
         verbose_name_plural = "Virtual Classroom Whiteboards"
+
+
+class CourseBookmark(models.Model):
+    """Model for users to bookmark/save courses for later."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bookmarks")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="bookmarks")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["user", "course"]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} bookmarked {self.course.title}"

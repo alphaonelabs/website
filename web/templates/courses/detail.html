@@ -569,9 +569,24 @@
                       </div>
                     </div>
                   </div>
+                  <!-- Bookmark Button -->
+                  {% if user.is_authenticated %}
+                    <button id="bookmark-btn"
+                            class="ml-2 px-3 py-2 rounded-lg transition duration-200 flex items-center gap-1 text-sm font-medium {% if is_bookmarked %}bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400{% else %}bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600{% endif %}"
+                            aria-label="{% if is_bookmarked %}Remove bookmark{% else %}Bookmark this course{% endif %}"
+                            aria-pressed="{% if is_bookmarked %}true{% else %}false{% endif %}"
+                            onclick="toggleBookmark('{{ course.slug }}')">
+                      <svg id="bookmark-icon-outline" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 {% if is_bookmarked %}hidden{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                      <svg id="bookmark-icon-filled" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 {% if not is_bookmarked %}hidden{% endif %}" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                      <span id="bookmark-text">{% if is_bookmarked %}Saved{% else %}Save{% endif %}</span>
+                    </button>
+                  {% endif %}
                 </div>
               </div>
-              <!-- Teacher Action Buttons -->
               {% if user == course.teacher %}
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
                   <a href="{% url 'update_course' course.slug %}"
@@ -1693,5 +1708,58 @@
           var tweetIntentUrl = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(fullTweet);
           window.open(tweetIntentUrl, 'Share on Twitter', 'width=600,height=400');
       });
+  </script>
+  <script>
+      function toggleBookmark(slug) {
+          const btn = document.getElementById('bookmark-btn');
+          if (btn.dataset.busy === 'true') return;
+          btn.dataset.busy = 'true';
+          btn.setAttribute('aria-disabled', 'true');
+          btn.classList.add('opacity-50', 'pointer-events-none');
+
+          const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value
+              || document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1]
+              || '{{ csrf_token }}';
+          fetch('{% url "toggle_bookmark" course.slug %}', {
+              method: 'POST',
+              headers: {
+                  'X-CSRFToken': csrftoken,
+                  'X-Requested-With': 'XMLHttpRequest'
+              }
+          })
+          .then(response => {
+              if (!response.ok) throw new Error('Request failed: ' + response.status);
+              return response.json();
+          })
+          .then(data => {
+              const outline = document.getElementById('bookmark-icon-outline');
+              const filled = document.getElementById('bookmark-icon-filled');
+              const text = document.getElementById('bookmark-text');
+              if (data.bookmarked) {
+                  btn.className = 'ml-2 px-3 py-2 rounded-lg transition duration-200 flex items-center gap-1 text-sm font-medium bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400';
+                  outline.classList.add('hidden');
+                  filled.classList.remove('hidden');
+                  text.textContent = 'Saved';
+                  btn.setAttribute('aria-label', 'Remove bookmark');
+                  btn.setAttribute('aria-pressed', 'true');
+              } else {
+                  btn.className = 'ml-2 px-3 py-2 rounded-lg transition duration-200 flex items-center gap-1 text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600';
+                  outline.classList.remove('hidden');
+                  filled.classList.add('hidden');
+                  text.textContent = 'Save';
+                  btn.setAttribute('aria-label', 'Bookmark this course');
+                  btn.setAttribute('aria-pressed', 'false');
+              }
+          })
+          .catch(err => {
+              console.error('Bookmark error:', err);
+              alert('Could not update bookmark. Please try again.');
+          })
+          .finally(() => {
+              btn.dataset.busy = 'false';
+              btn.removeAttribute('aria-disabled');
+              btn.classList.remove('opacity-50', 'pointer-events-none');
+          });
+      }
   </script>
 {% endblock content %}

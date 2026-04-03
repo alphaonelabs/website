@@ -91,6 +91,9 @@ urlpatterns += i18n_patterns(
     path("accounts/signup/", views.signup_view, name="account_signup"),  # Our custom signup view
     path("accounts/", include("allauth.urls")),
     path("account/notification-preferences/", notification_preferences, name="notification_preferences"),
+    # Course Bookmarks
+    path("account/bookmarks/", views.my_bookmarks, name="my_bookmarks"),
+    path("courses/<slug:slug>/bookmark/", views.toggle_bookmark, name="toggle_bookmark"),
     path("profile/", views.profile, name="profile"),
     path("accounts/profile/", views.profile, name="accounts_profile"),
     path("accounts/delete/", views.delete_account, name="delete_account"),
