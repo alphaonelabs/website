@@ -45,7 +45,7 @@
       <!-- Upload (Load) and Download buttons -->
       <button id="uploadBoard"
               class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">Load Image</button>
-      <input type="file" id="loadInput" accept="image/*" style="display: none;" />
+      <input type="file" id="loadInput" accept="image/*" class="hidden" />
       <button id="downloadBoard"
               class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Download</button>
       <!-- Clear button -->
@@ -146,18 +146,23 @@
           const newHeight = uploadedImage.height * imageScale;
           ctx.drawImage(uploadedImage, 0, 0, newWidth, newHeight);
       }
-      window.addEventListener('load', () => {
-          const dataURL = localStorage.getItem('whiteboardImage');
-          if (dataURL) {
-              const img = new Image();
-              img.src = dataURL;
-              img.onload = function() {
-                  uploadedImage = img;
-                  imageScale = parseInt(imageScaleInput.value, 10) / 100;
-                  redrawBackground();
-              };
+      // Store event listeners for cleanup
+      const whiteboardEventListeners = {
+          load: () => {
+              const dataURL = localStorage.getItem('whiteboardImage');
+              if (dataURL) {
+                  const img = new Image();
+                  img.src = dataURL;
+                  img.onload = function() {
+                      uploadedImage = img;
+                      imageScale = parseInt(imageScaleInput.value, 10) / 100;
+                      redrawBackground();
+                  };
+              }
           }
-      });
+      };
+
+      window.addEventListener('load', whiteboardEventListeners.load);
       downloadBtn.addEventListener('click', () => {
           const dataURL = canvas.toDataURL("image/png");
           const link = document.createElement('a');
@@ -297,6 +302,51 @@
 
       canvas.addEventListener('mouseleave', () => {
           drawing = false;
+      });
+
+      // Clean up resources and event listeners when page is unloaded
+      window.addEventListener('beforeunload', function() {
+          // Remove window event listeners
+          window.removeEventListener('load', whiteboardEventListeners.load);
+
+          // Clear canvas context to free memory
+          if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+
+          // Clear uploaded image reference to free memory
+          if (uploadedImage) {
+              uploadedImage = null;
+          }
+
+          // Clear snapshot data
+          if (snapshot) {
+              snapshot = null;
+          }
+
+          // Clear FileReader references (they're created in event handlers)
+          // The browser will handle cleanup, but we can help by nullifying references
+      });
+
+      // Also clean up on page hide (for mobile/tablet)
+      window.addEventListener('pagehide', function() {
+          // Remove window event listeners
+          window.removeEventListener('load', whiteboardEventListeners.load);
+
+          // Clear canvas context to free memory
+          if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+
+          // Clear uploaded image reference to free memory
+          if (uploadedImage) {
+              uploadedImage = null;
+          }
+
+          // Clear snapshot data
+          if (snapshot) {
+              snapshot = null;
+          }
       });
   </script>
 {% endblock content %}

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Graphing Calculator{% endblock %}
+{% block title %}
+  Graphing Calculator
+{% endblock title %}
 {% block content %}
   <div class="flex flex-col md:flex-row h-screen bg-gray-100 dark:bg-gray-900">
     <!-- Sidebar -->
@@ -152,8 +154,14 @@
           redraw();
       }
 
-      window.addEventListener('load', resizeCanvas);
-      window.addEventListener('resize', resizeCanvas);
+      // Store event listeners for cleanup
+      const eventListeners = {
+          load: resizeCanvas,
+          resize: resizeCanvas
+      };
+
+      window.addEventListener('load', eventListeners.load);
+      window.addEventListener('resize', eventListeners.resize);
 
       // Coordinate system settings
       let scale = 40; // pixels per unit
@@ -175,55 +183,61 @@
           y: 0
       };
 
-      canvas.addEventListener('mousedown', (e) => {
-          isDragging = true;
-          lastMousePos = {
-              x: e.clientX,
-              y: e.clientY
-          };
-      });
-
-      canvas.addEventListener('mousemove', (e) => {
-          const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          const mathCoords = toMathCoords(x, y);
-          document.getElementById('coordinates').textContent = `x: ${mathCoords.x.toFixed(2)}, y: ${mathCoords.y.toFixed(2)}`;
-
-          if (isDragging) {
-              const dx = e.clientX - lastMousePos.x;
-              const dy = e.clientY - lastMousePos.y;
-              origin.x += dx;
-              origin.y += dy;
+      // Store canvas event listeners for cleanup
+      const canvasEventListeners = {
+          mousedown: (e) => {
+              isDragging = true;
               lastMousePos = {
                   x: e.clientX,
                   y: e.clientY
               };
+          },
+          mousemove: (e) => {
+              const rect = canvas.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const mathCoords = toMathCoords(x, y);
+              document.getElementById('coordinates').textContent = `x: ${mathCoords.x.toFixed(2)}, y: ${mathCoords.y.toFixed(2)}`;
+
+              if (isDragging) {
+                  const dx = e.clientX - lastMousePos.x;
+                  const dy = e.clientY - lastMousePos.y;
+                  origin.x += dx;
+                  origin.y += dy;
+                  lastMousePos = {
+                      x: e.clientX,
+                      y: e.clientY
+                  };
+                  redraw();
+              }
+          },
+          mouseup: () => {
+              isDragging = false;
+          },
+          mouseleave: () => {
+              isDragging = false;
+          },
+          wheel: (e) => {
+              e.preventDefault();
+              const rect = canvas.getBoundingClientRect();
+              const mouseX = e.clientX - rect.left;
+              const mouseY = e.clientY - rect.top;
+              const mousePos = toMathCoords(mouseX, mouseY);
+              const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+              const newScale = scale * zoomFactor;
+              origin.x = mouseX - mousePos.x * newScale;
+              origin.y = mouseY + mousePos.y * newScale;
+              scale = newScale;
               redraw();
           }
-      });
+      };
 
-      canvas.addEventListener('mouseup', () => {
-          isDragging = false;
-      });
-      canvas.addEventListener('mouseleave', () => {
-          isDragging = false;
-      });
-
-      // Zoom with mouse wheel
-      canvas.addEventListener('wheel', (e) => {
-          e.preventDefault();
-          const rect = canvas.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-          const mousePos = toMathCoords(mouseX, mouseY);
-          const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-          const newScale = scale * zoomFactor;
-          origin.x = mouseX - mousePos.x * newScale;
-          origin.y = mouseY + mousePos.y * newScale;
-          scale = newScale;
-          redraw();
-      });
+      // Add event listeners to canvas
+      canvas.addEventListener('mousedown', canvasEventListeners.mousedown);
+      canvas.addEventListener('mousemove', canvasEventListeners.mousemove);
+      canvas.addEventListener('mouseup', canvasEventListeners.mouseup);
+      canvas.addEventListener('mouseleave', canvasEventListeners.mouseleave);
+      canvas.addEventListener('wheel', canvasEventListeners.wheel);
 
       // Draw grid, axes, and labels
       function drawGrid() {
@@ -634,5 +648,49 @@
           attributes: true,
           attributeFilter: ['class']
       });
+
+      // Clean up event listeners and resources when page is unloaded
+      window.addEventListener('beforeunload', function() {
+          // Remove window event listeners
+          window.removeEventListener('load', eventListeners.load);
+          window.removeEventListener('resize', eventListeners.resize);
+
+          // Remove canvas event listeners
+          canvas.removeEventListener('mousedown', canvasEventListeners.mousedown);
+          canvas.removeEventListener('mousemove', canvasEventListeners.mousemove);
+          canvas.removeEventListener('mouseup', canvasEventListeners.mouseup);
+          canvas.removeEventListener('mouseleave', canvasEventListeners.mouseleave);
+          canvas.removeEventListener('wheel', canvasEventListeners.wheel);
+
+          // Clear canvas context to free memory
+          if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+
+          // Clear equations array
+          equations.length = 0;
+      });
+
+      // Also clean up on page hide (for mobile/tablet)
+      window.addEventListener('pagehide', function() {
+          // Remove window event listeners
+          window.removeEventListener('load', eventListeners.load);
+          window.removeEventListener('resize', eventListeners.resize);
+
+          // Remove canvas event listeners
+          canvas.removeEventListener('mousedown', canvasEventListeners.mousedown);
+          canvas.removeEventListener('mousemove', canvasEventListeners.mousemove);
+          canvas.removeEventListener('mouseup', canvasEventListeners.mouseup);
+          canvas.removeEventListener('mouseleave', canvasEventListeners.mouseleave);
+          canvas.removeEventListener('wheel', canvasEventListeners.wheel);
+
+          // Clear canvas context to free memory
+          if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+
+          // Clear equations array
+          equations.length = 0;
+      });
   </script>
-{% endblock %}
+{% endblock content %}
