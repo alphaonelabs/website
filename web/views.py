@@ -121,6 +121,8 @@ from .models import (
     Challenge,
     ChallengeSubmission,
     Choice,
+    Competition,
+    CompetitionParticipant,
     Course,
     CourseMaterial,
     CourseProgress,
@@ -149,6 +151,7 @@ from .models import (
     Payment,
     PeerConnection,
     PeerMessage,
+    Points,
     ProductImage,
     Profile,
     ProgressTracker,
@@ -3912,6 +3915,115 @@ def challenge_submit(request, challenge_id):
         form = ChallengeSubmissionForm()
 
     return render(request, "web/challenge_submit.html", {"challenge": challenge, "form": form})
+
+
+def competition_list(request):
+    """Display all competitions with filtering by status."""
+    status_filter = request.GET.get("status", "active")
+
+    if status_filter == "all":
+        competitions = Competition.objects.all()
+    else:
+        competitions = Competition.objects.filter(status=status_filter)
+
+    # Annotate with participant count
+    from django.db.models import Count
+
+    competitions = competitions.annotate(participant_count=Count("participants"))
+
+    context = {
+        "competitions": competitions,
+        "status_filter": status_filter,
+        "status_choices": Competition.STATUS_CHOICES,
+    }
+    return render(request, "web/competition_list.html", context)
+
+
+def competition_detail(request, competition_id):
+    """Display detailed information about a specific competition."""
+    competition = get_object_or_404(Competition, id=competition_id)
+
+    # Get leaderboard (top participants)
+    leaderboard = competition.participants.all()[:10]
+
+    # Get rewards
+    rewards = competition.rewards.all()
+
+    # Check if user is participating
+    user_participant = None
+    if request.user.is_authenticated:
+        user_participant = CompetitionParticipant.objects.filter(competition=competition, user=request.user).first()
+
+    # Get challenges in this competition
+    challenges = competition.challenges.all()
+
+    context = {
+        "competition": competition,
+        "leaderboard": leaderboard,
+        "rewards": rewards,
+        "user_participant": user_participant,
+        "challenges": challenges,
+    }
+    return render(request, "web/competition_detail.html", context)
+
+
+@login_required
+def competition_join(request, competition_id):
+    """Allow user to join a competition."""
+    competition = get_object_or_404(Competition, id=competition_id)
+
+    # Check if competition is active or upcoming
+    if competition.status not in ["active", "upcoming"]:
+        messages.error(request, "This competition is no longer accepting participants.")
+        return redirect("competition_detail", competition_id=competition_id)
+
+    # Check if already participating
+    if CompetitionParticipant.objects.filter(competition=competition, user=request.user).exists():
+        messages.info(request, "You are already participating in this competition.")
+        return redirect("competition_detail", competition_id=competition_id)
+
+    # Check if competition is full
+    if competition.is_full:
+        messages.error(request, "This competition has reached maximum participants.")
+        return redirect("competition_detail", competition_id=competition_id)
+
+    # Check if user has enough points for entry fee
+    if competition.entry_fee_points > 0:
+        from django.db.models import Sum
+
+        user_total_points = Points.objects.filter(user=request.user).aggregate(total=Sum("amount"))["total"] or 0
+        if user_total_points < competition.entry_fee_points:
+            messages.error(request, f"You need {competition.entry_fee_points} points to join this competition.")
+            return redirect("competition_detail", competition_id=competition_id)
+
+        # Deduct entry fee
+        Points.objects.create(
+            user=request.user,
+            amount=-competition.entry_fee_points,
+            reason=f"Entry fee for {competition.title}",
+            point_type="regular",
+        )
+
+    # Create participant
+    CompetitionParticipant.objects.create(competition=competition, user=request.user)
+
+    messages.success(request, f"You have successfully joined {competition.title}!")
+    return redirect("competition_detail", competition_id=competition_id)
+
+
+@login_required
+def competition_leaderboard(request, competition_id):
+    """Display full leaderboard for a competition."""
+    competition = get_object_or_404(Competition, id=competition_id)
+
+    # Get all participants ordered by score
+    participants = competition.participants.all()
+
+    context = {
+        "competition": competition,
+        "participants": participants,
+    }
+    return render(request, "web/competition_leaderboard.html", context)
 
 
 @require_GET

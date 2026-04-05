@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold mb-6 text-gray-900 dark:text-white">Competitions</h1>
+    <!-- Status Filter -->
+    <div class="mb-6 flex gap-2 flex-wrap">
+      <a href="?status=all"
+         class="px-4 py-2 rounded-lg transition {% if status_filter == 'all' %}bg-teal-300 text-white{% else %}bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600{% endif %}">
+        All
+      </a>
+      {% for value, label in status_choices %}
+        <a href="?status={{ value }}"
+           class="px-4 py-2 rounded-lg transition {% if status_filter == value %}bg-teal-300 text-white{% else %}bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600{% endif %}">
+          {{ label }}
+        </a>
+      {% endfor %}
+    </div>
+    <!-- Competitions List -->
+    {% if competitions %}
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {% for competition in competitions %}
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition hover:shadow-xl">
+            {% if competition.image %}
+              <img src="{{ competition.image.url }}"
+                   alt="{{ competition.title }}"
+                   class="w-full h-48 object-cover" />
+            {% else %}
+              <div class="w-full h-48 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                <i class="fas fa-trophy text-6xl text-white opacity-50"></i>
+              </div>
+            {% endif %}
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-2">
+                <span class="px-3 py-1 text-sm rounded-full {% if competition.status == 'active' %}bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100{% elif competition.status == 'upcoming' %}bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100{% else %}bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300{% endif %}">
+                  {{ competition.get_status_display }}
+                </span>
+                {% if competition.entry_fee_points > 0 %}
+                  <span class="text-sm text-gray-600 dark:text-gray-400">
+                    <i class="fas fa-star text-yellow-500"></i> {{ competition.entry_fee_points }} pts
+                  </span>
+                {% endif %}
+              </div>
+              <h2 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{{ competition.title }}</h2>
+              <p class="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">{{ competition.description|truncatewords:20 }}</p>
+              <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <div>
+                  <i class="far fa-calendar"></i>
+                  {{ competition.start_date|date:"M d" }} - {{ competition.end_date|date:"M d" }}
+                </div>
+                <div>
+                  <i class="fas fa-users"></i>
+                  {{ competition.participant_count }}
+                  {% if competition.max_participants %}/{{ competition.max_participants }}{% endif %}
+                </div>
+              </div>
+              <a href="{% url 'competition_detail' competition.id %}"
+                 class="block text-center bg-teal-300 hover:bg-teal-400 text-white px-4 py-2 rounded-lg transition duration-200">
+                View Details
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center py-12">
+        <i class="fas fa-trophy text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+        <p class="text-xl text-gray-500 dark:text-gray-400">No competitions found for the selected filter.</p>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}

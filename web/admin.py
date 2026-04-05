@@ -18,6 +18,9 @@ from .models import (
     CartItem,
     Challenge,
     ChallengeSubmission,
+    Competition,
+    CompetitionParticipant,
+    CompetitionReward,
     Course,
     CourseMaterial,
     CourseProgress,
@@ -882,6 +885,95 @@ class PointsAdmin(admin.ModelAdmin):
         ("Related Data", {"fields": ("challenge", "current_streak")}),
         ("Timestamps", {"fields": ("awarded_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+
+class CompetitionRewardInline(admin.TabularInline):
+    model = CompetitionReward
+    extra = 1
+    fields = (
+        "reward_type",
+        "name",
+        "position",
+        "quantity",
+        "value",
+        "points_amount",
+        "subscription_months",
+        "goods_item",
+        "is_awarded",
+    )
+    raw_id_fields = ("goods_item",)
+
+
+class CompetitionParticipantInline(admin.TabularInline):
+    model = CompetitionParticipant
+    extra = 0
+    fields = ("user", "score", "rank", "joined_at", "last_submission_at")
+    readonly_fields = ("joined_at", "last_submission_at", "score", "rank")
+    raw_id_fields = ("user",)
+    can_delete = False
+
+
+@admin.register(Competition)
+class CompetitionAdmin(admin.ModelAdmin):
+    list_display = ("title", "status", "start_date", "end_date", "total_participants", "entry_fee_points", "created_at")
+    list_filter = ("status", "start_date", "end_date")
+    search_fields = ("title", "description")
+    filter_horizontal = ("challenges",)
+    readonly_fields = ("created_at", "updated_at", "total_participants")
+    date_hierarchy = "start_date"
+    inlines = [CompetitionRewardInline, CompetitionParticipantInline]
+    fieldsets = (
+        (None, {"fields": ("title", "description", "status")}),
+        ("Schedule", {"fields": ("start_date", "end_date")}),
+        ("Configuration", {"fields": ("challenges", "max_participants", "entry_fee_points", "image", "rules")}),
+        ("Statistics", {"fields": ("total_participants",), "classes": ("collapse",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(CompetitionReward)
+class CompetitionRewardAdmin(admin.ModelAdmin):
+    list_display = ("name", "competition", "reward_type", "position", "quantity", "is_awarded")
+    list_filter = ("reward_type", "is_awarded", "competition__status")
+    search_fields = ("name", "description", "competition__title")
+    raw_id_fields = ("competition", "goods_item")
+    readonly_fields = ("created_at",)
+    fieldsets = (
+        (None, {"fields": ("competition", "reward_type", "name", "description")}),
+        ("Position & Quantity", {"fields": ("position", "quantity")}),
+        (
+            "Reward Details",
+            {"fields": ("value", "points_amount", "subscription_months", "goods_item"), "classes": ("collapse",)},
+        ),
+        ("Status", {"fields": ("is_awarded", "created_at")}),
+    )
+
+
+@admin.register(CompetitionParticipant)
+class CompetitionParticipantAdmin(admin.ModelAdmin):
+    list_display = ("user", "competition", "score", "rank", "joined_at", "last_submission_at")
+    list_filter = ("competition__status", "joined_at")
+    search_fields = ("user__username", "user__email", "competition__title")
+    raw_id_fields = ("user", "competition")
+    filter_horizontal = ("rewards_claimed",)
+    readonly_fields = ("joined_at", "last_submission_at")
+    date_hierarchy = "joined_at"
+    actions = ["update_scores_and_ranks"]
+    fieldsets = (
+        (None, {"fields": ("competition", "user")}),
+        ("Performance", {"fields": ("score", "rank")}),
+        ("Rewards", {"fields": ("rewards_claimed",)}),
+        ("Timestamps", {"fields": ("joined_at", "last_submission_at"), "classes": ("collapse",)}),
+    )
+
+    def update_scores_and_ranks(self, request, queryset):
+        """Admin action to recalculate scores and ranks for selected participants."""
+        for participant in queryset:
+            participant.update_score()
+            participant.update_rank()
+        self.message_user(request, f"Updated scores and ranks for {queryset.count()} participants.")
+
+    update_scores_and_ranks.short_description = "Update scores and ranks"
 
 
 @admin.register(VideoRequest)
