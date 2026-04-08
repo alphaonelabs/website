@@ -6,7 +6,7 @@ This document explains how to contribute effectively to this repository. Followi
 
 ## Code of Conduct
 
-This project and everyone participating in it is expected to act respectfully and constructively.
+This project and everyone participating in it are expected to act respectfully and constructively.
 
 If you encounter unacceptable behavior, please open an issue with the maintainers.
 
@@ -49,12 +49,7 @@ Before you begin:
    wrangler login
    ```
 
-5. Create and configure a D1 database if needed:
-
-   ```bash
-   wrangler d1 create education_db
-   wrangler d1 execute education_db --file=schema.sql
-   ```
+5. Set up the D1 database by following the step-by-step instructions in [README.md](README.md) (create DB, update `wrangler.toml`, apply `schema.sql`).
 
 6. Configure local secrets in `.dev.vars`:
 
