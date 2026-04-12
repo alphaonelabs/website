@@ -4,18 +4,9 @@ Tests for HTTP auth helpers: _is_basic_auth_valid(), parse_json_object().
 
 import base64
 import json
-import importlib.util
+from tests.helpers import load_worker, MockRequest, make_env, basic_auth_header
 
-import pytest
-
-from tests.helpers import MockRequest, make_env, basic_auth_header
-
-
-spec = importlib.util.spec_from_file_location(
-    "worker", "/home/runner/work/learn/learn/src/worker.py"
-)
-worker = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker)
+worker = load_worker()
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +50,7 @@ class TestIsBasicAuthValid:
         assert worker._is_basic_auth_valid(req, self._env()) is False
 
     def test_no_colon_in_decoded_returns_false(self):
-        encoded = base64.b64encode(b"adminpassnocoion").decode()
+        encoded = base64.b64encode(b"adminpassnocolon").decode()
         req = MockRequest(headers={"Authorization": f"Basic {encoded}"})
         assert worker._is_basic_auth_valid(req, self._env()) is False
 

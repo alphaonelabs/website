@@ -3,18 +3,9 @@ Tests for api_admin_table_counts() and admin-path access in _dispatch().
 """
 
 import json
-import importlib.util
+from tests.helpers import load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, basic_auth_header
 
-import pytest
-
-from tests.helpers import MockRequest, MockRow, MockDB, make_env, make_stmt, basic_auth_header
-
-
-spec = importlib.util.spec_from_file_location(
-    "worker", "/home/runner/work/learn/learn/src/worker.py"
-)
-worker = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker)
+worker = load_worker()
 
 
 def _parse(resp):

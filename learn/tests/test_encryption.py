@@ -8,16 +8,10 @@ Tests for encryption helpers:
 """
 
 import base64
-import importlib.util
-
 import pytest
+from tests.helpers import load_worker
 
-
-spec = importlib.util.spec_from_file_location(
-    "worker", "/home/runner/work/learn/learn/src/worker.py"
-)
-worker = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker)
+worker = load_worker()
 
 
 # ---------------------------------------------------------------------------

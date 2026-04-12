@@ -3,21 +3,9 @@ Tests for utility functions: new_id(), _clean_path(), capture_exception().
 """
 
 import re
-import sys
-import importlib.util
+from tests.helpers import load_worker
 
-import pytest
-
-
-# ---------------------------------------------------------------------------
-# Load worker module (conftest has already installed stubs)
-# ---------------------------------------------------------------------------
-
-spec = importlib.util.spec_from_file_location(
-    "worker", "/home/runner/work/learn/learn/src/worker.py"
-)
-worker = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker)
+worker = load_worker()
 
 
 # ---------------------------------------------------------------------------

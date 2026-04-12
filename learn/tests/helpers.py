@@ -3,8 +3,25 @@ Shared test helpers: mock Request, mock Env, mock D1 database.
 """
 
 import base64
+import importlib.util
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock
+
+
+# ---------------------------------------------------------------------------
+# Worker module loader
+# ---------------------------------------------------------------------------
+
+_WORKER_PATH = Path(__file__).parent.parent / "src" / "worker.py"
+
+
+def load_worker():
+    """Load and return the worker module from the source tree."""
+    spec = importlib.util.spec_from_file_location("worker", _WORKER_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 # ---------------------------------------------------------------------------

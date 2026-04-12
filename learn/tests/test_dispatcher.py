@@ -6,22 +6,17 @@ unknown API paths (404), and static-file serving.
 """
 
 import json
-import importlib.util
 from unittest.mock import AsyncMock
 
 import pytest
 
 from tests.helpers import (
     MockRequest, MockRow, MockDB, make_env, make_stmt,
-    json_request, basic_auth_header, set_static_content,
+    json_request, basic_auth_header, set_static_content, load_worker,
 )
 
 
-spec = importlib.util.spec_from_file_location(
-    "worker", "/home/runner/work/learn/learn/src/worker.py"
-)
-worker = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker)
+worker = load_worker()
 
 SECRET = "test-encryption-key"
 JWT = "test-jwt-secret"

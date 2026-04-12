@@ -3,16 +3,9 @@ Tests for password hashing: hash_password(), verify_password().
 """
 
 import base64
-import importlib.util
+from tests.helpers import load_worker
 
-import pytest
-
-
-spec = importlib.util.spec_from_file_location(
-    "worker", "/home/runner/work/learn/learn/src/worker.py"
-)
-worker = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker)
+worker = load_worker()
 
 
 class TestHashPassword:

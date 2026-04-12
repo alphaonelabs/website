@@ -4,18 +4,9 @@ Tests for api_join() and api_dashboard().
 
 import base64
 import json
-import importlib.util
+from tests.helpers import load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, json_request
 
-import pytest
-
-from tests.helpers import MockRequest, MockRow, MockDB, make_env, make_stmt, json_request
-
-
-spec = importlib.util.spec_from_file_location(
-    "worker", "/home/runner/work/learn/learn/src/worker.py"
-)
-worker = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker)
+worker = load_worker()
 
 SECRET = "test-encryption-key"
 JWT = "test-jwt-secret"
