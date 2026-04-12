@@ -21,20 +21,20 @@ Make sure you have installed:
 Install Wrangler:
 
 ```bash
- npm install -g wrangler
+npm install -g wrangler
 ```
 
 ### Clone the Repository
 
 ```bash
- git clone https://github.com/<user_name>/learn.git
- cd learn
+git clone https://github.com/alphaonelabs/learn.git
+cd learn
 ```
 
 ### Login to Cloudflare (One time)
 
 ```bash
- wrangler login
+wrangler login
 ```
 
 ### Setup Database (D1)
@@ -42,33 +42,56 @@ Install Wrangler:
 - Create Database:
 
 ```bash
- wrangler d1 create education_db
+wrangler d1 create education_db
 ```
 
 - Add the generated database_id to your wrangler.toml:
 
-```bash
- [[d1_databases]]
- binding = "DB"
- database_name = "education_db"
- database_id = "YOUR_DATABASE_ID"
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "education_db"
+database_id = "YOUR_DATABASE_ID"
 ```
 
 - Apply Schema:
 
 ```bash
- wrangler d1 execute education_db --file=schema.sql
+wrangler d1 execute education_db --file=schema.sql
 ```
+
+### Setup Environment Variables
+
+This project requires environment variables for encryption and authentication.
+
+- For Local Development
+
+Create a `.dev.vars` file in the project root:
+
+```
+ENCRYPTION_KEY=your-dev-encryption-key
+JWT_SECRET=your-dev-jwt-secret
+```
+
+- For Production
+Use Wrangler secrets:
+
+```bash
+wrangler secret put ENCRYPTION_KEY
+wrangler secret put JWT_SECRET
+```
+
 
 ### Run Backend
 
 ```bash
- wrangler dev
+wrangler dev
 ```
-Backend server will start at :
+
+Backend server starts at:
 
 ```bash
- http://127.0.0.1:8787
+http://127.0.0.1:8787
 ```
 
 ### Run Frontend
@@ -76,17 +99,17 @@ Backend server will start at :
 - Open directly
 
 ```bash
- public/index.html
+public/index.html
 ```
 
 - Use a local server
 
 ```bash
- npx serve public
+npx serve public
 ```
 
 Frontend Server will start at:
 
 ```bash
- http://localhost:3000
+http://localhost:3000
 ```

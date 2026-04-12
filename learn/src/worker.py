@@ -1,5 +1,5 @@
 """
-EduPlatform – Cloudflare Python Worker (Activities Model)
+Alpha One Labs – Cloudflare Python Worker (Activities Model)
 =========================================================
 API Routes
   POST /api/init              – initialise DB schema
@@ -17,15 +17,18 @@ API Routes
   POST /api/chat              – chat with the AI assistant   (Cloudflare AI)
 
 Security model
-  * ALL user PII (username, email, display name, role) is encrypted with a
-    XOR stream-cipher (SHA-256 key expansion) before storage.
+  * ALL user PII (username, email, display name, role) is encrypted with
+    AES-256-GCM (via js.crypto.subtle) before storage.
   * HMAC-SHA256 blind indexes (username_hash, email_hash) allow O(1) row
     lookups without ever storing plaintext PII in an indexed column.
   * Activity descriptions and session locations/descriptions are encrypted.
   * Passwords: PBKDF2-SHA256, per-user derived salt (username + global pepper).
   * Auth tokens: HMAC-SHA256 signed, stateless (JWT-lite).
-  XOR stream cipher - demonstration only.  Replace encrypt()/decrypt()
-    with AES-GCM via js.crypto.subtle for a production deployment.
+  AES-256-GCM authenticated encryption via js.crypto.subtle.
+    96-bit random IV generated per encryption call.
+    128-bit GCM auth tag provides tamper detection.
+    Backward compatible: existing XOR-encrypted data decrypted transparently.
+    Legacy _encrypt_xor/_decrypt_xor retained for reading old stored data.
 
 Static HTML pages (public/) are served via Workers Sites (KV binding).
 """
@@ -41,6 +44,8 @@ from urllib.parse import urlparse, parse_qs
 
 from workers import Response
 
+import js
+from pyodide.ffi import to_js
 
 def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
     """Best-effort exception logging with full traceback and request context."""
@@ -80,20 +85,97 @@ def new_id() -> str:
 # Encryption helpers
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Encryption helpers - AES-256-GCM via Web Crypto API (js.crypto.subtle)
+# ---------------------------------------------------------------------------
+# Replaces the XOR stream cipher with authenticated AES-256-GCM encryption.
+# - 256-bit key derived from secret via PBKDF2-SHA256 (100k iterations)
+# - 96-bit random IV prepended to ciphertext
+# - 128-bit GCM auth tag appended automatically by Web Crypto
+# - Output: base64(iv || ciphertext+tag) prefixed with "v1:" for D1 storage
+# - Backward compatible: no "v1:" prefix = legacy XOR, decrypted transparently
+
 def _derive_key(secret: str) -> bytes:
     """Derive a 32-byte key from an arbitrary secret string via SHA-256."""
     return hashlib.sha256(secret.encode("utf-8")).digest()
 
 
-def encrypt(plaintext: str, secret: str) -> str:
-    """
-    XOR stream-cipher encryption.
+def _derive_aes_key_bytes(secret: str) -> bytes:
+    """Derive a 32-byte AES-256 key via PBKDF2-SHA256 with a fixed domain salt.
 
-    Key is SHA-256 of secret, XOR'd byte-by-byte against plaintext.
-    Result is Base64-encoded for safe TEXT storage in D1.
-
-    XOR stream cipher - demonstration only. Replace with AES-GCM for production.
+    Note: 100k iterations are intentional for key hardening. For high-throughput
+    paths, callers can cache the derived key bytes for the duration of a request.
     """
+    salt = hashlib.sha256(b"aol-edu-aes-salt-v1" + secret.encode()).digest()
+    return hashlib.pbkdf2_hmac("sha256", secret.encode("utf-8"), salt, 100_000)
+
+
+async def _import_aes_key(key_bytes: bytes) -> object:
+    """Import raw bytes as a Web Crypto AES-GCM CryptoKey."""
+    key_buf = to_js(key_bytes, create_pyproxies=False)
+    algo    = {"name": "AES-GCM"}
+    usages  = to_js(["encrypt", "decrypt"])
+    return await js.crypto.subtle.importKey("raw", key_buf, algo, False, usages)
+
+
+async def encrypt_aes(plaintext: str, secret: str) -> str:
+    """
+    AES-256-GCM encryption using js.crypto.subtle (Web Crypto API).
+    Returns "v1:" + base64(iv || ciphertext+tag).
+    Raises RuntimeError on encryption failure — no silent XOR fallback.
+    """
+    if not plaintext:
+        return ""
+    try:
+        key_bytes  = _derive_aes_key_bytes(secret)
+        crypto_key = await _import_aes_key(key_bytes)
+
+        # Generate random IV directly into a JS Uint8Array for clean interop
+        iv_array   = js.Uint8Array.new(12)
+        js.crypto.getRandomValues(iv_array)
+        iv         = bytes(iv_array) # Extract back to python bytes for storage
+
+        # Pass algo as a plain dict; Web Crypto accepts both JS objects and plain dicts
+        algo       = {"name": "AES-GCM", "iv": iv_array}
+        data       = to_js(plaintext.encode("utf-8"), create_pyproxies=False)
+        ct_buf     = await js.crypto.subtle.encrypt(algo, crypto_key, data)
+        ct         = bytes(js.Uint8Array.new(ct_buf))
+        return "v1:" + base64.b64encode(iv + ct).decode("ascii")
+    except Exception as exc:
+        capture_exception(exc, where="encrypt_aes")
+        raise RuntimeError(f"AES-256-GCM encryption failed: {exc}") from exc
+
+
+async def decrypt_aes(ciphertext: str, secret: str) -> str:
+    """
+    AES-256-GCM decryption. Handles both v1 (AES-GCM) and legacy (XOR) ciphertext.
+    """
+    if not ciphertext:
+        return ""
+    if not ciphertext.startswith("v1:"):
+        return _decrypt_xor(ciphertext, secret)
+    try:
+        raw        = base64.b64decode(ciphertext[3:])
+        iv, ct     = raw[:12], raw[12:]
+    except Exception as exc:
+        capture_exception(exc, where="decrypt_aes.decode")
+        return "[decryption error]"
+    try:
+        key_bytes  = _derive_aes_key_bytes(secret)
+        crypto_key = await _import_aes_key(key_bytes)
+        iv_array   = to_js(iv, create_pyproxies=False)
+        algo       = {"name": "AES-GCM", "iv": iv_array}
+        data       = to_js(ct, create_pyproxies=False)
+        pt_buf     = await js.crypto.subtle.decrypt(algo, crypto_key, data)
+        return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
+    except Exception as exc:
+        # Auth tag mismatch = tampered/corrupted ciphertext
+        capture_exception(exc, where="decrypt_aes.auth")
+        return "[decryption error]"
+
+
+def _encrypt_xor(plaintext: str, secret: str) -> str:
+    """Legacy XOR stream cipher — kept for backward compatibility only."""
     if not plaintext:
         return ""
     key  = _derive_key(secret)
@@ -102,8 +184,8 @@ def encrypt(plaintext: str, secret: str) -> str:
     return base64.b64encode(bytes(a ^ b for a, b in zip(data, ks))).decode("ascii")
 
 
-def decrypt(ciphertext: str, secret: str) -> str:
-    """Reverse of encrypt(). XOR is self-inverse."""
+def _decrypt_xor(ciphertext: str, secret: str) -> str:
+    """Legacy XOR stream cipher decryption — kept for backward compatibility."""
     if not ciphertext:
         return ""
     try:
@@ -114,6 +196,16 @@ def decrypt(ciphertext: str, secret: str) -> str:
     except Exception:
         return "[decryption error]"
 
+
+# Synchronous shims — raise errors to force migration to async variants.
+def encrypt(plaintext: str, secret: str) -> str:
+    """Deprecated sync shim — raises to force migration to await encrypt_aes()."""
+    raise RuntimeError("encrypt() is deprecated — use await encrypt_aes() instead")
+
+
+def decrypt(ciphertext: str, secret: str) -> str:
+    """Deprecated sync shim — raises to force migration to await decrypt_aes()."""
+    raise RuntimeError("decrypt() is deprecated — use await decrypt_aes() instead")
 
 def blind_index(value: str, secret: str) -> str:
     """
@@ -223,7 +315,8 @@ def err(msg: str, status: int = 400):
 async def parse_json_object(req):
     """Parse request JSON and ensure payload is an object/dict."""
     try:
-        body = await req.json()
+        text = await req.text()
+        body = json.loads(text)
     except Exception:
         return None, err("Invalid JSON body")
 
@@ -248,7 +341,7 @@ def _clean_path(value: str, default: str = "/admin") -> str:
     return path or default
 
 
-def _unauthorized_basic(realm: str = "EduPlatform Admin"):
+def _unauthorized_basic(realm: str = "Alpha One Labs Admin"):
     return Response(
         "Authentication required",
         status=401,
@@ -394,11 +487,11 @@ async def seed_db(env, enc_key: str):
                 uid,
                 blind_index(uname, enc_key),
                 blind_index(email, enc_key),
-                encrypt(display,  enc_key),
-                encrypt(uname,    enc_key),
-                encrypt(email,    enc_key),
+                await encrypt_aes(display,  enc_key),
+                await encrypt_aes(uname,    enc_key),
+                await encrypt_aes(email,    enc_key),
                 hash_password(pw, uname),
-                encrypt(role,     enc_key),
+                await encrypt_aes(role,     enc_key),
             ).run()
         except Exception:
             pass  # already seeded
@@ -478,7 +571,7 @@ async def seed_db(env, enc_key: str):
                 "(id,title,description,type,format,schedule_type,host_id)"
                 " VALUES (?,?,?,?,?,?,?)"
             ).bind(
-                act_id, title, encrypt(desc, enc_key),
+                act_id, title, await encrypt_aes(desc, enc_key),
                 atype, fmt, sched, host_id
             ).run()
         except Exception:
@@ -521,9 +614,9 @@ async def seed_db(env, enc_key: str):
                 " VALUES (?,?,?,?,?,?,?)"
             ).bind(
                 sid, act_id, title,
-                encrypt(desc, enc_key),
+                await encrypt_aes(desc, enc_key),
                 start, end,
-                encrypt(loc, enc_key),
+                await encrypt_aes(loc, enc_key),
             ).run()
         except Exception:
             pass
@@ -579,11 +672,11 @@ async def api_register(req, env):
             uid,
             blind_index(username, enc),
             blind_index(email,    enc),
-            encrypt(name,     enc),
-            encrypt(username, enc),
-            encrypt(email,    enc),
+            await encrypt_aes(name,     enc),
+            await encrypt_aes(username, enc),
+            await encrypt_aes(email,    enc),
             hash_password(password, username),
-            encrypt(role, enc),
+            await encrypt_aes(role, enc),
         ).run()
     except Exception as e:
         if "UNIQUE" in str(e):
@@ -613,18 +706,32 @@ async def api_login(req, env):
     enc    = env.ENCRYPTION_KEY
     u_hash = blind_index(username, enc)
     row    = await env.DB.prepare(
-        "SELECT id,password_hash,role,name FROM users WHERE username_hash=?"
+        "SELECT id,password_hash,role,name,username FROM users WHERE username_hash=?"
     ).bind(u_hash).first()
 
-    if not row or not verify_password(password, row["password_hash"], username):
+    if not row:
+        return err("Invalid username or password", 401)
+    
+    password_hash = row.password_hash
+    user_id = row.id
+    role_enc = row.role
+    name_enc = row.name
+    username_enc = row.username
+    stored_username = await decrypt_aes(username_enc, enc)
+    if not stored_username or stored_username == "[decryption error]":
         return err("Invalid username or password", 401)
 
-    real_role = decrypt(row["role"], enc)
-    real_name = decrypt(row["name"], enc)
-    token     = create_token(row["id"], username, real_role, env.JWT_SECRET)
+    if not verify_password(password, password_hash, stored_username):
+        return err("Invalid username or password", 401)
+
+    real_role = await decrypt_aes(role_enc, enc)
+    real_name = await decrypt_aes(name_enc, enc)
+    if not real_role or real_role == "[decryption error]":
+        return err("Account data corrupted — please contact support", 500)
+    token     = create_token(user_id, stored_username, real_role, env.JWT_SECRET)
     return ok(
         {"token": token,
-         "user": {"id": row["id"], "username": username,
+         "user": {"id": user_id, "username": stored_username,
                   "name": real_name, "role": real_role}},
         "Login successful",
     )
@@ -658,7 +765,7 @@ async def api_list_activities(req, env):
             base_q
             + " JOIN activity_tags at2 ON at2.activity_id=a.id"
               " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
-        ).bind(tag_row["id"]).all()
+        ).bind(tag_row.id).all()
     elif atype and fmt:
         res = await env.DB.prepare(
             base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
@@ -678,10 +785,10 @@ async def api_list_activities(req, env):
 
     activities = []
     for row in res.results or []:
-        desc      = decrypt(row["description"] or "", enc)
-        host_name = decrypt(row["host_name_enc"] or "", enc)
+        desc      = await decrypt_aes(row.description or "", enc)
+        host_name = await decrypt_aes(row.host_name_enc or "", enc)
         if search and (
-            search.lower() not in row["title"].lower()
+            search.lower() not in row.title.lower()
             and search.lower() not in desc.lower()
         ):
             continue
@@ -690,20 +797,20 @@ async def api_list_activities(req, env):
             "SELECT t.name FROM tags t"
             " JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
-        ).bind(row["id"]).all()
+        ).bind(row.id).all()
 
         activities.append({
-            "id":                row["id"],
-            "title":             row["title"],
+            "id":                row.id,
+            "title":             row.title,
             "description":       desc,
-            "type":              row["type"],
-            "format":            row["format"],
-            "schedule_type":     row["schedule_type"],
+            "type":              row.type,
+            "format":            row.format,
+            "schedule_type":     row.schedule_type,
             "host_name":         host_name,
-            "participant_count": row["participant_count"],
-            "session_count":     row["session_count"],
-            "tags":              [t["name"] for t in (t_res.results or [])],
-            "created_at":        row["created_at"],
+            "participant_count": row.participant_count,
+            "session_count":     row.session_count,
+            "tags":              [t.name for t in (t_res.results or [])],
+            "created_at":        row.created_at,
         })
 
     return json_resp({"activities": activities})
@@ -742,7 +849,7 @@ async def api_create_activity(req, env):
             " VALUES (?,?,?,?,?,?,?)"
         ).bind(
             act_id, title,
-            encrypt(description, enc) if description else "",
+            await encrypt_aes(description, enc) if description else "",
             atype, fmt, schedule_type, user["id"]
         ).run()
     except Exception as e:
@@ -756,20 +863,23 @@ async def api_create_activity(req, env):
         t_row = await env.DB.prepare(
             "SELECT id FROM tags WHERE name=?"
         ).bind(tag_name).first()
-        if not t_row:
-            tid = new_id()
+        if t_row:
+            tag_id = t_row.id
+        else:
+            tag_id = new_id()
             try:
                 await env.DB.prepare(
                     "INSERT INTO tags (id,name) VALUES (?,?)"
-                ).bind(tid, tag_name).run()
-                t_row = {"id": tid}
-            except Exception:
+                ).bind(tag_id, tag_name).run()
+            except Exception as e:
+                capture_exception(e, req, env, f"api_create_activity.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(act_id, t_row["id"]).run()
-        except Exception:
+            ).bind(act_id, tag_id).run()
+        except Exception as e:
+            capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok({"id": act_id, "title": title}, "Activity created")
@@ -796,7 +906,7 @@ async def api_get_activity(act_id: str, req, env):
         ).bind(act_id, user["id"]).first()
         is_enrolled = enrollment is not None
 
-    is_host = bool(user and act["host_uid"] == user["id"])
+    is_host = bool(user and act.host_uid == user["id"])
 
     ses_res = await env.DB.prepare(
         "SELECT id,title,description,start_time,end_time,location,created_at"
@@ -806,12 +916,12 @@ async def api_get_activity(act_id: str, req, env):
     sessions = []
     for s in ses_res.results or []:
         sessions.append({
-            "id":          s["id"],
-            "title":       s["title"],
-            "description": decrypt(s["description"] or "", enc) if (is_enrolled or is_host) else None,
-            "start_time":  s["start_time"],
-            "end_time":    s["end_time"],
-            "location":    decrypt(s["location"] or "", enc) if (is_enrolled or is_host) else None,
+            "id":          s.id,
+            "title":       s.title,
+            "description": await decrypt_aes(s.description or "", enc) if (is_enrolled or is_host) else None,
+            "start_time":  s.start_time,
+            "end_time":    s.end_time,
+            "location":    await decrypt_aes(s.location or "", enc) if (is_enrolled or is_host) else None,
         })
 
     t_res = await env.DB.prepare(
@@ -826,23 +936,23 @@ async def api_get_activity(act_id: str, req, env):
 
     return json_resp({
         "activity": {
-            "id":                act["id"],
-            "title":             act["title"],
-            "description":       decrypt(act["description"] or "", enc),
-            "type":              act["type"],
-            "format":            act["format"],
-            "schedule_type":     act["schedule_type"],
-            "host_name":         decrypt(act["host_name_enc"] or "", enc),
-            "participant_count": count_row["cnt"] if count_row else 0,
-            "tags":              [t["name"] for t in (t_res.results or [])],
-            "created_at":        act["created_at"],
+            "id":                act.id,
+            "title":             act.title,
+            "description":       await decrypt_aes(act.description or "", enc),
+            "type":              act.type,
+            "format":            act.format,
+            "schedule_type":     act.schedule_type,
+            "host_name":         await decrypt_aes(act.host_name_enc or "", enc),
+            "participant_count": count_row.cnt if count_row else 0,
+            "tags":              [t.name for t in (t_res.results or [])],
+            "created_at":        act.created_at,
         },
         "sessions":    sessions,
         "is_enrolled": is_enrolled,
         "is_host":     is_host,
         "enrollment":  {
-            "role":   enrollment["role"],
-            "status": enrollment["status"],
+            "role":   enrollment.role,
+            "status": enrollment.status,
         } if enrollment else None,
     })
 
@@ -903,17 +1013,17 @@ async def api_dashboard(req, env):
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
-        ).bind(r["id"]).all()
+        ).bind(r.id).all()
         hosted.append({
-            "id":                r["id"],
-            "title":             r["title"],
-            "type":              r["type"],
-            "format":            r["format"],
-            "schedule_type":     r["schedule_type"],
-            "participant_count": r["participant_count"],
-            "session_count":     r["session_count"],
-            "tags":              [t["name"] for t in (t_res.results or [])],
-            "created_at":        r["created_at"],
+            "id":                r.id,
+            "title":             r.title,
+            "type":              r.type,
+            "format":            r.format,
+            "schedule_type":     r.schedule_type,
+            "participant_count": r.participant_count,
+            "session_count":     r.session_count,
+            "tags":              [t.name for t in (t_res.results or [])],
+            "created_at":        r.created_at,
         })
 
     res2 = await env.DB.prepare(
@@ -931,18 +1041,18 @@ async def api_dashboard(req, env):
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
-        ).bind(r["id"]).all()
+        ).bind(r.id).all()
         joined.append({
-            "id":            r["id"],
-            "title":         r["title"],
-            "type":          r["type"],
-            "format":        r["format"],
-            "schedule_type": r["schedule_type"],
-            "enr_role":      r["enr_role"],
-            "enr_status":    r["enr_status"],
-            "host_name":     decrypt(r["host_name_enc"] or "", enc),
-            "tags":          [t["name"] for t in (t_res.results or [])],
-            "joined_at":     r["joined_at"],
+            "id":            r.id,
+            "title":         r.title,
+            "type":          r.type,
+            "format":        r.format,
+            "schedule_type": r.schedule_type,
+            "enr_role":      r.enr_role,
+            "enr_status":    r.enr_status,
+            "host_name":     await decrypt_aes(r.host_name_enc or "", enc),
+            "tags":          [t.name for t in (t_res.results or [])],
+            "joined_at":     r.joined_at,
         })
 
     return json_resp({"user": user, "hosted_activities": hosted, "joined_activities": joined})
@@ -982,9 +1092,9 @@ async def api_create_session(req, env):
             " VALUES (?,?,?,?,?,?,?)"
         ).bind(
             sid, act_id, title,
-            encrypt(description, enc) if description else "",
+            await encrypt_aes(description, enc) if description else "",
             start_time, end_time,
-            encrypt(location, enc) if location else "",
+            await encrypt_aes(location, enc) if location else "",
         ).run()
     except Exception as e:
         capture_exception(e, req, env, "api_create_session.insert_session")
@@ -995,7 +1105,7 @@ async def api_create_session(req, env):
 
 async def api_list_tags(_req, env):
     res  = await env.DB.prepare("SELECT id,name FROM tags ORDER BY name").all()
-    tags = [{"id": r["id"], "name": r["name"]} for r in (res.results or [])]
+    tags = [{"id": r.id, "name": r.name} for r in (res.results or [])]
     return json_resp({"tags": tags})
 
 
@@ -1027,20 +1137,23 @@ async def api_add_activity_tags(req, env):
         t_row = await env.DB.prepare(
             "SELECT id FROM tags WHERE name=?"
         ).bind(tag_name).first()
-        if not t_row:
-            tid = new_id()
+        if t_row:
+            tag_id = t_row.id
+        else:
+            tag_id = new_id()
             try:
                 await env.DB.prepare(
                     "INSERT INTO tags (id,name) VALUES (?,?)"
-                ).bind(tid, tag_name).run()
-                t_row = {"id": tid}
-            except Exception:
+                ).bind(tag_id, tag_name).run()
+            except Exception as e:
+                capture_exception(e, req, env, f"api_add_activity_tags.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(act_id, t_row["id"]).run()
-        except Exception:
+            ).bind(act_id, tag_id).run()
+        except Exception as e:
+            capture_exception(e, req, env, f"api_add_activity_tags.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok(None, "Tags updated")
@@ -1056,12 +1169,12 @@ async def api_admin_table_counts(req, env):
 
     counts = []
     for row in tables_res.results or []:
-        table_name = row["name"]
+        table_name = row.name
         # Table names come from sqlite_master and are quoted to avoid SQL injection.
         count_row = await env.DB.prepare(
             f'SELECT COUNT(*) AS cnt FROM "{table_name.replace(chr(34), chr(34) + chr(34))}"'
         ).first()
-        counts.append({"table": table_name, "count": (count_row or {}).get("cnt", 0)})
+        counts.append({"table": table_name, "count": count_row.cnt if count_row else 0})
 
     return json_resp({"tables": counts})
 
