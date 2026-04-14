@@ -1343,6 +1343,11 @@ async def _dispatch(request, env):
         if path == "/api/admin/table-counts" and method == "GET":
             return await api_admin_table_counts(request, env)
 
+        if path == "/api/error" and method == "GET":
+            exc = RuntimeError("Sentry test error from /api/error")
+            capture_exception(exc, request, env, "api_error_test")
+            return ok(None, "Test error sent to Sentry")
+
         return err("API endpoint not found", 404)
 
     return await serve_static(path, env)
