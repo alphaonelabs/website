@@ -110,6 +110,7 @@ def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
 
         if sentry_sdk is not None and _SENTRY_INITIALIZED:
             sentry_sdk.capture_exception(exc)
+            sentry_sdk.flush(timeout=2)
 
         print(json.dumps(payload))
     except Exception:
@@ -1343,7 +1344,7 @@ async def _dispatch(request, env):
         if path == "/api/admin/table-counts" and method == "GET":
             return await api_admin_table_counts(request, env)
 
-        if path == "/api/error" and method == "GET":
+        if path.rstrip("/") == "/api/error" and method == "GET":
             exc = RuntimeError("Sentry test error from /api/error")
             capture_exception(exc, request, env, "api_error_test")
             return ok(None, "Test error sent to Sentry")
