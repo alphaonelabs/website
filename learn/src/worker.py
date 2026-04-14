@@ -39,6 +39,7 @@ import json
 import os
 import re
 import traceback
+from typing import Any, Dict
 from urllib.parse import urlparse, parse_qs
 
 from workers import Response
@@ -46,10 +47,54 @@ from workers import Response
 import js
 from pyodide.ffi import to_js
 
+try:
+    import sentry_sdk
+except Exception:
+    sentry_sdk = None
+
+_SENTRY_INITIALIZED = False
+
+
+def init_sentry(env):
+    """Initialize Sentry once per worker isolate if SENTRY_DSN is configured."""
+    global _SENTRY_INITIALIZED
+    if _SENTRY_INITIALIZED:
+        return
+    _SENTRY_INITIALIZED = True
+
+    if sentry_sdk is None:
+        return
+
+    dsn = getattr(env, "SENTRY_DSN", "")
+    if not dsn:
+        return
+
+    traces_sample_rate_raw = getattr(env, "SENTRY_TRACES_SAMPLE_RATE", "0")
+    try:
+        traces_sample_rate = float(traces_sample_rate_raw)
+    except Exception:
+        traces_sample_rate = 0.0
+
+    environment = getattr(env, "SENTRY_ENVIRONMENT", "production")
+    release = getattr(env, "SENTRY_RELEASE", "")
+
+    try:
+        kwargs = {
+            "dsn": dsn,
+            "traces_sample_rate": traces_sample_rate,
+            "environment": environment,
+        }
+        if release:
+            kwargs["release"] = release
+        sentry_sdk.init(**kwargs)
+    except Exception as exc:
+        # Sentry setup should never block requests.
+        print(json.dumps({"level": "warn", "where": "sentry_init", "error": str(exc)}))
+
 def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
     """Best-effort exception logging with full traceback and request context."""
     try:
-        payload = {
+        payload: Dict[str, Any] = {
             "level": "error",
             "where": where or "unknown",
             "error_type": type(exc).__name__,
@@ -62,6 +107,10 @@ def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
                 "url": req.url,
                 "path": urlparse(req.url).path,
             }
+
+        if sentry_sdk is not None and _SENTRY_INITIALIZED:
+            sentry_sdk.capture_exception(exc)
+
         print(json.dumps(payload))
     except Exception:
         pass
@@ -1301,6 +1350,7 @@ async def _dispatch(request, env):
 
 async def on_fetch(request, env):
     try:
+        init_sentry(env)
         return await _dispatch(request, env)
     except Exception as e:
         capture_exception(e, request, env, "on_fetch_unhandled")
