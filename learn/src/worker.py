@@ -1347,7 +1347,7 @@ async def _dispatch(request, env):
         if path.rstrip("/") == "/api/error" and method == "GET":
             exc = RuntimeError("Sentry test error from /api/error")
             capture_exception(exc, request, env, "api_error_test")
-            return ok(None, "Test error sent to Sentry")
+            return ok(None, "Test error sent to Sentry v2")
 
         return err("API endpoint not found", 404)
 
