@@ -7,6 +7,7 @@ Tests for activities API handlers:
 
 import base64
 import json
+import pytest
 from tests.helpers import load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, json_request
 
 worker = load_worker()
@@ -158,6 +159,36 @@ class TestApiListActivities:
                       "schedule_type", "host_name", "participant_count",
                       "session_count", "tags", "created_at"):
             assert field in act, f"Missing field: {field}"
+
+    async def test_missing_table_initializes_schema_and_retries(self):
+        row = self._activity_row()
+
+        failing_stmt = make_stmt()
+        failing_stmt.all.side_effect = Exception("D1_ERROR: no such table: activities: SQLITE_ERROR")
+        ddl_count = len(worker._DDL)
+
+        env = make_env(db=MockDB(
+            [failing_stmt]                      # first list query fails
+            + [make_stmt() for _ in range(ddl_count)] # init_db DDL statements
+            + [
+                make_stmt(all_results=[row]),   # retried list query succeeds
+                make_stmt(all_results=[]),      # tags query
+            ]
+        ))
+
+        r = await worker.api_list_activities(self._req(), env)
+        assert r.status == 200
+        data = _parse(r)
+        assert len(data["activities"]) == 1
+        assert data["activities"][0]["id"] == row.id
+
+    async def test_non_missing_table_error_is_raised(self):
+        failing_stmt = make_stmt()
+        failing_stmt.all.side_effect = Exception("DB unavailable")
+        env = make_env(db=MockDB([failing_stmt]))
+
+        with pytest.raises(Exception, match="DB unavailable"):
+            await worker.api_list_activities(self._req(), env)
 
 
 # ---------------------------------------------------------------------------
