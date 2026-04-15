@@ -72,3 +72,42 @@ class TestApiAdminTableCounts:
         r = await worker.api_admin_table_counts(_admin_req(), env)
         data = _parse(r)
         assert data["tables"] == []
+
+    async def test_missing_table_initializes_schema_and_retries(self):
+        tables_row = MockRow(name="users")
+        count_row = MockRow(cnt=5)
+        failing_count_stmt = make_stmt()
+        failing_count_stmt.first.side_effect = Exception("D1_ERROR: no such table: users: SQLITE_ERROR")
+        ddl_count = len(worker._DDL)
+
+        env = make_env(db=MockDB(
+            [
+                make_stmt(all_results=[tables_row]),  # initial sqlite_master query
+                failing_count_stmt,                   # initial users count fails
+            ]
+            + [make_stmt() for _ in range(ddl_count)]  # init_db DDL statements
+            + [
+                make_stmt(all_results=[tables_row]),  # retried sqlite_master query
+                make_stmt(first=count_row),           # retried users count succeeds
+            ]
+        ))
+
+        r = await worker.api_admin_table_counts(_admin_req(), env)
+        assert r.status == 200
+        data = _parse(r)
+        assert data["tables"] == [{"table": "users", "count": 5}]
+
+    async def test_non_missing_table_error_is_raised(self):
+        tables_row = MockRow(name="users")
+        failing_count_stmt = make_stmt()
+        failing_count_stmt.first.side_effect = Exception("DB unavailable")
+        env = make_env(db=MockDB([
+            make_stmt(all_results=[tables_row]),
+            failing_count_stmt,
+        ]))
+
+        try:
+            await worker.api_admin_table_counts(_admin_req(), env)
+            assert False, "Expected exception to be raised"
+        except Exception as e:
+            assert "DB unavailable" in str(e)
