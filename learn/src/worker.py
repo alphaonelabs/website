@@ -531,6 +531,10 @@ async def init_db(env):
         await env.DB.prepare(sql).run()
 
 
+def _is_no_such_table_error(exc: Exception) -> bool:
+    return "no such table:" in (str(exc) or "").lower()
+
+
 # ---------------------------------------------------------------------------
 # Sample-data seeding
 # ---------------------------------------------------------------------------
@@ -824,33 +828,44 @@ async def api_list_activities(req, env):
         " FROM activities a JOIN users u ON a.host_id=u.id"
     )
 
-    if tag:
-        tag_row = await env.DB.prepare(
-            "SELECT id FROM tags WHERE name=?"
-        ).bind(tag).first()
-        if not tag_row:
-            return json_resp({"activities": []})
-        res = await env.DB.prepare(
-            base_q
-            + " JOIN activity_tags at2 ON at2.activity_id=a.id"
-              " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
-        ).bind(tag_row.id).all()
-    elif atype and fmt:
-        res = await env.DB.prepare(
-            base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
-        ).bind(atype, fmt).all()
-    elif atype:
-        res = await env.DB.prepare(
-            base_q + " WHERE a.type=? ORDER BY a.created_at DESC"
-        ).bind(atype).all()
-    elif fmt:
-        res = await env.DB.prepare(
-            base_q + " WHERE a.format=? ORDER BY a.created_at DESC"
-        ).bind(fmt).all()
-    else:
-        res = await env.DB.prepare(
+    async def fetch_activities():
+        if tag:
+            tag_row = await env.DB.prepare(
+                "SELECT id FROM tags WHERE name=?"
+            ).bind(tag).first()
+            if not tag_row:
+                return None
+            return await env.DB.prepare(
+                base_q
+                + " JOIN activity_tags at2 ON at2.activity_id=a.id"
+                  " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
+            ).bind(tag_row.id).all()
+        if atype and fmt:
+            return await env.DB.prepare(
+                base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
+            ).bind(atype, fmt).all()
+        if atype:
+            return await env.DB.prepare(
+                base_q + " WHERE a.type=? ORDER BY a.created_at DESC"
+            ).bind(atype).all()
+        if fmt:
+            return await env.DB.prepare(
+                base_q + " WHERE a.format=? ORDER BY a.created_at DESC"
+            ).bind(fmt).all()
+        return await env.DB.prepare(
             base_q + " ORDER BY a.created_at DESC"
         ).all()
+
+    try:
+        res = await fetch_activities()
+    except Exception as e:
+        if not _is_no_such_table_error(e):
+            raise
+        await init_db(env)
+        res = await fetch_activities()
+
+    if res is None:
+        return json_resp({"activities": []})
 
     activities = []
     for row in res.results or []:
