@@ -39,6 +39,7 @@ import json
 import os
 import re
 import traceback
+from types import SimpleNamespace
 from typing import Any, Dict
 from urllib.parse import urlparse, parse_qs
 
@@ -531,8 +532,20 @@ async def init_db(env):
         await env.DB.prepare(sql).run()
 
 
+_NO_SUCH_TABLE_RE = re.compile(r"\bno such table\b", re.IGNORECASE)
+
+
 def _is_no_such_table_error(exc: Exception) -> bool:
-    return "no such table:" in (str(exc) or "").lower()
+    """Return True when an exception chain indicates a SQLite/D1 missing-table error."""
+    if _NO_SUCH_TABLE_RE.search(str(exc) or ""):
+        return True
+    cause = getattr(exc, "__cause__", None)
+    return bool(cause and _NO_SUCH_TABLE_RE.search(str(cause) or ""))
+
+
+def _empty_d1_result():
+    """Return a minimal D1-style result object with an empty `results` collection."""
+    return SimpleNamespace(results=[])
 
 
 # ---------------------------------------------------------------------------
@@ -834,7 +847,7 @@ async def api_list_activities(req, env):
                 "SELECT id FROM tags WHERE name=?"
             ).bind(tag).first()
             if not tag_row:
-                return None
+                return _empty_d1_result()
             return await env.DB.prepare(
                 base_q
                 + " JOIN activity_tags at2 ON at2.activity_id=a.id"
@@ -863,9 +876,6 @@ async def api_list_activities(req, env):
             raise
         await init_db(env)
         res = await fetch_activities()
-
-    if res is None:
-        return json_resp({"activities": []})
 
     activities = []
     for row in res.results or []:

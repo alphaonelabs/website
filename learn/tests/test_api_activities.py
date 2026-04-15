@@ -165,10 +165,11 @@ class TestApiListActivities:
 
         failing_stmt = make_stmt()
         failing_stmt.all.side_effect = Exception("D1_ERROR: no such table: activities: SQLITE_ERROR")
+        ddl_count = len(worker._DDL)
 
         env = make_env(db=MockDB(
             [failing_stmt]                      # first list query fails
-            + [make_stmt() for _ in range(14)] # init_db DDL statements
+            + [make_stmt() for _ in range(ddl_count)] # init_db DDL statements
             + [
                 make_stmt(all_results=[row]),   # retried list query succeeds
                 make_stmt(all_results=[]),      # tags query
