@@ -182,7 +182,7 @@ def _derive_aes_key_bytes(secret: str) -> bytes:
 async def _import_aes_key(key_bytes: bytes) -> object:
     """Import raw bytes as a Web Crypto AES-GCM CryptoKey."""
     key_buf = to_js(key_bytes, create_pyproxies=False)
-    algo    = {"name": "AES-GCM"}
+    algo    = to_js({"name": "AES-GCM"}, dict_converter=js.Object.fromEntries)
     usages  = to_js(["encrypt", "decrypt"])
     return await js.crypto.subtle.importKey("raw", key_buf, algo, False, usages)
 
@@ -205,7 +205,7 @@ async def encrypt_aes(plaintext: str, secret: str) -> str:
         iv         = bytes(iv_array) # Extract back to python bytes for storage
 
         # Pass algo as a plain dict; Web Crypto accepts both JS objects and plain dicts
-        algo       = {"name": "AES-GCM", "iv": iv_array}
+        algo       = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
         data       = to_js(plaintext.encode("utf-8"), create_pyproxies=False)
         ct_buf     = await js.crypto.subtle.encrypt(algo, crypto_key, data)
         ct         = bytes(js.Uint8Array.new(ct_buf))
@@ -233,7 +233,7 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         key_bytes  = _derive_aes_key_bytes(secret)
         crypto_key = await _import_aes_key(key_bytes)
         iv_array   = to_js(iv, create_pyproxies=False)
-        algo       = {"name": "AES-GCM", "iv": iv_array}
+        algo       = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
         data       = to_js(ct, create_pyproxies=False)
         pt_buf     = await js.crypto.subtle.decrypt(algo, crypto_key, data)
         return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
