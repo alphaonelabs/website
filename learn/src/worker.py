@@ -47,72 +47,92 @@ from workers import Response
 import js
 from pyodide.ffi import to_js
 
-try:
-    import sentry_sdk
-except Exception:
-    sentry_sdk = None
-
 _SENTRY_INITIALIZED = False
+_SENTRY_DSN: str = ""
 
 
 def init_sentry(env):
-    """Initialize Sentry once per worker isolate if SENTRY_DSN is configured."""
-    global _SENTRY_INITIALIZED
+    """Cache the Sentry DSN once per worker isolate."""
+    global _SENTRY_INITIALIZED, _SENTRY_DSN
     if _SENTRY_INITIALIZED:
         return
     _SENTRY_INITIALIZED = True
+    _SENTRY_DSN = getattr(env, "SENTRY_DSN", "") or ""
 
-    if sentry_sdk is None:
-        return
 
-    dsn = getattr(env, "SENTRY_DSN", "")
-    if not dsn:
-        return
-
-    traces_sample_rate_raw = getattr(env, "SENTRY_TRACES_SAMPLE_RATE", "0")
+async def _post_to_sentry(exc: Exception, dsn: str, where: str, req=None):
+    """Send an exception to Sentry via the HTTP Store API using js.fetch."""
     try:
-        traces_sample_rate = float(traces_sample_rate_raw)
-    except Exception:
-        traces_sample_rate = 0.0
+        parsed     = urlparse(dsn)
+        public_key = parsed.username
+        host       = parsed.hostname
+        project_id = parsed.path.strip("/")
+        endpoint   = f"https://{host}/api/{project_id}/store/"
 
-    environment = getattr(env, "SENTRY_ENVIRONMENT", "production")
-    release = getattr(env, "SENTRY_RELEASE", "")
+        tb_frames = []
+        if exc.__traceback__:
+            for fi in traceback.extract_tb(exc.__traceback__):
+                tb_frames.append({
+                    "filename":     fi.filename,
+                    "function":     fi.name,
+                    "lineno":       fi.lineno,
+                    "context_line": fi.line or "",
+                })
 
-    try:
-        kwargs = {
-            "dsn": dsn,
-            "traces_sample_rate": traces_sample_rate,
-            "environment": environment,
+        event: Dict[str, Any] = {
+            "event_id":  os.urandom(16).hex(),
+            "level":     "error",
+            "logger":    where or "worker",
+            "tags":      {"where": where or "unknown"},
+            "exception": {
+                "values": [{
+                    "type":       type(exc).__name__,
+                    "value":      str(exc),
+                    "stacktrace": {"frames": tb_frames},
+                }]
+            },
         }
-        if release:
-            kwargs["release"] = release
-        sentry_sdk.init(**kwargs)
-    except Exception as exc:
-        # Sentry setup should never block requests.
-        print(json.dumps({"level": "warn", "where": "sentry_init", "error": str(exc)}))
+        if req:
+            event["request"] = {"url": req.url, "method": req.method}
 
-def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
-    """Best-effort exception logging with full traceback and request context."""
+        auth = (
+            f"Sentry sentry_version=7, sentry_key={public_key},"
+            f" sentry_client=cf-worker/1.0"
+        )
+        options = to_js(
+            {
+                "method":  "POST",
+                "headers": {"Content-Type": "application/json", "X-Sentry-Auth": auth},
+                "body":    json.dumps(event),
+            },
+            dict_converter=js.Object.fromEntries,
+        )
+        await js.fetch(endpoint, options)
+    except Exception as post_exc:
+        print(json.dumps({"level": "warn", "where": "sentry_http_post", "error": str(post_exc)}))
+
+
+async def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
+    """Best-effort exception logging via print + Sentry HTTP Store API."""
     try:
         payload: Dict[str, Any] = {
-            "level": "error",
-            "where": where or "unknown",
+            "level":      "error",
+            "where":      where or "unknown",
             "error_type": type(exc).__name__,
-            "error": str(exc),
-            "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+            "error":      str(exc),
+            "traceback":  "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
         }
         if req:
             payload["request"] = {
                 "method": req.method,
-                "url": req.url,
-                "path": urlparse(req.url).path,
+                "url":    req.url,
+                "path":   urlparse(req.url).path,
             }
-
-        if sentry_sdk is not None and _SENTRY_INITIALIZED:
-            sentry_sdk.capture_exception(exc)
-            sentry_sdk.flush(timeout=2)
-
         print(json.dumps(payload))
+
+        dsn = _SENTRY_DSN or (getattr(_env, "SENTRY_DSN", "") if _env else "")
+        if dsn:
+            await _post_to_sentry(exc, dsn, where, req)
     except Exception:
         pass
 
@@ -191,7 +211,7 @@ async def encrypt_aes(plaintext: str, secret: str) -> str:
         ct         = bytes(js.Uint8Array.new(ct_buf))
         return "v1:" + base64.b64encode(iv + ct).decode("ascii")
     except Exception as exc:
-        capture_exception(exc, where="encrypt_aes")
+        await capture_exception(exc, where="encrypt_aes")
         raise RuntimeError(f"AES-256-GCM encryption failed: {exc}") from exc
 
 
@@ -207,7 +227,7 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         raw        = base64.b64decode(ciphertext[3:])
         iv, ct     = raw[:12], raw[12:]
     except Exception as exc:
-        capture_exception(exc, where="decrypt_aes.decode")
+        await capture_exception(exc, where="decrypt_aes.decode")
         return "[decryption error]"
     try:
         key_bytes  = _derive_aes_key_bytes(secret)
@@ -219,7 +239,7 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
     except Exception as exc:
         # Auth tag mismatch = tampered/corrupted ciphertext
-        capture_exception(exc, where="decrypt_aes.auth")
+        await capture_exception(exc, where="decrypt_aes.auth")
         return "[decryption error]"
 
 
@@ -730,7 +750,7 @@ async def api_register(req, env):
     except Exception as e:
         if "UNIQUE" in str(e):
             return err("Username or email already registered", 409)
-        capture_exception(e, req, env, "api_register.insert_user")
+        await capture_exception(e, req, env, "api_register.insert_user")
         return err("Registration failed — please try again", 500)
 
     token = create_token(uid, username, role, env.JWT_SECRET)
@@ -902,7 +922,7 @@ async def api_create_activity(req, env):
             atype, fmt, schedule_type, user["id"]
         ).run()
     except Exception as e:
-        capture_exception(e, req, env, "api_create_activity.insert_activity")
+        await capture_exception(e, req, env, "api_create_activity.insert_activity")
         return err("Failed to create activity — please try again", 500)
 
     for tag_name in (body.get("tags") or []):
@@ -921,14 +941,14 @@ async def api_create_activity(req, env):
                     "INSERT INTO tags (id,name) VALUES (?,?)"
                 ).bind(tag_id, tag_name).run()
             except Exception as e:
-                capture_exception(e, req, env, f"api_create_activity.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+                await capture_exception(e, req, env, f"api_create_activity.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
             ).bind(act_id, tag_id).run()
         except Exception as e:
-            capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+            await capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok({"id": act_id, "title": title}, "Activity created")
@@ -1036,7 +1056,7 @@ async def api_join(req, env):
             " VALUES (?,?,?,?)"
         ).bind(enr_id, act_id, user["id"], role).run()
     except Exception as e:
-        capture_exception(e, req, env, "api_join.insert_enrollment")
+        await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
 
     return ok(None, "Joined activity successfully")
@@ -1146,7 +1166,7 @@ async def api_create_session(req, env):
             await encrypt_aes(location, enc) if location else "",
         ).run()
     except Exception as e:
-        capture_exception(e, req, env, "api_create_session.insert_session")
+        await capture_exception(e, req, env, "api_create_session.insert_session")
         return err("Failed to create session — please try again", 500)
 
     return ok({"id": sid}, "Session created")
@@ -1195,14 +1215,14 @@ async def api_add_activity_tags(req, env):
                     "INSERT INTO tags (id,name) VALUES (?,?)"
                 ).bind(tag_id, tag_name).run()
             except Exception as e:
-                capture_exception(e, req, env, f"api_add_activity_tags.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+                await capture_exception(e, req, env, f"api_add_activity_tags.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
             ).bind(act_id, tag_id).run()
         except Exception as e:
-            capture_exception(e, req, env, f"api_add_activity_tags.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+            await capture_exception(e, req, env, f"api_add_activity_tags.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok(None, "Tags updated")
@@ -1298,7 +1318,7 @@ async def _dispatch(request, env):
                 await init_db(env)
                 return ok(None, "Database initialised")
             except Exception as e:
-                capture_exception(e, request, env, "api_init")
+                await capture_exception(e, request, env, "api_init")
                 return err("Database init failed — check D1 binding", 500)
 
         if path == "/api/seed" and method == "POST":
@@ -1307,7 +1327,7 @@ async def _dispatch(request, env):
                 await seed_db(env, env.ENCRYPTION_KEY)
                 return ok(None, "Sample data seeded")
             except Exception as e:
-                capture_exception(e, request, env, "api_seed")
+                await capture_exception(e, request, env, "api_seed")
                 return err("Seed failed — check D1 binding and schema", 500)
 
         if path == "/api/register" and method == "POST":
@@ -1346,7 +1366,7 @@ async def _dispatch(request, env):
 
         if path.rstrip("/") == "/api/error" and method == "GET":
             exc = RuntimeError("Sentry test error from /api/error")
-            capture_exception(exc, request, env, "api_error_test")
+            await capture_exception(exc, request, env, "api_error_test")
             return ok(None, "Test error sent to Sentry v2")
 
         return err("API endpoint not found", 404)
@@ -1359,5 +1379,5 @@ async def on_fetch(request, env):
         init_sentry(env)
         return await _dispatch(request, env)
     except Exception as e:
-        capture_exception(e, request, env, "on_fetch_unhandled")
+        await capture_exception(e, request, env, "on_fetch_unhandled")
         return err("Internal server error", 500)
