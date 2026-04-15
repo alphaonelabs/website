@@ -18,12 +18,6 @@ Make sure you have installed:
  - Node.js
  - Wrangler CLI
 
-Install Python dependencies (used by Cloudflare Python Worker packaging):
-
-```bash
-pip install -r requirements.txt
-```
-
 Install Wrangler:
 
 ```bash
