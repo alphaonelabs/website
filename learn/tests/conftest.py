@@ -115,6 +115,10 @@ class _Crypto:
 class _JsModule:
     crypto = _Crypto()
     Uint8Array = _Uint8Array()
+    class Object:
+        @staticmethod
+        def fromEntries(entries):
+            return dict(entries)
 
 
 sys.modules["js"] = _JsModule()
