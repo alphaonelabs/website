@@ -18,6 +18,12 @@ Make sure you have installed:
  - Node.js
  - Wrangler CLI
 
+Install Python dependencies (used by Cloudflare Python Worker packaging):
+
+```bash
+pip install -r requirements.txt
+```
+
 Install Wrangler:
 
 ```bash
@@ -71,6 +77,7 @@ Create a `.dev.vars` file in the project root:
 ```
 ENCRYPTION_KEY=your-dev-encryption-key
 JWT_SECRET=your-dev-jwt-secret
+SENTRY_DSN=your-sentry-dsn
 ```
 
 - For Production
@@ -79,6 +86,39 @@ Use Wrangler secrets:
 ```bash
 wrangler secret put ENCRYPTION_KEY
 wrangler secret put JWT_SECRET
+wrangler secret put SENTRY_DSN
+```
+
+Or upload all values from an env file after verifying the active Cloudflare account:
+
+```bash
+./scripts/upload-vars.sh .env.production --account-id YOUR_ACCOUNT_ID
+```
+
+To run with no arguments, add your account ID to `.env.production`:
+
+```
+CLOUDFLARE_ACCOUNT_ID=YOUR_ACCOUNT_ID
+```
+
+Then run:
+
+```bash
+./scripts/upload-vars.sh
+```
+
+You can also verify by account name:
+
+```bash
+./scripts/upload-vars.sh .env.production --account-name "Your Account Name"
+```
+
+Optional Sentry tuning secrets:
+
+```bash
+wrangler secret put SENTRY_TRACES_SAMPLE_RATE
+wrangler secret put SENTRY_ENVIRONMENT
+wrangler secret put SENTRY_RELEASE
 ```
 
 
