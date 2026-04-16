@@ -1,147 +1,382 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Alpha One Labs - Login / Register">
+  <meta name="keywords" content="education, login, register, courses, Alpha One Labs">
   <title>Login / Register - Alpha One Labs</title>
-  <link rel="icon" type="image/png" href="/images/logo.png" />
+  
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#4F46E5', dark: '#3730A3' } } } } };</script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} }
+    }
+
+    const DEBUG = false;
+    function log(message) {
+      if (DEBUG) console.log(`[DarkMode] ${message}`);
+    }
+
+    function initializeDarkMode() {
+      log('Initializing dark mode');
+      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+      if (darkModeEnabled) {
+        document.documentElement.classList.add('dark');
+        log('Added dark class');
+      } else if (localStorage.getItem('darkMode') === null) {
+        localStorage.setItem('darkMode', 'false');
+        log('Defaulting to light mode');
+      }
+      updateDarkModeIcon();
+    }
+
+    function toggleDarkMode() {
+      log('Toggle dark mode called');
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark.toString());
+      log(`Dark mode toggled to: ${isDark}`);
+      updateDarkModeIcon();
+    }
+
+    function updateDarkModeIcon() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const icon = document.getElementById('darkModeIcon');
+      const iconMobile = document.getElementById('darkModeIconMobile');
+      
+      if (icon) {
+        icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      }
+      if (iconMobile) {
+        iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
+      }
+    }
+
+    initializeDarkMode();
+    document.addEventListener('DOMContentLoaded', initializeDarkMode);
+  </script>
+
   <style>
-    .hidden { display: none !important; }
-    .gradient-hero { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #2563EB 100%); }
+    html, body {
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    
+    .dark { color-scheme: dark; }
+    :root { color-scheme: light; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-50 flex items-center justify-center px-4">
 
-<div class="w-full max-w-md">
-  <div class="text-center mb-8">
-    <a href="/" class="inline-flex items-center gap-2">
-      <img src="/images/logo.png" alt="Alpha One Labs" class="h-10 w-auto" />
-      <span class="font-bold text-2xl text-slate-800">Alpha One Labs</span>
-    </a>
-    <p class="text-slate-500 text-sm mt-2">All user data encrypted at rest - zero plaintext PII stored</p>
-  </div>
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
 
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-    <div class="flex border-b border-slate-100">
-      <button id="tab-login" onclick="switchTab('login')"
-        class="flex-1 py-4 text-sm font-semibold border-b-2 border-brand text-brand transition">Login</button>
-      <button id="tab-register" onclick="switchTab('register')"
-        class="flex-1 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition">Register</button>
-    </div>
+  <div id="site-navbar"></div>
 
-    <div id="panel-login" class="p-8">
-      <h2 class="text-xl font-bold text-slate-800 mb-6">Welcome back!</h2>
-      <form id="form-login" class="space-y-4" novalidate>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
-          <input id="l-username" type="text" autocomplete="username" required
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="your_username" />
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="flex-1 w-full flex items-center justify-center py-12 px-4">
+    <div class="w-full max-w-md">
+      <!-- Brand Header -->
+      <div class="text-center mb-8">
+        <a href="/" class="inline-flex items-center justify-center gap-3 mb-4 group">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+            <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs Logo" class="w-6 h-6">
+          </div>
+          <span class="font-bold text-2xl bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Alpha One Labs</span>
+        </a>
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          <i class="fas fa-shield-alt mr-1"></i>All user data encrypted at rest - zero plaintext PII stored
+        </p>
+      </div>
+
+      <!-- Auth Card -->
+      <div class="rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <button id="tab-login" onclick="switchTab('login')"
+            class="flex-1 py-4 text-sm font-semibold border-b-2 border-teal-500 text-teal-600 dark:text-teal-400 transition">
+            <i class="fas fa-sign-in-alt mr-2"></i>Login
+          </button>
+          <button id="tab-register" onclick="switchTab('register')"
+            class="flex-1 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition">
+            <i class="fas fa-user-plus mr-2"></i>Register
+          </button>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-          <input id="l-password" type="password" autocomplete="current-password" required
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="..." />
+
+        <!-- LOGIN PANEL -->
+        <div id="panel-login" class="p-8">
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Welcome back!</h2>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in to your Alpha One Labs account</p>
+          
+          <form id="form-login" class="space-y-4" novalidate>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-user mr-1.5 text-teal-600 dark:text-teal-400"></i>Username
+              </label>
+              <input id="l-username" type="text" autocomplete="username" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="your_username" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-lock mr-1.5 text-teal-600 dark:text-teal-400"></i>Password
+              </label>
+              <input id="l-password" type="password" autocomplete="current-password" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="••••••••" />
+            </div>
+
+            <div id="login-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm flex items-start gap-2 animate-pulse">
+              <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+              <span id="login-err-msg"></span>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95">
+              <i class="fas fa-arrow-right mr-2"></i>Sign In
+            </button>
+          </form>
+
+          <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2 flex items-center">
+              <i class="fas fa-info-circle mr-2"></i>Demo Credentials
+            </p>
+            <div class="space-y-1.5 text-xs">
+              <div class="font-mono bg-white dark:bg-gray-800 p-2 rounded border border-blue-100 dark:border-blue-800 text-gray-700 dark:text-gray-300">
+                <span class="text-blue-600 dark:text-blue-300">alice</span> / <span class="text-blue-600 dark:text-blue-300">password123</span>
+              </div>
+              <div class="font-mono bg-white dark:bg-gray-800 p-2 rounded border border-blue-100 dark:border-blue-800 text-gray-700 dark:text-gray-300">
+                <span class="text-blue-600 dark:text-blue-300">charlie</span> / <span class="text-blue-600 dark:text-blue-300">password123</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <p id="login-err" class="text-red-500 text-sm hidden"></p>
-        <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Sign In</button>
-      </form>
-      <p class="text-center text-slate-400 text-sm mt-6">
-        Demo: <code class="bg-slate-100 px-1 rounded">alice / password123</code>
-        or <code class="bg-slate-100 px-1 rounded">charlie / password123</code>
+
+        <!-- REGISTER PANEL -->
+        <div id="panel-register" class="p-8 hidden">
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Create your account</h2>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Join Alpha One Labs and start learning today</p>
+          
+          <form id="form-register" class="space-y-4" novalidate>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-id-card mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Display Name
+              </label>
+              <input id="r-name" type="text" autocomplete="name"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="Your Full Name" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-user mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Username
+              </label>
+              <input id="r-username" type="text" autocomplete="username" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="choose_a_username" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-envelope mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Email
+              </label>
+              <input id="r-email" type="email" autocomplete="email" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="you@example.com" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-lock mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Password
+              </label>
+              <input id="r-password" type="password" autocomplete="new-password" required minlength="6"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="min 6 characters" />
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                <i class="fas fa-shield-alt mr-1"></i>Passwords are encrypted at rest
+              </p>
+            </div>
+
+            <div id="register-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm flex items-start gap-2 animate-pulse">
+              <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+              <span id="register-err-msg"></span>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95">
+              <i class="fas fa-user-check mr-2"></i>Create Account
+            </button>
+          </form>
+
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
+            By registering, you agree to our <a href="#" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Terms of Service</a> and <a href="#" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Privacy Policy</a>
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer Link -->
+      <p class="text-center text-gray-500 dark:text-gray-400 text-xs mt-6">
+        <a href="/" class="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline inline-flex items-center justify-center gap-1 font-semibold transition">
+          <i class="fas fa-arrow-left"></i>Back to activities
+        </a>
       </p>
     </div>
+  </main>
 
-    <div id="panel-register" class="p-8 hidden">
-      <h2 class="text-xl font-bold text-slate-800 mb-6">Create your account</h2>
-      <form id="form-register" class="space-y-4" novalidate>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Display Name</label>
-          <input id="r-name" type="text" autocomplete="name"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="Your Full Name" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
-          <input id="r-username" type="text" autocomplete="username" required
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="choose_a_username" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-          <input id="r-email" type="email" autocomplete="email" required
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="you@example.com" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-          <input id="r-password" type="password" autocomplete="new-password" required minlength="6"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="min 6 characters" />
-        </div>
-        <p id="register-err" class="text-red-500 text-sm hidden"></p>
-        <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Create Account</button>
-      </form>
-    </div>
-  </div>
+  <div id="site-footer"></div>
 
-  <p class="text-center text-slate-400 text-xs mt-6">
-    <a href="/" class="hover:text-brand">Back to activities</a>
-  </p>
-</div>
+  <script src="/js/layout.js" defer></script>
+  <script>
+    const API = '';
 
-<script>
-  const API = '';
-  function switchTab(tab) {
+// Check if already logged in
+if (localStorage.getItem('edu_token')) {
+    window.location.href = '/dashboard.html';
+}
+
+// Tab switching
+function switchTab(tab) {
     const isLogin = tab === 'login';
+    
     document.getElementById('panel-login').classList.toggle('hidden', !isLogin);
     document.getElementById('panel-register').classList.toggle('hidden', isLogin);
-    document.getElementById('tab-login').className    = 'flex-1 py-4 text-sm font-semibold border-b-2 transition ' + (isLogin ? 'border-brand text-brand' : 'border-transparent text-slate-400 hover:text-slate-600');
-    document.getElementById('tab-register').className = 'flex-1 py-4 text-sm font-semibold border-b-2 transition ' + (!isLogin ? 'border-brand text-brand' : 'border-transparent text-slate-400 hover:text-slate-600');
-  }
-  const params = new URLSearchParams(location.search);
-  if (params.get('tab') === 'register') switchTab('register');
+    
+    document.getElementById('tab-login').className = 
+        'flex-1 py-4 text-sm font-semibold border-b-2 transition ' +
+        (isLogin 
+            ? 'border-teal-500 text-teal-600 dark:text-teal-400' 
+            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
+    
+    document.getElementById('tab-register').className = 
+        'flex-1 py-4 text-sm font-semibold border-b-2 transition ' +
+        (!isLogin 
+            ? 'border-teal-500 text-teal-600 dark:text-teal-400' 
+            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
+}
 
-  function storeAuth(data) {
+// Store authentication data
+function storeAuth(data) {
     localStorage.setItem('edu_token', data.token);
-    localStorage.setItem('edu_user',  JSON.stringify(data.user));
+    localStorage.setItem('edu_user', JSON.stringify(data.user));
     window.location.href = '/dashboard.html';
-  }
-  function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); }
+}
 
-  document.getElementById('form-login').addEventListener('submit', async e => {
+// Show error message
+function showErr(id, msg) {
+    const el = document.getElementById(id);
+    const msgEl = document.getElementById(id + '-msg');
+    msgEl.textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => {
+        el.classList.add('hidden');
+    }, 5000);
+}
+
+// Handle tab parameter in URL
+const params = new URLSearchParams(location.search);
+if (params.get('tab') === 'register') {
+    switchTab('register');
+}
+
+// Login form submission
+document.getElementById('form-login').addEventListener('submit', async e => {
     e.preventDefault();
     document.getElementById('login-err').classList.add('hidden');
+    
     const btn = e.target.querySelector('button[type=submit]');
-    btn.textContent = 'Signing in...'; btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    
     try {
-      const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ username: document.getElementById('l-username').value.trim(), password: document.getElementById('l-password').value }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      storeAuth(data.data);
-    } catch (err) { showErr('login-err', err.message); }
-    finally { btn.textContent = 'Sign In'; btn.disabled = false; }
-  });
+        const username = document.getElementById('l-username').value.trim();
+        const password = document.getElementById('l-password').value;
+        
+        if (!username || !password) {
+            throw new Error('Please enter both username and password');
+        }
+        
+        const res = await fetch(`${API}/api/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+            throw new Error(data.error || 'Login failed');
+        }
+        
+        storeAuth(data.data);
+    } catch (err) {
+        console.error('Login error:', err);
+        showErr('login-err', err.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
 
-  document.getElementById('form-register').addEventListener('submit', async e => {
+// Register form submission
+document.getElementById('form-register').addEventListener('submit', async e => {
     e.preventDefault();
     document.getElementById('register-err').classList.add('hidden');
-    const btn  = e.target.querySelector('button[type=submit]');
-    btn.textContent = 'Creating...'; btn.disabled = true;
+    
+    const btn = e.target.querySelector('button[type=submit]');
+    const originalText = btn.textContent;
+    btn.textContent = 'Creating...';
+    btn.disabled = true;
+    
     try {
-      const res  = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          name:     document.getElementById('r-name').value.trim(),
-          username: document.getElementById('r-username').value.trim(),
-          email:    document.getElementById('r-email').value.trim(),
-          password: document.getElementById('r-password').value,
-        }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Registration failed');
-      storeAuth(data.data);
-    } catch (err) { showErr('register-err', err.message); }
-    finally { btn.textContent = 'Create Account'; btn.disabled = false; }
-  });
-
-  if (localStorage.getItem('edu_token')) window.location.href = '/dashboard.html';
-</script>
+        const name = document.getElementById('r-name').value.trim();
+        const username = document.getElementById('r-username').value.trim();
+        const email = document.getElementById('r-email').value.trim();
+        const password = document.getElementById('r-password').value;
+        
+        if (!username || !email || !password) {
+            throw new Error('Please fill in all required fields');
+        }
+        
+        if (password.length < 6) {
+            throw new Error('Password must be at least 6 characters');
+        }
+        
+        const res = await fetch(`${API}/api/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                username: username,
+                email: email,
+                password: password
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+            throw new Error(data.error || 'Registration failed');
+        }
+        
+        storeAuth(data.data);
+    } catch (err) {
+        console.error('Register error:', err);
+        showErr('register-err', err.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
+  </script>
 </body>
 </html>

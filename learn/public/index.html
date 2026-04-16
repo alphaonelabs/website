@@ -1,1184 +1,657 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Alpha One Labs – Where Curiosity Meets Knowledge</title>
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous"/>
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{
-      --teal:#0D9488; --teal-d:#0F766E; --teal-dd:#115E59;
-      --teal-l:#14B8A6; --teal-ll:#99F6E4; --teal-dim:#F0FDFA;
-      --orange:#F97316; --orange-d:#EA6C0A;
-      --ink:#1e293b; --muted:#64748b; --border:#E2E8F0;
-      --white:#ffffff; --paper:#F8FAFC;
-    }
-    html{scroll-behavior:smooth;}
-    body{font-family:'DM Sans',sans-serif;background:var(--white);color:var(--ink);overflow-x:hidden;}
-    h1,h2,h3,h4{font-family:'Syne',sans-serif;}
-    .hidden{display:none!important;}
-    a{text-decoration:none;color:inherit;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Alpha One Labs - Open Source Education Platform">
+    <meta name="keywords" content="education, open source, courses, learning, Alpha One Labs">
+    <title>Alpha One Labs - Open Source Education Platform</title>
 
-    /* ── NAVBAR ── */
-    #navbar{
-      position:sticky;top:0;z-index:200;
-      background:var(--teal);
-      box-shadow:0 2px 16px rgba(0,0,0,.15);
-    }
-    #navbar.scrolled{background:var(--teal-d);box-shadow:0 4px 24px rgba(0,0,0,.2);}
-    .nav-inner{max-width:1200px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:68px;}
-    @media(max-width:768px){.nav-inner{height:60px;padding:0 1rem;}}
-    .nav-logo{display:flex;align-items:center;gap:10px;}
-    .nav-logo img{width:50px;height:50px;border-radius:8px;}
-    @media(max-width:768px){.nav-logo img{width:40px;height:40px;}}
-    .nav-logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:#fff;}
-    @media(max-width:768px){.nav-logo-text{font-size:.95rem;}}
-    .nav-links{display:flex;align-items:center;gap:2px;}
-    .nav-link{font-size:.85rem;font-weight:500;color:rgba(255,255,255,.85);padding:6px 14px;border-radius:8px;}
-    .nav-link:hover{background:rgba(255,255,255,.15);color:#fff;}
-    .nav-link.active{background:rgba(255,255,255,.2);color:#fff;font-weight:600;}
-    #nav-auth{display:flex;align-items:center;gap:10px;position:relative;}
-    .nav-toggle{display:none;background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;}
-
-    @media(max-width:768px){
-      .nav-links{display:none;}
-      .nav-toggle{display:block;}
-    }
-
-    /* Mobile Menu */
-    #mobile-menu{
-      position:fixed;top:60px;left:0;right:0;bottom:0;
-      background:#fff;z-index:190;
-      overflow-y:auto;max-height:calc(100vh - 60px);
-      box-shadow:0 4px 12px rgba(0,0,0,.1);
-    }
-    #mobile-menu.hidden{display:none;}
-    .mobile-menu-item{padding:16px 16px;border-bottom:1px solid var(--border);}
-    .mobile-menu-item a{
-      font-family:'Syne',sans-serif;font-weight:600;color:var(--ink);font-size:.95rem;
-      display:flex;align-items:center;gap:10px;
-    }
-    .mobile-menu-item i{color:var(--teal);width:18px;}
-    .accordion-btn{
-      width:100%;padding:12px 16px;border:none;background:none;
-      font-family:'Syne',sans-serif;font-weight:600;color:var(--ink);
-      display:flex;align-items:center;justify-content:space-between;
-      cursor:pointer;font-size:.95rem;
-    }
-    .accordion-btn i{color:var(--teal);}
-    .accordion-content{display:flex;flex-direction:column;background:var(--paper);}
-    .accordion-content.hidden{display:none;}
-    .accordion-content a{
-      padding:10px 16px 10px 40px;font-size:.85rem;color:var(--muted);
-      display:flex;align-items:center;gap:8px;
-    }
-    .accordion-content a i{font-size:.7rem;}
-
-    /* Profile dropdown */
-    #profile-dropdown{
-      position:absolute;right:0;top:calc(100% + 10px);
-      background:#fff;border:1px solid var(--border);
-      border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.14);
-      min-width:220px;overflow:hidden;
-      opacity:0;transform:translateY(-8px) scale(.97);
-      pointer-events:none;
-    }
-    #profile-dropdown.open{opacity:1;transform:none;pointer-events:auto;}
-     
-    /* ── HERO ── */
-    @keyframes iconJump {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-25px); }
-}
-  
-  .hero-icon {
-    animation: iconJump 3.5s ease-in-out infinite;
-  }
-  
-  /* Stagger each icon for wave effect */
-  .hi1 { animation-delay: 0s; }
-  .hi2 { animation-delay: 0.2s; }
-  .hi3 { animation-delay: 0.4s; }
-  .hi4 { animation-delay: 0.6s; }
-  .hi5 { animation-delay: 0.8s; }
-  .hi6 { animation-delay: 1s; }
-  .hi7 { animation-delay: 1.2s; }
-    .hero-wrap{
-      position:relative;overflow:hidden;
-      background:linear-gradient(135deg,var(--teal-dd) 0%,var(--teal) 55%,var(--teal-l) 100%);
-      min-height:88vh;display:flex;flex-direction:column;
-    }
-    @media(max-width:768px){.hero-wrap{min-height:75vh;}}
-    @media(max-width:640px){.hero-wrap{min-height:65vh;}}
-
-    .hero-icons-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
-    .hero-icon{position:absolute;color:rgba(255,255,255,.1);font-size:4rem;}
-    .hi1{top:8%;left:6%;}
-    .hi2{top:18%;right:10%;font-size:5rem;}
-    .hi3{bottom:18%;left:14%;font-size:3.5rem;}
-    .hi4{bottom:22%;right:7%;font-size:4.5rem;}
-    .hi5{top:48%;left:48%;font-size:5.5rem;}
-    .hi6{top:4%;left:44%;font-size:3rem;}
-    .hi7{bottom:6%;left:58%;font-size:4rem;}
-    @media(max-width:768px){
-      .hero-icon{font-size:2.5rem;}
-      .hi2{font-size:3rem;}
-      .hi5{font-size:3.5rem;}
-    }
-
-    .hero-grid-bg{
-      position:absolute;inset:0;
-      background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
-      background-size:48px 48px;
-      mask-image:radial-gradient(ellipse 85% 70% at 50% 50%,black 20%,transparent 75%);
-      pointer-events:none;
-    }
-
-    .hero-content{
-      position:relative;z-index:10;
-      max-width:1200px;margin:0 auto;
-      padding:5rem 1.5rem 4rem;
-      display:grid;grid-template-columns:3fr 2fr;gap:3.5rem;align-items:center;
-      flex:1;width:100%;
-    }
-    @media(max-width:900px){.hero-content{grid-template-columns:1fr;gap:2rem;padding:3rem 1.5rem 2rem;}}
-    @media(max-width:640px){.hero-content{padding:2rem 1rem 1.5rem;}}
-
-    .hero-open-badge{
-      display:inline-flex;align-items:center;gap:8px;
-      background:rgba(255,255,255,.18);color:#fff;
-      font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;
-      letter-spacing:.1em;text-transform:uppercase;
-      padding:7px 16px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(8px);
-      margin-bottom:1.5rem;
-    }
-    @media(max-width:640px){.hero-open-badge{font-size:.65rem;padding:6px 12px;}}
-    .badge-dot{width:7px;height:7px;background:#34d399;border-radius:50%;box-shadow:0 0 7px #34d399;}
-
-    .hero-title{
-      font-family:'Syne',sans-serif;
-      font-size:clamp(2.8rem,5vw,4.5rem);
-      font-weight:800;line-height:1.04;letter-spacing:-.04em;color:#fff;
-      margin-bottom:1.25rem;
-    }
-    .hero-title .yellow-grad{background:linear-gradient(90deg,#fde68a,#fbbf24);-webkit-background-clip:text;background-clip:text;color:transparent;}
-    .hero-title .cyan-grad{background:linear-gradient(90deg,#a5f3fc,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent;}
-
-    .hero-sub{font-size:1.05rem;color:rgba(255,255,255,.7);line-height:1.72;margin-bottom:2.25rem;max-width:520px;}
-    @media(max-width:640px){.hero-sub{font-size:.95rem;line-height:1.65;margin-bottom:1.5rem;}}
-
-    .btn-hero-w{
-      display:inline-flex;align-items:center;gap:8px;
-      background:#fff;color:var(--teal-d);
-      font-family:'Syne',sans-serif;font-weight:700;font-size:.92rem;
-      padding:14px 28px;border-radius:12px;border:none;cursor:pointer;
-      box-shadow:0 4px 18px rgba(0,0,0,.15);
-    }
-    .btn-hero-w:hover{background:#F0FDFA;transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.2);}
-    .btn-hero-w i{font-size:1.1rem;}
-    @media(max-width:640px){.btn-hero-w{font-size:.85rem;padding:11px 20px;}}
-
-    .btn-hero-outline{
-      display:inline-flex;align-items:center;gap:8px;
-      background:transparent;color:#fff;
-      font-family:'Syne',sans-serif;font-weight:600;font-size:.9rem;
-      padding:13px 26px;border-radius:12px;
-      border:2px solid rgba(255,255,255,.3);cursor:pointer;
-    }
-    .btn-hero-outline:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5);transform:translateY(-1px);}
-    @media(max-width:640px){.btn-hero-outline{font-size:.8rem;padding:10px 20px;}}
-
-    .hero-glass{
-      background:rgba(255,255,255,.1);
-      border:1px solid rgba(255,255,255,.2);
-      border-radius:22px;overflow:hidden;
-      backdrop-filter:blur(14px);
-      box-shadow:0 32px 64px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.15);
-    }
-    @media(max-width:900px){.hero-glass{padding:1rem;}}
-
-    .glass-header{
-      padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.1);
-      display:flex;align-items:center;justify-content:space-between;
-      background:rgba(255,255,255,.05);
-    }
-    @media(max-width:640px){.glass-header{padding:.75rem 1rem;}}
-
-    .mac-dots{display:flex;gap:6px;}
-    .mac-dots span{width:10px;height:10px;border-radius:50%;}
-    .live-indicator{display:flex;align-items:center;gap:6px;font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.06em;}
-    @media(max-width:640px){.live-indicator{font-size:.6rem;}}
-
-    .live-dot{width:7px;height:7px;background:#34d399;border-radius:50%;box-shadow:0 0 7px #34d399;}
-    .glass-row{
-      display:flex;align-items:center;gap:12px;padding:12px 16px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-    }
-    @media(max-width:640px){.glass-row{padding:10px 12px;gap:8px;}}
-
-    .glass-row:last-of-type{border-bottom:none;}
-    .g-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;}
-    @media(max-width:640px){.g-icon{width:32px;height:32px;font-size:.85rem;}}
-
-    .g-bar{width:100%;height:3px;border-radius:2px;background:rgba(255,255,255,.1);margin-top:5px;overflow:hidden;}
-    .g-fill{height:100%;border-radius:2px;}
-    .glass-footer{padding:10px 16px;background:rgba(0,178,122,.08);border-top:1px solid rgba(0,178,122,.15);display:flex;align-items:center;gap:8px;}
-    @media(max-width:640px){.glass-footer{padding:8px 12px;gap:6px;font-size:.65rem;}}
-
-    .hero-wave{position:relative;z-index:10;}
-    .hero-wave svg{display:block;width:100%;}
-
-    /* ── STATS ROW ── */
-    .stats-row{background:var(--white);border-bottom:1px solid var(--border);}
-    .stats-grid{max-width:1200px;margin:0 auto;padding:0 1.5rem;display:grid;grid-template-columns:repeat(4,1fr);}
-    @media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
-    @media(max-width:640px){.stats-grid{grid-template-columns:1fr;padding:0 1rem;}}
+     <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png">
     
-    .stat-cell{
-      padding:2rem 1.5rem;border-right:1px solid var(--border);
-      position:relative;overflow:hidden;cursor:default;
-    }
-    @media(max-width:900px){.stat-cell{padding:1.5rem 1.25rem;}}
-    @media(max-width:640px){
-      .stat-cell{padding:1.25rem 1rem;border-right:none;border-bottom:1px solid var(--border);}
-      .stat-cell:last-child{border-bottom:none;}
-    }
-
-    .stat-cell:last-child{border-right:none;}
-    .stat-cell:hover{background:var(--teal-dim);}
-    .stat-num{font-family:'Syne',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;letter-spacing:-.04em;}
-    @media(max-width:640px){.stat-num{font-size:1.8rem;}}
-    .stat-lbl{font-size:.8rem;color:var(--muted);margin-top:5px;}
-    @media(max-width:640px){.stat-lbl{font-size:.75rem;}}
-
-    /* ── SECTION DIVIDERS ── */
-    .sec-divider{display:flex;align-items:center;gap:1rem;margin-bottom:2.5rem;flex-wrap:wrap;}
-    @media(max-width:768px){.sec-divider{margin-bottom:1.75rem;gap:.75rem;}}
-    @media(max-width:640px){.sec-divider{gap:.5rem;}}
-
-    .sec-divider-line{flex:1;height:2px;background:linear-gradient(90deg,var(--teal-ll),var(--border));min-width:30px;}
-    .sec-divider-line.right{background:linear-gradient(270deg,var(--teal-ll),var(--border));}
-    .sec-divider-icon{
-      width:42px;height:42px;border-radius:12px;flex-shrink:0;
-      background:linear-gradient(135deg,var(--teal),var(--teal-l));
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 4px 12px rgba(13,148,136,.3);
-    }
-    @media(max-width:640px){.sec-divider-icon{width:36px;height:36px;}}
-
-    .sec-divider-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;letter-spacing:-.025em;background:linear-gradient(90deg,var(--teal-d),var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;}
-    @media(max-width:768px){.sec-divider-title{font-size:1.25rem;}}
-    @media(max-width:640px){.sec-divider-title{font-size:1.1rem;}}
-
-    /* ── ACTIVITY BROWSER ── */
-    .acts-wrap{max-width:1200px;margin:5rem auto;padding:0 1.5rem;}
-    @media(max-width:768px){.acts-wrap{margin:3rem auto;padding:0 1.25rem;}}
-    @media(max-width:640px){.acts-wrap{margin:2rem auto;padding:0 1rem;}}
-
-    .filter-bar{display:flex;gap:10px;flex-wrap:wrap;}
-    @media(max-width:768px){.filter-bar{gap:8px;}}
-    @media(max-width:640px){.filter-bar{flex-direction:column;}}
-
-    .filter-group{display:flex;flex-direction:column;gap:5px;}
-    @media(max-width:640px){.filter-group{width:100%;}}
-
-    .filter-label{font-size:.73rem;font-weight:600;color:var(--muted);}
-    .filter-input{
-      background:#fff;border:1.5px solid var(--border);border-radius:10px;
-      padding:9px 14px;font-family:'DM Sans',sans-serif;font-size:.86rem;color:var(--ink);
-      outline:none;
-    }
-    @media(max-width:640px){.filter-input{width:100%;font-size:.8rem;padding:8px 12px;}}
-
-    .filter-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,.12);}
-    .tag-pill{
-      cursor:pointer;font-family:'Syne',sans-serif;font-size:.71rem;font-weight:600;
-      padding:5px 14px;border-radius:999px;border:1.5px solid var(--border);
-      background:#fff;color:var(--muted);
-    }
-    @media(max-width:640px){.tag-pill{font-size:.68rem;padding:4px 12px;}}
-
-    .tag-pill:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-dim);}
-    .tag-pill.active{background:var(--teal);color:#fff;border-color:var(--teal);}
-
-    #activity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1.5rem;}
-    @media(max-width:768px){#activity-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;}}
-    @media(max-width:640px){#activity-grid{grid-template-columns:1fr;gap:1rem;}}
-
-    .act-card{
-      background:#fff;border-radius:18px;border:1px solid var(--border);padding:1.5rem;
-      display:flex;flex-direction:column;gap:.9rem;
-      position:relative;overflow:hidden;
-    }
-    @media(max-width:640px){.act-card{padding:1.25rem;}}
-
-    .act-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:0;}
-    .act-card:hover{transform:translateY(-5px);box-shadow:0 20px 50px rgba(0,0,0,.1);border-color:rgba(13,148,136,.25);}
-    .act-card:hover::before{opacity:1;}
-    .act-card.tc::before{background:linear-gradient(90deg,#3B48E0,#6470F3);}
-    .act-card.tm::before{background:linear-gradient(90deg,#F97316,#fb923c);}
-    .act-card.tw::before{background:linear-gradient(90deg,#00B27A,#4ade80);}
-    .act-card.ts::before{background:linear-gradient(90deg,#0D9488,#14b8a6);}
-    .act-card.to::before{background:linear-gradient(90deg,#9333ea,#c084fc);}
-    .act-card::after{content:'';position:absolute;inset:0;border-radius:18px;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(13,148,136,.05) 0%,transparent 55%);opacity:0;pointer-events:none;}
-    .act-card:hover::after{opacity:1;}
-    .type-badge{display:inline-flex;align-items:center;font-family:'Syne',sans-serif;font-size:.67rem;font-weight:700;padding:4px 10px;border-radius:7px;letter-spacing:.04em;text-transform:uppercase;}
-    .fmt-badge{display:inline-flex;align-items:center;font-size:.7rem;font-weight:500;padding:3px 10px;border-radius:999px;}
-    .tag-chip{font-size:.68rem;font-weight:500;padding:3px 10px;border-radius:999px;background:#F1F5F9;color:#64748b;border:1px solid var(--border);}
-
-    /* ── WHAT WOULD YOU LIKE TO DO ── */
-    .do-section{max-width:1200px;margin:5rem auto;padding:0 1.5rem;}
-    @media(max-width:768px){.do-section{margin:3rem auto;padding:0 1.25rem;}}
-    @media(max-width:640px){.do-section{margin:2rem auto;padding:0 1rem;}}
-
-    .do-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
-    @media(max-width:640px){.do-grid{grid-template-columns:1fr;gap:1rem;}}
-
-    .do-card{
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      padding:3.5rem 2rem;border-radius:20px;text-align:center;cursor:pointer;
-      box-shadow:0 4px 20px rgba(0,0,0,.08);
-    }
-    @media(max-width:768px){.do-card{padding:2.5rem 1.5rem;}}
-    @media(max-width:640px){.do-card{padding:2rem 1.5rem;}}
-
-    .do-card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(0,0,0,.15);}
-    .do-card .do-icon{font-size:3rem;margin-bottom:1rem;}
-    @media(max-width:640px){.do-card .do-icon{font-size:2.5rem;margin-bottom:.75rem;}}
-
-    .do-card:hover .do-icon{transform:scale(1.12);}
-    .do-card .do-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1.3rem;margin-bottom:.5rem;}
-    @media(max-width:640px){.do-card .do-title{font-size:1.1rem;}}
-
-    .do-card .do-sub{font-size:.86rem;opacity:.85;line-height:1.5;}
-    @media(max-width:640px){.do-card .do-sub{font-size:.8rem;}}
-
-    /* ── HOW IT WORKS ── */
-    .how-section{background:var(--paper);padding:5rem 1.5rem;}
-    @media(max-width:768px){.how-section{padding:3rem 1.25rem;}}
-    @media(max-width:640px){.how-section{padding:2rem 1rem;}}
-
-    .how-inner{max-width:1200px;margin:0 auto;}
-    .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin-top:3rem;position:relative;}
-    @media(max-width:900px){.steps-grid{grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem;}}
-    @media(max-width:640px){.steps-grid{grid-template-columns:1fr;gap:1.25rem;}}
-
-    .steps-grid::before{content:'';position:absolute;top:28px;left:calc(16.66% + 28px);right:calc(16.66% + 28px);height:2px;background:linear-gradient(90deg,var(--teal),var(--teal-l));opacity:.3;}
-    @media(max-width:900px){.steps-grid::before{left:50%;transform:translateX(-50%);right:auto;height:auto;width:2px;top:0;bottom:-2rem;}}
-    @media(max-width:640px){.steps-grid::before{display:none;}}
-
-    .step{text-align:center;}
-    .step-num{
-      width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;
-      font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;
-      margin:0 auto 1.25rem;border:2px solid;
-    }
-    @media(max-width:640px){.step-num{width:48px;height:48px;font-size:1rem;margin:0 auto 1rem;}}
-
-    .step:hover .step-num{transform:scale(1.1);}
-    .step-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:.5rem;}
-    @media(max-width:640px){.step-title{font-size:.85rem;}}
-
-    .step-desc{font-size:.83rem;color:var(--muted);line-height:1.65;}
-    @media(max-width:640px){.step-desc{font-size:.78rem;}}
-
-    /* ── FEATURES (dark) ── */
-    .feats-section{background:#0F172A;padding:6rem 1.5rem;position:relative;overflow:hidden;}
-    @media(max-width:768px){.feats-section{padding:4rem 1.25rem;}}
-    @media(max-width:640px){.feats-section{padding:3rem 1rem;}}
-
-    .feats-bg{position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 25% 50%,rgba(13,148,136,.14) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 80% 25%,rgba(249,115,22,.08) 0%,transparent 55%);pointer-events:none;}
-    .feats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;}
-    @media(max-width:768px){.feats-grid{grid-template-columns:repeat(2,1fr);gap:1.25rem;}}
-    @media(max-width:640px){.feats-grid{grid-template-columns:1fr;gap:1rem;}}
-
-    .feat-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:2rem;}
-    @media(max-width:640px){.feat-card{padding:1.5rem;}}
-
-    .feat-card:hover{background:rgba(255,255,255,.07);border-color:rgba(13,148,136,.35);transform:translateY(-3px);}
-    .feat-icon{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1rem;}
-    @media(max-width:640px){.feat-icon{width:40px;height:40px;font-size:1.1rem;}}
-
-    /* ── FOR LEARNERS / TEACHERS ── */
-    .for-section{max-width:1200px;margin:5rem auto;padding:0 1.5rem;}
-    @media(max-width:768px){.for-section{margin:3rem auto;padding:0 1.25rem;}}
-    @media(max-width:640px){.for-section{margin:2rem auto;padding:0 1rem;}}
-
-    .for-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
-    @media(max-width:640px){.for-grid{grid-template-columns:1fr;gap:1rem;}}
-
-    .for-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,.05);}
-    @media(max-width:640px){.for-card{padding:1.5rem;}}
-
-    .for-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.1);}
-    .for-item{display:flex;align-items:center;gap:12px;padding:.6rem 0;}
-    @media(max-width:640px){.for-item{gap:10px;}}
-
-    .for-item-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-    @media(max-width:640px){.for-item-icon{width:30px;height:30px;}}
-
-    /* ── OSL AFFILIATION ── */
-    .osl-section{background:#fff;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:3rem 1.5rem;}
-    @media(max-width:768px){.osl-section{padding:2rem 1.25rem;}}
-    @media(max-width:640px){.osl-section{padding:1.5rem 1rem;}}
-
-    .osl-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:3rem;flex-wrap:wrap;}
-    @media(max-width:768px){.osl-inner{gap:2rem;}}
-    @media(max-width:640px){.osl-inner{flex-direction:column;gap:1.5rem;}}
-
-    .osl-inner img{height:120px;}
-    @media(max-width:640px){.osl-inner img{height:100px;}}
-
-    /* ── CTA BAND ── */
-    .cta-section{max-width:1200px;margin:5rem auto;padding:0 1.5rem;}
-    @media(max-width:768px){.cta-section{margin:3rem auto;padding:0 1.25rem;}}
-    @media(max-width:640px){.cta-section{margin:2rem auto;padding:0 1rem;}}
-
-    .cta-inner{
-      background:linear-gradient(135deg,var(--teal-dd),var(--teal));
-      border-radius:24px;padding:3.5rem;color:#fff;
-      display:flex;align-items:center;justify-content:space-between;gap:2rem;flex-wrap:wrap;
-      position:relative;overflow:hidden;
-    }
-    @media(max-width:768px){.cta-inner{padding:2.5rem;gap:1.5rem;border-radius:18px;}}
-    @media(max-width:640px){.cta-inner{padding:2rem 1.5rem;gap:1rem;flex-direction:column;text-align:center;}}
-
-    .cta-inner::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:rgba(255,255,255,.07);border-radius:50%;}
-    .cta-inner::after{content:'';position:absolute;bottom:-60px;left:-30px;width:240px;height:240px;background:rgba(255,255,255,.05);border-radius:50%;}
-    .btn-cta-orange{
-      display:inline-flex;align-items:center;gap:8px;
-      background:var(--orange);color:#fff;
-      font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;
-      padding:14px 28px;border-radius:12px;border:none;cursor:pointer;
-      position:relative;z-index:1;
-    }
-    @media(max-width:640px){.btn-cta-orange{font-size:.8rem;padding:11px 20px;}}
-
-    .btn-cta-orange:hover{background:var(--orange-d);transform:translateY(-2px);box-shadow:0 10px 24px rgba(249,115,22,.4);}
-    .btn-cta-ghost{
-      display:inline-flex;align-items:center;gap:8px;
-      background:rgba(255,255,255,.15);color:#fff;
-      font-family:'Syne',sans-serif;font-weight:600;font-size:.9rem;
-      padding:13px 26px;border-radius:12px;
-      border:1px solid rgba(255,255,255,.25);cursor:pointer;
-      position:relative;z-index:1;
-    }
-    @media(max-width:640px){.btn-cta-ghost{font-size:.8rem;padding:10px 20px;}}
-
-    .btn-cta-ghost:hover{background:rgba(255,255,255,.25);}
- /* ── FOOTER ── */
-    footer{background:#ffffff;color:rgba(0,0,0,.6);padding:4rem 1.5rem 2rem;}
-    @media(max-width:768px){footer{padding:3rem 1.25rem 1.5rem;}}
-    @media(max-width:640px){footer{padding:2.5rem 1rem 1.5rem;}}
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    .footer-grid{max-width:1200px;margin:0 auto;padding:3.5rem 1.5rem;display:grid;grid-template-columns:repeat(4,1fr);gap:3.5rem;}
-    @media(max-width:1024px){.footer-grid{grid-template-columns:repeat(3,1fr);gap:3rem;}}
-    @media(max-width:768px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:2.5rem;padding:2.5rem 1.25rem;}}
-    @media(max-width:640px){.footer-grid{grid-template-columns:1fr;gap:2rem;padding:2rem 1rem;}}
-
-    .fc-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);margin-bottom:1.5rem;}
-    @media(max-width:640px){.fc-title{font-size:.8rem;margin-bottom:1.25rem;}}
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    .fc-link{display:flex;align-items:center;gap:10px;font-size:.95rem;color:rgba(0,0,0,.55);margin-bottom:1rem;text-decoration:none;line-height:1.6;}
-    @media(max-width:768px){.fc-link{font-size:.9rem;margin-bottom:.85rem;}}
-    @media(max-width:640px){.fc-link{font-size:.85rem;margin-bottom:.75rem;}}
+    <script>
+        // Dark Mode Configuration
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {}
+            }
+        }
 
-    .fc-link i{color:var(--teal);width:18px;flex-shrink:0;}
-    .fc-link:hover{color:var(--teal);transform:translateX(4px);transition:all .3s ease;}
+        const DEBUG = true;
+        function log(message) {
+            if (DEBUG) console.log(`[DarkMode] ${message}`);
+        }
 
-    .footer-social{display:flex;flex-wrap:wrap;gap:12px;margin-top:1.75rem;}
-    @media(max-width:640px){.footer-social{justify-content:flex-start;gap:10px;margin-top:1.5rem;}}
+        function initializeDarkMode() {
+            log('Initializing dark mode');
+            const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+            if (darkModeEnabled) {
+                document.documentElement.classList.add('dark');
+                log('Added dark class');
+            } else if (localStorage.getItem('darkMode') === null) {
+                localStorage.setItem('darkMode', 'false');
+                log('Defaulting to light mode');
+            }
+            updateDarkModeIcon();
+        }
 
-    .footer-social-btn{
-      width:44px;height:44px;border-radius:50%;
-      background:var(--teal-dim);color:var(--teal);
-      display:flex;align-items:center;justify-content:center;
-      border:2px solid var(--teal);font-size:1rem;text-decoration:none;
-      transition:all .3s ease;
-    }
-    @media(max-width:640px){.footer-social-btn{width:40px;height:40px;font-size:.9rem;}}
+        function toggleDarkMode() {
+            log('Toggle dark mode called');
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark.toString());
+            log(`Dark mode toggled to: ${isDark}`);
+            updateDarkModeIcon();
+        }
 
-    .footer-social-btn:hover{background:var(--teal);color:#fff;transform:translateY(-3px);box-shadow:0 8px 20px rgba(13,148,136,.25);}
+        function updateDarkModeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('darkModeIcon');
+            const iconMobile = document.getElementById('darkModeIconMobile');
+            
+            if (icon) {
+                icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+                icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+            }
+            if (iconMobile) {
+                iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
+            }
+        }
 
-    .footer-bottom{border-top:2px solid var(--border);max-width:1200px;margin:0 auto;padding:1.5rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;font-size:.85rem;color:rgba(0,0,0,.6);}
-    @media(max-width:768px){.footer-bottom{padding:1.25rem 1.25rem;flex-direction:column;text-align:center;gap:1rem;}}
-    @media(max-width:640px){.footer-bottom{padding:1rem 1rem;font-size:.8rem;gap:1rem;}}
+        initializeDarkMode();
+        document.addEventListener('DOMContentLoaded', initializeDarkMode);
+    </script>
 
-    .footer-links{display:flex;gap:2rem;text-decoration:none;}
-    @media(max-width:768px){.footer-links{flex-direction:column;gap:1rem;}}
-    @media(max-width:640px){.footer-links{gap:.75rem;}}
+    <style>
+        html, body {
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        
+        .dark { color-scheme: dark; }
+        :root { color-scheme: light; }
 
-    .footer-links a{color:rgba(0,0,0,.55);text-decoration:none;font-size:.9rem;transition:all .3s ease;}
-    @media(max-width:640px){.footer-links a{font-size:.8rem;}}
-    
-    .footer-links a:hover{color:var(--teal);font-weight:600;}
-
-    .skel{background:linear-gradient(90deg,rgba(0,0,0,.05) 25%,rgba(0,0,0,.09) 50%,rgba(0,0,0,.05) 75%);background-size:800px 100%;border-radius:12px;}
-
-    #no-results{text-align:center;color:var(--muted);padding:5rem 0;}
-    @media(max-width:640px){#no-results{padding:3rem 0;}}
-  </style>
+        .delay-\[1500ms\] {
+            animation-delay: 1500ms;
+        }
+        .delay-\[2000ms\] {
+            animation-delay: 2000ms;
+        }
+        .delay-\[3000ms\] {
+            animation-delay: 3000ms;
+        }
+        .delay-\[4000ms\] {
+            animation-delay: 4000ms;
+        }
+    </style>
 </head>
-<body>
 
-<!-- NAVBAR -->
-<nav id="navbar">
-  <div class="nav-inner">
-    <a href="/" class="nav-logo">
-      <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs"
-           onerror="this.style.display='none';document.getElementById('logo-fb').style.display='flex'">
-      <div id="logo-fb" style="display:none;width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:8px;align-items:center;justify-content:center;">
-        <i class="fas fa-graduation-cap" style="color:#fff;font-size:1.2rem;"></i>
-      </div>
-      <span class="nav-logo-text">Alpha One Labs</span>
-    </a>
-    <div class="nav-links">
-      <a href="/" class="nav-link active">Activities</a>
-      <a href="/dashboard.html" class="nav-link">Dashboard</a>
-      <a href="/teach.html" class="nav-link">Host</a>
-    </div>
-    <div id="nav-auth"></div>
-    <button class="nav-toggle" onclick="toggleMobileMenu()"><i class="fas fa-bars"></i></button>
-  </div>
-</nav>
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
 
-<!-- Mobile Menu -->
-<div id="mobile-menu" class="hidden">
-  <div class="mobile-menu-item">
-    <a href="/"><i class="fas fa-home"></i>Activities</a>
-  </div>
-  <div class="mobile-menu-item">
-    <a href="/dashboard.html"><i class="fas fa-gauge"></i>Dashboard</a>
-  </div>
-  <div class="mobile-menu-item">
-    <a href="/teach.html"><i class="fas fa-chalkboard-user"></i>Host</a>
-  </div>
-  <div class="mobile-menu-item">
-    <button class="accordion-btn" onclick="toggleAccordion('auth-accordion')">
-      <span><i class="fas fa-user"></i>Auth</span>
-      <i class="fas fa-chevron-down" id="auth-accordion-icon"></i>
-    </button>
-    <div class="accordion-content hidden" id="auth-accordion">
-      <a href="/login.html"><i class="fas fa-sign-in-alt"></i>Login</a>
-      <a href="/login.html?tab=register"><i class="fas fa-user-plus"></i>Signup</a>
-    </div>
-  </div>
-</div>
+  <div id="site-navbar"></div>
 
-<!-- HERO -->
-<section class="hero-wrap">
-  <div class="hero-icons-bg">
-    <div class="hero-icon hi1"><i class="fas fa-atom"></i></div>
-    <div class="hero-icon hi2"><i class="fas fa-book-open"></i></div>
-    <div class="hero-icon hi3"><i class="fas fa-flask"></i></div>
-    <div class="hero-icon hi4"><i class="fas fa-graduation-cap"></i></div>
-    <div class="hero-icon hi5"><i class="fas fa-brain"></i></div>
-    <div class="hero-icon hi6"><i class="fas fa-lightbulb"></i></div>
-    <div class="hero-icon hi7"><i class="fas fa-rocket"></i></div>
-  </div>
-  <div class="hero-grid-bg"></div>
-
-  <div class="hero-content">
-    <div>
-      <div>
-        <span class="hero-open-badge"><span class="badge-dot"></span>🚀 Open Source Education Platform</span>
-      </div>
-      <h1 class="hero-title">
-        Where <span class="yellow-grad">Curiosity</span><br>
-        Meets <span class="cyan-grad">Knowledge</span>
-      </h1>
-      <p class="hero-sub">
-        Alpha One Labs connects passionate teachers with curious learners. Discover courses, meetups, and workshops on a platform where every user record is encrypted — your data is yours, always.
-      </p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <a href="/login.html?tab=register" class="btn-hero-w">
-          <i class="fas fa-graduation-cap"></i> Start Learning
-        </a>
-        <a href="/teach.html" class="btn-hero-outline">
-          <i class="fas fa-chalkboard-user"></i> Start Teaching
-        </a>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:1.5rem;margin-top:2rem;">
-        <div style="display:flex;align-items:center;gap:6px;font-size:.76rem;color:rgba(255,255,255,.5);">
-          <div style="width:14px;height:14px;background:rgba(52,211,153,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;">
-            <i class="fas fa-check" style="font-size:.45rem;color:#34d399;"></i>
-          </div>100% Data Encrypted
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:.76rem;color:rgba(255,255,255,.5);">
-          <div style="width:14px;height:14px;background:rgba(52,211,153,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;">
-            <i class="fas fa-check" style="font-size:.45rem;color:#34d399;"></i>
-          </div>No ads · No tracking
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <div class="hero-glass">
-        <div class="glass-header">
-          <div class="mac-dots">
-            <span style="background:#ff5f57;"></span>
-            <span style="background:#febc2e;"></span>
-            <span style="background:#28c840;"></span>
-          </div>
-          <div class="live-indicator">
-            <span class="live-dot"></span>LIVE ACTIVITIES
-          </div>
-        </div>
-        <div>
-          <div class="glass-row">
-            <div class="g-icon" style="background:rgba(59,72,224,.2);">📚</div>
-            <div style="flex:1;min-width:0;">
-              <p style="font-family:'Syne',sans-serif;font-size:.81rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Python for Beginners</p>
-              <p style="font-size:.7rem;color:rgba(255,255,255,.4);margin-top:1px;">Alice Chen · 4 enrolled</p>
-              <div class="g-bar"><div class="g-fill" style="width:35%;background:linear-gradient(90deg,#3B48E0,#6470F3);"></div></div>
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="flex-1 w-full">
+        <!-- ===== 3D HERO SECTION ===== -->
+        <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 relative overflow-hidden py-20 md:py-28">
+            <div class="absolute inset-0 pointer-events-none select-none" aria-hidden="true">
+                <div class="animate-bounce absolute top-[10%] left-[8%] text-white/20 text-6xl"><i class="fas fa-atom"></i></div>
+                <div class="animate-pulse absolute top-[20%] right-[12%] text-white/15 text-7xl"><i class="fas fa-book-open"></i></div>
+                <div class="animate-bounce absolute bottom-[15%] left-[15%] text-white/20 text-5xl"><i class="fas fa-flask"></i></div>
+                <div class="animate-bounce absolute bottom-[20%] right-[8%] text-white/15 text-6xl" style="animation-delay: 3s;"><i class="fas fa-graduation-cap"></i></div>
+                <div class="animate-pulse absolute top-[50%] left-[50%] text-white/10 text-8xl" style="animation-delay: 2s;"><i class="fas fa-brain"></i></div>
+                <div class="animate-bounce absolute top-[5%] left-[45%] text-white/15 text-5xl" style="animation-delay: 1.5s;"><i class="fas fa-lightbulb"></i></div>
+                <div class="animate-bounce absolute bottom-[5%] left-[60%] text-white/10 text-6xl" style="animation-delay: 4s;"><i class="fas fa-rocket"></i></div>
             </div>
-            <span style="font-size:.63rem;background:rgba(59,72,224,.25);color:#a5b4fc;padding:3px 8px;border-radius:6px;font-weight:600;flex-shrink:0;">Course</span>
-          </div>
-          <div class="glass-row">
-            <div class="g-icon" style="background:rgba(249,115,22,.18);">🤝</div>
-            <div style="flex:1;min-width:0;">
-              <p style="font-family:'Syne',sans-serif;font-size:.81rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">JS Developers Meetup</p>
-              <p style="font-size:.7rem;color:rgba(255,255,255,.4);margin-top:1px;">Bob Martinez · Monthly</p>
-              <div class="g-bar"><div class="g-fill" style="width:68%;background:linear-gradient(90deg,#F97316,#fb923c);"></div></div>
+
+            <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
+                <div class="flex flex-col lg:flex-row items-center gap-10">
+                    <div class="lg:w-3/5 text-center lg:text-left">
+                        <span class="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-semibold bg-white/20 text-white backdrop-blur-sm border border-white/30">
+                            🚀 Open Source Education Platform
+                        </span>
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
+                            Where <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Curiosity</span>
+                            Meets <span class="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">Knowledge</span>
+                        </h1>
+                        <p class="text-lg md:text-xl text-teal-50 max-w-2xl mb-8 leading-relaxed">
+                            Alpha One Labs connects passionate teachers with curious learners. Explore courses, join study groups, and transform your learning journey.
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                            <a href="/dashboard.html" class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
+                                <i class="fas fa-graduation-cap text-xl"></i>
+                                Start Learning
+                                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </a>
+                            <a href="/teach.html" class="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
+                                <i class="fas fa-chalkboard-user text-xl"></i>
+                                Start Teaching
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="lg:w-2/5">
+                        <div class="bg-white/10 dark:bg-black/20 backdrop-blur-lg border border-white/20 dark:border-white/10 rounded-2xl p-6 text-white shadow-lg shadow-teal-300/30">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                                <span class="text-sm font-semibold uppercase tracking-wide">Live Now</span>
+                            </div>
+                            <h2 class="text-2xl font-bold mb-2">Global Virtual Classroom</h2>
+                            <p class="text-teal-100 text-sm mb-4">Drop in, collaborate, and connect with learners worldwide.</p>
+                            <div class="flex items-center gap-2 mb-4 text-sm text-teal-200">
+                                <div class="flex -space-x-2">
+                                    <div class="w-6 h-6 rounded-full bg-orange-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
+                                    <div class="w-6 h-6 rounded-full bg-blue-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
+                                    <div class="w-6 h-6 rounded-full bg-purple-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
+                                </div>
+                                <span>21 learners inside</span>
+                            </div>
+                            <button class="w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg flex items-center justify-center gap-2">
+                                <i class="fas fa-door-open"></i> Sign in to Join
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <span style="font-size:.63rem;background:rgba(249,115,22,.2);color:#fb923c;padding:3px 8px;border-radius:6px;font-weight:600;flex-shrink:0;">Meetup</span>
-          </div>
-          <div class="glass-row">
-            <div class="g-icon" style="background:rgba(0,178,122,.15);">🔧</div>
-            <div style="flex:1;min-width:0;">
-              <p style="font-family:'Syne',sans-serif;font-size:.81rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Data Science Workshop</p>
-              <p style="font-size:.7rem;color:rgba(255,255,255,.4);margin-top:1px;">Alice Chen · 3 sessions</p>
-              <div class="g-bar"><div class="g-fill" style="width:52%;background:linear-gradient(90deg,#00B27A,#4ade80);"></div></div>
-            </div>
-            <span style="font-size:.63rem;background:rgba(0,178,122,.15);color:#34d399;padding:3px 8px;border-radius:6px;font-weight:600;flex-shrink:0;">Workshop</span>
-          </div>
+        </section>
+
+        <!-- ===== PAGE SECTIONS ===== -->
+        <div class="max-w-[90rem] mx-auto px-4 md:px-6 mt-10 pb-12 space-y-14">
+
+            <!-- ===== SECTION 1: WHAT WOULD YOU LIKE TO DO? ===== -->
+            <section>
+                <div class="relative flex py-5 items-center mb-8">
+                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+                    <div class="flex-shrink mx-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                            <i class="fas fa-question-circle text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">What Would You Like To Do?</span>
+                    </div>
+                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <a href="dashboard.html" class="group flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
+                        <i class="fa-solid fa-graduation-cap text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
+                        <span class="text-2xl font-bold mb-2">I Want to Learn</span>
+                        <span class="text-sm font-normal opacity-90">Discover new skills and expand your knowledge</span>
+                    </a>
+                    <a href="teach.html" class="group flex flex-col items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
+                        <i class="fa-solid fa-chalkboard-user text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
+                        <span class="text-2xl font-bold mb-2">I Want to Teach</span>
+                        <span class="text-sm font-normal opacity-90">Share your knowledge with others</span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ===== SECTION 2: RECENT COURSES ===== -->
+            <section>
+                <div class="relative flex py-5 items-center mb-8">
+                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+                    <div class="flex-shrink mx-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                            <i class="fas fa-graduation-cap text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Recent Courses</span>
+                    </div>
+                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                    <!-- Course Card 1 -->
+                    <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="aspect-video w-full relative overflow-hidden rounded-xl mb-4">
+                          <img src="https://alphaonelabs.com/media/course_images/course_images/aoc.png" alt="Course Image" class="w-full h-full object-cover">
+                        </div>
+                        <div class="mb-3">
+                            <h3 class="text-lg font-semibold h-14 flex items-start">
+                                <a href="#" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">OSL - Advent of Code Study Group</a>
+                            </h3>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium text-teal-600 dark:text-teal-400">Business</span>
+                                <span class="text-orange-600 dark:text-orange-500">Free</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-eye mr-2"></i>
+                                <span>1240 views</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-users mr-2"></i>
+                                <span>8/12</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-calendar-alt mr-2"></i>
+                                <span>8 sessions</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-star text-yellow-400 mr-2"></i>
+                                <span>4.9/5</span>
+                            </div>
+                        </div>
+                        <div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
+                            <div class="flex items-center mb-1">
+                                <i class="fas fa-calendar-day mr-2"></i>
+                                <span>Starts: Apr 20, 2024</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center mb-3">
+                            <div class="h-12 w-12 rounded-full mr-3">
+                              <img src="https://alphaonelabs.com/static/images/default_teacher.png" alt="Instructor Avatar" class="w-full h-full object-cover rounded-full">
+                            </div>
+                            <div>
+                                <span class="text-sm font-medium">Xmnlab</span>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">Web Expert</p>
+                            </div>
+                        </div>
+                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-cart-plus mr-2"></i>
+                            Add to Cart
+                        </button>
+                    </div>
+
+                    <!-- Course Card 2 -->
+                    <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="aspect-video w-full relative overflow-hidden rounded-xl mb-4">
+                          <img src="https://alphaonelabs.com/media/course_images/86fc6a52-7346-466d-80f9-019629928c22.png" alt="Course Image" class="w-full h-full object-cover">
+                        </div>
+                        <div class="mb-3">
+                            <h3 class="text-lg font-semibold h-14 flex items-start">
+                                <a href="#" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">Crash Test Coding 101 - build a website in 1 hour</a>
+                            </h3>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium text-teal-600 dark:text-teal-400">Coding</span>
+                                <span class="text-orange-600 dark:text-orange-500">$20.00</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-eye mr-2"></i>
+                                <span>2.1K views</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-users mr-2"></i>
+                                <span>45/60</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-calendar-alt mr-2"></i>
+                                <span>12 sessions</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-star text-yellow-400 mr-2"></i>
+                                <span>4.8/5</span>
+                            </div>
+                        </div>
+                        <div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
+                            <div class="flex items-center mb-1">
+                                <i class="fas fa-calendar-day mr-2"></i>
+                                <span>Starts: Apr 15, 2024</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center mb-3">
+                            <div class="h-12 w-12 rounded-full mr-3">
+                                <img src="https://alphaonelabs.com/static/images/default_teacher.png" alt="Instructor Avatar" class="w-full h-full object-cover rounded-full">
+                            </div>
+                            <div>
+                                <span class="text-sm font-medium">Daniel</span>
+                            </div>
+                        </div>
+                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-cart-plus mr-2"></i>
+                            Add to Cart
+                        </button>
+                    </div>
+
+                    <!-- Course Card 3 -->
+                    <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="aspect-video w-full relative overflow-hidden rounded-xl mb-4">
+                            <img src="https://alphaonelabs.com/media/course_images/course_images/the-thinker-2-354906847.jpg" alt="Course Image" class="w-full h-full object-cover">
+                        </div>
+                        <div class="mb-3">
+                            <h3 class="text-lg font-semibold h-14 flex items-start">
+                                <a href="#" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">Poetry Circle</a>
+                            </h3>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium text-teal-600 dark:text-teal-400">Business</span>
+                                <span class="text-orange-600 dark:text-orange-500">Free</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-eye mr-2"></i>
+                                <span>3.5K views</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-users mr-2"></i>
+                                <span>120/100</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-calendar-alt mr-2"></i>
+                                <span>6 sessions</span>
+                            </div>
+                            <div class="flex items-center text-gray-600 dark:text-gray-300">
+                                <i class="fas fa-star text-yellow-400 mr-2"></i>
+                                <span>5.0/5</span>
+                            </div>
+                        </div>
+                        <div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
+                            <div class="flex items-center mb-1">
+                                <i class="fas fa-calendar-day mr-2"></i>
+                                <span>Starts: Apr 18, 2024</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center mb-3">
+                            <div class="h-12 w-12 rounded-full mr-3">
+                                <img src="https://alphaonelabs.com/static/images/default_teacher.png" alt="Instructor Avatar" class="w-full h-full object-cover rounded-full">
+                            </div>
+                            <div>
+                                <span class="text-sm font-medium">tea</span>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">UI Designer</p>
+                            </div>
+                        </div>
+                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-cart-plus mr-2"></i>
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+                <div class="text-center mt-6">
+                    <a href="/course.html" class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                        View All Courses
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ===== SECTION 3: REFERRAL | WEEKLY CHALLENGES ===== -->
+            <section>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- Referral Program -->
+                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-purple-500">
+                        <h2 class="text-lg font-bold mb-4 flex items-center">
+                            <i class="fa-solid fa-gift text-purple-600 dark:text-purple-400 mr-2"></i>
+                            Referral Program
+                        </h2>
+                        <div class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-purple-100 dark:border-purple-800 mb-4">
+                            <h3 class="font-medium mb-2 text-purple-800 dark:text-purple-200">Share and Earn!</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                                Get $5 when someone you refer enrolls in their first course!
+                            </p>
+                            <div class="flex items-center space-x-2 mb-3">
+                                <input type="text" value="https://alphaonelabs.com/ref/user123456" readonly class="text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 flex-1 min-w-0" />
+                                <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs whitespace-nowrap flex-shrink-0">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Total referral earnings: $284.50
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Challenges -->
+                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-teal-500">
+                        <h2 class="text-lg font-bold mb-4 flex items-center">
+                            <span class="mr-2 text-xl">🏆</span> Weekly Challenges
+                        </h2>
+                        <div class="challenge-item">
+                            <h3 class="text-base font-semibold mb-3 text-gray-800 dark:text-gray-200">Array Algorithms</h3>
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">Master advanced array manipulation techniques.</p>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                                <i class="fas fa-calendar-alt mr-1"></i>
+                                <strong>Duration:</strong> Apr 10 - Apr 17
+                            </p>
+                            <a href="#" class="inline-flex items-center bg-teal-600 text-white px-5 py-2.5 rounded-lg hover:bg-teal-700 transition-shadow shadow-md text-sm">
+                                <i class="fas fa-check mr-2"></i>Complete Challenge
+                            </a>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <a href="/sections.html" class="block text-center bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm">
+                                <i class="fas fa-list mr-2"></i>View All Challenges
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+                        <!-- ===== SECTION 4: TESTIMONIALS ===== -->
+            <section>
+                <div class="relative flex py-5 items-center mb-8">
+                    <div class="flex-grow border-t-2 border-yellow-200 dark:border-yellow-800"></div>
+                    <div class="flex-shrink mx-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
+                            <i class="fas fa-quote-left text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-extrabold bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent">Testimonials</span>
+                    </div>
+                    <div class="flex-grow border-t-2 border-yellow-200 dark:border-yellow-800"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Testimonial 1 -->
+                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="flex items-center mb-4">
+                            <div class="flex -space-x-1">
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
+                            "Alpha One Labs changed my learning journey completely. The courses are well-structured and the instructors are incredibly supportive. Highly recommended!"
+                        </p>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800 dark:text-gray-200">Sarah Johnson</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Web Developer</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Testimonial 2 -->
+                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="flex items-center mb-4">
+                            <div class="flex -space-x-1">
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
+                            "The community here is amazing! I've learned so much from peers and mentors. It's not just about courses, it's about growing together."
+                        </p>
+                         <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-teal-500"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800 dark:text-gray-200">Alex Chen</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Data Scientist</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Testimonial 3 -->
+                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="flex items-center mb-4">
+                            <div class="flex -space-x-1">
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
+                            "Teaching on Alpha One Labs has been rewarding. The platform makes it easy to share knowledge and connect with eager learners worldwide."
+                        </p>
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-orange-500"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800 dark:text-gray-200">Emily Brown</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">UI/UX Instructor</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+                       <!-- ===== SECTION 5: VIEW WAITING ROOMS | VIEW CONTRIBUTIONS ===== -->
+            <section>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- View Waiting Rooms -->
+                    <a href="#"
+                       class="group block rounded-2xl p-10 bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
+                        <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
+                            <i class="fas fa-door-open text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3">View Waiting Rooms</h3>
+                        <p class="text-blue-100 text-sm mb-6 max-w-sm mx-auto">
+                            Browse open waiting rooms and connect with learners seeking teachers for specific topics.
+                        </p>
+                        <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+                            Browse Waiting Rooms <i class="fas fa-arrow-right"></i>
+                        </span>
+                    </a>
+
+                    <!-- View Contributions -->
+                    <a href="#"
+                       class="group block rounded-2xl p-10 bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-800 dark:to-black text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
+                        <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
+                            <i class="fab fa-github text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3">View Contributions</h3>
+                        <p class="text-gray-300 text-sm mb-6 max-w-sm mx-auto">
+                            Explore contributions from our open source community. See top contributors and recently merged pull requests.
+                        </p>
+                        <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+                            View Contributors <i class="fas fa-arrow-right"></i>
+                        </span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- ===== SECTION 6: FOR LEARNERS | FOR TEACHERS ===== -->
+            <section>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- For Learners -->
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-2xl p-6 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-blue-500">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                                <i class="fa-solid fa-user-graduate text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">For Learners</h3>
+                        </div>
+                        <ul class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-robot text-blue-600 dark:text-blue-400"></i>
+                                </span>
+                                AI-powered course recommendations
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-calendar-check text-blue-600 dark:text-blue-400"></i>
+                                </span>
+                                Flexible scheduling & calendar
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-trophy text-blue-600 dark:text-blue-400"></i>
+                                </span>
+                                Progress tracking & achievements
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-users text-blue-600 dark:text-blue-400"></i>
+                                </span>
+                                Study groups & peer connections
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-chalkboard-teacher text-blue-600 dark:text-blue-400"></i>
+                                </span>
+                                Virtual & in-person classes
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- For Teachers -->
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-2xl p-6 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-orange-500">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg">
+                                <i class="fa-solid fa-chalkboard-user text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">For Teachers</h3>
+                        </div>
+                        <ul class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-clipboard-list text-orange-600 dark:text-orange-400"></i>
+                                </span>
+                                Course management tools
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-chart-line text-orange-600 dark:text-orange-400"></i>
+                                </span>
+                                Analytics & progress tracking
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-credit-card text-orange-600 dark:text-orange-400"></i>
+                                </span>
+                                Secure payments & earnings
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-bullhorn text-orange-600 dark:text-orange-400"></i>
+                                </span>
+                                Marketing tools for courses
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i class="fa-solid fa-comments text-orange-600 dark:text-orange-400"></i>
+                                </span>
+                                Direct student communication
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== SECTION 7: AFFILIATIONS ===== -->
+            <section class="rounded-2xl p-6 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold flex items-center mb-4">
+                    <i class="fas fa-handshake text-teal-600 dark:text-teal-400 mr-2"></i> Our Affiliations
+                </h2>
+                <div class="flex flex-wrap items-center justify-center gap-6">
+                    <a href="https://opensciencelabs.org/" target="_blank" rel="noopener" class="block">
+                        <img src="./images/logo-osl.svg" alt="Open Science Lab" >
+                    </a>
+                </div>
+                <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+                    Alpha One Labs is proudly affiliated with leading open source and educational initiatives that advance technology and learning worldwide.
+                </p>
+            </section>
+
         </div>
-        <div class="glass-footer">
-          <i class="fas fa-lock" style="color:#34d399;font-size:.75rem;flex-shrink:0;"></i>
-          <span style="font-family:'Syne',sans-serif;font-size:.66rem;font-weight:600;color:#34d399;">All PII encrypted at rest — PBKDF2 · HMAC · AES-GCM</span>
-        </div>
-      </div>
-    </div>
-  </div>
+    </main>
 
-  <div class="hero-wave">
-    <svg viewBox="0 0 1440 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0 64V30C360 2 720 62 1080 30C1260 15 1380 20 1440 14V64H0Z" fill="#F8FAFC"/>
-    </svg>
-  </div>
-</section>
+    <div id="site-footer"></div>
 
-<!-- STATS -->
-<div class="stats-row">
-  <div class="stats-grid">
-    <div class="stat-cell">
-      <p class="stat-num" id="stat-activities" style="color:var(--teal);">—</p>
-      <p class="stat-lbl">Active Activities</p>
-    </div>
-    <div class="stat-cell">
-      <p class="stat-num" id="stat-members" style="color:var(--orange);">—</p>
-      <p class="stat-lbl">Total Participants</p>
-    </div>
-    <div class="stat-cell">
-      <p class="stat-num" style="color:#00B27A;">100%</p>
-      <p class="stat-lbl">Data Encrypted at Rest</p>
-    </div>
-    <div class="stat-cell">
-      <p class="stat-num" style="color:#9333ea;">Open</p>
-      <p class="stat-lbl">Source & Free Forever</p>
-    </div>
-  </div>
-</div>
-
-<!-- WHAT WOULD YOU LIKE TO DO -->
-<section class="do-section">
-  <div class="sec-divider">
-    <div class="sec-divider-line"></div>
-    <div class="sec-divider-icon"><i class="fas fa-question-circle" style="color:#fff;font-size:1rem;"></i></div>
-    <h2 class="sec-divider-title" style="margin:0 .75rem;">What Would You Like To Do?</h2>
-    <div class="sec-divider-line right"></div>
-  </div>
-  <div class="do-grid">
-    <a href="/login.html?tab=register" class="do-card" style="background:linear-gradient(135deg,#3B82F6,#4F46E5);color:#fff;">
-      <div class="do-icon"><i class="fas fa-graduation-cap"></i></div>
-      <p class="do-title">I Want to Learn</p>
-      <p class="do-sub">Discover new skills and expand your knowledge</p>
-    </a>
-    <a href="/teach.html" class="do-card" style="background:linear-gradient(135deg,var(--orange),#ef4444);color:#fff;">
-      <div class="do-icon"><i class="fas fa-chalkboard-user"></i></div>
-      <p class="do-title">I Want to Teach</p>
-      <p class="do-sub">Share your knowledge with others</p>
-    </a>
-  </div>
-</section>
-
-<!-- ACTIVITY BROWSER -->
-<section class="acts-wrap" id="activities">
-  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;">
-    <div>
-      <div class="sec-divider" style="margin-bottom:.5rem;">
-        <div class="sec-divider-icon" style="width:36px;height:36px;"><i class="fas fa-compass" style="color:#fff;font-size:.9rem;"></i></div>
-        <h2 class="sec-divider-title" style="margin:0 .75rem;font-size:1.5rem;">Browse All Activities</h2>
-        <div class="sec-divider-line right" style="flex:none;width:60px;"></div>
-      </div>
-    </div>
-    <div class="filter-bar">
-      <div class="filter-group">
-        <label class="filter-label" for="search">Search</label>
-        <input id="search" type="text" placeholder="Course, topic…" class="filter-input" style="min-width:200px;"/>
-      </div>
-      <div class="filter-group">
-        <label class="filter-label" for="filter-type">Type</label>
-        <select id="filter-type" class="filter-input">
-          <option value="">All Types</option>
-          <option value="course">📚 Course</option>
-          <option value="meetup">🤝 Meetup</option>
-          <option value="workshop">🔧 Workshop</option>
-          <option value="seminar">🎤 Seminar</option>
-          <option value="other">✨ Other</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label class="filter-label" for="filter-format">Format</label>
-        <select id="filter-format" class="filter-input">
-          <option value="">All Formats</option>
-          <option value="live">🎥 Live</option>
-          <option value="self_paced">⏱ Self-paced</option>
-          <option value="hybrid">🔀 Hybrid</option>
-        </select>
-      </div>
-    </div>
-  </div>
-  <div id="tag-cloud" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:1.75rem;"></div>
-  <div id="activity-grid">
-    <div class="skel" style="height:220px;"></div>
-    <div class="skel" style="height:220px;"></div>
-    <div class="skel" style="height:220px;"></div>
-  </div>
-  <p id="no-results" class="hidden">No activities match your filters.</p>
-</section>
-
-<!-- HOW IT WORKS -->
-<div class="how-section">
-  <div class="how-inner">
-    <div class="sec-divider">
-      <div class="sec-divider-line"></div>
-      <div class="sec-divider-icon"><i class="fas fa-route" style="color:#fff;font-size:1rem;"></i></div>
-      <h2 class="sec-divider-title" style="margin:0 .75rem;">How It Works</h2>
-      <div class="sec-divider-line right"></div>
-    </div>
-    <div class="steps-grid">
-      <div class="step">
-        <div class="step-num" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(13,148,136,.25);">01</div>
-        <h3 class="step-title">Browse Activities</h3>
-        <p class="step-desc">Explore courses, workshops, meetups, and seminars across every topic imaginable.</p>
-      </div>
-      <div class="step">
-        <div class="step-num" style="background:#FFF7ED;color:var(--orange);border-color:rgba(249,115,22,.25);">02</div>
-        <h3 class="step-title">Join & Connect</h3>
-        <p class="step-desc">Enroll in sessions, join live meetups, and connect with a global community of learners.</p>
-      </div>
-      <div class="step">
-        <div class="step-num" style="background:#F0FDF4;color:#00B27A;border-color:rgba(0,178,122,.25);">03</div>
-        <h3 class="step-title">Grow Together</h3>
-        <p class="step-desc">Track progress, earn recognition, and contribute back to the open source community.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- FOR LEARNERS / TEACHERS -->
-<section class="for-section">
-  <div class="sec-divider">
-    <div class="sec-divider-line"></div>
-    <div class="sec-divider-icon"><i class="fas fa-users" style="color:#fff;font-size:1rem;"></i></div>
-    <h2 class="sec-divider-title" style="margin:0 .75rem;">Built For Everyone</h2>
-    <div class="sec-divider-line right"></div>
-  </div>
-  <div class="for-grid">
-    <div class="for-card" style="border-top:4px solid #3B82F6;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
-        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#3B82F6,#4F46E5);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(59,130,246,.3);">
-          <i class="fas fa-user-graduate" style="color:#fff;font-size:1.1rem;"></i>
-        </div>
-        <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;">For Learners</h3>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#EFF6FF;"><i class="fas fa-robot" style="color:#3B82F6;font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">AI-powered course recommendations</span>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#EFF6FF;"><i class="fas fa-calendar-check" style="color:#3B82F6;font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Flexible scheduling & calendar</span>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#EFF6FF;"><i class="fas fa-trophy" style="color:#3B82F6;font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Progress tracking & achievements</span>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#EFF6FF;"><i class="fas fa-users" style="color:#3B82F6;font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Study groups & peer connections</span>
-      </div>
-      <div class="for-item">
-        <div class="for-item-icon" style="background:#EFF6FF;"><i class="fas fa-chalkboard-teacher" style="color:#3B82F6;font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Virtual & in-person classes</span>
-      </div>
-    </div>
-    <div class="for-card" style="border-top:4px solid var(--orange);">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
-        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--orange),#ef4444);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(249,115,22,.3);">
-          <i class="fas fa-chalkboard-user" style="color:#fff;font-size:1.1rem;"></i>
-        </div>
-        <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;">For Teachers</h3>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#FFF7ED;"><i class="fas fa-clipboard-list" style="color:var(--orange);font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Course management tools</span>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#FFF7ED;"><i class="fas fa-chart-line" style="color:var(--orange);font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Analytics & progress tracking</span>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#FFF7ED;"><i class="fas fa-credit-card" style="color:var(--orange);font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Secure payments & earnings</span>
-      </div>
-      <div class="for-item" style="border-bottom:1px solid var(--border);">
-        <div class="for-item-icon" style="background:#FFF7ED;"><i class="fas fa-bullhorn" style="color:var(--orange);font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Marketing tools for courses</span>
-      </div>
-      <div class="for-item">
-        <div class="for-item-icon" style="background:#FFF7ED;"><i class="fas fa-comments" style="color:var(--orange);font-size:.85rem;"></i></div>
-        <span style="font-size:.85rem;color:var(--ink);">Direct student communication</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FEATURES (dark) -->
-<div class="feats-section">
-  <div class="feats-bg"></div>
-  <div style="max-width:1200px;margin:0 auto;position:relative;z-index:1;">
-    <div style="margin-bottom:2.5rem;">
-      <div class="sec-divider" style="margin-bottom:.75rem;">
-        <div class="sec-divider-line" style="background:linear-gradient(90deg,rgba(20,184,166,.4),rgba(255,255,255,.05));"></div>
-        <div class="sec-divider-icon"><i class="fas fa-shield-halved" style="color:#fff;font-size:1rem;"></i></div>
-        <h2 class="sec-divider-title" style="margin:0 .75rem;color:#fff;background:none;-webkit-background-clip:unset;background-clip:unset;">Built Different</h2>
-        <div class="sec-divider-line right" style="background:linear-gradient(270deg,rgba(20,184,166,.4),rgba(255,255,255,.05));"></div>
-      </div>
-      <p style="color:rgba(255,255,255,.45);font-size:.93rem;margin-top:.5rem;max-width:480px;line-height:1.68;">Privacy isn't a feature we added. It's how we designed everything from the ground up.</p>
-    </div>
-    <div class="feats-grid">
-      <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(59,72,224,.2);">🔐</div>
-        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.45rem;">Zero Plaintext PII</h3>
-        <p style="font-size:.83rem;color:rgba(255,255,255,.42);line-height:1.65;">Every user field encrypted. HMAC blind indexes enable fast lookups with zero plaintext stored.</p>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(249,115,22,.15);">⚡</div>
-        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.45rem;">Edge-Native Speed</h3>
-        <p style="font-size:.83rem;color:rgba(255,255,255,.42);line-height:1.65;">Cloudflare Python Workers + D1 — globally distributed, sub-10ms cold starts, serverless.</p>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(0,178,122,.15);">🗓️</div>
-        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.45rem;">Flexible Activities</h3>
-        <p style="font-size:.83rem;color:rgba(255,255,255,.42);line-height:1.65;">Courses, meetups, workshops — with sessions, attendance tracking, and flexible tags.</p>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(255,255,255,.08);">🌍</div>
-        <h3 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:.45rem;">Fully Open Source</h3>
-        <p style="font-size:.83rem;color:rgba(255,255,255,.42);line-height:1.65;">Community-driven. Fork it, self-host it, contribute — your platform, your rules.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- OSL AFFILIATION -->
-<div class="osl-section">
-  <div class="osl-inner" style="flex-direction:column;gap:2rem;">
-    <div style="align-self:flex-start;">
-      <h2 style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.5rem;display:flex;align-items:center;gap:8px;">
-        <i class="fas fa-handshake" style="color:var(--teal);"></i> Our Affiliations
-      </h2>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:1.5rem;width:100%;">
-      <img src="./images/logo-osl.svg" alt="Open Science Labs" style="height:125px; opacity: 90%;" onerror="this.style.display='none'">
-      <p style="font-size:.87rem;color:var(--muted);line-height:1.7;text-align:center;max-width:1000px;">Alpha One Labs is proudly affiliated with open source initiatives that advance education technology worldwide.</p>
-    </div>
-  </div>
-</div>
-
-<!-- CTA -->
-<section class="cta-section">
-  <div class="cta-inner">
-    <div style="position:relative;z-index:1;">
-      <p style="font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:.5rem;">Get Started Today</p>
-      <h2 style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;letter-spacing:-.04em;line-height:1.1;">Ready to start learning?</h2>
-      <p style="color:rgba(255,255,255,.6);font-size:.9rem;margin-top:.5rem;max-width:360px;line-height:1.65;">Join the community. Your data stays private. Education stays free.</p>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <a href="/login.html?tab=register" class="btn-cta-orange">
-        <i class="fas fa-user-plus"></i> Create Free Account
-      </a>
-      <a href="#activities" class="btn-cta-ghost">
-        <i class="fas fa-compass"></i> Browse Activities
-      </a>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-grid">
-    <!-- LEARNING -->
-    <div>
-      <p class="fc-title">Learning</p>
-      <a href="#activities" class="fc-link"><i class="fas fa-compass"></i>Activities</a>
-      <a href="/dashboard.html" class="fc-link"><i class="fas fa-gauge"></i>Dashboard</a>
-      <a href="/teach.html" class="fc-link"><i class="fas fa-chalkboard"></i>Host Activity</a>
-      <a href="https://alphaonelabs.com/en/courses/search/" target="_blank" class="fc-link"><i class="fas fa-book-open"></i>All Courses</a>
-      <a href="https://alphaonelabs.com/en/subjects/" target="_blank" class="fc-link"><i class="fas fa-list-check"></i>Subjects</a>
-      <a href="https://alphaonelabs.com/en/study-groups/" target="_blank" class="fc-link"><i class="fas fa-users"></i>Study Groups</a>
-    </div>
-
-    <!-- COMMUNITY -->
-    <div>
-      <p class="fc-title">Community</p>
-      <a href="https://alphaonelabs.com/en/forum/" target="_blank" class="fc-link"><i class="fas fa-comments"></i>Forum</a>
-      <a href="https://alphaonelabs.com/en/blog/" target="_blank" class="fc-link"><i class="fas fa-blog"></i>Blog</a>
-      <a href="https://alphaonelabs.com/en/success-stories/" target="_blank" class="fc-link"><i class="fas fa-star"></i>Success Stories</a>
-      <a href="https://alphaonelabs.com/en/waiting-rooms/" target="_blank" class="fc-link"><i class="fas fa-door-open"></i>Waiting Rooms</a>
-      <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas" target="_blank" class="fc-link"><i class="fas fa-code"></i>GSoC '26</a>
-    </div>
-
-    <!-- RESOURCES & INFO -->
-    <div>
-      <p class="fc-title">Resources</p>
-      <a href="https://alphaonelabs.com/en/about/" target="_blank" class="fc-link"><i class="fas fa-circle-info"></i>About Us</a>
-      <a href="https://github.com/alphaonelabs/learn" target="_blank" class="fc-link"><i class="fas fa-github"></i>GitHub</a>
-      <a href="https://alphaonelabs.com/en/status/" target="_blank" class="fc-link"><i class="fas fa-chart-line"></i>Status</a>
-      <a href="https://alphaonelabs.com/en/feedback/" target="_blank" class="fc-link"><i class="fas fa-comment-dots"></i>Feedback</a>
-      <a href="https://alphaonelabs.com/en/terms/#privacy" target="_blank" class="fc-link"><i class="fas fa-shield-halved"></i>Privacy</a>
-    </div>
-
-    <!-- CONNECT -->
-    <div>
-      <p class="fc-title">Connect</p>
-      <div class="footer-social">
-        <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="X/Twitter">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:var(--teal);">
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.254 5.622 5.91-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-  </svg>
-</a>
-        <a href="https://discord.gg/HJtuzTJN3h" target="_blank" rel="noopener" class="footer-social-btn" title="Discord">
-          <i class="fab fa-discord"></i>
-        </a>
-        <a href="https://instagram.com/alphaonelabs1" target="_blank" rel="noopener" class="footer-social-btn" title="Instagram">
-          <i class="fab fa-instagram"></i>
-        </a>
-        <a href="https://facebook.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="Facebook">
-          <i class="fab fa-facebook"></i>
-        </a>
-        <a href="https://youtube.com/alphaonelabs" target="_blank" rel="noopener" class="footer-social-btn" title="YouTube">
-          <i class="fab fa-youtube"></i>
-        </a>
-        <a href="https://github.com/alphaonelabs/learn" target="_blank" rel="noopener" class="footer-social-btn" title="GitHub">
-          <i class="fab fa-github"></i>
-        </a>
-        <a href="https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg" target="_blank" rel="noopener" class="footer-social-btn" title="Slack">
-          <i class="fab fa-slack"></i>
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer Bottom -->
-  <div class="footer-bottom">
-    <p>© 2024–2026 Alpha One Labs. All rights reserved. · Cloudflare Workers + D1</p>
-    <div class="footer-links">
-      <a href="https://alphaonelabs.com/en/about/">About Us</a>
-      <a href="https://alphaonelabs.com/en/terms/#terms">Terms & Conditions</a>
-      <a href="https://alphaonelabs.com/en/terms/#privacy">Privacy Policy</a>
-      <a href="https://alphaonelabs.com/en/terms/#cookies">Cookie Policy</a>
-    </div>
-  </div>
-</footer>
-
-<!-- PROFILE DROPDOWN -->
-<div id="profile-dropdown">
-  <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
-    <div style="display:flex;align-items:center;gap:11px;">
-      <div id="dd-avatar" style="width:36px;height:36px;background:var(--teal-dim);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;color:var(--teal);"></div>
-      <div>
-        <p id="dd-name" style="font-family:'Syne',sans-serif;font-weight:700;font-size:.83rem;color:var(--ink);"></p>
-        <p id="dd-role" style="font-size:.7rem;color:var(--muted);margin-top:1px;"></p>
-      </div>
-    </div>
-  </div>
-  <div style="padding:6px;">
-    <a href="/profile.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;color:var(--ink);font-size:.83rem;font-weight:500;">
-      <i class="fas fa-user-circle" style="color:var(--teal);width:16px;"></i> View Profile
-    </a>
-    <a href="/dashboard.html" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;color:var(--ink);font-size:.83rem;font-weight:500;">
-      <i class="fas fa-gauge" style="color:var(--teal);width:16px;"></i> Dashboard
-    </a>
-  </div>
-  <div style="padding:6px;border-top:1px solid var(--border);">
-    <button onclick="logout()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;background:transparent;border:none;cursor:pointer;color:#dc2626;font-size:.83rem;font-weight:500;width:100%;text-align:left;">
-      <i class="fas fa-sign-out-alt" style="width:16px;"></i> Sign Out
-    </button>
-  </div>
-</div>
-
-<script>
-const API='';
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-window.addEventListener('scroll',()=>{document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>8);});
-
-function toggleMobileMenu(){
-  const menu=document.getElementById('mobile-menu');
-  menu.classList.toggle('hidden');
-  document.body.classList.toggle('overflow-hidden');
-}
-document.addEventListener('click',function(e){
-  const menu=document.getElementById('mobile-menu');
-  const btn=e.target.closest('[onclick="toggleMobileMenu()"]');
-  if(!menu.classList.contains('hidden')&&!btn&&!e.target.closest('#mobile-menu')){
-    toggleMobileMenu();
-  }
-});
-
-function toggleAccordion(id){
-  const acc=document.getElementById(id);
-  const ico=document.getElementById(id+'-icon');
-  acc.classList.toggle('hidden');
-  ico.classList.toggle('rotate-180');
-  ['auth-accordion'].forEach(aid=>{if(aid!==id){const a=document.getElementById(aid),i=document.getElementById(aid+'-icon');if(a&&!a.classList.contains('hidden')){a.classList.add('hidden');i.classList.remove('rotate-180');}}});
-}
-
-function updateNav(){
-  const token=localStorage.getItem('edu_token');
-  const user=JSON.parse(localStorage.getItem('edu_user')||'null');
-  const nav=document.getElementById('nav-auth');
-  const dd=document.getElementById('profile-dropdown');
-  if(token&&user){
-    const ini=(user.name||user.username||'?').slice(0,2).toUpperCase();
-    nav.innerHTML=`
-      <a href="/dashboard.html" class="nav-link">Dashboard</a>
-      <button onclick="toggleDD(event)" style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#fff;display:flex;align-items:center;justify-content:center;">${esc(ini)}</button>`;
-    document.getElementById('dd-avatar').textContent=ini;
-    document.getElementById('dd-name').textContent=user.name||user.username;
-    document.getElementById('dd-role').textContent=user.role||'member';
-    nav.appendChild(dd);
-  }else{
-    nav.innerHTML=`
-      <a href="/login.html" class="nav-link" style="display:flex;align-items:center;gap:6px;"><i class="fas fa-right-to-bracket"></i> Login</a>
-      <a href="/login.html?tab=register" style="display:inline-flex;align-items:center;gap:7px;background:var(--orange);color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:.84rem;padding:8px 18px;border-radius:999px;border:none;cursor:pointer;text-decoration:none;">
-        <i class="fas fa-user-plus"></i> Signup
-      </a>`;
-  }
-}
-let ddOpen=false;
-function toggleDD(e){e.stopPropagation();ddOpen=!ddOpen;document.getElementById('profile-dropdown').classList.toggle('open',ddOpen);}
-document.addEventListener('click',()=>{if(ddOpen){ddOpen=false;document.getElementById('profile-dropdown').classList.remove('open');}});
-function logout(){localStorage.removeItem('edu_token');localStorage.removeItem('edu_user');updateNav();window.location.reload();}
-
-const typeIcon={course:'📚',meetup:'🤝',workshop:'🔧',seminar:'🎤',other:'✨'};
-const typeBg={course:'#E8EAFF',meetup:'#FFF7ED',workshop:'#F0FDF4',seminar:'#F0FDFC',other:'#F1F5F9'};
-const typeClr={course:'#3B48E0',meetup:'#F97316',workshop:'#00B27A',seminar:'#0D9488',other:'#64748b'};
-const fmtBg={live:'#FFF7ED',self_paced:'#F0FDF4',hybrid:'#FAF5FF'};
-const fmtClr={live:'#F97316',self_paced:'#00B27A',hybrid:'#9333ea'};
-const fmtLabel={live:'Live',self_paced:'Self-paced',hybrid:'Hybrid'};
-const schedLbl={one_time:'One-time',multi_session:'Multi-session',recurring:'Recurring',ongoing:'Ongoing'};
-const typeClass={course:'tc',meetup:'tm',workshop:'tw',seminar:'ts',other:'to'};
-
-function actCard(a){
-  const bg=typeBg[a.type]||'#F1F5F9',clr=typeClr[a.type]||'#64748b',ic=typeIcon[a.type]||'✨';
-  const fb=fmtBg[a.format]||'#F1F5F9',fc=fmtClr[a.format]||'#64748b';
-  const tc=typeClass[a.type]||'to';
-  const desc=(a.description||'').length>100?a.description.slice(0,100)+'…':(a.description||'');
-  const tags=(a.tags||[]).slice(0,3).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('');
-  return`
-    <article class="act-card ${tc}" onmousemove="this.style.setProperty('--mx',event.offsetX/this.offsetWidth*100+'%');this.style.setProperty('--my',event.offsetY/this.offsetHeight*100+'%')">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-        <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:.93rem;line-height:1.3;color:var(--ink);">${ic} ${esc(a.title)}</h3>
-        <span class="type-badge" style="background:${bg};color:${clr};white-space:nowrap;">${esc(a.type)}</span>
-      </div>
-      <p style="font-size:.81rem;color:var(--muted);line-height:1.6;flex:1;">${esc(desc)}</p>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;">${tags}</div>
-      <div style="border-top:1px solid var(--border);padding-top:.7rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
-          <span class="fmt-badge" style="background:${fb};color:${fc};">${fmtLabel[a.format]||a.format}</span>
-          <span style="font-size:.7rem;color:var(--muted);">${schedLbl[a.schedule_type]||''}</span>
-          <span style="font-size:.7rem;color:var(--muted);"><i class="fas fa-users" style="font-size:.6rem;"></i> ${a.participant_count}</span>
-          ${a.session_count?`<span style="font-size:.7rem;color:var(--muted);"><i class="fas fa-calendar" style="font-size:.6rem;"></i> ${a.session_count}</span>`:''}
-        </div>
-        <a href="/course.html?id=${esc(a.id)}" style="font-family:'Syne',sans-serif;font-size:.76rem;font-weight:700;color:var(--teal);display:flex;align-items:center;gap:4px;">View <i class="fas fa-arrow-right" style="font-size:.6rem;"></i></a>
-      </div>
-      <p style="font-size:.7rem;color:rgba(100,116,139,.6);">by <span style="color:var(--muted);font-weight:500;">${esc(a.host_name)}</span></p>
-    </article>`;
-}
-
-let allActivities=[],activeTag=null;
-function renderGrid(){
-  const q=document.getElementById('search').value.toLowerCase();
-  const type=document.getElementById('filter-type').value;
-  const fmt=document.getElementById('filter-format').value;
-  const filtered=allActivities.filter(a=>{
-    if(type&&a.type!==type)return false;
-    if(fmt&&a.format!==fmt)return false;
-    if(activeTag&&!(a.tags||[]).includes(activeTag))return false;
-    if(q&&!a.title.toLowerCase().includes(q)&&!(a.description||'').toLowerCase().includes(q))return false;
-    return true;
-  });
-  const grid=document.getElementById('activity-grid'),none=document.getElementById('no-results');
-  if(!filtered.length){grid.innerHTML='';none.classList.remove('hidden');}
-  else{none.classList.add('hidden');grid.innerHTML=filtered.map(actCard).join('');}
-}
-
-function buildTagCloud(acts){
-  const freq={};
-  acts.forEach(a=>(a.tags||[]).forEach(t=>freq[t]=(freq[t]||0)+1));
-  const cloud=document.getElementById('tag-cloud');
-  cloud.innerHTML=Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(([n,c])=>
-    `<button class="tag-pill" data-tag="${esc(n)}" id="tag-${esc(n)}">${esc(n)} <span style="opacity:.4;font-size:.62rem;">${c}</span></button>`
-  ).join('');
-  cloud.querySelectorAll('.tag-pill').forEach(btn=>btn.addEventListener('click',()=>toggleTag(btn.dataset.tag)));
-}
-
-function toggleTag(name){
-  activeTag=activeTag===name?null:name;
-  document.querySelectorAll('.tag-pill').forEach(el=>el.classList.remove('active'));
-  if(activeTag){const el=document.getElementById(`tag-${name}`);if(el)el.classList.add('active');}
-  renderGrid();
-}
-
-async function loadActivities(){
-  try{
-    const res=await fetch(`${API}/api/activities`);
-    const data=await res.json();
-    allActivities=data.activities||[];
-    document.getElementById('stat-activities').textContent=allActivities.length;
-    document.getElementById('stat-members').textContent=allActivities.reduce((s,a)=>s+(a.participant_count||0),0);
-    buildTagCloud(allActivities);
-    renderGrid();
-  }catch{
-    document.getElementById('activity-grid').innerHTML=`<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:5rem 0;">Failed to load activities. Seed via <code>POST /api/seed</code>.</p>`;
-  }
-}
-
-['search','filter-type','filter-format'].forEach(id=>
-  document.getElementById(id).addEventListener(id==='search'?'input':'change',renderGrid));
-
-updateNav();
-loadActivities();
-</script>
+    <script src="/js/layout.js" defer></script>
+    <script src="/js/index.js" defer></script>
 </body>
 </html>
