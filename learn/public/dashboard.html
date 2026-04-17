@@ -179,18 +179,18 @@ const token = localStorage.getItem('edu_token');
 const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
 
 // Utility functions
-function esc(s) {
+const pageEsc = window.esc || function (s) {
     return String(s || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-}
+};
 
-function logout() {
+const pageLogout = window.logout || function () {
     localStorage.removeItem('edu_token');
     localStorage.removeItem('edu_user');
     window.location.href = '/login.html';
-}
+};
 
 // Auth check
 if (!token || !user) {
@@ -298,7 +298,7 @@ function renderDashboard(data) {
             <a href="/teach.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
                 <i class="fas fa-plus"></i>Create Activity
             </a>
-            <a href="/learn.html" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl border border-teal-200 dark:border-teal-800 shadow-md hover:shadow-lg transition-all">
+            <a href="/activity.html" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl border border-teal-200 dark:border-teal-800 shadow-md hover:shadow-lg transition-all">
                 <i class="fas fa-compass"></i>Browse Activities
             </a>
         </div>
@@ -352,7 +352,7 @@ function renderDashboard(data) {
                     ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
                     
                     <div class="flex gap-2 mt-auto">
-                        <a href="/course.html?id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
+                        <a href="/activity.html?id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
                             <i class="fas fa-eye mr-1"></i>View
                         </a>
                         <a href="/teach.html?activity_id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -385,7 +385,7 @@ function renderDashboard(data) {
                 <i class="fas fa-smile text-5xl text-gray-400 dark:text-gray-600 mb-4 block"></i>
                 <p class="text-gray-600 dark:text-gray-400 text-lg mb-2 font-semibold">No joined activities yet.</p>
                 <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Browse and join activities to start learning.</p>
-                <a href="/learn.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
+                <a href="/activity.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
                     <i class="fas fa-compass mr-1"></i>Browse Activities
                 </a>
             </div>
@@ -434,7 +434,7 @@ function renderDashboard(data) {
                             
                             ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
                             
-                            <a href="/course.html?id=${esc(a.id)}" class="mt-auto text-center py-2.5 px-4 rounded-lg font-semibold text-sm text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors">
+                            <a href="/activity.html?id=${esc(a.id)}" class="mt-auto text-center py-2.5 px-4 rounded-lg font-semibold text-sm text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors">
                                 <i class="fas fa-arrow-right mr-1"></i>View Activity
                             </a>
                         </article>

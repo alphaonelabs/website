@@ -177,4 +177,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeDarkMode();
     await inject('site-navbar', '/partials/navbar.html', updateAuthSection);
     await inject('site-footer', '/partials/footer.html');
+     updateDarkModeIcon();
 });
