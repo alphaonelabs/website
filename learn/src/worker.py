@@ -39,28 +39,101 @@ import json
 import os
 import re
 import traceback
+from types import SimpleNamespace
+from typing import Any, Dict
 from urllib.parse import urlparse, parse_qs
 
 from workers import Response
 
+import js
+from pyodide.ffi import to_js
 
-def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
-    """Best-effort exception logging with full traceback and request context."""
+_SENTRY_INITIALIZED = False
+_SENTRY_DSN: str = ""
+
+
+def init_sentry(env):
+    """Cache the Sentry DSN once per worker isolate."""
+    global _SENTRY_INITIALIZED, _SENTRY_DSN
+    if _SENTRY_INITIALIZED:
+        return
+    _SENTRY_INITIALIZED = True
+    _SENTRY_DSN = getattr(env, "SENTRY_DSN", "") or ""
+
+
+async def _post_to_sentry(exc: Exception, dsn: str, where: str, req=None):
+    """Send an exception to Sentry via the HTTP Store API using js.fetch."""
     try:
-        payload = {
-            "level": "error",
-            "where": where or "unknown",
+        parsed     = urlparse(dsn)
+        public_key = parsed.username
+        host       = parsed.hostname
+        project_id = parsed.path.strip("/")
+        endpoint   = f"https://{host}/api/{project_id}/store/"
+
+        tb_frames = []
+        if exc.__traceback__:
+            for fi in traceback.extract_tb(exc.__traceback__):
+                tb_frames.append({
+                    "filename":     fi.filename,
+                    "function":     fi.name,
+                    "lineno":       fi.lineno,
+                    "context_line": fi.line or "",
+                })
+
+        event: Dict[str, Any] = {
+            "event_id":  os.urandom(16).hex(),
+            "level":     "error",
+            "logger":    where or "worker",
+            "tags":      {"where": where or "unknown"},
+            "exception": {
+                "values": [{
+                    "type":       type(exc).__name__,
+                    "value":      str(exc),
+                    "stacktrace": {"frames": tb_frames},
+                }]
+            },
+        }
+        if req:
+            event["request"] = {"url": req.url, "method": req.method}
+
+        auth = (
+            f"Sentry sentry_version=7, sentry_key={public_key},"
+            f" sentry_client=cf-worker/1.0"
+        )
+        options = to_js(
+            {
+                "method":  "POST",
+                "headers": {"Content-Type": "application/json", "X-Sentry-Auth": auth},
+                "body":    json.dumps(event),
+            },
+            dict_converter=js.Object.fromEntries,
+        )
+        await js.fetch(endpoint, options)
+    except Exception as post_exc:
+        print(json.dumps({"level": "warn", "where": "sentry_http_post", "error": str(post_exc)}))
+
+
+async def capture_exception(exc: Exception, req=None, _env=None, where: str = ""):
+    """Best-effort exception logging via print + Sentry HTTP Store API."""
+    try:
+        payload: Dict[str, Any] = {
+            "level":      "error",
+            "where":      where or "unknown",
             "error_type": type(exc).__name__,
-            "error": str(exc),
-            "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+            "error":      str(exc),
+            "traceback":  "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
         }
         if req:
             payload["request"] = {
                 "method": req.method,
-                "url": req.url,
-                "path": urlparse(req.url).path,
+                "url":    req.url,
+                "path":   urlparse(req.url).path,
             }
         print(json.dumps(payload))
+
+        dsn = _SENTRY_DSN or (getattr(_env, "SENTRY_DSN", "") if _env else "")
+        if dsn:
+            await _post_to_sentry(exc, dsn, where, req)
     except Exception:
         pass
 
@@ -109,11 +182,9 @@ def _derive_aes_key_bytes(secret: str) -> bytes:
 
 async def _import_aes_key(key_bytes: bytes) -> object:
     """Import raw bytes as a Web Crypto AES-GCM CryptoKey."""
-    import js
-    from pyodide.ffi import to_js
     key_buf = to_js(key_bytes, create_pyproxies=False)
-    algo    = to_js({"name": "AES-GCM"}, create_pyproxies=False)
-    usages  = to_js(["encrypt", "decrypt"], create_pyproxies=False)
+    algo    = to_js({"name": "AES-GCM"}, dict_converter=js.Object.fromEntries)
+    usages  = to_js(["encrypt", "decrypt"])
     return await js.crypto.subtle.importKey("raw", key_buf, algo, False, usages)
 
 
@@ -126,18 +197,22 @@ async def encrypt_aes(plaintext: str, secret: str) -> str:
     if not plaintext:
         return ""
     try:
-        import js
-        from pyodide.ffi import to_js
         key_bytes  = _derive_aes_key_bytes(secret)
         crypto_key = await _import_aes_key(key_bytes)
-        iv         = bytes(js.crypto.getRandomValues(to_js(bytearray(12))))
-        algo       = to_js({"name": "AES-GCM", "iv": to_js(iv)}, create_pyproxies=False)
+
+        # Generate random IV directly into a JS Uint8Array for clean interop
+        iv_array   = js.Uint8Array.new(12)
+        js.crypto.getRandomValues(iv_array)
+        iv         = bytes(iv_array) # Extract back to python bytes for storage
+
+        # Pass algo as a plain dict; Web Crypto accepts both JS objects and plain dicts
+        algo       = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
         data       = to_js(plaintext.encode("utf-8"), create_pyproxies=False)
         ct_buf     = await js.crypto.subtle.encrypt(algo, crypto_key, data)
         ct         = bytes(js.Uint8Array.new(ct_buf))
         return "v1:" + base64.b64encode(iv + ct).decode("ascii")
     except Exception as exc:
-        capture_exception(exc, where="encrypt_aes")
+        await capture_exception(exc, where="encrypt_aes")
         raise RuntimeError(f"AES-256-GCM encryption failed: {exc}") from exc
 
 
@@ -149,24 +224,23 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         return ""
     if not ciphertext.startswith("v1:"):
         return _decrypt_xor(ciphertext, secret)
-    import js
-    from pyodide.ffi import to_js
     try:
         raw        = base64.b64decode(ciphertext[3:])
         iv, ct     = raw[:12], raw[12:]
     except Exception as exc:
-        capture_exception(exc, where="decrypt_aes.decode")
+        await capture_exception(exc, where="decrypt_aes.decode")
         return "[decryption error]"
-    key_bytes  = _derive_aes_key_bytes(secret)
-    crypto_key = await _import_aes_key(key_bytes)
-    algo       = to_js({"name": "AES-GCM", "iv": to_js(iv)}, create_pyproxies=False)
-    data       = to_js(ct, create_pyproxies=False)
     try:
-        pt_buf = await js.crypto.subtle.decrypt(algo, crypto_key, data)
+        key_bytes  = _derive_aes_key_bytes(secret)
+        crypto_key = await _import_aes_key(key_bytes)
+        iv_array   = to_js(iv, create_pyproxies=False)
+        algo       = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
+        data       = to_js(ct, create_pyproxies=False)
+        pt_buf     = await js.crypto.subtle.decrypt(algo, crypto_key, data)
         return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
     except Exception as exc:
         # Auth tag mismatch = tampered/corrupted ciphertext
-        capture_exception(exc, where="decrypt_aes.auth")
+        await capture_exception(exc, where="decrypt_aes.auth")
         return "[decryption error]"
 
 
@@ -458,6 +532,22 @@ async def init_db(env):
         await env.DB.prepare(sql).run()
 
 
+_NO_SUCH_TABLE_RE = re.compile(r"\bno such table\b", re.IGNORECASE)
+
+
+def _is_no_such_table_error(exc: Exception) -> bool:
+    """Return True when an exception chain indicates a SQLite/D1 missing-table error."""
+    if _NO_SUCH_TABLE_RE.search(str(exc) or ""):
+        return True
+    cause = getattr(exc, "__cause__", None)
+    return bool(cause and _NO_SUCH_TABLE_RE.search(str(cause) or ""))
+
+
+def _empty_d1_result():
+    """Return a minimal D1-style result object with an empty `results` collection."""
+    return SimpleNamespace(results=[])
+
+
 # ---------------------------------------------------------------------------
 # Sample-data seeding
 # ---------------------------------------------------------------------------
@@ -677,7 +767,7 @@ async def api_register(req, env):
     except Exception as e:
         if "UNIQUE" in str(e):
             return err("Username or email already registered", 409)
-        capture_exception(e, req, env, "api_register.insert_user")
+        await capture_exception(e, req, env, "api_register.insert_user")
         return err("Registration failed — please try again", 500)
 
     token = create_token(uid, username, role, env.JWT_SECRET)
@@ -751,33 +841,41 @@ async def api_list_activities(req, env):
         " FROM activities a JOIN users u ON a.host_id=u.id"
     )
 
-    if tag:
-        tag_row = await env.DB.prepare(
-            "SELECT id FROM tags WHERE name=?"
-        ).bind(tag).first()
-        if not tag_row:
-            return json_resp({"activities": []})
-        res = await env.DB.prepare(
-            base_q
-            + " JOIN activity_tags at2 ON at2.activity_id=a.id"
-              " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
-        ).bind(tag_row.id).all()
-    elif atype and fmt:
-        res = await env.DB.prepare(
-            base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
-        ).bind(atype, fmt).all()
-    elif atype:
-        res = await env.DB.prepare(
-            base_q + " WHERE a.type=? ORDER BY a.created_at DESC"
-        ).bind(atype).all()
-    elif fmt:
-        res = await env.DB.prepare(
-            base_q + " WHERE a.format=? ORDER BY a.created_at DESC"
-        ).bind(fmt).all()
-    else:
-        res = await env.DB.prepare(
+    async def fetch_activities():
+        if tag:
+            tag_row = await env.DB.prepare(
+                "SELECT id FROM tags WHERE name=?"
+            ).bind(tag).first()
+            if not tag_row:
+                return _empty_d1_result()
+            return await env.DB.prepare(
+                base_q
+                + " JOIN activity_tags at2 ON at2.activity_id=a.id"
+                  " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
+            ).bind(tag_row.id).all()
+        if atype and fmt:
+            return await env.DB.prepare(
+                base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
+            ).bind(atype, fmt).all()
+        if atype:
+            return await env.DB.prepare(
+                base_q + " WHERE a.type=? ORDER BY a.created_at DESC"
+            ).bind(atype).all()
+        if fmt:
+            return await env.DB.prepare(
+                base_q + " WHERE a.format=? ORDER BY a.created_at DESC"
+            ).bind(fmt).all()
+        return await env.DB.prepare(
             base_q + " ORDER BY a.created_at DESC"
         ).all()
+
+    try:
+        res = await fetch_activities()
+    except Exception as e:
+        if not _is_no_such_table_error(e):
+            raise
+        await init_db(env)
+        res = await fetch_activities()
 
     activities = []
     for row in res.results or []:
@@ -849,7 +947,7 @@ async def api_create_activity(req, env):
             atype, fmt, schedule_type, user["id"]
         ).run()
     except Exception as e:
-        capture_exception(e, req, env, "api_create_activity.insert_activity")
+        await capture_exception(e, req, env, "api_create_activity.insert_activity")
         return err("Failed to create activity — please try again", 500)
 
     for tag_name in (body.get("tags") or []):
@@ -868,14 +966,14 @@ async def api_create_activity(req, env):
                     "INSERT INTO tags (id,name) VALUES (?,?)"
                 ).bind(tag_id, tag_name).run()
             except Exception as e:
-                capture_exception(e, req, env, f"api_create_activity.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+                await capture_exception(e, req, env, f"api_create_activity.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
             ).bind(act_id, tag_id).run()
         except Exception as e:
-            capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+            await capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok({"id": act_id, "title": title}, "Activity created")
@@ -983,7 +1081,7 @@ async def api_join(req, env):
             " VALUES (?,?,?,?)"
         ).bind(enr_id, act_id, user["id"], role).run()
     except Exception as e:
-        capture_exception(e, req, env, "api_join.insert_enrollment")
+        await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
 
     return ok(None, "Joined activity successfully")
@@ -1093,7 +1191,7 @@ async def api_create_session(req, env):
             await encrypt_aes(location, enc) if location else "",
         ).run()
     except Exception as e:
-        capture_exception(e, req, env, "api_create_session.insert_session")
+        await capture_exception(e, req, env, "api_create_session.insert_session")
         return err("Failed to create session — please try again", 500)
 
     return ok({"id": sid}, "Session created")
@@ -1142,14 +1240,14 @@ async def api_add_activity_tags(req, env):
                     "INSERT INTO tags (id,name) VALUES (?,?)"
                 ).bind(tag_id, tag_name).run()
             except Exception as e:
-                capture_exception(e, req, env, f"api_add_activity_tags.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+                await capture_exception(e, req, env, f"api_add_activity_tags.insert_tag: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
                 continue
         try:
             await env.DB.prepare(
                 "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
             ).bind(act_id, tag_id).run()
         except Exception as e:
-            capture_exception(e, req, env, f"api_add_activity_tags.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
+            await capture_exception(e, req, env, f"api_add_activity_tags.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
     return ok(None, "Tags updated")
@@ -1159,18 +1257,28 @@ async def api_admin_table_counts(req, env):
     if not _is_basic_auth_valid(req, env):
         return _unauthorized_basic()
 
-    tables_res = await env.DB.prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
-    ).all()
+    async def fetch_counts():
+        tables_res = await env.DB.prepare(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        ).all()
 
-    counts = []
-    for row in tables_res.results or []:
-        table_name = row.name
-        # Table names come from sqlite_master and are quoted to avoid SQL injection.
-        count_row = await env.DB.prepare(
-            f'SELECT COUNT(*) AS cnt FROM "{table_name.replace(chr(34), chr(34) + chr(34))}"'
-        ).first()
-        counts.append({"table": table_name, "count": count_row.cnt if count_row else 0})
+        counts = []
+        for row in tables_res.results or []:
+            table_name = row.name
+            # Table names come from sqlite_master and are quoted to avoid SQL injection.
+            count_row = await env.DB.prepare(
+                f'SELECT COUNT(*) AS cnt FROM "{table_name.replace(chr(34), chr(34) + chr(34))}"'
+            ).first()
+            counts.append({"table": table_name, "count": count_row.cnt if count_row else 0})
+        return counts
+
+    try:
+        counts = await fetch_counts()
+    except Exception as e:
+        if not _is_no_such_table_error(e):
+            raise
+        await init_db(env)
+        counts = await fetch_counts()
 
     return json_resp({"tables": counts})
 
@@ -1245,7 +1353,7 @@ async def _dispatch(request, env):
                 await init_db(env)
                 return ok(None, "Database initialised")
             except Exception as e:
-                capture_exception(e, request, env, "api_init")
+                await capture_exception(e, request, env, "api_init")
                 return err("Database init failed — check D1 binding", 500)
 
         if path == "/api/seed" and method == "POST":
@@ -1254,7 +1362,7 @@ async def _dispatch(request, env):
                 await seed_db(env, env.ENCRYPTION_KEY)
                 return ok(None, "Sample data seeded")
             except Exception as e:
-                capture_exception(e, request, env, "api_seed")
+                await capture_exception(e, request, env, "api_seed")
                 return err("Seed failed — check D1 binding and schema", 500)
 
         if path == "/api/register" and method == "POST":
@@ -1291,6 +1399,11 @@ async def _dispatch(request, env):
         if path == "/api/admin/table-counts" and method == "GET":
             return await api_admin_table_counts(request, env)
 
+        if path.rstrip("/") == "/api/error" and method == "GET":
+            exc = RuntimeError("Sentry test error from /api/error")
+            await capture_exception(exc, request, env, "api_error_test")
+            return ok(None, "Test error sent to Sentry v2")
+
         return err("API endpoint not found", 404)
 
     return await serve_static(path, env)
@@ -1298,7 +1411,8 @@ async def _dispatch(request, env):
 
 async def on_fetch(request, env):
     try:
+        init_sentry(env)
         return await _dispatch(request, env)
     except Exception as e:
-        capture_exception(e, request, env, "on_fetch_unhandled")
+        await capture_exception(e, request, env, "on_fetch_unhandled")
         return err("Internal server error", 500)
