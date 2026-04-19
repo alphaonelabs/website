@@ -18,6 +18,16 @@ database_name = "education_db"
 database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
 
 
+# Virtual Classroom Durable Object
+[[durable_objects.bindings]]
+name = "CLASSROOM_DO"
+class_name = "ClassroomDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ClassroomDO"]
+
+
 [observability]
 enabled = false
 head_sampling_rate = 1
