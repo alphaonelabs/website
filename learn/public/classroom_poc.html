@@ -69,7 +69,7 @@
                                class="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition" />
                     </div>
                 </div>
-                <button id="btnJoin"
+                <button id="btnJoin" type="button"
                         class="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-lg shadow-lg shadow-teal-600/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[.98]">
                     <i data-lucide="log-in" class="w-4 h-4"></i>
                     Join Classroom
@@ -104,7 +104,7 @@
                 <i data-lucide="users" class="w-3.5 h-3.5 text-teal-400"></i>
                 <span id="participantCount">0</span>
             </button>
-            <button id="btnLeave"
+            <button id="btnLeave" type="button"
                     class="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-medium transition">
                 <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                 Leave
@@ -431,9 +431,13 @@
         intentionalDisconnect = false;
 
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = `${proto}//${location.host}/api/classroom/${encodeURIComponent(roomId)}`
-                  + `?participant_id=${encodeURIComponent(myParticipantId)}`
-                  + `&display_name=${encodeURIComponent(myDisplayName)}`;
+        const token = localStorage.getItem('edu_token') || '';
+        const params = new URLSearchParams();
+        if (token) params.set('token', token);
+        params.set('participant_id', myParticipantId);
+        params.set('display_name', myDisplayName);
+
+        const url = `${proto}//${location.host}/api/classroom/${encodeURIComponent(roomId)}?${params.toString()}`;
 
         ws = new WebSocket(url);
 
@@ -451,7 +455,11 @@
         ws.onerror = () => { setConnStatus(false); };
 
         ws.onmessage = (ev) => {
-            try { handleMessage(JSON.parse(ev.data)); } catch(_) {}
+            try {
+                handleMessage(JSON.parse(ev.data));
+            } catch (err) {
+                console.warn('[classroom] dropped malformed ws frame', err, ev.data);
+            }
         };
     }
 
@@ -463,7 +471,10 @@
     }
 
     function scheduleReconnect() {
-        if (reconnectAttempts >= MAX_RECONNECT) return;
+        if (reconnectAttempts >= MAX_RECONNECT) {
+            showToast('Lost connection to classroom - please rejoin.', 'error');
+            return;
+        }
         const delay = Math.min(BASE_DELAY * Math.pow(2, reconnectAttempts), 30000);
         reconnectAttempts++;
         reconnectTimer = setTimeout(() => {
@@ -711,7 +722,7 @@
         btnParticipants.setAttribute(
             'aria-expanded',
             String(!participantsSidebar.classList.contains('translate-x-full'))
-        )
+        );
         renderParticipantsList();
     });
     btnCloseParticipants.addEventListener('click', () => {
@@ -728,13 +739,21 @@
     let myIsMoving  = false;
     let wasMoving   = false;
 
+    function isTypingInInput(target) {
+        if (!target) return false;
+        const tag = target.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    }
+
     window.addEventListener('keydown', (e) => {
+        if (isTypingInInput(e.target)) return;
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             if (!isSeated) { keysPressed[e.key] = true; e.preventDefault(); }
         }
         if (e.key.toLowerCase() === 'e') handleSeatInteraction();
     });
     window.addEventListener('keyup', (e) => {
+        if (isTypingInInput(e.target)) return;
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             keysPressed[e.key] = false;
             e.preventDefault();

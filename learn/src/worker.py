@@ -1366,10 +1366,25 @@ class ClassroomDO(DurableObject):
         qs = parse_qs(parsed.query)
 
         token_param = (qs.get("token") or [None])[0]
+        participant_param = (qs.get("participant_id") or [None])[0]
+        display_name_param = (qs.get("display_name") or [None])[0]
+
         authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
 
-        participant_id = (qs.get("participant_id") or ["anon"])[0]
-        display_name   = (qs.get("display_name")   or [participant_id])[0]
+        if authenticated_user:
+            # Derive identity from the verified token, not from untrusted query params.
+            participant_id = authenticated_user["id"]
+            display_name = authenticated_user.get("username") or participant_id
+        else:
+            # Allow anonymous POC joins when no token is provided.
+            if not participant_param:
+                return Response(
+                    json.dumps({"error": "Authentication required"}),
+                    status=401,
+                    headers={"Content-Type": "application/json"},
+                )
+            participant_id = participant_param
+            display_name = display_name_param or participant_id
 
         # Sanitise inputs
         participant_id = participant_id[:64]
@@ -1491,16 +1506,22 @@ class ClassroomDO(DurableObject):
                 "timestamp":      data.get("timestamp", ""),
             }))
 
+        
         elif msg_type == "update_seat":
+            # Classroom layout, keep in sync with DESK_ROWS/DESK_COLS in classroom_poc.html
+            DESK_ROWS = 3
+            DESK_COLS = 5
+            MAX_SEATS = DESK_ROWS * DESK_COLS
+
             seat_id = data.get("seat_id", "")
             # Validate seat_id: must be "seat-N" where N is 1..DESK_ROWS*DESK_COLS
             if not isinstance(seat_id, str) or not re.fullmatch(r"seat-\d+", seat_id):
                 return
-            seat_num = int(seat_id.split("-")[1])
-            if seat_num < 1 or seat_num > 15:  # 3 rows × 5 cols = 15 seats
+            seat_num = int(seat_id.split("-", 1)[1])
+            if not (1 <= seat_num <= MAX_SEATS):
                 return
 
-            for other_sid, other_info in self.sessions.items():
+            for other_info in self.sessions.values():
                 if (other_info["seat_id"] == seat_id
                         and other_info["participant_id"] != info["participant_id"]):
                     try:
@@ -1567,7 +1588,9 @@ class ClassroomDO(DurableObject):
         self._broadcast_room_state()
 
     async def on_webSocketError(self, ws, error):
-        await self.on_webSocketClose(ws, 1011, "WebSocket error", False)
+        # Log for visibility; the runtime will invoke on_webSocketClose separately
+        # which performs the actual session cleanup and broadcasts.
+        print(f"[ClassroomDO.on_webSocketError] error={error!r}")
 
     # HELPERS:
 
@@ -1627,7 +1650,7 @@ class ClassroomDO(DurableObject):
         ws = self.sessions.get(session_id, {}).get("ws")
         if not ws:
             return
-        try:# sessions: session_id -> {ws, participant_id, display_name, position, direction, is_moving, seat_id}
+        try:
             ws.serializeAttachment(json.dumps({
                 "session_id":     session_id,
                 "participant_id": info["participant_id"],

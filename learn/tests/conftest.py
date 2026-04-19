@@ -125,10 +125,14 @@ class _WebSocketPair:
     """Stub for js.WebSocketPair."""
 
     @staticmethod
-    def new():
+    def new() -> "MagicMock":
         from unittest.mock import MagicMock
-        pair = MagicMock()
-        pair.object_values.return_value = (MagicMock(), MagicMock())
+        client, server = MagicMock(name="ws_client"), MagicMock(name="ws_server")
+        pair = MagicMock(name="ws_pair")
+        pair.object_values.return_value = (client, server)
+        # Expose for tests that want to assert on server.send(...) etc.
+        pair.client = client
+        pair.server = server
         return pair
 
 
