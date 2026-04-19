@@ -154,18 +154,8 @@ def new_id() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Encryption helpers
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
 # Encryption helpers - AES-256-GCM via Web Crypto API (js.crypto.subtle)
 # ---------------------------------------------------------------------------
-# Replaces the XOR stream cipher with authenticated AES-256-GCM encryption.
-# - 256-bit key derived from secret via PBKDF2-SHA256 (100k iterations)
-# - 96-bit random IV prepended to ciphertext
-# - 128-bit GCM auth tag appended automatically by Web Crypto
-# - Output: base64(iv || ciphertext+tag) prefixed with "v1:" for D1 storage
-# - Backward compatible: no "v1:" prefix = legacy XOR, decrypted transparently
 
 def _derive_key(secret: str) -> bytes:
     """Derive a 32-byte key from an arbitrary secret string via SHA-256."""
@@ -202,10 +192,9 @@ async def encrypt_aes(plaintext: str, secret: str) -> str:
         key_bytes  = _derive_aes_key_bytes(secret)
         crypto_key = await _import_aes_key(key_bytes)
 
-        # Generate random IV directly into a JS Uint8Array for clean interop
         iv_array   = js.Uint8Array.new(12)
         js.crypto.getRandomValues(iv_array)
-        iv         = bytes(iv_array) # Extract back to python bytes for storage
+        iv         = bytes(iv_array)
 
         # Pass algo as a plain dict; Web Crypto accepts both JS objects and plain dicts
         algo       = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
@@ -241,7 +230,6 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         pt_buf     = await js.crypto.subtle.decrypt(algo, crypto_key, data)
         return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
     except Exception as exc:
-        # Auth tag mismatch = tampered/corrupted ciphertext
         await capture_exception(exc, where="decrypt_aes.auth")
         return "[decryption error]"
 
@@ -582,14 +570,13 @@ async def seed_db(env, enc_key: str):
                 await encrypt_aes(role,     enc_key),
             ).run()
         except Exception:
-            pass  # already seeded
+            pass
 
     aid = uid_map["alice"]
     bid = uid_map["bob"]
     cid = uid_map["charlie"]
     did = uid_map["diana"]
 
-    # ---- tags ----------------------------------------------------------------
     tag_rows = [
         ("tag-python", "Python"),
         ("tag-js",     "JavaScript"),
@@ -607,7 +594,6 @@ async def seed_db(env, enc_key: str):
         except Exception:
             pass
 
-    # ---- activities ----------------------------------------------------------
     act_rows = [
         (
             "act-py-begin", "Python for Beginners",
@@ -673,7 +659,6 @@ async def seed_db(env, enc_key: str):
             except Exception:
                 pass
 
-    # ---- sessions for live/recurring activities ------------------------------
     ses_rows = [
         ("ses-js-1", "act-js-meetup",
          "April Meetup", "Q1 retro and React 19 deep-dive",
@@ -709,7 +694,6 @@ async def seed_db(env, enc_key: str):
         except Exception:
             pass
 
-    # ---- enrollments ---------------------------------------------------------
     enr_rows = [
         ("enr-c-py",     "act-py-begin",    cid, "participant"),
         ("enr-c-js",     "act-js-meetup",   cid, "participant"),
@@ -799,7 +783,7 @@ async def api_login(req, env):
 
     if not row:
         return err("Invalid username or password", 401)
-    
+
     password_hash = row.password_hash
     user_id = row.id
     role_enc = row.role
@@ -1267,7 +1251,6 @@ async def api_admin_table_counts(req, env):
         counts = []
         for row in tables_res.results or []:
             table_name = row.name
-            # Table names come from sqlite_master and are quoted to avoid SQL injection.
             count_row = await env.DB.prepare(
                 f'SELECT COUNT(*) AS cnt FROM "{table_name.replace(chr(34), chr(34) + chr(34))}"'
             ).first()
@@ -1348,303 +1331,313 @@ class ClassroomDO(DurableObject):
 
         # Restore hibernated WebSocket connections
         for ws in self.ctx.getWebSockets():
-            attachment = ws.deserializeAttachment()
-            if attachment:
-                try:
-                    data = json.loads(attachment) if isinstance(attachment, str) else attachment
-                    sid = data.get("session_id", str(uuid.uuid4()))
-                    self.sessions[sid] = {
-                        "ws": ws,
-                        "participant_id": data.get("participant_id", "unknown"),
-                        "display_name": data.get("display_name", "Unknown"),
-                        "position": data.get("position", {"x": 400, "y": 300}),
-                        "direction": data.get("direction", "down"),
-                        "is_moving": False,
-                        "seat_id": data.get("seat_id", ""),
-                    }
-                except Exception:
-                    pass
+            try:
+                attachment = ws.deserializeAttachment()
+                if not attachment:
+                    continue
+                data = json.loads(attachment) if isinstance(attachment, str) else attachment
+                sid = data.get("session_id", str(uuid.uuid4()))
+                self.sessions[sid] = {
+                    "ws":             ws,
+                    "participant_id": data.get("participant_id", "unknown"),
+                    "display_name":   data.get("display_name", "Unknown"),
+                    "position":       data.get("position", {"x": 0.5, "y": 0.5}),
+                    "direction":      data.get("direction", "down"),
+                    "is_moving":      False,
+                    "seat_id":        data.get("seat_id", ""),
+                }
+            except Exception as exc:
+                print(f"[ClassroomDO.__init__.restore] error={exc!r}")
 
-        # Auto respond to keepAlive pings without waking up the instance
         self.ctx.setWebSocketAutoResponse(
             WebSocketRequestResponsePair.new("ping", "pong")
         )
 
     async def on_fetch(self, request):
-        url = request.url
         upgrade = request.headers.get("Upgrade") or ""
-
         if upgrade.lower() != "websocket":
-            return Response(json.dumps({"error": "Expected WebSocket upgrade"}),
-                           status=426,
-                           headers={"Content-Type": "application/json"})
+            return Response(
+                json.dumps({"error": "Expected WebSocket upgrade"}),
+                status=426,
+                headers={"Content-Type": "application/json"},
+            )
 
-        # Extract participant_id and display_name from query string
-        parsed = urlparse(url)
+        parsed = urlparse(request.url)
         qs = parse_qs(parsed.query)
+
+        token_param = (qs.get("token") or [None])[0]
+        authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
+
         participant_id = (qs.get("participant_id") or ["anon"])[0]
-        display_name = (qs.get("display_name") or [participant_id])[0]
+        display_name   = (qs.get("display_name")   or [participant_id])[0]
+
+        # Sanitise inputs
+        participant_id = participant_id[:64]
+        display_name   = display_name[:64]
 
         # Create WebSocket pair
         client, server = WebSocketPair.new().object_values()
-
-        # Accept with hibernation support
         self.ctx.acceptWebSocket(server)
 
-        # Generate session ID (supports multi-tab: same participant_id, different session)
         session_id = str(uuid.uuid4())
 
-        # Attachment data: survives hibernation
+        # Re-use the last known position/seat if the same participant reconnects
+        # (e.g. page refresh or network blip).
+        existing = next(
+            (s for s in self.sessions.values()
+             if s["participant_id"] == participant_id),
+            None,
+        )
+        initial_position  = dict(existing["position"])       if existing else {"x": 0.5, "y": 0.5}
+        initial_direction = existing["direction"]             if existing else "down"
+        initial_seat_id   = existing.get("seat_id", "")      if existing else ""
+
         attachment = json.dumps({
-            "session_id": session_id,
+            "session_id":     session_id,
             "participant_id": participant_id,
-            "display_name": display_name,
-            "position": {"x": 400, "y": 300},
-            "direction": "down",
-            "seat_id": "",
+            "display_name":   display_name,
+            "position":       initial_position,
+            "direction":      initial_direction,
+            "seat_id":        initial_seat_id,
         })
         server.serializeAttachment(attachment)
 
-        # Track locally
         self.sessions[session_id] = {
-            "ws": server,
+            "ws":             server,
             "participant_id": participant_id,
-            "display_name": display_name,
-            "position": {"x": 400, "y": 300},
-            "direction": "down",
-            "is_moving": False,
-            "seat_id": "",
+            "display_name":   display_name,
+            "position":       initial_position,
+            "direction":      initial_direction,
+            "is_moving":      False,
+            "seat_id":        initial_seat_id,
         }
 
-        # Send user_info to the newly connected client
         try:
             server.send(json.dumps({
-                "type": "user_info",
-                "session_id": session_id,
+                "type":           "user_info",
+                "session_id":     session_id,
                 "participant_id": participant_id,
-                "display_name": display_name,
+                "display_name":   display_name,
             }))
-        except Exception:
-            pass
+        except Exception as exc:
+            await capture_exception(exc, request, self.env, "classroom_on_fetch.send_user_info")
 
-        # Broadcast updated room_state to EVERYONE
         self._broadcast_room_state()
 
-        # Notifying others that someone joined!
         self._broadcast(json.dumps({
-            "type": "participant_joined",
+            "type":           "participant_joined",
             "participant_id": participant_id,
-            "display_name": display_name,
+            "display_name":   display_name,
         }), exclude_session_id=session_id)
 
         return Response(None, status=101, web_socket=client)
-    
-    # Event Router
+
     async def on_webSocketMessage(self, ws, message):
         try:
             data = json.loads(message) if isinstance(message, str) else json.loads(message.decode("utf-8"))
-        except Exception:
+        except Exception as exc:
+            await capture_exception(exc, None, self.env, "classroom_on_webSocketMessage.parse")
             return
 
         msg_type = data.get("type", "")
-        session = self._session_for_ws(ws)
+        session  = self._session_for_ws(ws)
         if not session:
             return
 
         sid, info = session
 
+        def _valid_norm_position(value):
+            """Accept normalized (0-1) position dicts; reject anything else."""
+            if not isinstance(value, dict):
+                return None
+            try:
+                x = float(value.get("x", 0.5))
+                y = float(value.get("y", 0.5))
+            except (TypeError, ValueError):
+                return None
+            # Clamp to [0, 1] — normalized coordinate space
+            return {"x": max(0.0, min(1.0, x)), "y": max(0.0, min(1.0, y))}
+
         if msg_type == "position_update":
-            # Update stored position
-            info["position"] = data.get("position", info["position"])
-            info["direction"] = data.get("direction", info["direction"])
-            info["is_moving"] = data.get("isMoving", False)
+            position = _valid_norm_position(data.get("position"))
+            if position is None:
+                return
+            direction = data.get("direction", info["direction"])
+            if direction not in {"up", "down", "left", "right"}:
+                direction = info["direction"]
+            info["position"]  = position
+            info["direction"] = direction
+            info["is_moving"] = bool(data.get("isMoving", False))
             self._persist_attachment(sid, info)
 
-            # Broadcast to all (except sender)
             self._broadcast(json.dumps({
-                "type": "position_update",
+                "type":           "position_update",
                 "participant_id": info["participant_id"],
-                "display_name": info["display_name"],
-                "position": info["position"],
-                "direction": info["direction"],
-                "isMoving": info["is_moving"],
+                "display_name":   info["display_name"],
+                "position":       info["position"],
+                "direction":      info["direction"],
+                "isMoving":       info["is_moving"],
             }), exclude_session_id=sid)
 
         elif msg_type == "chat_message":
-            text = (data.get("text") or "").strip()
+            text = (data.get("text") or "").strip()[:500]
             if not text:
                 return
             self._broadcast(json.dumps({
-                "type": "chat_message",
+                "type":           "chat_message",
                 "participant_id": info["participant_id"],
-                "display_name": info["display_name"],
-                "text": text,
-                "timestamp": data.get("timestamp", ""),
+                "display_name":   info["display_name"],
+                "text":           text,
+                "timestamp":      data.get("timestamp", ""),
             }))
 
         elif msg_type == "update_seat":
             seat_id = data.get("seat_id", "")
-            if not seat_id:
+            # Validate seat_id: must be "seat-N" where N is 1..DESK_ROWS*DESK_COLS
+            if not isinstance(seat_id, str) or not re.fullmatch(r"seat-\d+", seat_id):
+                return
+            seat_num = int(seat_id.split("-")[1])
+            if seat_num < 1 or seat_num > 15:  # 3 rows × 5 cols = 15 seats
                 return
 
-            # Check if seat is occupied by someone else
             for other_sid, other_info in self.sessions.items():
                 if (other_info["seat_id"] == seat_id
                         and other_info["participant_id"] != info["participant_id"]):
                     try:
                         ws.send(json.dumps({
-                            "type": "seat_occupied",
-                            "message": "This seat is already taken by another student.", # Seat Occupied!
+                            "type":    "seat_occupied",
+                            "message": "This seat is already taken by another student.",
                             "seat_id": seat_id,
                         }))
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        await capture_exception(exc, None, self.env,
+                            f"classroom.seat_occupied_send pid={info['participant_id']} seat={seat_id}")
                     return
 
-            # Assign seat to this participant
             for s_id, s_info in self.sessions.items():
                 if s_info["participant_id"] == info["participant_id"]:
                     s_info["seat_id"] = seat_id
                     self._persist_attachment(s_id, s_info)
 
             self._broadcast(json.dumps({
-                "type": "seat_updated",
+                "type":           "seat_updated",
                 "participant_id": info["participant_id"],
-                "display_name": info["display_name"],
-                "seat_id": seat_id,
+                "display_name":   info["display_name"],
+                "seat_id":        seat_id,
             }))
             self._broadcast_room_state()
 
         elif msg_type == "leave_seat":
             old_seat = info["seat_id"]
-            # Clear seat for all tabs of this participant
             for s_id, s_info in self.sessions.items():
                 if s_info["participant_id"] == info["participant_id"]:
                     s_info["seat_id"] = ""
                     self._persist_attachment(s_id, s_info)
 
             self._broadcast(json.dumps({
-                "type": "seat_left",
+                "type":           "seat_left",
                 "participant_id": info["participant_id"],
-                "display_name": info["display_name"],
-                "seat_id": old_seat,
+                "display_name":   info["display_name"],
+                "seat_id":        old_seat,
             }))
             self._broadcast_room_state()
 
     async def on_webSocketClose(self, ws, code, reason, wasClean):
-        try:
-            ws.close(code, reason)
-        except Exception:
-            pass
-
         session = self._session_for_ws(ws)
         if not session:
             return
 
-        sid, info = session
-        participant_id = info["participant_id"]
-        display_name = info["display_name"]
+        sid, info  = session
+        pid        = info["participant_id"]
+        dname      = info["display_name"]
 
-        # Remove this specific session
         self.sessions.pop(sid, None)
 
-        # Check if participant still has other tabs open
         still_connected = any(
-            s["participant_id"] == participant_id
-            for s in self.sessions.values()
+            s["participant_id"] == pid for s in self.sessions.values()
         )
 
         if not still_connected:
             self._broadcast(json.dumps({
-                "type": "participant_left",
-                "participant_id": participant_id,
-                "display_name": display_name,
+                "type":           "participant_left",
+                "participant_id": pid,
+                "display_name":   dname,
             }))
 
         self._broadcast_room_state()
 
     async def on_webSocketError(self, ws, error):
-        """Handle WebSocket errors — treat as close."""
         await self.on_webSocketClose(ws, 1011, "WebSocket error", False)
 
     # HELPERS:
 
     def _session_for_ws(self, ws):
-        """Find (session_id, info) for a given WebSocket object.
-        Uses deserializeAttachment so it works after hibernation wakeUp
-        """
         try:
             raw = ws.deserializeAttachment()
             if raw:
                 data = json.loads(raw) if isinstance(raw, str) else raw
-                sid = data.get("session_id", "")
+                sid  = data.get("session_id", "")
                 if sid and sid in self.sessions:
                     return (sid, self.sessions[sid])
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[ClassroomDO._session_for_ws.deserialize] error={exc!r}")
 
         for sid, info in self.sessions.items():
             try:
                 if info["ws"] == ws:
                     return (sid, info)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[ClassroomDO._session_for_ws.fallback] sid={sid} error={exc!r}")
         return None
 
     def _broadcast(self, msg, exclude_session_id=None):
-        """Send a JSON string to all connected WebSockets.
-        exclude_session_id: session_id string to skip (the sender).
-        """
         dead = []
         for sid, info in self.sessions.items():
             if sid == exclude_session_id:
                 continue
             try:
                 info["ws"].send(msg)
-            except Exception:
+            except Exception as exc:
+                print(f"[ClassroomDO._broadcast] sid={sid} pid={info.get('participant_id')} error={exc!r}")
                 dead.append(sid)
         for sid in dead:
             self.sessions.pop(sid, None)
 
     def _broadcast_room_state(self):
-        """Build and broadcast the current room state."""
-        # De-duplicate by participant_id (multi-tab)
         seen = {}
         for info in self.sessions.values():
             pid = info["participant_id"]
             if pid not in seen:
                 seen[pid] = {
                     "participant_id": pid,
-                    "display_name": info["display_name"],
-                    "position": info["position"],
-                    "direction": info["direction"],
-                    "is_moving": info.get("is_moving", False),
-                    "seat_id": info.get("seat_id", ""),
+                    "display_name":   info["display_name"],
+                    "position":       info["position"],
+                    "direction":      info["direction"],
+                    "is_moving":      info.get("is_moving", False),
+                    "seat_id":        info.get("seat_id", ""),
                 }
 
-        state_msg = json.dumps({
-            "type": "room_state",
+        self._broadcast(json.dumps({
+            "type":         "room_state",
             "participants": list(seen.values()),
-            "count": len(seen),
-        })
-        self._broadcast(state_msg)
+            "count":        len(seen),
+        }))
 
     def _persist_attachment(self, session_id, info):
-        """Persist session data in the WebSocket attachment."""
         ws = self.sessions.get(session_id, {}).get("ws")
         if not ws:
             return
-        try:
+        try:# sessions: session_id -> {ws, participant_id, display_name, position, direction, is_moving, seat_id}
             ws.serializeAttachment(json.dumps({
-                "session_id": session_id,
+                "session_id":     session_id,
                 "participant_id": info["participant_id"],
-                "display_name": info["display_name"],
-                "position": info["position"],
-                "direction": info["direction"],
-                "seat_id": info.get("seat_id", ""),
+                "display_name":   info["display_name"],
+                "position":       info["position"],
+                "direction":      info["direction"],
+                "seat_id":        info.get("seat_id", ""),
             }))
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[ClassroomDO._persist_attachment] sid={session_id} pid={info.get('participant_id')} error={exc!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -1663,7 +1656,7 @@ async def _dispatch(request, env):
         if not _is_basic_auth_valid(request, env):
             return _unauthorized_basic()
         return await serve_static("/admin.html", env)
-    
+
     m_classroom = re.fullmatch(r"/api/classroom/([A-Za-z0-9_-]+)", path)
     if m_classroom:
         room_id = m_classroom.group(1)
