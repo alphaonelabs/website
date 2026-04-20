@@ -1499,17 +1499,18 @@ async def api_list_notifications(req, env):
             " ORDER BY created_at DESC LIMIT ?"
         ).bind(user["id"], limit).all()
 
-    notifications = []
-    for r in rows.results or []:
-        notifications.append({
-            "id":         r["id"],
-            "type":       r["type"],
-            "title":      r["title"],
-            "message":    r["message"],
-            "is_read":    bool(r["is_read"]),
-            "related_id": r["related_id"],
-            "created_at": r["created_at"],
-        })
+    notifications = [
+        {
+            "id":         r.id,
+            "type":       r.type,
+            "title":      r.title,
+            "message":    r.message,
+            "is_read":    bool(r.is_read),
+            "related_id": r.related_id,
+            "created_at": r.created_at,
+        }
+        for r in rows.results or []
+    ]
 
     unread_count = await env.DB.prepare(
         "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND is_read = 0"
@@ -1517,7 +1518,7 @@ async def api_list_notifications(req, env):
 
     return ok({
         "notifications": notifications,
-        "unread_count":  unread_count["cnt"] if unread_count else 0,
+        "unread_count":  unread_count.cnt if unread_count else 0,
     })
 
 
