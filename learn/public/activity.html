@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activities - Alpha One Labs</title>
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} }
+    }
+
+    function initializeDarkMode() {
+      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+      if (darkModeEnabled) {
+        document.documentElement.classList.add('dark');
+      } else if (localStorage.getItem('darkMode') === null) {
+        localStorage.setItem('darkMode', 'false');
+      }
+    }
+
+    initializeDarkMode();
+    document.addEventListener('DOMContentLoaded', initializeDarkMode);
+  </script>
+
+  <style>
+    html, body {
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    
+    .dark { color-scheme: dark; }
+    :root { color-scheme: light; }
+    
+    .gradient-hero {
+      background: linear-gradient(135deg, #0F766E 0%, #0D9488 50%, #06B6D4 100%);
+    }
+    
+    .gradient-hero.dark {
+      background: linear-gradient(135deg, #134E4A 0%, #0F766E 50%, #164E63 100%);
+    }
+
+    .badge { 
+      display: inline-block; 
+      padding: 4px 12px; 
+      border-radius: 9999px; 
+      font-size: 0.75rem; 
+      font-weight: 600; 
+    }
+
+    .card-hover { 
+      transition: transform 0.2s, box-shadow 0.2s; 
+    }
+    
+    .card-hover:hover { 
+      transform: translateY(-4px); 
+      box-shadow: 0 12px 30px rgba(0,0,0,0.12); 
+    }
+
+    .tag-pill { 
+      cursor: pointer; 
+      transition: background 0.15s; 
+    }
+    
+    .tag-pill.active { 
+      background: #0F766E; 
+      color: #fff; 
+    }
+
+    /* View modes */
+    .view-browser { display: block; }
+    .view-detail { display: none; }
+    .view-browser.hidden { display: none; }
+    .view-detail.active { display: block; }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+
+  <div id="site-navbar"></div>
+
+  <!-- ==================== BROWSER VIEW ==================== -->
+  <div id="browser-view" class="view-browser">
+
+    <!-- ===== HERO SECTION ===== -->
+    <section class="gradient-hero text-white py-16 md:py-20 relative overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
+        <i class="fas fa-book-open absolute top-10 left-10 text-6xl"></i>
+        <i class="fas fa-users absolute bottom-10 right-10 text-6xl"></i>
+      </div>
+
+      <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
+        <nav class="text-teal-100 text-sm mb-6 flex items-center gap-2">
+          <i class="fas fa-list mr-1"></i>
+          <span>All Activities</span>
+        </nav>
+
+        <h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-4">
+          Discover Learning Activities
+        </h1>
+        <p class="text-lg text-teal-100 mb-8 max-w-2xl">
+          Browse courses, meetups, workshops, and study groups. All sessions encrypted and secure.
+        </p>
+
+        <!-- Search + Filters -->
+        <div class="flex flex-col md:flex-row gap-3 max-w-2xl">
+          <input id="search" type="text" placeholder="🔍 Search activities…"
+            class="flex-1 px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-white/40 text-sm backdrop-blur" />
+          <select id="filter-type"
+            class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
+            <option value="" class="bg-gray-800">All Types</option>
+            <option value="course" class="bg-gray-800">📚 Course</option>
+            <option value="meetup" class="bg-gray-800">🤝 Meetup</option>
+            <option value="workshop" class="bg-gray-800">🔧 Workshop</option>
+            <option value="seminar" class="bg-gray-800">🎤 Seminar</option>
+          </select>
+          <select id="filter-format"
+            class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
+            <option value="" class="bg-gray-800">All Formats</option>
+            <option value="live" class="bg-gray-800">🎥 Live</option>
+            <option value="self_paced" class="bg-gray-800">⏱ Self-paced</option>
+            <option value="hybrid" class="bg-gray-800">🔀 Hybrid</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="flex-1 max-w-[90rem] mx-auto w-full px-4 md:px-6 py-12">
+
+      <!-- Tag cloud -->
+      <div id="tag-cloud" class="flex flex-wrap gap-2 mb-8"></div>
+
+      <!-- Activity grid -->
+      <div id="activity-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Populated by JS -->
+      </div>
+
+      <p id="no-results" class="hidden text-center text-gray-400 dark:text-gray-500 py-16 text-lg">
+        <i class="fas fa-search text-4xl mb-4 block opacity-50"></i>
+        No activities found matching your filters.
+      </p>
+    </main>
+
+  </div>
+
+  <!-- ==================== DETAIL VIEW ==================== -->
+  <div id="detail-view" class="view-detail">
+
+    <!-- ===== HERO SECTION ===== -->
+    <section class="gradient-hero text-white py-16 md:py-20 relative overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
+        <i class="fas fa-book-open absolute top-10 left-10 text-6xl"></i>
+        <i class="fas fa-users absolute bottom-10 right-10 text-6xl"></i>
+      </div>
+
+      <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
+        <nav class="text-teal-100 text-sm mb-6 flex items-center gap-2">
+          <button onclick="backToBrowser()" class="hover:text-white transition flex items-center gap-1">
+            <i class="fas fa-arrow-left"></i>Activities
+          </button>
+          <span>/</span>
+          <span id="crumb-title" class="text-teal-50">Loading...</span>
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div class="lg:col-span-2">
+            <h1 id="act-title" class="text-4xl md:text-5xl lg:text-5xl font-extrabold text-white leading-tight mb-4">
+              Loading...
+            </h1>
+            <p id="act-meta" class="text-lg text-teal-100 mb-6">Loading metadata...</p>
+            <div id="act-badges" class="flex flex-wrap gap-2 mb-6"></div>
+            <div id="act-action"></div>
+          </div>
+
+          <!-- Quick Info Card -->
+          <div class="lg:col-span-1">
+            <div class="bg-white/10 dark:bg-black/30 backdrop-blur-lg border border-white/20 rounded-2xl p-6 text-white">
+              <h3 class="font-bold text-lg mb-4 flex items-center">
+                <i class="fas fa-info-circle mr-2"></i>Quick Info
+              </h3>
+              <div id="act-details" class="space-y-3 text-sm"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="flex-1 max-w-[90rem] mx-auto w-full px-4 md:px-6 py-12">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+        <!-- Left Sidebar -->
+        <aside class="lg:col-span-1 space-y-6">
+          
+          <!-- About Card -->
+          <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-shadow">
+            <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+              <i class="fas fa-file-alt mr-2 text-teal-600 dark:text-teal-400"></i>About
+            </h2>
+            <p id="act-description" class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">
+              Loading description...
+            </p>
+            <div id="act-tags" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <!-- Sessions Card -->
+          <div id="sessions-card" class="rounded-2xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20">
+              <h2 class="font-bold text-gray-800 dark:text-gray-200 flex items-center">
+                <i class="fas fa-calendar mr-2 text-teal-600 dark:text-teal-400"></i>Sessions
+              </h2>
+              <span id="sessions-count" class="text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-full font-semibold"></span>
+            </div>
+            <ul id="sessions-list" class="divide-y divide-gray-200 dark:divide-gray-700 max-h-[60vh] overflow-y-auto">
+              <li class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <i class="fas fa-spinner fa-spin"></i>Loading sessions...
+              </li>
+            </ul>
+          </div>
+
+          <!-- Similar Activities Card -->
+          <div id="similar-card" class="rounded-2xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+              <h2 class="font-bold text-gray-800 dark:text-gray-200 flex items-center">
+                <i class="fas fa-star mr-2 text-purple-600 dark:text-purple-400"></i>Similar Activities
+              </h2>
+            </div>
+            <ul id="similar-list" class="divide-y divide-gray-200 dark:divide-gray-700 max-h-[50vh] overflow-y-auto">
+              <li class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <i class="fas fa-spinner fa-spin"></i>Loading...
+              </li>
+            </ul>
+          </div>
+
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="lg:col-span-3 space-y-6">
+
+          <!-- Not Joined CTA -->
+          <div id="join-cta" class="hidden rounded-2xl p-8 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200 dark:border-teal-800 text-center">
+            <div class="text-5xl mb-4">🔒</div>
+            <h3 class="font-bold text-2xl text-gray-800 dark:text-gray-200 mb-2">Join to Access Details</h3>
+            <p class="text-gray-600 dark:text-gray-300 text-sm mb-6 max-w-sm mx-auto">
+              Session locations and descriptions are encrypted and only revealed to participants.
+            </p>
+            <button id="btn-join" onclick="joinActivity()"
+              class="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
+              <i class="fas fa-user-plus mr-2"></i>Join Activity - Free
+            </button>
+          </div>
+
+          <!-- Member Card -->
+          <div id="member-card" class="hidden rounded-2xl p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <h2 class="font-bold text-lg text-green-800 dark:text-green-300 mb-4 flex items-center">
+              <i class="fas fa-check-circle mr-2"></i>Your Participation
+            </h2>
+            <div id="enr-details" class="flex flex-wrap gap-3 text-sm"></div>
+          </div>
+
+          <!-- Welcome Card -->
+          <div id="welcome-card" class="rounded-2xl p-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
+            <h2 class="font-bold text-2xl text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+              <i class="fas fa-star mr-2 text-yellow-500"></i>Welcome!
+            </h2>
+            <p id="welcome-text" class="text-gray-600 dark:text-gray-300 text-base leading-relaxed">
+              Loading welcome message...
+            </p>
+          </div>
+
+          <!-- Host Info Card -->
+          <div id="host-card" class="hidden rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
+            <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+              <i class="fas fa-user-tie mr-2 text-teal-600 dark:text-teal-400"></i>Activity Host
+            </h2>
+            <div id="host-info" class="flex items-center gap-4">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <div id="site-footer"></div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    const API = '';
+    const token = localStorage.getItem('edu_token');
+    const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+    
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+    const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', other:'✨' };
+    const typeColor = { course:'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300', meetup:'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300', workshop:'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', seminar:'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300', other:'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300' };
+    const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
+    const fmtColor  = { live:'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', self_paced:'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', hybrid:'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' };
+    const schedLabel = { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
+
+    let allActivities = [];
+    let currentActivity = null;
+    let activeTag = null;
+
+    // ==================== VIEW SWITCHING ====================
+    function showBrowser() {
+      document.getElementById('browser-view').classList.remove('hidden');
+      document.getElementById('detail-view').classList.remove('active');
+      window.history.pushState(null, '', '/activity.html');
+    }
+
+    function showDetail(activityId) {
+      document.getElementById('browser-view').classList.add('hidden');
+      document.getElementById('detail-view').classList.add('active');
+      window.history.pushState({activityId}, '', `/activity.html?id=${activityId}`);
+      loadActivityDetail(activityId);
+    }
+
+    function backToBrowser() {
+      showBrowser();
+    }
+
+    // ==================== ACTIVITY CARD RENDERING ====================
+    function renderActivityCard(a) {
+      const tc = typeColor[a.type] || 'bg-slate-100 text-slate-600';
+      const fc = fmtColor[a.format]  || 'bg-slate-100 text-slate-600';
+      const ic = typeIcon[a.type] || '✨';
+      const desc = a.description.length > 110 ? a.description.slice(0, 110) + '…' : a.description;
+      const tags = (a.tags || []).slice(0, 3).map(t =>
+        `<span class="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">${esc(t)}</span>`).join('');
+      return `
+        <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 card-hover flex flex-col gap-3 cursor-pointer" onclick="showDetail('${esc(a.id)}')">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-base leading-snug">${ic} ${esc(a.title)}</h3>
+            <span class="badge ${tc} shrink-0">${esc(a.type)}</span>
+          </div>
+          <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed flex-1">${esc(desc)}</p>
+          <div class="flex flex-wrap gap-1.5">${tags}</div>
+          <div class="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+            <div class="flex gap-2 flex-wrap">
+              <span class="badge ${fc}">${fmtLabel[a.format] || a.format}</span>
+              <span>${schedLabel[a.schedule_type] || a.schedule_type}</span>
+              <span>👥 ${a.participant_count}</span>
+              ${a.session_count ? `<span>🗓 ${a.session_count} sessions</span>` : ''}
+            </div>
+          </div>
+          <p class="text-xs text-gray-400 dark:text-gray-500">by <span class="font-medium text-gray-600 dark:text-gray-300">${esc(a.host_name)}</span></p>
+        </article>`;
+    }
+
+    // ==================== BROWSER VIEW FUNCTIONS ====================
+    function renderGrid() {
+      const q    = document.getElementById('search').value.toLowerCase();
+      const type = document.getElementById('filter-type').value;
+      const fmt  = document.getElementById('filter-format').value;
+
+      const filtered = allActivities.filter(a => {
+        if (type && a.type !== type) return false;
+        if (fmt  && a.format !== fmt) return false;
+        if (activeTag && !(a.tags || []).includes(activeTag)) return false;
+        if (q && !a.title.toLowerCase().includes(q) && !a.description.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      const grid = document.getElementById('activity-grid');
+      const none = document.getElementById('no-results');
+      if (!filtered.length) { 
+        grid.innerHTML = ''; 
+        none.classList.remove('hidden'); 
+      } else { 
+        none.classList.add('hidden'); 
+        grid.innerHTML = filtered.map(renderActivityCard).join(''); 
+      }
+    }
+
+    function buildTagCloud(activities) {
+      const freq = {};
+      activities.forEach(a => (a.tags || []).forEach(t => freq[t] = (freq[t] || 0) + 1));
+      const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      const cloud = document.getElementById('tag-cloud');
+      cloud.innerHTML = sorted.map(([name, cnt]) => `
+        <button onclick="toggleTag('${esc(name)}')" id="tag-${esc(name)}"
+          class="tag-pill badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 hover:text-teal-600 dark:hover:text-teal-400">
+          ${esc(name)} <span class="opacity-60">${cnt}</span>
+        </button>`).join('');
+    }
+
+    function toggleTag(name) {
+      if (activeTag === name) {
+        activeTag = null;
+        document.querySelectorAll('.tag-pill').forEach(el => el.classList.remove('active'));
+      } else {
+        activeTag = name;
+        document.querySelectorAll('.tag-pill').forEach(el => el.classList.remove('active'));
+        const el = document.getElementById(`tag-${name}`);
+        if (el) el.classList.add('active');
+      }
+      renderGrid();
+    }
+
+    async function loadAllActivities() {
+      try {
+        const res  = await fetch(`${API}/api/activities`);
+        const data = await res.json();
+        allActivities = data.activities || [];
+        buildTagCloud(allActivities);
+        renderGrid();
+      } catch (e) {
+        console.error('Failed to load activities:', e);
+        document.getElementById('activity-grid').innerHTML =
+          `<p class="col-span-3 text-center text-red-400 py-16">Failed to load activities.</p>`;
+      }
+    }
+
+    // ==================== DETAIL VIEW FUNCTIONS ====================
+    function getSimilarActivities(activity, limit = 3) {
+      if (!activity || !allActivities.length) return [];
+      return allActivities
+        .filter(a => a.id !== activity.id && (
+          a.type === activity.type || 
+          (a.tags || []).some(t => (activity.tags || []).includes(t))
+        ))
+        .slice(0, limit);
+    }
+
+    function renderSimilarActivities() {
+      if (!currentActivity) return;
+      
+      const similar = getSimilarActivities(currentActivity);
+      const ul = document.getElementById('similar-list');
+      const card = document.getElementById('similar-card');
+      
+      if (!similar.length) {
+        card.classList.add('hidden');
+        return;
+      }
+
+      ul.innerHTML = similar.map(s => {
+        const ic = typeIcon[s.type] || '✨';
+        return `
+          <li class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" onclick="showDetail('${esc(s.id)}')">
+            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${ic} ${esc(s.title)}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">by ${esc(s.host_name)}</p>
+            <p class="text-xs text-teal-600 dark:text-teal-400 mt-1">👥 ${s.participant_count} participants</p>
+          </li>
+        `;
+      }).join('');
+    }
+
+    async function loadActivityDetail(activityId) {
+      const headers = token ? { Authorization: 'Bearer ' + token } : {};
+      const res = await fetch('/api/activities/' + activityId, { headers });
+      const data = await res.json();
+      if (!res.ok) { document.getElementById('act-title').textContent = 'Activity not found'; return; }
+
+      const a = data.activity;
+      currentActivity = a;
+      
+      document.title = a.title + ' - Alpha One Labs';
+      document.getElementById('crumb-title').textContent = a.title;
+      document.getElementById('act-title').textContent = a.title;
+      document.getElementById('act-description').textContent = a.description;
+      document.getElementById('act-meta').textContent =
+        'by ' + a.host_name + '  ·  ' + a.participant_count + ' participants  ·  ' +
+        (data.sessions.length) + ' sessions';
+
+      const tc = typeColor[a.type] || 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300';
+      const fc = fmtColor[a.format] || 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300';
+      const ic = typeIcon[a.type] || '✨';
+      document.getElementById('act-badges').innerHTML =
+        '<span class="badge ' + tc + '">' + ic + ' ' + esc(a.type) + '</span>' +
+        '<span class="badge ' + fc + '">' + fmtLabel[a.format] + '</span>' +
+        '<span class="badge bg-white/20 text-white">' + schedLabel[a.schedule_type] + '</span>';
+
+      document.getElementById('act-details').innerHTML =
+        '<div class="flex items-center gap-2 text-teal-100"><span>📋</span><span><strong>Type:</strong> ' + esc(a.type) + '</span></div>' +
+        '<div class="flex items-center gap-2 text-teal-100"><span>📡</span><span><strong>Format:</strong> ' + fmtLabel[a.format] + '</span></div>' +
+        '<div class="flex items-center gap-2 text-teal-100"><span>🗓</span><span><strong>Schedule:</strong> ' + schedLabel[a.schedule_type] + '</span></div>' +
+        '<div class="flex items-center gap-2 text-teal-100"><span>👥</span><span><strong>Participants:</strong> ' + a.participant_count + '</span></div>';
+
+      if (a.tags && a.tags.length) {
+        document.getElementById('act-tags').innerHTML =
+          a.tags.map(t => '<span class="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">' + esc(t) + '</span>').join('');
+      }
+
+      // Host Info
+      const hostCard = document.getElementById('host-card');
+      const hostInfo = document.getElementById('host-info');
+      if (a.host_name) {
+        hostInfo.innerHTML = `
+          <div class="flex-1">
+            <p class="font-semibold text-gray-800 dark:text-gray-200">${esc(a.host_name)}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Activity Host</p>
+          </div>
+        `;
+        hostCard.classList.remove('hidden');
+      }
+
+      // Sessions
+      const sessCard = document.getElementById('sessions-card');
+      document.getElementById('sessions-count').textContent = data.sessions.length + ' sessions';
+      const ul = document.getElementById('sessions-list');
+      if (!data.sessions.length) {
+        sessCard.classList.add('hidden');
+      } else {
+        ul.innerHTML = data.sessions.map(s => {
+          const locked = !data.is_enrolled && !data.is_host;
+          return '<li class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">' +
+            '<p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">' + esc(s.title || 'Session') + '</p>' +
+            (s.start_time ? '<p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">📅 ' + esc(s.start_time) + (s.end_time ? ' – ' + esc(s.end_time) : '') + '</p>' : '') +
+            (locked ? '<p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">🔒 Join to see location and details</p>' :
+              (s.location ? '<p class="text-xs text-teal-600 dark:text-teal-400 mt-1.5">📍 ' + esc(s.location) + '</p>' : '') +
+              (s.description ? '<p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">' + esc(s.description) + '</p>' : '')) +
+            '</li>';
+        }).join('');
+      }
+
+      // Similar activities
+      renderSimilarActivities();
+
+      // Actions
+      if (data.is_host) {
+        document.getElementById('act-action').innerHTML =
+          '<a href="/teach.html?activity_id=' + esc(a.id) + '" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
+          '<i class="fas fa-cog"></i>Manage Activity</a>';
+        document.getElementById('welcome-card').querySelector('#welcome-text').textContent =
+          'You are the host of this activity. Use the Manage button to add sessions and update details.';
+      } else if (data.is_enrolled) {
+        document.getElementById('join-cta').classList.add('hidden');
+        document.getElementById('member-card').classList.remove('hidden');
+        const enr = data.enrollment;
+        const rc  = { participant:'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', instructor:'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300', organizer:'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' };
+        const sc  = { active:'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', cancelled:'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', completed:'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' };
+        document.getElementById('enr-details').innerHTML =
+          '<span class="badge ' + (rc[enr.role]||'bg-gray-100 text-gray-600') + '">' + esc(enr.role) + '</span>' +
+          '<span class="badge ' + (sc[enr.status]||'bg-gray-100 text-gray-600') + '">' + esc(enr.status) + '</span>' +
+          '<span class="text-green-700 dark:text-green-300">✅ You have full access to session details.</span>';
+        document.getElementById('act-action').innerHTML = '<span class="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm font-semibold">✅ Joined</span>';
+        document.getElementById('welcome-card').querySelector('#welcome-text').textContent =
+          'You are participating in this activity. Session locations and details are visible above.';
+      } else {
+        if (token) {
+          document.getElementById('join-cta').classList.remove('hidden');
+        } else {
+          document.getElementById('act-action').innerHTML =
+            '<a href="/login.html" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
+            '<i class="fas fa-right-to-bracket"></i>Login to Join</a>';
+        }
+      }
+    }
+
+    async function joinActivity() {
+      if (!token) { window.location.href = '/login.html'; return; }
+      const btn = document.getElementById('btn-join');
+      btn.textContent = 'Joining...'; btn.disabled = true;
+      try {
+        const res = await fetch('/api/join', {
+          method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
+          body: JSON.stringify({ activity_id: currentActivity.id })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        window.location.reload();
+      } catch (e) {
+        alert(e.message);
+        btn.textContent = 'Join Activity - Free'; btn.disabled = false;
+      }
+    }
+
+    // ==================== INITIALIZATION ====================
+    ['search','filter-type','filter-format'].forEach(id =>
+      document.getElementById(id).addEventListener(id === 'search' ? 'input' : 'change', renderGrid));
+
+    // Check if coming from URL with ?id=
+    const params = new URLSearchParams(location.search);
+    const actId = params.get('id');
+    
+    if (actId) {
+      loadAllActivities().then(() => showDetail(actId));
+    } else {
+      loadAllActivities();
+    }
+  </script>
+</body>
+</html>

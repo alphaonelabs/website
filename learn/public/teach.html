@@ -1,319 +1,526 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Host Hub - Alpha One Labs</title>
-  <link rel="icon" type="image/png" href="/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config = { theme: { extend: { colors: { brand:{ DEFAULT:'#4F46E5', dark:'#3730A3' } } } } };</script>
-  <style>
-    .hidden { display: none !important; }
-    .gradient-hero { background: linear-gradient(135deg,#4F46E5 0%,#7C3AED 50%,#2563EB 100%); }
-    .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:.75rem; font-weight:600; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Alpha One Labs - Host & Teach">
+    <meta name="keywords" content="education, host, teach, courses, Alpha One Labs">
+    <title>Host Hub – Alpha One Labs</title>
+
+    <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {} }
+        }
+
+        const DEBUG = false;
+        function log(message) {
+            if (DEBUG) console.log(`[DarkMode] ${message}`);
+        }
+
+        function initializeDarkMode() {
+            log('Initializing dark mode');
+            const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+            if (darkModeEnabled) {
+                document.documentElement.classList.add('dark');
+                log('Added dark class');
+            } else if (localStorage.getItem('darkMode') === null) {
+                localStorage.setItem('darkMode', 'false');
+                log('Defaulting to light mode');
+            }
+            updateDarkModeIcon();
+        }
+
+        function toggleDarkMode() {
+            log('Toggle dark mode called');
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark.toString());
+            log(`Dark mode toggled to: ${isDark}`);
+            updateDarkModeIcon();
+        }
+
+        function updateDarkModeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('darkModeIcon');
+            const iconMobile = document.getElementById('darkModeIconMobile');
+            
+            if (icon) {
+                icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+                icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+            }
+            if (iconMobile) {
+                iconMobile.className = isDark ? 'fas fa-sun mr-2 text-orange-500' : 'fas fa-moon mr-2 text-orange-500';
+            }
+        }
+
+        initializeDarkMode();
+        document.addEventListener('DOMContentLoaded', initializeDarkMode);
+    </script>
+
+    <style>
+        html, body {
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        
+        .dark { color-scheme: dark; }
+        :root { color-scheme: light; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
 
-<nav class="bg-white shadow-sm sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-    <a href="/" class="flex items-center gap-2">
-      <img src="/images/logo.png" alt="Alpha One Labs" class="h-8 w-auto" />
-      <span class="font-bold text-xl text-slate-800">Alpha One Labs</span>
-    </a>
-    <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-      <a href="/" class="hover:text-brand">Activities</a>
-      <a href="/dashboard.html" class="hover:text-brand">Dashboard</a>
-      <a href="/teach.html" class="text-brand font-semibold">Host Hub</a>
-    </div>
-    <div class="flex items-center gap-3">
-      <span class="text-slate-600 text-sm hidden sm:block" id="nav-user"></span>
-      <button onclick="logout()" class="text-slate-400 text-sm hover:text-red-500">Logout</button>
-    </div>
-  </div>
-</nav>
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
 
-<!-- Main content -->
-<div id="host-content" class="hidden">
+    <div id="site-navbar"></div>
 
-  <div class="gradient-hero text-white py-12 px-4">
-    <div class="max-w-7xl mx-auto">
-      <h1 class="text-3xl font-extrabold mb-1">Host Hub</h1>
-      <p class="text-indigo-200">Create and manage your activities and sessions.</p>
-    </div>
-  </div>
-
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-      <!-- Create Activity -->
-      <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50">
-          <h2 class="font-bold text-slate-800">&#127775; Create New Activity</h2>
-          <p class="text-slate-500 text-xs mt-0.5">Descriptions are encrypted at rest in D1.</p>
+    <!-- ===== HERO SECTION ===== -->
+    <section class="bg-gradient-to-br from-orange-600 via-orange-500 to-red-500 dark:from-orange-800 dark:via-orange-700 dark:to-red-800 relative overflow-hidden py-16 md:py-24">
+        <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
+            <i class="fas fa-chalkboard absolute top-10 left-10 text-6xl"></i>
+            <i class="fas fa-users absolute bottom-10 right-10 text-6xl"></i>
         </div>
-        <div class="p-6">
-          <form id="form-activity" class="space-y-4" novalidate>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Title *</label>
-              <input id="a-title" type="text" required
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="e.g. Python for Beginners" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
-              <textarea id="a-desc" rows="3"
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm resize-none" placeholder="What will participants gain?"></textarea>
-            </div>
-            <div class="grid grid-cols-3 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Type</label>
-                <select id="a-type" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
-                  <option value="course">📚 Course</option>
-                  <option value="meetup">🤝 Meetup</option>
-                  <option value="workshop">🔧 Workshop</option>
-                  <option value="seminar">🎤 Seminar</option>
-                  <option value="other">✨ Other</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Format</label>
-                <select id="a-format" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
-                  <option value="self_paced">Self-paced</option>
-                  <option value="live">Live</option>
-                  <option value="hybrid">Hybrid</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Schedule</label>
-                <select id="a-schedule" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
-                  <option value="ongoing">Ongoing</option>
-                  <option value="one_time">One-time</option>
-                  <option value="multi_session">Multi-session</option>
-                  <option value="recurring">Recurring</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Tags (comma-separated)</label>
-              <input id="a-tags" type="text"
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="Python, Beginners, Data Science" />
-            </div>
-            <p id="act-err" class="text-red-500 text-sm hidden"></p>
-            <p id="act-ok" class="text-emerald-600 text-sm hidden"></p>
-            <button type="submit" class="w-full bg-brand text-white font-semibold py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">Create Activity</button>
-          </form>
-        </div>
-      </section>
 
-      <!-- Create Session -->
-      <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50">
-          <h2 class="font-bold text-slate-800">&#128197; Add Session</h2>
-          <p class="text-slate-500 text-xs mt-0.5">Location and description are encrypted at rest.</p>
+        <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
+            <div class="text-center">
+                <p class="text-orange-100 text-sm font-semibold tracking-widest uppercase mb-3">🎓 Host Hub</p>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4">
+                    Create & Manage Your Activities
+                </h1>
+                <p class="text-lg md:text-xl text-orange-50 max-w-2xl mx-auto mb-8">
+                    Host courses, workshops, meetups, and seminars. Reach learners worldwide and build your teaching community.
+                </p>
+                <a href="#host-content" class="inline-flex items-center gap-2 bg-white text-orange-600 font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                    <i class="fas fa-arrow-down"></i>
+                    Start Hosting
+                </a>
+            </div>
         </div>
-        <div class="p-6">
-          <form id="form-session" class="space-y-4" novalidate>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Activity *</label>
-              <select id="s-activity" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm">
-                <option value="">Select one of your activities...</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Session Title *</label>
-              <input id="s-title" type="text" required
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="e.g. Week 1 - Introduction" />
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Start Time</label>
-                <input id="s-start" type="datetime-local"
-                  class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">End Time</label>
-                <input id="s-end" type="datetime-local"
-                  class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Location (encrypted)</label>
-              <input id="s-location" type="text"
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm" placeholder="e.g. Room 101 or Zoom link" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Description (encrypted)</label>
-              <textarea id="s-desc" rows="2"
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm resize-none" placeholder="What will be covered in this session?"></textarea>
-            </div>
-            <p id="ses-err" class="text-red-500 text-sm hidden"></p>
-            <p id="ses-ok" class="text-emerald-600 text-sm hidden"></p>
-            <button type="submit" class="w-full bg-emerald-600 text-white font-semibold py-2.5 rounded-xl hover:bg-emerald-700 transition text-sm">Add Session</button>
-          </form>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- My Activities list -->
-    <section class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h2 class="font-bold text-slate-800">My Hosted Activities</h2>
-        <span id="hosted-count" class="text-xs text-slate-400"></span>
-      </div>
-      <div id="hosted-list" class="divide-y divide-slate-50">
-        <p class="px-6 py-4 text-sm text-slate-400 animate-pulse">Loading...</p>
-      </div>
     </section>
-  </main>
 
-  <footer class="bg-slate-800 text-slate-400 py-6 text-center text-sm mt-8">
-    <p>&copy; 2024&ndash;2026 Alpha One Labs &middot; Activity descriptions and session details encrypted at rest</p>
-  </footer>
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="flex-1 w-full" id="host-content">
+        <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-12">
 
-</div><!-- /#host-content -->
+            <!-- Create Activity & Session Cards -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+                
+                <!-- CREATE ACTIVITY CARD -->
+                <section class="rounded-2xl p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+                    <div class="px-0 py-4 border-b border-gray-200 dark:border-gray-700 mb-6">
+                        <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 flex items-center gap-3">
+                            <i class="fas fa-book text-orange-600 text-xl"></i>Create New Activity
+                        </h2>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">Descriptions are encrypted at rest</p>
+                    </div>
 
-<script>
-  const API   = '';
-  const token = localStorage.getItem('edu_token');
-  const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+                    <form id="form-activity" class="space-y-4" novalidate>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Title *
+                            </label>
+                            <input id="a-title" type="text" required placeholder="e.g. Python Basics" 
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm" />
+                        </div>
 
-  if (!token || !user) {
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Description
+                            </label>
+                            <textarea id="a-desc" placeholder="What will participants gain?" rows="3"
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm resize-none">
+                            </textarea>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Type</label>
+                                <select id="a-type" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    <option value="course">📚 Course</option>
+                                    <option value="workshop">🔧 Workshop</option>
+                                    <option value="meetup">🤝 Meetup</option>
+                                    <option value="seminar">🎤 Seminar</option>
+                                    <option value="other">✨ Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Format</label>
+                                <select id="a-format" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    <option value="self_paced">Self-paced</option>
+                                    <option value="live">Live</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Schedule</label>
+                                <select id="a-schedule" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    <option value="ongoing">Ongoing</option>
+                                    <option value="one_time">One-time</option>
+                                    <option value="multi_session">Multi-session</option>
+                                    <option value="recurring">Recurring</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Tags (comma-separated)
+                            </label>
+                            <input id="a-tags" type="text" placeholder="Python, Beginners, Data Science" 
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm" />
+                        </div>
+
+                        <div id="act-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm"></div>
+                        <div id="act-ok" class="hidden p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm"></div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all text-sm">
+                            <i class="fas fa-plus mr-2"></i>Create Activity
+                        </button>
+                    </form>
+                </section>
+
+                <!-- ADD SESSION CARD -->
+                <section class="rounded-2xl p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+                    <div class="px-0 py-4 border-b border-gray-200 dark:border-gray-700 mb-6">
+                        <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 flex items-center gap-3">
+                            <i class="fas fa-calendar text-red-600 text-xl"></i>Add Session
+                        </h2>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">Location and description are encrypted at rest</p>
+                    </div>
+
+                    <form id="form-session" class="space-y-4" novalidate>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Activity *
+                            </label>
+                            <select id="s-activity" class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-sm">
+                                <option value="">Select one of your activities...</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Session Title *
+                            </label>
+                            <input id="s-title" type="text" required placeholder="e.g. Week 1 - Introduction" 
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-sm" />
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Start Time</label>
+                                <input id="s-start" type="datetime-local" 
+                                    class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">End Time</label>
+                                <input id="s-end" type="datetime-local" 
+                                    class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-sm" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Location (encrypted)
+                            </label>
+                            <input id="s-location" type="text" placeholder="Room 101 or Zoom link" 
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-sm" />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Description (encrypted)
+                            </label>
+                            <textarea id="s-desc" placeholder="What will be covered?" rows="2"
+                                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white text-sm resize-none">
+                            </textarea>
+                        </div>
+
+                        <div id="ses-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm"></div>
+                        <div id="ses-ok" class="hidden p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm"></div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all text-sm">
+                            <i class="fas fa-calendar-plus mr-2"></i>Add Session
+                        </button>
+                    </form>
+                </section>
+            </div>
+
+            <!-- My Activities Section -->
+            <section class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 flex items-center gap-3">
+                        <i class="fas fa-list text-orange-600"></i>My Hosted Activities
+                    </h2>
+                    <span id="hosted-count" class="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-3 py-1 rounded-full font-semibold">0 activities</span>
+                </div>
+                <div id="hosted-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+                        <p>Loading your activities...</p>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script src="/js/layout.js" defer></script>
+    <script>
+      const API = '';
+const token = localStorage.getItem('edu_token');
+const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+
+// Utility functions
+function esc(s) {
+    return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function logout() {
+    localStorage.removeItem('edu_token');
+    localStorage.removeItem('edu_user');
     window.location.href = '/login.html';
-  } else {
-    document.getElementById('nav-user').textContent = 'Hi, ' + user.username;
-    document.getElementById('host-content').classList.remove('hidden');
-    init();
-  }
+}
 
-  const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', other:'✨' };
-  const typeColor = { course:'bg-indigo-100 text-indigo-700', meetup:'bg-pink-100 text-pink-700', workshop:'bg-orange-100 text-orange-700', seminar:'bg-teal-100 text-teal-700', other:'bg-slate-100 text-slate-600' };
-  const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
+// Type icons and colors
+const typeIcon = { course: '📚', meetup: '🤝', workshop: '🔧', seminar: '🎤', other: '✨' };
+const typeColor = {
+    course: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+    meetup: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
+    workshop: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+    seminar: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
+    other: 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'
+};
+const fmtLabel = { live: 'Live', self_paced: 'Self-paced', hybrid: 'Hybrid' };
+const schedLabel = { one_time: 'One-time', multi_session: 'Multi-session', recurring: 'Recurring', ongoing: 'Ongoing' };
 
-  let hostedActivities = [];
+// Auth check
+if (!token || !user) {
+    window.location.href = '/login.html';
+}
 
-  async function init() {
-    await loadHostedActivities();
-    const params = new URLSearchParams(location.search);
-    const preselect = params.get('activity_id');
-    if (preselect) {
-      const sel = document.getElementById('s-activity');
-      const opt = sel.querySelector('option[value="' + esc(preselect) + '"]');
-      if (opt) opt.selected = true;
-    }
-  }
+let hostedActivities = [];
 
-  async function loadHostedActivities() {
-    const res  = await fetch('/api/dashboard', { headers:{ Authorization:'Bearer ' + token } });
-    const data = await res.json();
-    hostedActivities = data.hosted_activities || [];
-    document.getElementById('hosted-count').textContent = hostedActivities.length + ' activities';
-
-    const sel = document.getElementById('s-activity');
-    sel.innerHTML = '<option value="">Select one of your activities...</option>' +
-      hostedActivities.map(a =>
-        '<option value="' + esc(a.id) + '">' + esc(a.title) + '</option>'
-      ).join('');
-
-    const list = document.getElementById('hosted-list');
-    if (!hostedActivities.length) {
-      list.innerHTML = '<p class="px-6 py-8 text-sm text-slate-400 text-center">No activities yet. Create one above!</p>';
-      return;
-    }
-    list.innerHTML = hostedActivities.map(a => {
-      const tc  = typeColor[a.type] || 'bg-slate-100 text-slate-600';
-      const ic  = typeIcon[a.type]  || '✨';
-      const tags = (a.tags||[]).slice(0,4).map(t =>
-        '<span class="badge bg-slate-100 text-slate-500">' + esc(t) + '</span>').join('');
-      return '<div class="px-6 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition">' +
-        '<div class="flex-1 min-w-0">' +
-          '<p class="font-semibold text-slate-800 text-sm truncate">' + ic + ' ' + esc(a.title) + '</p>' +
-          '<div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">' +
-            '<span class="badge ' + tc + '">' + esc(a.type) + '</span>' +
-            '<span>' + (fmtLabel[a.format]||a.format) + '</span>' +
-            '<span>👥 ' + a.participant_count + '</span>' +
-            '<span>🗓 ' + a.session_count + ' sessions</span>' +
-            tags +
-          '</div>' +
-        '</div>' +
-        '<div class="flex gap-2 shrink-0">' +
-          '<a href="/course.html?id=' + esc(a.id) + '" class="text-xs text-brand font-semibold border border-brand/30 px-3 py-1.5 rounded-lg hover:bg-indigo-50">View</a>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-  }
-
-  function showMsg(id, msg, isErr) {
+// Show/hide messages
+function showMsg(id, msg, isErr) {
     const el = document.getElementById(id);
     el.textContent = msg;
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 4000);
-  }
+}
 
-  document.getElementById('form-activity').addEventListener('submit', async e => {
+// Load hosted activities
+async function loadHostedActivities() {
+    try {
+        const res = await fetch(`${API}/api/dashboard`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+            if (res.status === 401) {
+                localStorage.removeItem('edu_token');
+                localStorage.removeItem('edu_user');
+                window.location.href = '/login.html';
+                return;
+            }
+            throw new Error('Failed to load activities');
+        }
+
+        const data = await res.json();
+        hostedActivities = data.hosted_activities || [];
+
+        // Update count
+        document.getElementById('hosted-count').textContent = `${hostedActivities.length} activities`;
+
+        // Update activity select dropdown
+        const sel = document.getElementById('s-activity');
+        sel.innerHTML = '<option value="">Select one of your activities...</option>' +
+            hostedActivities.map(a =>
+                `<option value="${esc(a.id)}">${esc(a.title)}</option>`
+            ).join('');
+
+        // Render activity list
+        renderActivityList();
+
+        // Check for URL params to pre-select activity
+        const params = new URLSearchParams(location.search);
+        const preselect = params.get('activity_id');
+        if (preselect) {
+            const opt = sel.querySelector(`option[value="${esc(preselect)}"]`);
+            if (opt) opt.selected = true;
+        }
+    } catch (err) {
+        console.error('Error loading activities:', err);
+        showMsg('act-err', 'Failed to load your activities', true);
+    }
+}
+
+// Render activity list
+function renderActivityList() {
+    const list = document.getElementById('hosted-list');
+
+    if (!hostedActivities.length) {
+        list.innerHTML = `
+            <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+                <p>No activities yet. Create one above!</p>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = hostedActivities.map(a => {
+        const tc = typeColor[a.type] || typeColor.other;
+        const ic = typeIcon[a.type] || '✨';
+        const tagsList = (a.tags || []).slice(0, 4)
+            .map(t => `<span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">${esc(t)}</span>`)
+            .join('');
+
+        return `
+            <div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div class="flex items-start justify-between gap-4 mb-2">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate">
+                            ${ic} ${esc(a.title)}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            ${esc(a.description || 'No description')}
+                        </p>
+                    </div>
+                    <span class="inline-block px-3 py-1.5 rounded-lg font-semibold text-xs ${tc} shrink-0">
+                        ${esc(a.type)}
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-600 dark:text-gray-400">
+                    <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 font-medium">
+                        ${fmtLabel[a.format] || a.format}
+                    </span>
+                    <span>${schedLabel[a.schedule_type] || a.schedule_type}</span>
+                    <span>👥 ${a.participant_count || 0} participants</span>
+                    <span>🗓 ${a.session_count || 0} sessions</span>
+                    ${tagsList ? `<div class="flex flex-wrap gap-1">${tagsList}</div>` : ''}
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <a href="/activity.html?id=${esc(a.id)}" class="text-xs font-semibold text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors">
+                        <i class="fas fa-eye mr-1"></i>View
+                    </a>
+                    <a href="/teach.html?activity_id=${esc(a.id)}" class="text-xs font-semibold text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors">
+                        <i class="fas fa-sliders-h mr-1"></i>Manage
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Form: Create Activity
+document.getElementById('form-activity').addEventListener('submit', async e => {
     e.preventDefault();
     document.getElementById('act-err').classList.add('hidden');
     document.getElementById('act-ok').classList.add('hidden');
+
     const btn = e.target.querySelector('button[type=submit]');
-    btn.textContent = 'Creating...'; btn.disabled = true;
+    btn.textContent = 'Creating...';
+    btn.disabled = true;
+
     const rawTags = document.getElementById('a-tags').value;
     const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
-    try {
-      const res  = await fetch('/api/activities', {
-        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
-        body: JSON.stringify({
-          title:         document.getElementById('a-title').value.trim(),
-          description:   document.getElementById('a-desc').value.trim(),
-          type:          document.getElementById('a-type').value,
-          format:        document.getElementById('a-format').value,
-          schedule_type: document.getElementById('a-schedule').value,
-          tags,
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      showMsg('act-ok', 'Activity created: ' + data.data.title, false);
-      e.target.reset();
-      await loadHostedActivities();
-    } catch (err) { showMsg('act-err', err.message, true); }
-    finally { btn.textContent = 'Create Activity'; btn.disabled = false; }
-  });
 
-  document.getElementById('form-session').addEventListener('submit', async e => {
+    try {
+        const res = await fetch(`${API}/api/activities`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                title: document.getElementById('a-title').value.trim(),
+                description: document.getElementById('a-desc').value.trim(),
+                type: document.getElementById('a-type').value,
+                format: document.getElementById('a-format').value,
+                schedule_type: document.getElementById('a-schedule').value,
+                tags
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create activity');
+
+        showMsg('act-ok', `Activity created: ${data.data.title}`, false);
+        e.target.reset();
+        await loadHostedActivities();
+    } catch (err) {
+        showMsg('act-err', err.message, true);
+    } finally {
+        btn.textContent = 'Create Activity';
+        btn.disabled = false;
+    }
+});
+
+// Form: Add Session
+document.getElementById('form-session').addEventListener('submit', async e => {
     e.preventDefault();
     document.getElementById('ses-err').classList.add('hidden');
     document.getElementById('ses-ok').classList.add('hidden');
-    const btn = e.target.querySelector('button[type=submit]');
+
     const actId = document.getElementById('s-activity').value;
-    if (!actId) { showMsg('ses-err', 'Please select an activity', true); return; }
-    btn.textContent = 'Adding...'; btn.disabled = true;
-    const fmt = v => v ? v.replace('T',' ') : '';
+    if (!actId) {
+        showMsg('ses-err', 'Please select an activity', true);
+        return;
+    }
+
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.textContent = 'Adding...';
+    btn.disabled = true;
+
+    const fmt = v => v ? v.replace('T', ' ') : '';
+
     try {
-      const res  = await fetch('/api/sessions', {
-        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
-        body: JSON.stringify({
-          activity_id: actId,
-          title:       document.getElementById('s-title').value.trim(),
-          description: document.getElementById('s-desc').value.trim(),
-          start_time:  fmt(document.getElementById('s-start').value),
-          end_time:    fmt(document.getElementById('s-end').value),
-          location:    document.getElementById('s-location').value.trim(),
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      showMsg('ses-ok', 'Session added successfully!', false);
-      document.getElementById('s-title').value    = '';
-      document.getElementById('s-desc').value     = '';
-      document.getElementById('s-start').value    = '';
-      document.getElementById('s-end').value      = '';
-      document.getElementById('s-location').value = '';
-      await loadHostedActivities();
-    } catch (err) { showMsg('ses-err', err.message, true); }
-    finally { btn.textContent = 'Add Session'; btn.disabled = false; }
-  });
-</script>
+        const res = await fetch(`${API}/api/sessions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                activity_id: actId,
+                title: document.getElementById('s-title').value.trim(),
+                description: document.getElementById('s-desc').value.trim(),
+                start_time: fmt(document.getElementById('s-start').value),
+                end_time: fmt(document.getElementById('s-end').value),
+                location: document.getElementById('s-location').value.trim()
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to add session');
+
+        showMsg('ses-ok', 'Session added successfully!', false);
+        document.getElementById('s-title').value = '';
+        document.getElementById('s-desc').value = '';
+        document.getElementById('s-start').value = '';
+        document.getElementById('s-end').value = '';
+        document.getElementById('s-location').value = '';
+        await loadHostedActivities();
+    } catch (err) {
+        showMsg('ses-err', err.message, true);
+    } finally {
+        btn.textContent = 'Add Session';
+        btn.disabled = false;
+    }
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadHostedActivities();
+});
+    </script>
 </body>
 </html>
