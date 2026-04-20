@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Real-time virtual classroom POC — ClassroomDO WebSocket MVP" />
+    <title>Virtual Classroom</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@0.263.1"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        teal: {
+                            50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4',
+                            400: '#2dd4bf', 500: '#14b8a6', 600: '#0D9488', 700: '#0f766e',
+                            800: '#115e59', 900: '#134e4a',
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+        @keyframes dotPulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+        .dot-pulse { animation: dotPulse 1.5s ease-in-out infinite; }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .fade-in-up { animation: fadeInUp .3s ease-out; }
+        @keyframes slideIn { from { transform:translateX(100%); } to { transform:translateX(0); } }
+        .slide-in { animation: slideIn .3s ease-out; }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gray-950 font-sans text-gray-100 flex flex-col">
+
+<!-- LOBBY SCREEN-->
+<div id="lobby" class="flex-1 flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold bg-gradient-to-r from-teal-400 to-emerald-300 bg-clip-text text-transparent">
+                Virtual Classroom
+            </h1>
+            <p class="text-gray-400 mt-2 text-sm">Real Time Classroom Experience</p>
+        </div>
+
+        <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-2xl">
+            <div class="space-y-4">
+                <div>
+                    <label for="lobbyRoomId" class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Room ID</label>
+                    <div class="relative">
+                        <i data-lucide="hash" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+                        <input id="lobbyRoomId" type="text" value="demo-room" placeholder="e.g. demo-room"
+                               class="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition" />
+                    </div>
+                </div>
+                <div>
+                    <label for="lobbyDisplayName" class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Display Name</label>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+                        <input id="lobbyDisplayName" type="text" placeholder="Your name"
+                               class="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition" />
+                    </div>
+                </div>
+                <button id="btnJoin" type="button"
+                        class="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-lg shadow-lg shadow-teal-600/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[.98]">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    Join Classroom
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--CLASSROOM SCREEN-->
+<div id="classroomScreen" class="flex-1 flex-col hidden">
+
+    <!-- Top Bar -->
+    <header class="bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 px-4 py-2.5 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-full text-xs font-medium">
+                <span id="connDot" class="w-2 h-2 rounded-full bg-red-500 dot-pulse"></span>
+                <span id="connText" class="text-gray-400">Connecting…</span>
+            </div>
+            <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-gray-800 rounded-full text-xs font-medium text-gray-300">
+                <i data-lucide="hash" class="w-3 h-3 text-teal-400"></i>
+                <span id="topRoomId">—</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btnParticipants"
+                    type="button"
+                    aria-label="Show active participants"
+                    aria-controls="participantsSidebar"
+                    aria-expanded="false"
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium text-gray-300 transition">
+                <i data-lucide="users" class="w-3.5 h-3.5 text-teal-400"></i>
+                <span id="participantCount">0</span>
+            </button>
+            <button id="btnLeave" type="button"
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-medium transition">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                Leave
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Classroom Canvas -->
+        <div class="flex-1 flex flex-col p-3 gap-3 min-w-0">
+            <div id="classroomCanvas" class="flex-1 relative rounded-xl overflow-hidden border border-gray-800 shadow-2xl" style="min-height:400px;">
+                <!-- Walls -->
+                <div class="absolute inset-0" style="background: linear-gradient(180deg, #E6E2D7 0%, #E6E2D7 38%, #C7B299 38%, #C7B299 100%);"></div>
+                <!-- Wainscoting line -->
+                <div class="absolute left-0 right-0" style="top:38%; height:4px; background:#a0a0a0;"></div>
+                <!-- Blackboard -->
+                <div class="absolute left-1/2 -translate-x-1/2 rounded-lg shadow-lg flex items-center justify-center"
+                     style="top:3%; width:40%; height:14%; background:#005C53; border:4px solid #3a3a3a;">
+                    <span class="text-white/60 text-xs font-medium tracking-wider uppercase select-none">Blackboard</span>
+                </div>
+                <!-- Teacher desk -->
+                <div class="absolute left-1/2 -translate-x-1/2 rounded shadow-md flex items-center justify-center"
+                     style="top:20%; width:18%; height:7%; background:#8B4513; border:2px solid #6B3410;">
+                    <span class="text-white/50 text-[10px] font-medium select-none">Teacher's Desk</span>
+                </div>
+                <!-- Student desks (3 rows x 5 cols) -->
+                <div id="desksContainer" class="absolute left-[10%] right-[10%]" style="top:36%; bottom:12%;"></div>
+                <!-- Other participant avatars -->
+                <div id="avatarLayer" class="absolute inset-0 pointer-events-none" style="z-index:40;"></div>
+                <!-- Current user character -->
+                <div id="myCharacter" class="absolute transition-all duration-75 ease-linear" style="z-index:50; display:none;">
+                    <div class="flex flex-col items-center">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-teal-500/30 border-2 border-white/30">
+                            <span id="myInitial">?</span>
+                        </div>
+                        <div class="mt-0.5 px-2 py-0.5 bg-gray-900/90 rounded text-[10px] text-white font-medium whitespace-nowrap shadow">
+                            <span id="myNameLabel">You</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Controls bar -->
+            <div class="flex items-center gap-4 px-3 py-2 bg-gray-900/60 rounded-lg border border-gray-800 text-xs text-gray-400 shrink-0">
+                <div class="flex items-center gap-1.5">
+                    <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">↑</kbd>
+                    <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">↓</kbd>
+                    <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">←</kbd>
+                    <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">→</kbd>
+                    <span class="ml-1">Move</span>
+                </div>
+                <div class="hidden sm:flex items-center gap-1.5">
+                    <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">E</kbd>
+                    <span>Sit/Stand</span>
+                </div>
+                <div class="ml-auto text-gray-500">Virtual Classroom</div>
+            </div>
+        </div>
+
+        <!-- Chat Sidebar -->
+        <div id="chatPanel" class="w-80 shrink-0 bg-gray-900/70 border-l border-gray-800 flex flex-col">
+            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+                <i data-lucide="message-circle" class="w-4 h-4 text-teal-400"></i>
+                <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
+            </div>
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <div class="text-center text-xs text-gray-600 py-6">No messages yet!</div>
+            </div>
+            <form id="chatForm" class="p-3 border-t border-gray-800 flex gap-2">
+                <label for="chatInput" class="sr-only">Chat message</label>
+                <input id="chatInput" type="text" placeholder="Type a message…" autocomplete="off"
+                       class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition" />
+                <button type="submit"
+                        aria-label="Send chat message"
+                        class="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition flex items-center">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- PARTICIPANT SIDEBAR -->
+<div id="participantsSidebar" aria-label="Active participants" class="fixed inset-y-0 right-0 w-80 bg-gray-900 border-l border-gray-800 shadow-2xl z-[60] transform translate-x-full transition-transform duration-300">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+        <h2 class="text-sm font-semibold flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-teal-400"></i>
+            Active Participants
+        </h2>
+        <button id="btnCloseParticipants" type="button" aria-label="Close active participants panel" class="p-1 hover:bg-gray-800 rounded-lg transition">
+            <i data-lucide="x" class="w-4 h-4 text-gray-400"></i>
+        </button>
+    </div>
+    <div id="participantsList" class="p-3 space-y-2 overflow-y-auto" style="max-height:calc(100vh - 56px);">
+    </div>
+</div>
+
+<!-- NOTIFICATION TOAST -->
+<div id="toastContainer" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end pointer-events-none"></div>
+
+<script>
+(function() {
+    'use strict';
+
+    const lobby               = document.getElementById('lobby');
+    const classroomScreen     = document.getElementById('classroomScreen');
+    const lobbyRoomId         = document.getElementById('lobbyRoomId');
+    const lobbyDisplayName    = document.getElementById('lobbyDisplayName');
+    const btnJoin             = document.getElementById('btnJoin');
+    const btnLeave            = document.getElementById('btnLeave');
+    const connDot             = document.getElementById('connDot');
+    const connText            = document.getElementById('connText');
+    const topRoomId           = document.getElementById('topRoomId');
+    const participantCount    = document.getElementById('participantCount');
+    const classroomCanvas     = document.getElementById('classroomCanvas');
+    const avatarLayer         = document.getElementById('avatarLayer');
+    const myCharacter         = document.getElementById('myCharacter');
+    const myInitial           = document.getElementById('myInitial');
+    const myNameLabel         = document.getElementById('myNameLabel');
+    const chatMessages        = document.getElementById('chatMessages');
+    const chatForm            = document.getElementById('chatForm');
+    const chatInput           = document.getElementById('chatInput');
+    const btnParticipants     = document.getElementById('btnParticipants');
+    const participantsSidebar = document.getElementById('participantsSidebar');
+    const btnCloseParticipants= document.getElementById('btnCloseParticipants');
+    const participantsList    = document.getElementById('participantsList');
+    const desksContainer      = document.getElementById('desksContainer');
+    const toastContainer      = document.getElementById('toastContainer');
+
+    // COORDINATE HELPERS
+    // Positions are stored and transmitted as NORMALIZED values (0.0 – 1.0)
+    // representing a fraction of the canvas width/height.
+    // This means User A's position looks identical on User B's screen regardless
+    // of their different window/canvas pixel sizes.
+
+    // Convert local pixel coords → normalized (0–1) for sending over the wire.
+    function toNorm(px, py) {
+        const r = classroomCanvas.getBoundingClientRect();
+        return {
+            x: r.width  > 0 ? px / r.width  : 0.5,
+            y: r.height > 0 ? py / r.height : 0.5,
+        };
+    }
+
+    // Convert normalized (0–1) coords → local pixel coords for rendering.
+    function toPx(nx, ny) {
+        const r = classroomCanvas.getBoundingClientRect();
+        return { x: nx * r.width, y: ny * r.height };
+    }
+
+    // State
+    let ws = null;
+    let roomId = '';
+    let myParticipantId = '';
+    let myDisplayName = '';
+    let mySessionId = '';
+    let reconnectAttempts = 0;
+    let intentionalDisconnect = false;
+    const MAX_RECONNECT = 10;
+    const BASE_DELAY = 1000;
+    let reconnectTimer = null;
+
+    // participants: participant_id → { display_name, normPos:{x,y}, direction, is_moving, seat_id }
+    // normPos is always in normalized (0–1) space.
+    const participants = {};
+
+    const THROTTLE_MS = 100;
+    let lastPositionSend = 0;
+    let keysPressed = {};
+    let isSeated = false;
+    let currentSeat = null;
+    let animFrameId = null;
+    let chatFirstMessage = true;
+
+    const AVATAR_COLORS = [
+        ['#8B5CF6','#7C3AED'], ['#EC4899','#DB2777'], ['#F59E0B','#D97706'],
+        ['#3B82F6','#2563EB'], ['#EF4444','#DC2626'], ['#10B981','#059669'],
+        ['#6366F1','#4F46E5'], ['#F97316','#EA580C'],
+    ];
+    function colorForId(pid) {
+        let h = 0;
+        for (let i = 0; i < pid.length; i++) h = ((h << 5) - h + pid.charCodeAt(i)) | 0;
+        return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+    }
+
+    const STORAGE_PARTICIPANT_KEY = 'classroom_participant_id';
+    const STORAGE_AUTH_USER_KEY  = 'edu_user';
+
+    function generateOpaqueId() {
+        if (window.crypto?.randomUUID) {
+            return crypto.randomUUID();
+        }
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        return Array.from(bytes)
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+    }
+
+    function getStoredUserParticipantId() {
+        try {
+            const user = JSON.parse(localStorage.getItem(STORAGE_AUTH_USER_KEY) || 'null');
+            if (user?.id) return String(user.id);
+        } catch (_) {
+            // Ignore malformed stored user data.
+        }
+        return null;
+    }
+
+    function getStoredAnonParticipantId() {
+        try {
+            let pid = localStorage.getItem(STORAGE_PARTICIPANT_KEY);
+            if (!pid) {
+                pid = generateOpaqueId();
+                localStorage.setItem(STORAGE_PARTICIPANT_KEY, pid);
+            }
+            return pid;
+        } catch (_) {
+            return generateOpaqueId();
+        }
+    }
+
+    function resolveParticipantId() {
+        return getStoredUserParticipantId() || getStoredAnonParticipantId();
+    }
+
+    // Desk rendering
+    const DESK_ROWS = 3;
+    const DESK_COLS = 5;
+    function renderDesks() {
+        desksContainer.innerHTML = '';
+        const gapRow = 100 / (DESK_ROWS + 1);
+        const gapCol = 100 / (DESK_COLS + 1);
+        for (let r = 0; r < DESK_ROWS; r++) {
+            for (let c = 0; c < DESK_COLS; c++) {
+                const seatNum = r * DESK_COLS + c + 1;
+                const seatId  = `seat-${seatNum}`;
+                const top  = gapRow * (r + 1) - 4;
+                const left = gapCol * (c + 1) - 4;
+                const desk = document.createElement('div');
+                desk.className = 'absolute flex flex-col items-center';
+                desk.style.cssText = `top:${top}%; left:${left}%; width:8%; transform:translateX(-50%);`;
+                desk.innerHTML = `
+                    <div class="w-full aspect-[4/3] rounded shadow-md bg-amber-800 border border-amber-900 flex items-center justify-center relative">
+                        <span class="text-[8px] text-white/40 select-none">${seatNum}</span>
+                        <div data-seat-label="${seatId}" class="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-white bg-gray-800/90 px-1.5 py-0.5 rounded whitespace-nowrap hidden"></div>
+                    </div>
+                    <div data-seat-chair="${seatId}" class="w-[60%] h-2 mt-0.5 rounded-sm bg-indigo-900 border border-indigo-950"></div>
+                `;
+                desksContainer.appendChild(desk);
+            }
+        }
+    }
+
+    function updateSeatLabel(seatId, name) {
+        const label = document.querySelector(`[data-seat-label="${seatId}"]`);
+        if (label) { label.textContent = name; label.classList.remove('hidden'); }
+    }
+    function clearSeatLabel(seatId) {
+        const label = document.querySelector(`[data-seat-label="${seatId}"]`);
+        if (label) { label.textContent = ''; label.classList.add('hidden'); }
+    }
+
+    // Toast
+    function showToast(msg, type = 'info') {
+        const colors = { info: 'bg-blue-600', success: 'bg-emerald-600', warning: 'bg-amber-600', error: 'bg-red-600' };
+        const el = document.createElement('div');
+        el.className = `${colors[type] || colors.info} text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl pointer-events-auto fade-in-up`;
+        el.textContent = msg;
+        toastContainer.appendChild(el);
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transition = 'opacity .4s';
+            setTimeout(() => el.remove(), 400);
+        }, 3500);
+    }
+
+    function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
+
+    // Join / Leave
+    btnJoin.addEventListener('click', async () => {
+        intentionalDisconnect = false;
+        reconnectAttempts = 0;
+        isSeated = false;
+        currentSeat = null;
+        roomId = lobbyRoomId.value.trim() || 'demo-room';
+        myDisplayName = lobbyDisplayName.value.trim() || `User-${Math.random().toString(36).slice(2,6)}`;
+        myParticipantId = resolveParticipantId();
+
+        topRoomId.textContent = roomId;
+        myInitial.textContent = myDisplayName.charAt(0).toUpperCase();
+        myNameLabel.textContent = myDisplayName;
+
+        lobby.classList.add('hidden');
+        classroomScreen.classList.remove('hidden');
+        classroomScreen.classList.add('flex');
+
+        renderDesks();
+        connectWS();
+        startGameLoop();
+        refreshIcons();
+    });
+
+    lobbyDisplayName.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnJoin.click(); });
+    lobbyRoomId.addEventListener('keydown', (e) => { if (e.key === 'Enter') lobbyDisplayName.focus(); });
+
+    btnLeave.addEventListener('click', () => {
+        disconnectWS();
+        stopGameLoop();
+        isSeated = false;
+        currentSeat = null;
+        classroomScreen.classList.add('hidden');
+        classroomScreen.classList.remove('flex');
+        lobby.classList.remove('hidden');
+        Object.keys(participants).forEach(k => delete participants[k]);
+        avatarLayer.innerHTML = '';
+        chatMessages.innerHTML = '<div class="text-center text-xs text-gray-600 py-6">No messages yet</div>';
+        chatFirstMessage = true;
+    });
+
+    // WebSocket
+    function connectWS() {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        intentionalDisconnect = false;
+
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const token = localStorage.getItem('edu_token') || '';
+        const params = new URLSearchParams();
+        if (token) params.set('token', token);
+        params.set('participant_id', myParticipantId);
+        params.set('display_name', myDisplayName);
+
+        const url = `${proto}//${location.host}/api/classroom/${encodeURIComponent(roomId)}?${params.toString()}`;
+
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+            reconnectAttempts = 0;
+            setConnStatus(true);
+            showToast('Connected to classroom', 'success');
+        };
+
+        ws.onclose = () => {
+            setConnStatus(false);
+            if (!intentionalDisconnect) scheduleReconnect();
+        };
+
+        ws.onerror = () => { setConnStatus(false); };
+
+        ws.onmessage = (ev) => {
+            try {
+                handleMessage(JSON.parse(ev.data));
+            } catch (err) {
+                console.warn('[classroom] dropped malformed ws frame', err, ev.data);
+            }
+        };
+    }
+
+    function disconnectWS() {
+        intentionalDisconnect = true;
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        if (ws) { ws.close(); ws = null; }
+        setConnStatus(false);
+    }
+
+    function scheduleReconnect() {
+        if (reconnectAttempts >= MAX_RECONNECT) {
+            showToast('Lost connection to classroom - please rejoin.', 'error');
+            return;
+        }
+        const delay = Math.min(BASE_DELAY * Math.pow(2, reconnectAttempts), 30000);
+        reconnectAttempts++;
+        reconnectTimer = setTimeout(() => {
+            if (!ws || ws.readyState === WebSocket.CLOSED) connectWS();
+        }, delay);
+    }
+
+    function setConnStatus(ok) {
+        connDot.className = `w-2 h-2 rounded-full dot-pulse ${ok ? 'bg-emerald-400' : 'bg-red-500'}`;
+        connText.textContent = ok ? 'Connected' : 'Disconnected';
+        connText.className = ok ? 'text-emerald-400' : 'text-red-400';
+    }
+
+    function wsSend(obj) {
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    }
+
+    // Message handler
+    function handleMessage(data) {
+        switch (data.type) {
+
+            case 'user_info':
+                mySessionId     = data.session_id;
+                myParticipantId = data.participant_id;
+                myDisplayName   = data.display_name;
+                myInitial.textContent  = myDisplayName.charAt(0).toUpperCase();
+                myNameLabel.textContent = myDisplayName;
+
+                // Place the local character at the centre of the canvas (in px).
+                myCharacter.style.display = '';
+                myPos.x = classroomCanvas.getBoundingClientRect().width  * 0.5;
+                myPos.y = classroomCanvas.getBoundingClientRect().height * 0.5;
+                myCharacter.style.left = myPos.x + 'px';
+                myCharacter.style.top  = myPos.y + 'px';
+                break;
+
+            case 'room_state':
+                handleRoomState(data);
+                break;
+
+            case 'participant_joined':
+                if (data.participant_id !== myParticipantId) {
+                    showToast(`${data.display_name} joined the classroom`, 'success');
+                }
+                break;
+
+            case 'participant_left':
+                showToast(`${data.display_name} left the classroom`, 'info');
+                delete participants[data.participant_id];
+                renderOtherAvatars();
+                renderParticipantsList();
+                break;
+
+            case 'position_update':
+                if (data.participant_id !== myParticipantId) {
+                    // data.position is already normalized (0–1).
+                    if (!participants[data.participant_id]) {
+                        participants[data.participant_id] = {
+                            display_name: data.display_name || data.participant_id,
+                            normPos:      data.position || { x: 0.5, y: 0.5 },
+                            direction:    data.direction || 'down',
+                            is_moving:    data.isMoving  || false,
+                            seat_id:      '',
+                        };
+                    } else {
+                        participants[data.participant_id].normPos    = data.position;
+                        participants[data.participant_id].direction  = data.direction;
+                        participants[data.participant_id].is_moving  = data.isMoving;
+                        if (data.display_name) participants[data.participant_id].display_name = data.display_name;
+                    }
+                    renderOtherAvatars();
+                }
+                break;
+
+            case 'chat_message':
+                appendChatMessage(data.display_name, data.text, data.participant_id === myParticipantId);
+                break;
+
+            case 'seat_updated':
+                if (data.participant_id === myParticipantId) {
+                    isSeated = true;
+                    currentSeat = data.seat_id;
+                }
+                updateSeatLabel(data.seat_id, data.display_name);
+                showToast(`${data.display_name} took ${data.seat_id}`, 'info');
+                break;
+
+            case 'seat_left':
+                if (data.participant_id === myParticipantId) {
+                    isSeated = false;
+                    currentSeat = null;
+                }
+                clearSeatLabel(data.seat_id);
+                showToast(`${data.display_name} left ${data.seat_id}`, 'info');
+                break;
+
+            case 'seat_occupied':
+                isSeated = false;
+                currentSeat = null;
+                showToast(data.message || 'Seat is taken!', 'warning');
+                break;
+        }
+    }
+
+    // Room state (bulk sync on join / reconnect)
+    function handleRoomState(data) {
+        Object.keys(participants).forEach(k => delete participants[k]);
+        document.querySelectorAll('[data-seat-label]').forEach(el => {
+            el.textContent = '';
+            el.classList.add('hidden');
+        });
+
+        (data.participants || []).forEach(p => {
+            if (p.participant_id === myParticipantId) return;
+
+            // Incoming positions may be:
+            //   (a) normalized 0–1  ← new format
+            //   (b) old pixel values from a legacy backend  ← handle gracefully
+            // We detect legacy by checking if x > 2 (normalized values are ≤ 1.0).
+            let normPos = p.position || { x: 0.5, y: 0.5 };
+            if (normPos.x > 2 || normPos.y > 2) {
+                // Legacy pixel coords — convert on first receipt
+                const r = classroomCanvas.getBoundingClientRect();
+                normPos = {
+                    x: r.width  > 0 ? normPos.x / r.width  : 0.5,
+                    y: r.height > 0 ? normPos.y / r.height : 0.5,
+                };
+            }
+
+            participants[p.participant_id] = {
+                display_name: p.display_name,
+                normPos,
+                direction:    p.direction  || 'down',
+                is_moving:    p.is_moving  || false,
+                seat_id:      p.seat_id    || '',
+            };
+            if (p.seat_id) updateSeatLabel(p.seat_id, p.display_name);
+        });
+
+        // Restore own seat if server knows about it
+        const selfP = (data.participants || []).find(p => p.participant_id === myParticipantId);
+        if (selfP && selfP.seat_id) {
+            updateSeatLabel(selfP.seat_id, myDisplayName);
+            isSeated = true;
+            currentSeat = selfP.seat_id;
+        }
+
+        participantCount.textContent = data.count || (Object.keys(participants).length + 1);
+        renderOtherAvatars();
+        renderParticipantsList();
+    }
+
+    // Render other participants
+    // normPos (0–1) is multiplied by the current canvas pixel size at render time,
+    // so every client converts to the same on-screen position regardless of their
+    // window size.
+    function renderOtherAvatars() {
+        avatarLayer.innerHTML = '';
+        const canvasRect = classroomCanvas.getBoundingClientRect();
+
+        Object.entries(participants).forEach(([pid, p]) => {
+            const [c1, c2] = colorForId(pid);
+
+            // Convert stored normalized position to local pixels
+            const px = p.normPos.x * canvasRect.width;
+            const py = p.normPos.y * canvasRect.height;
+
+            // Clamp to canvas bounds so avatars never drift off-screen
+            const x = Math.max(0, Math.min(px, canvasRect.width  - 40));
+            const y = Math.max(0, Math.min(py, canvasRect.height - 50));
+
+            const el = document.createElement('div');
+            el.className = 'absolute transition-all duration-75 ease-linear flex flex-col items-center';
+            el.style.left      = x + 'px';
+            el.style.top       = y + 'px';
+            el.style.zIndex    = '41';
+            el.style.transform = 'translate(-50%, -50%)';
+            el.innerHTML = `
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white/20"
+                     style="background: linear-gradient(135deg, ${c1}, ${c2});">
+                    ${(p.display_name || '?').charAt(0).toUpperCase()}
+                </div>
+                <div class="mt-0.5 px-1.5 py-0.5 bg-gray-900/90 rounded text-[9px] text-white font-medium whitespace-nowrap shadow">
+                    ${escapeHtml(p.display_name || pid)}
+                </div>
+            `;
+            avatarLayer.appendChild(el);
+        });
+    }
+
+    // Participants list sidebar
+    function renderParticipantsList() {
+        participantsList.innerHTML = '';
+        participantsList.appendChild(makeParticipantCard(myParticipantId, myDisplayName, currentSeat, true));
+        Object.entries(participants).forEach(([pid, p]) => {
+            participantsList.appendChild(makeParticipantCard(pid, p.display_name, p.seat_id, false));
+        });
+    }
+
+    function makeParticipantCard(pid, name, seatId, isSelf) {
+        const [c1, c2] = isSelf ? ['#0D9488', '#14b8a6'] : colorForId(pid);
+        const card = document.createElement('div');
+        card.className = 'flex items-center gap-3 p-2.5 bg-gray-800/60 rounded-lg border border-gray-700/40';
+        card.innerHTML = `
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                 style="background: linear-gradient(135deg, ${c1}, ${c2});">
+                ${(name || '?').charAt(0).toUpperCase()}
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-200 truncate">${escapeHtml(name)}${isSelf ? ' <span class="text-teal-400">(You)</span>' : ''}</p>
+                <p class="text-[10px] text-gray-500">${seatId ? 'Seat ' + escapeHtml(seatId) : 'Walking around'}</p>
+            </div>
+        `;
+        return card;
+    }
+
+    // Chat
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = chatInput.value.trim();
+        if (!text) return;
+        wsSend({ type: 'chat_message', text, timestamp: new Date().toISOString() });
+        chatInput.value = '';
+    });
+
+    function appendChatMessage(name, text, isSelf) {
+        if (chatFirstMessage) { chatMessages.innerHTML = ''; chatFirstMessage = false; }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} fade-in-up`;
+        const [c1] = isSelf ? ['#0D9488'] : colorForId(name.toLowerCase().replace(/\s+/g, '-'));
+        wrapper.innerHTML = `
+            <span class="text-[10px] font-medium mb-0.5 px-1" style="color:${c1};">${escapeHtml(name)}</span>
+            <div class="max-w-[85%] px-3 py-1.5 rounded-xl text-xs leading-relaxed ${isSelf ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-gray-800 text-gray-200 rounded-bl-sm'}">
+                ${escapeHtml(text)}
+            </div>
+        `;
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Participants sidebar toggle
+    btnParticipants.addEventListener('click', () => {
+        participantsSidebar.classList.toggle('translate-x-full');
+        btnParticipants.setAttribute(
+            'aria-expanded',
+            String(!participantsSidebar.classList.contains('translate-x-full'))
+        );
+        renderParticipantsList();
+    });
+    btnCloseParticipants.addEventListener('click', () => {
+        participantsSidebar.classList.add('translate-x-full');
+        btnParticipants.setAttribute('aria-expanded', 'false');
+    });
+
+    // Movement / Game Loop
+    // myPos is always in LOCAL pixel coords (used for rendering the local avatar).
+    // When we send a position over the wire we normalize it first with toNorm().
+    const myPos = { x: 400, y: 300 };
+    const myVel = { x: 0,   y: 0   };
+    let myDirection = 'down';
+    let myIsMoving  = false;
+    let wasMoving   = false;
+
+    function isTypingInInput(target) {
+        if (!target) return false;
+        const tag = target.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (isTypingInInput(e.target)) return;
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+            if (!isSeated) { keysPressed[e.key] = true; e.preventDefault(); }
+        }
+        if (e.key.toLowerCase() === 'e') handleSeatInteraction();
+    });
+    window.addEventListener('keyup', (e) => {
+        if (isTypingInInput(e.target)) return;
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+            keysPressed[e.key] = false;
+            e.preventDefault();
+        }
+    });
+
+    function handleSeatInteraction() {
+        if (isSeated) {
+            wsSend({ type: 'leave_seat', seat_id: currentSeat });
+            return;
+        }
+        const canvasRect = classroomCanvas.getBoundingClientRect();
+        const desks = desksContainer.querySelectorAll('[data-seat-chair]');
+        let nearest = null;
+        let nearestDist = Infinity;
+        desks.forEach(chair => {
+            const seatId = chair.getAttribute('data-seat-chair');
+            const rect   = chair.getBoundingClientRect();
+            const cx = rect.left + rect.width  / 2 - canvasRect.left;
+            const cy = rect.top  + rect.height / 2 - canvasRect.top;
+            const dist = Math.hypot(myPos.x - cx, myPos.y - cy);
+            if (dist < nearestDist) { nearestDist = dist; nearest = seatId; }
+        });
+        if (nearest && nearestDist < 60) {
+            wsSend({ type: 'update_seat', seat_id: nearest });
+        }
+    }
+
+    function startGameLoop() {
+        function tick() {
+            const accel    = 0.8;
+            const friction = 0.85;
+            const canvasRect = classroomCanvas.getBoundingClientRect();
+            const pad = 20;
+
+            if (!isSeated) {
+                if (keysPressed.ArrowUp)    { myVel.y -= accel; myDirection = 'up';    }
+                if (keysPressed.ArrowDown)  { myVel.y += accel; myDirection = 'down';  }
+                if (keysPressed.ArrowLeft)  { myVel.x -= accel; myDirection = 'left';  }
+                if (keysPressed.ArrowRight) { myVel.x += accel; myDirection = 'right'; }
+            }
+
+            myVel.x *= friction;
+            myVel.y *= friction;
+
+            myPos.x = Math.max(pad, Math.min(myPos.x + myVel.x, canvasRect.width  - pad));
+            myPos.y = Math.max(pad, Math.min(myPos.y + myVel.y, canvasRect.height - pad));
+
+            myIsMoving = Math.abs(myVel.x) > 0.1 || Math.abs(myVel.y) > 0.1;
+
+            myCharacter.style.left      = myPos.x + 'px';
+            myCharacter.style.top       = myPos.y + 'px';
+            myCharacter.style.transform = 'translate(-50%, -50%)';
+
+            // Send position (throttled).
+            // IMPORTANT: normalize to 0–1 before sending so every peer renders
+            // at the same relative position regardless of their canvas pixel size.
+            const now        = Date.now();
+            const shouldSend = (myIsMoving || wasMoving) && !isSeated;
+            if (shouldSend && now - lastPositionSend > THROTTLE_MS) {
+                lastPositionSend = now;
+                const norm = toNorm(myPos.x, myPos.y);
+                wsSend({
+                    type:      'position_update',
+                    position:  norm,          // normalized (0–1)
+                    direction: myDirection,
+                    isMoving:  myIsMoving,
+                });
+            }
+            wasMoving = myIsMoving;
+
+            animFrameId = requestAnimationFrame(tick);
+        }
+        animFrameId = requestAnimationFrame(tick);
+    }
+
+    function stopGameLoop() {
+        if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+        keysPressed = {};
+        myPos.x = 400; myPos.y = 300;
+        myVel.x = 0;   myVel.y = 0;
+        wasMoving = false;
+        isSeated  = false;
+        currentSeat = null;
+        myCharacter.style.display = 'none';
+    }
+
+    // Utilities
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Init Lucide icons and auto-focus
+    refreshIcons();
+    lobbyDisplayName.focus();
+})();
+</script>
+
+</body>
+</html>

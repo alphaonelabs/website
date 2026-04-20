@@ -35,8 +35,17 @@ class _Response:
         return f"<Response status={self.status}>"
 
 
+class _DurableObject:
+    """Stub for workers.DurableObject base class."""
+
+    def __init__(self, ctx=None, env=None):
+        self.ctx = ctx
+        self.env = env
+
+
 class _WorkersModule:
     Response = _Response
+    DurableObject = _DurableObject
 
 
 sys.modules["workers"] = _WorkersModule()
@@ -112,9 +121,36 @@ class _Crypto:
         return b"\x00" * 12
 
 
+class _WebSocketPair:
+    """Stub for js.WebSocketPair."""
+
+    @staticmethod
+    def new() -> "MagicMock":
+        from unittest.mock import MagicMock
+        client, server = MagicMock(name="ws_client"), MagicMock(name="ws_server")
+        pair = MagicMock(name="ws_pair")
+        pair.object_values.return_value = (client, server)
+        # Expose for tests that want to assert on server.send(...) etc.
+        pair.client = client
+        pair.server = server
+        return pair
+
+
+class _WebSocketRequestResponsePair:
+    """Stub for js.WebSocketRequestResponsePair."""
+
+    @staticmethod
+    def new(request, response):
+        from unittest.mock import MagicMock
+        return MagicMock()
+
+
 class _JsModule:
     crypto = _Crypto()
     Uint8Array = _Uint8Array()
+    WebSocketPair = _WebSocketPair()
+    WebSocketRequestResponsePair = _WebSocketRequestResponsePair()
+
     class Object:
         @staticmethod
         def fromEntries(entries):

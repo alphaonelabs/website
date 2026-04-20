@@ -43,10 +43,12 @@ from types import SimpleNamespace
 from typing import Any, Dict
 from urllib.parse import urlparse, parse_qs
 
-from workers import Response
+from workers import Response, DurableObject
 
 import js
 from pyodide.ffi import to_js
+from js import WebSocketPair, WebSocketRequestResponsePair
+import uuid
 
 _SENTRY_INITIALIZED = False
 _SENTRY_DSN: str = ""
@@ -60,6 +62,15 @@ def init_sentry(env):
     _SENTRY_INITIALIZED = True
     _SENTRY_DSN = getattr(env, "SENTRY_DSN", "") or ""
 
+def _redact_url(raw_url: str) -> str:
+    """Remove secrets from URLs before logging or sending to Sentry."""
+    try:
+        parsed = urlparse(raw_url)
+        query = re.sub(r"([?&](?:token|access_token)=)[^&]+", r"\1[redacted]", "?" + parsed.query)
+        safe_query = query[1:] if parsed.query else ""
+        return parsed._replace(query=safe_query).geturl()
+    except Exception:
+        return "[redacted-url]"
 
 async def _post_to_sentry(exc: Exception, dsn: str, where: str, req=None):
     """Send an exception to Sentry via the HTTP Store API using js.fetch."""
@@ -94,7 +105,7 @@ async def _post_to_sentry(exc: Exception, dsn: str, where: str, req=None):
             },
         }
         if req:
-            event["request"] = {"url": req.url, "method": req.method}
+            event["request"] = {"url": _redact_url(req.url), "method": req.method}
 
         auth = (
             f"Sentry sentry_version=7, sentry_key={public_key},"
@@ -126,7 +137,7 @@ async def capture_exception(exc: Exception, req=None, _env=None, where: str = ""
         if req:
             payload["request"] = {
                 "method": req.method,
-                "url":    req.url,
+                "url":    _redact_url(req.url),
                 "path":   urlparse(req.url).path,
             }
         print(json.dumps(payload))
@@ -152,18 +163,8 @@ def new_id() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Encryption helpers
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
 # Encryption helpers - AES-256-GCM via Web Crypto API (js.crypto.subtle)
 # ---------------------------------------------------------------------------
-# Replaces the XOR stream cipher with authenticated AES-256-GCM encryption.
-# - 256-bit key derived from secret via PBKDF2-SHA256 (100k iterations)
-# - 96-bit random IV prepended to ciphertext
-# - 128-bit GCM auth tag appended automatically by Web Crypto
-# - Output: base64(iv || ciphertext+tag) prefixed with "v1:" for D1 storage
-# - Backward compatible: no "v1:" prefix = legacy XOR, decrypted transparently
 
 def _derive_key(secret: str) -> bytes:
     """Derive a 32-byte key from an arbitrary secret string via SHA-256."""
@@ -200,10 +201,9 @@ async def encrypt_aes(plaintext: str, secret: str) -> str:
         key_bytes  = _derive_aes_key_bytes(secret)
         crypto_key = await _import_aes_key(key_bytes)
 
-        # Generate random IV directly into a JS Uint8Array for clean interop
         iv_array   = js.Uint8Array.new(12)
         js.crypto.getRandomValues(iv_array)
-        iv         = bytes(iv_array) # Extract back to python bytes for storage
+        iv         = bytes(iv_array)
 
         # Pass algo as a plain dict; Web Crypto accepts both JS objects and plain dicts
         algo       = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
@@ -239,7 +239,6 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         pt_buf     = await js.crypto.subtle.decrypt(algo, crypto_key, data)
         return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
     except Exception as exc:
-        # Auth tag mismatch = tampered/corrupted ciphertext
         await capture_exception(exc, where="decrypt_aes.auth")
         return "[decryption error]"
 
@@ -580,14 +579,13 @@ async def seed_db(env, enc_key: str):
                 await encrypt_aes(role,     enc_key),
             ).run()
         except Exception:
-            pass  # already seeded
+            pass
 
     aid = uid_map["alice"]
     bid = uid_map["bob"]
     cid = uid_map["charlie"]
     did = uid_map["diana"]
 
-    # ---- tags ----------------------------------------------------------------
     tag_rows = [
         ("tag-python", "Python"),
         ("tag-js",     "JavaScript"),
@@ -605,7 +603,6 @@ async def seed_db(env, enc_key: str):
         except Exception:
             pass
 
-    # ---- activities ----------------------------------------------------------
     act_rows = [
         (
             "act-py-begin", "Python for Beginners",
@@ -671,7 +668,6 @@ async def seed_db(env, enc_key: str):
             except Exception:
                 pass
 
-    # ---- sessions for live/recurring activities ------------------------------
     ses_rows = [
         ("ses-js-1", "act-js-meetup",
          "April Meetup", "Q1 retro and React 19 deep-dive",
@@ -707,7 +703,6 @@ async def seed_db(env, enc_key: str):
         except Exception:
             pass
 
-    # ---- enrollments ---------------------------------------------------------
     enr_rows = [
         ("enr-c-py",     "act-py-begin",    cid, "participant"),
         ("enr-c-js",     "act-js-meetup",   cid, "participant"),
@@ -797,7 +792,7 @@ async def api_login(req, env):
 
     if not row:
         return err("Invalid username or password", 401)
-    
+
     password_hash = row.password_hash
     user_id = row.id
     role_enc = row.role
@@ -1265,7 +1260,6 @@ async def api_admin_table_counts(req, env):
         counts = []
         for row in tables_res.results or []:
             table_name = row.name
-            # Table names come from sqlite_master and are quoted to avoid SQL injection.
             count_row = await env.DB.prepare(
                 f'SELECT COUNT(*) AS cnt FROM "{table_name.replace(chr(34), chr(34) + chr(34))}"'
             ).first()
@@ -1329,6 +1323,379 @@ async def serve_static(path: str, env):
     mime = _MIME.get(ext, "text/plain")
     return Response(content, headers={"Content-Type": mime, **_CORS})
 
+class ClassroomDO(DurableObject):
+    """WebSocket based virtual classroom Durable Object.
+
+    Each room_id maps to one DO instance.  Connected clients share:
+      - room_state   (participant list, broadcast on join/leave)
+      - position_update (x/y movement relay)
+      - chat_message  (basic text relay)
+      - seat mgmt     (update_seat / leave_seat)
+    """
+
+    def __init__(self, ctx, env):
+        super().__init__(ctx, env)
+        # sessions: session_id -> {ws, participant_id, display_name, position, direction, is_moving, seat_id}
+        self.sessions = {}
+
+        # Restore hibernated WebSocket connections
+        for ws in self.ctx.getWebSockets():
+            try:
+                attachment = ws.deserializeAttachment()
+                if not attachment:
+                    continue
+                data = json.loads(attachment) if isinstance(attachment, str) else attachment
+                sid = data.get("session_id", str(uuid.uuid4()))
+                self.sessions[sid] = {
+                    "ws":             ws,
+                    "participant_id": data.get("participant_id", "unknown"),
+                    "display_name":   data.get("display_name", "Unknown"),
+                    "position":       data.get("position", {"x": 0.5, "y": 0.5}),
+                    "direction":      data.get("direction", "down"),
+                    "is_moving":      False,
+                    "seat_id":        data.get("seat_id", ""),
+                }
+            except Exception as exc:
+                print(f"[ClassroomDO.__init__.restore] error={exc!r}")
+
+        self.ctx.setWebSocketAutoResponse(
+            WebSocketRequestResponsePair.new("ping", "pong")
+        )
+
+    async def on_fetch(self, request):
+        upgrade = request.headers.get("Upgrade") or ""
+        if upgrade.lower() != "websocket":
+            return Response(
+                json.dumps({"error": "Expected WebSocket upgrade"}),
+                status=426,
+                headers={"Content-Type": "application/json"},
+            )
+
+        parsed = urlparse(request.url)
+        qs = parse_qs(parsed.query)
+
+        token_param = (qs.get("token") or [None])[0]
+        participant_param = (qs.get("participant_id") or [None])[0]
+        display_name_param = (qs.get("display_name") or [None])[0]
+
+        authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
+        allow_anonymous_poc = (
+            str(getattr(self.env, "ALLOW_ANON_CLASSROOM_POC", "")).lower()
+            in {"1", "true", "yes"}
+        )
+
+        if authenticated_user:
+            # Derive identity from the verified token, not from untrusted query params.
+            participant_id = authenticated_user["id"]
+            display_name = authenticated_user.get("username") or participant_id
+        else:
+            # Allow anonymous POC joins only when explicitly enabled.
+            if token_param or not allow_anonymous_poc or not participant_param:
+                return Response(
+                    json.dumps({"error": "Authentication required"}),
+                    status=401,
+                    headers={"Content-Type": "application/json"},
+                )
+            participant_id = participant_param
+            display_name = display_name_param or participant_id
+
+        # Sanitise inputs
+        participant_id = participant_id[:64]
+        display_name   = display_name[:64]
+
+        # Create WebSocket pair
+        client, server = WebSocketPair.new().object_values()
+        self.ctx.acceptWebSocket(server)
+
+        session_id = str(uuid.uuid4())
+
+        # Re-use the last known position/seat if the same participant reconnects
+        # (e.g. page refresh or network blip).
+        existing = next(
+            (s for s in self.sessions.values()
+             if s["participant_id"] == participant_id),
+            None,
+        )
+        already_connected = existing is not None
+        initial_position  = dict(existing["position"])       if existing else {"x": 0.5, "y": 0.5}
+        initial_direction = existing["direction"]             if existing else "down"
+        initial_seat_id   = existing.get("seat_id", "")      if existing else ""
+
+        attachment = json.dumps({
+            "session_id":     session_id,
+            "participant_id": participant_id,
+            "display_name":   display_name,
+            "position":       initial_position,
+            "direction":      initial_direction,
+            "seat_id":        initial_seat_id,
+        })
+        server.serializeAttachment(attachment)
+
+        self.sessions[session_id] = {
+            "ws":             server,
+            "participant_id": participant_id,
+            "display_name":   display_name,
+            "position":       initial_position,
+            "direction":      initial_direction,
+            "is_moving":      False,
+            "seat_id":        initial_seat_id,
+        }
+
+        try:
+            server.send(json.dumps({
+                "type":           "user_info",
+                "session_id":     session_id,
+                "participant_id": participant_id,
+                "display_name":   display_name,
+            }))
+        except Exception as exc:
+            await capture_exception(exc, request, self.env, "classroom_on_fetch.send_user_info")
+
+        self._broadcast_room_state()
+
+        if not already_connected:
+            self._broadcast(json.dumps({
+                "type":           "participant_joined",
+                "participant_id": participant_id,
+                "display_name":   display_name,
+            }), exclude_session_id=session_id)
+
+        return Response(None, status=101, web_socket=client)
+
+    async def on_webSocketMessage(self, ws, message):
+        try:
+            raw_message = message if isinstance(message, str) else message.decode("utf-8")
+            if len(raw_message) > 4096:
+                return
+            data = json.loads(raw_message)
+        except Exception as exc:
+            await capture_exception(exc, None, self.env, "classroom_on_webSocketMessage.parse")
+            return
+        if not isinstance(data, dict):
+            return
+
+        msg_type = data.get("type", "")
+        session  = self._session_for_ws(ws)
+        if not session:
+            return
+
+        sid, info = session
+
+        def _valid_norm_position(value):
+            """Accept normalized (0-1) position dicts; reject anything else."""
+            if not isinstance(value, dict):
+                return None
+            try:
+                x = float(value.get("x", 0.5))
+                y = float(value.get("y", 0.5))
+            except (TypeError, ValueError):
+                return None
+            # Clamp to [0, 1] — normalized coordinate space
+            return {"x": max(0.0, min(1.0, x)), "y": max(0.0, min(1.0, y))}
+
+        if msg_type == "position_update":
+            position = _valid_norm_position(data.get("position"))
+            if position is None:
+                return
+            direction = data.get("direction", info["direction"])
+            if not isinstance(direction, str) or direction not in {"up", "down", "left", "right"}:
+                direction = info["direction"]
+            is_moving = data.get("isMoving", False)
+            if not isinstance(is_moving, bool):
+                is_moving = False
+            info["position"]  = position
+            info["direction"] = direction
+            info["is_moving"] = is_moving
+            for s_id, s_info in self.sessions.items():
+                if s_info["participant_id"] == info["participant_id"]:
+                    s_info["position"]  = position
+                    s_info["direction"] = direction
+                    s_info["is_moving"] = info["is_moving"]
+                    self._persist_attachment(s_id, s_info)
+
+            self._broadcast(json.dumps({
+                "type":           "position_update",
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "position":       info["position"],
+                "direction":      info["direction"],
+                "isMoving":       info["is_moving"],
+            }), exclude_session_id=sid)
+
+        elif msg_type == "chat_message":
+            raw_text = data.get("text", "")
+            if not isinstance(raw_text, str):
+                return
+            text = raw_text.strip()[:500]
+            if not text:
+                return
+            raw_timestamp = data.get("timestamp", "")
+            timestamp = raw_timestamp[:64] if isinstance(raw_timestamp, str) else ""
+            self._broadcast(json.dumps({
+                "type":           "chat_message",
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "text":           text,
+                "timestamp":      timestamp,
+            }))
+
+        
+        elif msg_type == "update_seat":
+            # Classroom layout, keep in sync with DESK_ROWS/DESK_COLS in classroom_poc.html
+            DESK_ROWS = 3
+            DESK_COLS = 5
+            MAX_SEATS = DESK_ROWS * DESK_COLS
+
+            seat_id = data.get("seat_id", "")
+            # Validate seat_id: must be "seat-N" where N is 1..DESK_ROWS*DESK_COLS
+            if not isinstance(seat_id, str) or not re.fullmatch(r"seat-\d+", seat_id):
+                return
+            seat_num = int(seat_id.split("-", 1)[1])
+            if not (1 <= seat_num <= MAX_SEATS):
+                return
+
+            for other_info in self.sessions.values():
+                if (other_info["seat_id"] == seat_id
+                        and other_info["participant_id"] != info["participant_id"]):
+                    try:
+                        ws.send(json.dumps({
+                            "type":    "seat_occupied",
+                            "message": "This seat is already taken by another student.",
+                            "seat_id": seat_id,
+                        }))
+                    except Exception as exc:
+                        await capture_exception(exc, None, self.env,
+                            f"classroom.seat_occupied_send pid={info['participant_id']} seat={seat_id}")
+                    return
+
+            for s_id, s_info in self.sessions.items():
+                if s_info["participant_id"] == info["participant_id"]:
+                    s_info["seat_id"] = seat_id
+                    self._persist_attachment(s_id, s_info)
+
+            self._broadcast(json.dumps({
+                "type":           "seat_updated",
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "seat_id":        seat_id,
+            }))
+            self._broadcast_room_state()
+
+        elif msg_type == "leave_seat":
+            old_seat = info["seat_id"]
+            if not old_seat:
+                return
+            for s_id, s_info in self.sessions.items():
+                if s_info["participant_id"] == info["participant_id"]:
+                    s_info["seat_id"] = ""
+                    self._persist_attachment(s_id, s_info)
+
+            self._broadcast(json.dumps({
+                "type":           "seat_left",
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "seat_id":        old_seat,
+            }))
+            self._broadcast_room_state()
+
+    async def on_webSocketClose(self, ws, code, reason, wasClean):
+        session = self._session_for_ws(ws)
+        if not session:
+            return
+
+        sid, info  = session
+        pid        = info["participant_id"]
+        dname      = info["display_name"]
+
+        self.sessions.pop(sid, None)
+
+        still_connected = any(
+            s["participant_id"] == pid for s in self.sessions.values()
+        )
+
+        if not still_connected:
+            self._broadcast(json.dumps({
+                "type":           "participant_left",
+                "participant_id": pid,
+                "display_name":   dname,
+            }))
+
+        self._broadcast_room_state()
+
+    async def on_webSocketError(self, ws, error):
+        # Log for visibility; the runtime will invoke on_webSocketClose separately
+        # which performs the actual session cleanup and broadcasts.
+        print(f"[ClassroomDO.on_webSocketError] error={error!r}")
+
+    # HELPERS:
+
+    def _session_for_ws(self, ws):
+        try:
+            raw = ws.deserializeAttachment()
+            if raw:
+                data = json.loads(raw) if isinstance(raw, str) else raw
+                sid  = data.get("session_id", "")
+                if sid and sid in self.sessions:
+                    return (sid, self.sessions[sid])
+        except Exception as exc:
+            print(f"[ClassroomDO._session_for_ws.deserialize] error={exc!r}")
+
+        for sid, info in self.sessions.items():
+            try:
+                if info["ws"] == ws:
+                    return (sid, info)
+            except Exception as exc:
+                print(f"[ClassroomDO._session_for_ws.fallback] sid={sid} error={exc!r}")
+        return None
+
+    def _broadcast(self, msg, exclude_session_id=None):
+        for sid, info in self.sessions.items():
+            if sid == exclude_session_id:
+                continue
+            try:
+                info["ws"].send(msg)
+            except Exception as exc:
+                print(f"[ClassroomDO._broadcast] sid={sid} pid={info.get('participant_id')} error={exc!r}")
+                # Do not pop here - rely on on_webSocketClose to run the full
+                # cleanup + participant_left broadcast. Transient send errors
+                # shouldn't silently evict a session.
+
+    def _broadcast_room_state(self):
+        seen = {}
+        for info in self.sessions.values():
+            pid = info["participant_id"]
+            if pid not in seen:
+                seen[pid] = {
+                    "participant_id": pid,
+                    "display_name":   info["display_name"],
+                    "position":       info["position"],
+                    "direction":      info["direction"],
+                    "is_moving":      info.get("is_moving", False),
+                    "seat_id":        info.get("seat_id", ""),
+                }
+
+        self._broadcast(json.dumps({
+            "type":         "room_state",
+            "participants": list(seen.values()),
+            "count":        len(seen),
+        }))
+
+    def _persist_attachment(self, session_id, info):
+        ws = self.sessions.get(session_id, {}).get("ws")
+        if not ws:
+            return
+        try:
+            ws.serializeAttachment(json.dumps({
+                "session_id":     session_id,
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "position":       info["position"],
+                "direction":      info["direction"],
+                "seat_id":        info.get("seat_id", ""),
+            }))
+        except Exception as exc:
+            print(f"[ClassroomDO._persist_attachment] sid={session_id} pid={info.get('participant_id')} error={exc!r}")
+
 
 # ---------------------------------------------------------------------------
 # Main dispatcher
@@ -1346,6 +1713,17 @@ async def _dispatch(request, env):
         if not _is_basic_auth_valid(request, env):
             return _unauthorized_basic()
         return await serve_static("/admin.html", env)
+
+    m_classroom = re.fullmatch(r"/api/classroom/([A-Za-z0-9_-]+)", path)
+    if m_classroom:
+        room_id = m_classroom.group(1)
+        try:
+            do_id = env.CLASSROOM_DO.idFromName(room_id)
+            stub = env.CLASSROOM_DO.get(do_id)
+            return await stub.fetch(request)
+        except Exception as e:
+            await capture_exception(e, request, env, "classroom_do_dispatch")
+            return err("Failed to connect to classroom", 500)
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
