@@ -1379,14 +1379,18 @@ class ClassroomDO(DurableObject):
         display_name_param = (qs.get("display_name") or [None])[0]
 
         authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
+        allow_anonymous_poc = (
+            str(getattr(self.env, "ALLOW_ANON_CLASSROOM_POC", "")).lower()
+            in {"1", "true", "yes"}
+        )
 
         if authenticated_user:
             # Derive identity from the verified token, not from untrusted query params.
             participant_id = authenticated_user["id"]
             display_name = authenticated_user.get("username") or participant_id
         else:
-            # Allow anonymous POC joins when no token is provided.
-            if not participant_param:
+            # Allow anonymous POC joins only when explicitly enabled.
+            if token_param or not allow_anonymous_poc or not participant_param:
                 return Response(
                     json.dumps({"error": "Authentication required"}),
                     status=401,
@@ -1460,9 +1464,14 @@ class ClassroomDO(DurableObject):
 
     async def on_webSocketMessage(self, ws, message):
         try:
-            data = json.loads(message) if isinstance(message, str) else json.loads(message.decode("utf-8"))
+            raw_message = message if isinstance(message, str) else message.decode("utf-8")
+            if len(raw_message) > 4096:
+                return
+            data = json.loads(raw_message)
         except Exception as exc:
             await capture_exception(exc, None, self.env, "classroom_on_webSocketMessage.parse")
+            return
+        if not isinstance(data, dict):
             return
 
         msg_type = data.get("type", "")
@@ -1489,11 +1498,14 @@ class ClassroomDO(DurableObject):
             if position is None:
                 return
             direction = data.get("direction", info["direction"])
-            if direction not in {"up", "down", "left", "right"}:
+            if not isinstance(direction, str) or direction not in {"up", "down", "left", "right"}:
                 direction = info["direction"]
+            is_moving = data.get("isMoving", False)
+            if not isinstance(is_moving, bool):
+                is_moving = False
             info["position"]  = position
             info["direction"] = direction
-            info["is_moving"] = bool(data.get("isMoving", False))
+            info["is_moving"] = is_moving
             for s_id, s_info in self.sessions.items():
                 if s_info["participant_id"] == info["participant_id"]:
                     s_info["position"]  = position
@@ -1511,15 +1523,20 @@ class ClassroomDO(DurableObject):
             }), exclude_session_id=sid)
 
         elif msg_type == "chat_message":
-            text = (data.get("text") or "").strip()[:500]
+            raw_text = data.get("text", "")
+            if not isinstance(raw_text, str):
+                return
+            text = raw_text.strip()[:500]
             if not text:
                 return
+            raw_timestamp = data.get("timestamp", "")
+            timestamp = raw_timestamp[:64] if isinstance(raw_timestamp, str) else ""
             self._broadcast(json.dumps({
                 "type":           "chat_message",
                 "participant_id": info["participant_id"],
                 "display_name":   info["display_name"],
                 "text":           text,
-                "timestamp":      data.get("timestamp", ""),
+                "timestamp":      timestamp,
             }))
 
         
