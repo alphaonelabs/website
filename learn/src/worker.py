@@ -1450,7 +1450,7 @@ async def on_fetch(request, env):
 # ---------------------------------------------------------------------------
 
 async def _create_notification(env, user_id: str, type_: str, title: str,
-                                message: str, related_id: str = None) -> None:
+                                message: str, related_id: str | None = None) -> None:
     """Internal helper called by other handlers to create a notification.
 
     Silently swallows errors so a notification failure never breaks the
@@ -1462,7 +1462,7 @@ async def _create_notification(env, user_id: str, type_: str, title: str,
             " VALUES (?, ?, ?, ?, ?, ?)"
         ).bind(new_id(), user_id, type_, title, message, related_id).run()
     except Exception as exc:
-        capture_exception(exc, where="_create_notification")
+        await capture_exception(exc, env=env, where="_create_notification")
 
 
 async def api_list_notifications(req, env):
@@ -1531,7 +1531,7 @@ async def api_unread_count(req, env):
         "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND is_read = 0"
     ).bind(user["id"]).first()
 
-    return ok({"unread_count": row["cnt"] if row else 0})
+    return ok({"unread_count": row.cnt if row else 0})
 
 
 async def api_mark_notification_read(req, env, notification_id: str):
