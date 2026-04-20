@@ -62,6 +62,15 @@ def init_sentry(env):
     _SENTRY_INITIALIZED = True
     _SENTRY_DSN = getattr(env, "SENTRY_DSN", "") or ""
 
+def _redact_url(raw_url: str) -> str:
+    """Remove secrets from URLs before logging or sending to Sentry."""
+    try:
+        parsed = urlparse(raw_url)
+        query = re.sub(r"([?&](?:token|access_token)=)[^&]+", r"\1[redacted]", "?" + parsed.query)
+        safe_query = query[1:] if parsed.query else ""
+        return parsed._replace(query=safe_query).geturl()
+    except Exception:
+        return "[redacted-url]"
 
 async def _post_to_sentry(exc: Exception, dsn: str, where: str, req=None):
     """Send an exception to Sentry via the HTTP Store API using js.fetch."""
@@ -96,7 +105,7 @@ async def _post_to_sentry(exc: Exception, dsn: str, where: str, req=None):
             },
         }
         if req:
-            event["request"] = {"url": req.url, "method": req.method}
+            event["request"] = {"url": _redact_url(req.url), "method": req.method}
 
         auth = (
             f"Sentry sentry_version=7, sentry_key={public_key},"
@@ -128,7 +137,7 @@ async def capture_exception(exc: Exception, req=None, _env=None, where: str = ""
         if req:
             payload["request"] = {
                 "method": req.method,
-                "url":    req.url,
+                "url":    _redact_url(req.url),
                 "path":   urlparse(req.url).path,
             }
         print(json.dumps(payload))
@@ -1403,6 +1412,7 @@ class ClassroomDO(DurableObject):
              if s["participant_id"] == participant_id),
             None,
         )
+        already_connected = existing is not None
         initial_position  = dict(existing["position"])       if existing else {"x": 0.5, "y": 0.5}
         initial_direction = existing["direction"]             if existing else "down"
         initial_seat_id   = existing.get("seat_id", "")      if existing else ""
@@ -1439,11 +1449,12 @@ class ClassroomDO(DurableObject):
 
         self._broadcast_room_state()
 
-        self._broadcast(json.dumps({
-            "type":           "participant_joined",
-            "participant_id": participant_id,
-            "display_name":   display_name,
-        }), exclude_session_id=session_id)
+        if not already_connected:
+            self._broadcast(json.dumps({
+                "type":           "participant_joined",
+                "participant_id": participant_id,
+                "display_name":   display_name,
+            }), exclude_session_id=session_id)
 
         return Response(None, status=101, web_socket=client)
 
