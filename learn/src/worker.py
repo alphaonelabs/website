@@ -1483,7 +1483,12 @@ class ClassroomDO(DurableObject):
             info["position"]  = position
             info["direction"] = direction
             info["is_moving"] = bool(data.get("isMoving", False))
-            self._persist_attachment(sid, info)
+            for s_id, s_info in self.sessions.items():
+                if s_info["participant_id"] == info["participant_id"]:
+                    s_info["position"]  = position
+                    s_info["direction"] = direction
+                    s_info["is_moving"] = info["is_moving"]
+                    self._persist_attachment(s_id, s_info)
 
             self._broadcast(json.dumps({
                 "type":           "position_update",
@@ -1550,6 +1555,8 @@ class ClassroomDO(DurableObject):
 
         elif msg_type == "leave_seat":
             old_seat = info["seat_id"]
+            if not old_seat:
+                return
             for s_id, s_info in self.sessions.items():
                 if s_info["participant_id"] == info["participant_id"]:
                     s_info["seat_id"] = ""
@@ -1614,7 +1621,6 @@ class ClassroomDO(DurableObject):
         return None
 
     def _broadcast(self, msg, exclude_session_id=None):
-        dead = []
         for sid, info in self.sessions.items():
             if sid == exclude_session_id:
                 continue
@@ -1622,9 +1628,9 @@ class ClassroomDO(DurableObject):
                 info["ws"].send(msg)
             except Exception as exc:
                 print(f"[ClassroomDO._broadcast] sid={sid} pid={info.get('participant_id')} error={exc!r}")
-                dead.append(sid)
-        for sid in dead:
-            self.sessions.pop(sid, None)
+                # Do not pop here - rely on on_webSocketClose to run the full
+                # cleanup + participant_left broadcast. Transient send errors
+                # shouldn't silently evict a session.
 
     def _broadcast_room_state(self):
         seen = {}
