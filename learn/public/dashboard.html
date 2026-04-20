@@ -1,178 +1,457 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Dashboard - Alpha One Labs">
+  <meta name="keywords" content="dashboard, activities, Alpha One Labs">
   <title>Dashboard - Alpha One Labs</title>
-  <link rel="icon" type="image/png" href="/images/logo.png" />
+  
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT:'#4F46E5', dark:'#3730A3' } } } } };</script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} }
+    }
+
+    const DEBUG = false;
+    function log(message) {
+      if (DEBUG) console.log(`[DarkMode] ${message}`);
+    }
+
+    function initializeDarkMode() {
+      log('Initializing dark mode');
+      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+      if (darkModeEnabled) {
+        document.documentElement.classList.add('dark');
+        log('Added dark class');
+      } else if (localStorage.getItem('darkMode') === null) {
+        localStorage.setItem('darkMode', 'false');
+        log('Defaulting to light mode');
+      }
+      updateDarkModeIcon();
+    }
+
+    function toggleDarkMode() {
+      log('Toggle dark mode called');
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark.toString());
+      log(`Dark mode toggled to: ${isDark}`);
+      updateDarkModeIcon();
+    }
+
+    function updateDarkModeIcon() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const icon = document.getElementById('darkModeIcon');
+      const iconMobile = document.getElementById('darkModeIconMobile');
+      
+      if (icon) {
+        icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      }
+      if (iconMobile) {
+        iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
+      }
+    }
+
+    initializeDarkMode();
+    document.addEventListener('DOMContentLoaded', initializeDarkMode);
+  </script>
+
   <style>
-    .hidden { display: none !important; }
-    .gradient-hero { background: linear-gradient(135deg,#4F46E5 0%,#7C3AED 50%,#2563EB 100%); }
-    .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:.75rem; font-weight:600; }
-    .card-hover { transition:transform .2s,box-shadow .2s; }
-    .card-hover:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.1); }
+    html, body {
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    
+    .dark { color-scheme: dark; }
+    :root { color-scheme: light; }
+    
+    .card-hover {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+    
+    .activity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    @media (max-width: 640px) {
+      .activity-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
 
-<nav class="bg-white shadow-sm sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-    <a href="/" class="flex items-center gap-2">
-      <img src="/images/logo.png" alt="Alpha One Labs" class="h-8 w-auto" />
-      <span class="font-bold text-xl text-slate-800">Alpha One Labs</span>
-    </a>
-    <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-      <a href="/" class="hover:text-brand">Activities</a>
-      <a href="/dashboard.html" class="text-brand hover:text-brand-dark">Dashboard</a>
-      <a href="/teach.html" class="hover:text-brand" id="host-link">Host</a>
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+
+  <div id="site-navbar"></div>
+
+  <!-- ===== HERO SECTION ===== -->
+  <section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 relative overflow-hidden py-16 md:py-20">
+    <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
+      <i class="fas fa-chart-line absolute top-10 left-10 text-6xl"></i>
+      <i class="fas fa-tasks absolute bottom-10 right-10 text-6xl"></i>
     </div>
-    <div class="flex items-center gap-3">
-      <span class="text-slate-600 text-sm hidden sm:block" id="nav-user"></span>
-      <button onclick="logout()" class="text-slate-400 text-sm hover:text-red-500 transition">Logout</button>
+
+    <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
+      <p class="text-teal-100 text-sm font-semibold tracking-widest uppercase mb-3" id="header-role-label">
+        <i class="fas fa-chart-line mr-2"></i>Dashboard
+      </p>
+      <h1 id="header-welcome" class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-2">
+        Welcome back!
+      </h1>
+      <p id="header-sub" class="text-lg text-teal-100 mb-1">Manage your activities and track your progress</p>
     </div>
-  </div>
-</nav>
+  </section>
 
-<div class="gradient-hero text-white py-12 px-4">
-  <div class="max-w-7xl mx-auto">
-    <p class="text-indigo-200 text-sm font-medium mb-1" id="header-role-label">Dashboard</p>
-    <h1 class="text-3xl font-extrabold" id="header-welcome">Welcome!</h1>
-    <p class="text-indigo-200 mt-1 text-sm" id="header-sub"></p>
-  </div>
-</div>
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="flex-1 w-full">
+    <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-12">
 
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10" id="stat-cards"></div>
-  <div id="quick-actions" class="mb-8"></div>
-  <h2 class="text-xl font-bold text-slate-800 mb-5" id="section-title">My Activities</h2>
-  <div id="activities-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-    <div class="bg-white rounded-2xl p-6 animate-pulse h-40"></div>
-    <div class="bg-white rounded-2xl p-6 animate-pulse h-40"></div>
-  </div>
-  <div id="empty-state" class="hidden text-center py-20 text-slate-400">
-    <p class="text-5xl mb-4">&#128459;</p>
-    <p class="text-lg font-medium" id="empty-msg">Nothing here yet.</p>
-    <a id="empty-action-link" href="/" class="mt-4 inline-block text-brand font-semibold hover:underline" id="empty-action-text">Browse activities</a>
-  </div>
-  <div id="joined-section"></div>
-</main>
+      <!-- STAT CARDS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div id="stat-cards" class="contents"></div>
+      </div>
 
-<footer class="bg-slate-800 text-slate-400 py-6 text-center text-sm mt-10">
-  <p>&copy; 2024&ndash;2026 Alpha One Labs &middot; All user data encrypted at rest</p>
-</footer>
+      <!-- QUICK ACTIONS -->
+      <div id="quick-actions" class="mb-12"></div>
 
-<script>
-  const API = '';
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  const token = localStorage.getItem('edu_token');
-  const user  = JSON.parse(localStorage.getItem('edu_user') || 'null');
-  if (!token || !user) window.location.href = '/login.html';
-  function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+      <!-- HOSTED ACTIVITIES SECTION -->
+      <section class="mb-14">
+        <div class="relative flex py-5 items-center mb-8">
+          <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+          <div class="flex-shrink mx-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 dark:from-teal-500 dark:to-cyan-600 flex items-center justify-center shadow-lg">
+              <i class="fas fa-broadcast-tower text-white text-lg"></i>
+            </div>
+            <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent" id="section-title">Hosted Activities</span>
+          </div>
+          <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
+        </div>
 
-  const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', other:'✨' };
-  const typeColor = { course:'bg-indigo-100 text-indigo-700', meetup:'bg-pink-100 text-pink-700', workshop:'bg-orange-100 text-orange-700', seminar:'bg-teal-100 text-teal-700', other:'bg-slate-100 text-slate-600' };
-  const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
-  const schedLabel = { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
+        <div class="activity-grid" id="activities-list">
+          <!-- Skeleton loading -->
+          <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md animate-pulse">
+            <div class="h-20 bg-gradient-to-r from-gray-200 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-xl mb-4"></div>
+            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
+            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+          <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md animate-pulse">
+            <div class="h-20 bg-gradient-to-r from-gray-200 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-xl mb-4"></div>
+            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
+            <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        </div>
 
-  document.getElementById('nav-user').textContent = 'Hi, ' + user.username;
+        <div id="empty-state" class="hidden rounded-2xl p-12 border-2 border-dashed border-gray-300 dark:border-gray-700 text-center bg-gray-50 dark:bg-gray-900/50">
+          <i class="fas fa-inbox text-5xl text-gray-400 dark:text-gray-600 mb-4 block"></i>
+          <p class="text-gray-600 dark:text-gray-400 text-lg mb-2 font-semibold" id="empty-msg">No hosted activities yet.</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Create your first activity to start hosting courses, workshops, and more.</p>
+          <a id="empty-action-link" href="/teach.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
+            <i class="fas fa-plus mr-1"></i>Create Your First Activity
+          </a>
+        </div>
+      </section>
 
-  async function loadDashboard() {
-    const res  = await fetch('/api/dashboard', { headers:{ Authorization: 'Bearer ' + token } });
-    const data = await res.json();
-    renderDashboard(data);
-  }
+      <!-- JOINED ACTIVITIES SECTION -->
+      <div id="joined-section"></div>
 
-  function statCard(value, label, color) {
-    return '<div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center"><p class="text-3xl font-extrabold ' + color + '">' + value + '</p><p class="text-slate-500 text-sm mt-1">' + label + '</p></div>';
-  }
+    </div>
+  </main>
 
-  function renderDashboard(data) {
+  <div id="site-footer"></div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    const API = '';
+const token = localStorage.getItem('edu_token');
+const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+
+// Utility functions
+const pageEsc = window.esc || function (s) {
+    return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+};
+
+const pageLogout = window.logout || function () {
+    localStorage.removeItem('edu_token');
+    localStorage.removeItem('edu_user');
+    window.location.href = '/login.html';
+};
+
+// Auth check
+if (!token || !user) {
+    window.location.href = '/login.html';
+}
+
+// Type icons and colors
+const typeIcon = { course: '📚', meetup: '🤝', workshop: '🔧', seminar: '🎤', other: '✨' };
+const typeColor = {
+    course: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+    meetup: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
+    workshop: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+    seminar: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
+    other: 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'
+};
+const fmtLabel = { live: 'Live', self_paced: 'Self-paced', hybrid: 'Hybrid' };
+const schedLabel = {
+    one_time: 'One-time',
+    multi_session: 'Multi-session',
+    recurring: 'Recurring',
+    ongoing: 'Ongoing'
+};
+const roleColor = {
+    participant: 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200',
+    instructor: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+    organizer: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+};
+const statusColor = {
+    active: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+    cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+    completed: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+};
+
+// Stat card template
+function statCard(value, label, icon, color) {
+    return `
+        <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">${label}</p>
+                    <p class="text-3xl font-extrabold ${color}">${value}</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg ${color} opacity-20 flex items-center justify-center">
+                    <i class="fas ${icon} text-lg"></i>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Load dashboard
+async function loadDashboard() {
+    try {
+        const res = await fetch(`${API}/api/dashboard`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+            if (res.status === 401) {
+                localStorage.removeItem('edu_token');
+                localStorage.removeItem('edu_user');
+                window.location.href = '/login.html';
+                return;
+            }
+            throw new Error('Failed to load dashboard');
+        }
+
+        const data = await res.json();
+        renderDashboard(data);
+    } catch (err) {
+        console.error('Error loading dashboard:', err);
+        document.getElementById('activities-list').innerHTML = `
+            <div class="col-span-full rounded-2xl p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-center">
+                <i class="fas fa-exclamation-circle text-red-500 text-4xl mb-3 block"></i>
+                <p class="text-red-700 dark:text-red-300 font-semibold">Failed to load dashboard</p>
+                <p class="text-red-600 dark:text-red-400 text-sm mt-1">${err.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Render dashboard
+function renderDashboard(data) {
     const hosted = data.hosted_activities || [];
     const joined = data.joined_activities || [];
 
-    document.getElementById('header-role-label').textContent = 'Dashboard';
-    document.getElementById('header-welcome').textContent    = 'Hello, ' + user.username + '!';
-    document.getElementById('header-sub').textContent        = 'Manage your hosted activities and track your participation.';
-    document.getElementById('section-title').textContent     = 'Hosted Activities';
+    // Update header
+    document.getElementById('header-welcome').textContent = `Hello, ${esc(user.username)}!`;
+    document.getElementById('header-sub').textContent = 'Manage your hosted activities and track your participation.';
 
-    const totalParts = hosted.reduce((s,a) => s + (a.participant_count||0), 0);
+    // Calculate stats
+    const totalParticipants = hosted.reduce((sum, a) => sum + (a.participant_count || 0), 0);
+    const totalSessions = hosted.reduce((sum, a) => sum + (a.session_count || 0), 0);
+
+    // Render stat cards
     document.getElementById('stat-cards').innerHTML =
-      statCard(hosted.length,  'Hosted',       'text-brand') +
-      statCard(totalParts,     'Participants', 'text-purple-600') +
-      statCard(joined.length,  'Joined',       'text-emerald-600') +
-      statCard('🔒',           'Encrypted',    'text-amber-500');
+        statCard(hosted.length, 'Hosted Activities', 'fa-broadcast-tower', 'text-teal-600 dark:text-teal-400') +
+        statCard(totalParticipants, 'Total Participants', 'fa-users', 'text-purple-600 dark:text-purple-400') +
+        statCard(joined.length, 'Joined Activities', 'fa-heart', 'text-pink-600 dark:text-pink-400') +
+        statCard(totalSessions, 'Total Sessions', 'fa-calendar', 'text-cyan-600 dark:text-cyan-400');
 
-    document.getElementById('quick-actions').innerHTML =
-      '<div class="flex flex-wrap gap-3">' +
-      '<a href="/teach.html" class="inline-flex items-center gap-2 bg-brand text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-brand-dark transition text-sm">+ New Activity</a>' +
-      '<a href="/" class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-xl hover:bg-slate-50 transition text-sm">Browse All</a>' +
-      '</div>';
+    // Quick actions
+    document.getElementById('quick-actions').innerHTML = `
+        <div class="flex flex-wrap gap-3">
+            <a href="/teach.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                <i class="fas fa-plus"></i>Create Activity
+            </a>
+            <a href="/activity.html" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl border border-teal-200 dark:border-teal-800 shadow-md hover:shadow-lg transition-all">
+                <i class="fas fa-compass"></i>Browse Activities
+            </a>
+        </div>
+    `;
 
+    // Render hosted activities
     if (!hosted.length) {
-      document.getElementById('activities-list').innerHTML =
-        '<p class="col-span-3 text-slate-400 text-sm text-center py-8">You haven\'t hosted any activities yet. <a href="/teach.html" class="text-brand font-semibold hover:underline">Create your first activity \u2192</a></p>';
+        document.getElementById('activities-list').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
     } else {
-      document.getElementById('activities-list').innerHTML = hosted.map(a => {
-        const tc   = typeColor[a.type] || 'bg-slate-100 text-slate-600';
-        const ic   = typeIcon[a.type]  || '✨';
-        const tags = (a.tags||[]).slice(0,3).map(t => '<span class="badge bg-slate-100 text-slate-500">' + esc(t) + '</span>').join('');
-        return '<article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 card-hover flex flex-col gap-3">' +
-          '<div class="flex items-start justify-between gap-2">' +
-            '<h3 class="font-bold text-slate-800 text-sm">' + ic + ' ' + esc(a.title) + '</h3>' +
-            '<span class="badge ' + tc + ' shrink-0">' + esc(a.type) + '</span>' +
-          '</div>' +
-          '<div class="flex gap-3 text-xs text-slate-500">' +
-            '<span>👥 ' + a.participant_count + '</span>' +
-            '<span>🗓 ' + a.session_count + ' sessions</span>' +
-            '<span>' + (fmtLabel[a.format]||a.format) + '</span>' +
-          '</div>' +
-          '<div class="flex flex-wrap gap-1">' + tags + '</div>' +
-          '<div class="mt-auto flex gap-2">' +
-            '<a href="/course.html?id=' + esc(a.id) + '" class="flex-1 text-center text-sm font-semibold text-brand border border-brand/30 rounded-lg py-1.5 hover:bg-indigo-50">View</a>' +
-            '<a href="/teach.html?activity_id=' + esc(a.id) + '" class="flex-1 text-center text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg py-1.5 hover:bg-slate-50">Manage</a>' +
-          '</div>' +
-          '</article>';
-      }).join('');
+        document.getElementById('activities-list').classList.remove('hidden');
+        document.getElementById('empty-state').classList.add('hidden');
+        
+        document.getElementById('activities-list').innerHTML = hosted.map(a => {
+            const tc = typeColor[a.type] || typeColor.other;
+            const ic = typeIcon[a.type] || '✨';
+            const tagsList = (a.tags || []).slice(0, 3)
+                .map(t => `<span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">${esc(t)}</span>`)
+                .join('');
+
+            return `
+                <article class="rounded-2xl p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md card-hover flex flex-col gap-4">
+                    <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="text-xl mr-2">${ic}</span>${esc(a.title)}
+                        </h3>
+                        <span class="inline-block px-3 py-1.5 rounded-full font-semibold text-xs ${tc} shrink-0">
+                            ${esc(a.type)}
+                        </span>
+                    </div>
+                    
+                    <p class="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">
+                        ${esc(a.description || 'No description')}
+                    </p>
+                    
+                    <div class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
+                            <i class="fas fa-signal mr-1"></i>${fmtLabel[a.format] || a.format}
+                        </span>
+                        <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
+                            <i class="fas fa-calendar mr-1"></i>${schedLabel[a.schedule_type] || a.schedule_type}
+                        </span>
+                        <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
+                            <i class="fas fa-users mr-1"></i>${a.participant_count || 0}
+                        </span>
+                        <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
+                            <i class="fas fa-clock mr-1"></i>${a.session_count || 0} sessions
+                        </span>
+                    </div>
+                    
+                    ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
+                    
+                    <div class="flex gap-2 mt-auto">
+                        <a href="/activity.html?id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </a>
+                        <a href="/teach.html?activity_id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-sliders-h mr-1"></i>Manage
+                        </a>
+                    </div>
+                </article>
+            `;
+        }).join('');
     }
 
-    const roleColor   = { participant:'bg-slate-100 text-slate-600', instructor:'bg-purple-100 text-purple-700', organizer:'bg-amber-100 text-amber-700' };
-    const statusColor = { active:'bg-emerald-100 text-emerald-700', cancelled:'bg-red-100 text-red-700', completed:'bg-blue-100 text-blue-700' };
+    // Render joined activities section
+    let joinedHtml = `
+        <section class="mt-14">
+            <div class="relative flex py-5 items-center mb-8">
+                <div class="flex-grow border-t-2 border-pink-200 dark:border-pink-800"></div>
+                <div class="flex-shrink mx-4 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-red-500 dark:from-pink-500 dark:to-red-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-heart text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-extrabold bg-gradient-to-r from-pink-600 to-red-600 dark:from-pink-400 dark:to-red-400 bg-clip-text text-transparent">Joined Activities</span>
+                </div>
+                <div class="flex-grow border-t-2 border-pink-200 dark:border-pink-800"></div>
+            </div>
+    `;
 
-    let joinedHtml = '<h2 class="text-xl font-bold text-slate-800 mb-5 mt-10">Joined Activities</h2>';
     if (!joined.length) {
-      joinedHtml += '<p class="text-slate-400 text-sm text-center py-8">You haven\'t joined any activities yet. <a href="/" class="text-brand font-semibold hover:underline">Browse activities \u2192</a></p>';
+        joinedHtml += `
+            <div class="rounded-2xl p-12 border-2 border-dashed border-gray-300 dark:border-gray-700 text-center bg-gray-50 dark:bg-gray-900/50">
+                <i class="fas fa-smile text-5xl text-gray-400 dark:text-gray-600 mb-4 block"></i>
+                <p class="text-gray-600 dark:text-gray-400 text-lg mb-2 font-semibold">No joined activities yet.</p>
+                <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Browse and join activities to start learning.</p>
+                <a href="/activity.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
+                    <i class="fas fa-compass mr-1"></i>Browse Activities
+                </a>
+            </div>
+        `;
     } else {
-      joinedHtml += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">' + joined.map(a => {
-        const tc  = typeColor[a.type] || 'bg-slate-100 text-slate-600';
-        const ic  = typeIcon[a.type]  || '✨';
-        const rc  = roleColor[a.enr_role]     || 'bg-slate-100 text-slate-600';
-        const sc  = statusColor[a.enr_status] || 'bg-slate-100 text-slate-600';
-        const tags = (a.tags||[]).slice(0,3).map(t => '<span class="badge bg-slate-100 text-slate-500">' + esc(t) + '</span>').join('');
-        return '<article class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 card-hover flex flex-col gap-3">' +
-          '<div class="flex items-start justify-between gap-2">' +
-            '<h3 class="font-bold text-slate-800 text-sm">' + ic + ' ' + esc(a.title) + '</h3>' +
-            '<span class="badge ' + tc + ' shrink-0">' + esc(a.type) + '</span>' +
-          '</div>' +
-          '<p class="text-xs text-slate-400">by ' + esc(a.host_name) + '</p>' +
-          '<div class="flex flex-wrap gap-1.5">' +
-            '<span class="badge ' + rc + '">' + esc(a.enr_role) + '</span>' +
-            '<span class="badge ' + sc + '">' + esc(a.enr_status) + '</span>' +
-            '<span class="text-xs text-slate-400">' + (fmtLabel[a.format]||a.format) + '</span>' +
-          '</div>' +
-          '<div class="flex flex-wrap gap-1">' + tags + '</div>' +
-          '<a href="/course.html?id=' + esc(a.id) + '" class="mt-auto block text-center text-sm font-semibold text-brand border border-brand/30 rounded-lg py-1.5 hover:bg-indigo-50">View Activity</a>' +
-          '</article>';
-      }).join('') + '</div>';
-    }
-    document.getElementById('joined-section').innerHTML = joinedHtml;
-  }
+        joinedHtml += `
+            <div class="activity-grid">
+                ${joined.map(a => {
+                    const tc = typeColor[a.type] || typeColor.other;
+                    const ic = typeIcon[a.type] || '✨';
+                    const rc = roleColor[a.enr_role] || roleColor.participant;
+                    const sc = statusColor[a.enr_status] || statusColor.active;
+                    const tagsList = (a.tags || []).slice(0, 2)
+                        .map(t => `<span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">${esc(t)}</span>`)
+                        .join('');
 
-  loadDashboard().catch(e => {
-    document.getElementById('activities-list').innerHTML =
-      '<p class="col-span-3 text-red-400 text-sm">Failed to load dashboard: ' + e.message + '</p>';
-  });
-</script>
+                    return `
+                        <article class="rounded-2xl p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md card-hover flex flex-col gap-4">
+                            <div class="flex items-start justify-between gap-2">
+                                <h3 class="font-bold text-gray-800 dark:text-gray-200 text-base">
+                                    <span class="text-xl mr-2">${ic}</span>${esc(a.title)}
+                                </h3>
+                                <span class="inline-block px-3 py-1.5 rounded-full font-semibold text-xs ${tc} shrink-0">
+                                    ${esc(a.type)}
+                                </span>
+                            </div>
+                            
+                            <p class="text-gray-600 dark:text-gray-400 text-xs">
+                                <i class="fas fa-user-circle mr-1"></i>by ${esc(a.host_name)}
+                            </p>
+                            
+                            <div class="flex flex-wrap gap-2">
+                                <span class="inline-block px-3 py-1.5 rounded-full font-semibold text-xs ${rc}">
+                                    ${esc(a.enr_role || 'Participant')}
+                                </span>
+                                <span class="inline-block px-3 py-1.5 rounded-full font-semibold text-xs ${sc}">
+                                    ${esc(a.enr_status || 'Active')}
+                                </span>
+                            </div>
+                            
+                            <div class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
+                                    <i class="fas fa-signal mr-1"></i>${fmtLabel[a.format] || a.format}
+                                </span>
+                            </div>
+                            
+                            ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
+                            
+                            <a href="/activity.html?id=${esc(a.id)}" class="mt-auto text-center py-2.5 px-4 rounded-lg font-semibold text-sm text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors">
+                                <i class="fas fa-arrow-right mr-1"></i>View Activity
+                            </a>
+                        </article>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    joinedHtml += '</section>';
+    document.getElementById('joined-section').innerHTML = joinedHtml;
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+});
+  </script>
 </body>
 </html>

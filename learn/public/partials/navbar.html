@@ -1,0 +1,326 @@
+<!-- ===== HEADER ===== -->
+<header class="w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md">
+    <div class="max-w-[90rem] mx-auto px-4 md:px-6 flex items-center justify-between h-[70px] relative gap-2">
+        <!-- Logo and Title -->
+        <a href="/" class="flex flex-1 min-w-[150px] max-w-[50%] items-center space-x-2">
+            <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs Logo" height="40" width="40" class="h-10 w-10">
+            <span class="text-xl font-bold text-white">Alpha One Labs</span>
+        </a>
+
+        <!-- Mobile Menu Button -->
+        <button class="md:hidden p-2 hover:bg-teal-700 rounded-lg" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars text-xl"></i>
+        </button>
+
+        <!-- Nav and additional actions -->
+        <nav class="hidden md:flex items-center space-x-3">
+            <!-- Main navigation links with dropdowns -->
+            <div class="flex space-x-2 items-center">
+                <!-- LEARN Dropdown -->
+                <div class="relative group">
+                    <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
+                        <span class="font-medium">LEARN</span>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
+                    </button>
+                    <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
+                        <div class="py-2 px-1">
+                            <a href="/" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-map-marker-alt mr-2 text-teal-500"></i>Classes Near Me
+                            </a>
+                            <a href="/" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-book-open mr-2 text-teal-500"></i>Courses
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-list-check mr-2 text-teal-500"></i>Subjects
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-question-circle mr-2 text-teal-500"></i>Quizzes
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-video mr-2 text-teal-500"></i>Videos
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-trophy mr-2 text-teal-500"></i>Challenges
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-calculator mr-2 text-teal-500"></i>Graphing Calculator
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-palette mr-2 text-teal-500"></i>Whiteboard
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-users mr-2 text-teal-500"></i>Study Groups
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMMUNITY Dropdown -->
+                <div class="relative group">
+                    <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
+                        <span class="font-medium">COMMUNITY</span>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
+                    </button>
+                    <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
+                        <div class="py-2 px-1">
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-chalkboard-teacher mr-2 text-teal-500"></i>Learning Requests
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-square-poll-vertical mr-2 text-teal-500"></i>Surveys
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-door-open mr-2 text-teal-500"></i>Waiting Rooms
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-comments mr-2 text-teal-500"></i>Forum
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-blog mr-2 text-teal-500"></i>Blog
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-face-smile mr-2 text-teal-500"></i>Edu Memes
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-lightbulb mr-2 text-teal-500"></i>Features
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-users mr-2 text-teal-500"></i>Users
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-star mr-2 text-teal-500"></i>Success Stories
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-users-cog mr-2 text-teal-500"></i>Teams
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RESOURCES Dropdown -->
+                <div class="relative group">
+                    <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
+                        <span class="font-medium">RESOURCES</span>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
+                    </button>
+                    <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
+                        <div class="py-2 px-1">
+                            <a href="#" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                                <i class="fas fa-flask mr-2 text-teal-500"></i>
+                                <span>Virtual Lab</span>
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-chart-line mr-2 text-teal-500"></i>Progress Trackers
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-link mr-2 text-teal-500"></i>Grade Links
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-store mr-2 text-teal-500"></i>Products
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-shopping-basket mr-2 text-teal-500"></i>Storefronts
+                            </a>
+                            <a href="https://github.com/alphaonelabs/alphaonelabs-education-website/wiki/GSOC-2026-Ideas" target="_blank" rel="noopener" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-code mr-2 text-teal-500"></i>GSOC'26
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABOUT Dropdown -->
+                <div class="relative group">
+                    <button class="flex items-center space-x-1 text-white hover:text-teal-100 focus:outline-none py-2">
+                        <span class="font-medium">ABOUT</span>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-hover:rotate-180"></i>
+                    </button>
+                    <div class="absolute left-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top-left">
+                        <div class="py-2 px-1">
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-circle-info mr-2 text-teal-500"></i>Our Mission
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-file-contract mr-2 text-teal-500"></i>Terms
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-chart-line mr-2 text-teal-500"></i>Status
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-comment-dots mr-2 text-teal-500"></i>Feedback
+                            </a>
+                            <a href="#" class="block px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-hand-holding-heart mr-2 text-teal-500"></i>Donate
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search bar -->
+            <div class="relative hidden lg:inline-block w-[250px]">
+                <form action="/" method="get" class="m-0">
+                    <input type="text" name="q" placeholder="What do you want to learn?" class="rounded-full w-[250px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700">
+                    <button type="submit" class="absolute right-3 top-2 text-gray-500 dark:text-gray-300">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Messaging Button -->
+            <a href="#" title="Messages" class="flex items-center p-2 hover:bg-teal-700 rounded-lg">
+                <i class="fas fa-comments text-xl"></i>
+            </a>
+
+            <!-- Language and Dark Mode -->
+            <div class="flex items-center space-x-2">
+                <!-- Cart Icon -->
+                <a href="#" class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
+                    <i class="fa-solid fa-shopping-cart"></i>
+                </a>
+
+                <!-- Notification Button -->
+                <a href="#" class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
+                    <i class="fas fa-bell"></i>
+                </a>
+
+                <!-- Language Dropdown -->
+                <div class="relative">
+                    <button class="focus:outline-none hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg" onclick="toggleLanguageDropdown()">
+                        <i class="fa-solid fa-globe"></i>
+                    </button>
+                    <div id="language-dropdown" class="hidden absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 shadow-lg rounded-md py-2 z-50">
+                        <button onclick="setLanguage('en')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">English</button>
+                        <button onclick="setLanguage('es')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Spanish</button>
+                        <button onclick="setLanguage('fr')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">French</button>
+                        <button onclick="setLanguage('de')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">German</button>
+                        <button onclick="setLanguage('zh')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Chinese</button>
+                    </div>
+                </div>
+
+                <!-- Dark Mode Toggle -->
+                <button class="focus:outline-none flex items-center hover:underline p-2 rounded-lg hover:bg-teal-700 transition-colors" title="Switch to Dark Mode" onclick="toggleDarkMode()">
+                    <i id="darkModeIcon" class="fas fa-moon"></i>
+                </button>
+            </div>
+
+            <!-- Auth Section (Dynamic) - Fixed width container -->
+            <div class="flex items-center space-x-2 min-w-[180px]">
+                <!-- Not Logged In State -->
+                <div id="auth-not-logged-in" class="flex items-center space-x-2 w-full">
+                    <a href="/login.html" class="hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg flex-1 justify-center">
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i>
+                        <span class="hidden sm:inline">Login</span>
+                    </a>
+                    <a href="/login.html?tab=register" class="px-3 py-1 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-semibold flex items-center transition">
+                        <i class="fa-solid fa-user-plus mr-1"></i>
+                        <span class="hidden sm:inline text-sm">Signup</span>
+                    </a>
+                </div>
+
+                <!-- Logged In State -->
+                <div id="auth-logged-in" class="hidden items-center space-x-2 w-full">
+                    <div class="relative flex-1">
+                        <button onclick="toggleProfileDropdown()" class="w-full flex items-center space-x-2 p-2 hover:bg-teal-700 rounded-lg transition">
+                            <!-- Profile Avatar with First Letter -->
+                            <div id="profile-avatar" class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white text-sm">
+                                A
+                            </div>
+                            <!-- Greeting Text -->
+                            <span id="profile-greeting" class="hidden sm:inline text-sm font-medium truncate">Hi, Alice</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+
+                        <!-- Profile Dropdown Menu -->
+                        <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50">
+                            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                                <p id="dropdown-username" class="font-semibold text-gray-800 dark:text-gray-200">Alice</p>
+                            </div>
+                            <a href="/dashboard.html" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-chart-line mr-2 text-teal-500"></i>
+                                <span>Dashboard</span>
+                            </a>
+                            <a href="/" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
+                                <i class="fas fa-cog mr-2 text-teal-500"></i>
+                                <span>Settings</span>
+                            </a>
+                            <hr class="border-gray-200 dark:border-gray-700 my-1">
+                            <button onclick="logout()" class="w-full text-left flex items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                <i class="fas fa-sign-out-alt mr-2"></i>
+                                <span>Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden">
+            <div class="absolute right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 shadow-lg overflow-y-auto mobile-menu-content">
+                <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="toggleMobileMenu()">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <div class="pt-16 px-4 pb-8">
+                    <div class="relative mb-6">
+                        <input type="text" placeholder="What do you want to learn?" class="w-full rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700">
+                        <button class="absolute right-3 top-2.5 text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                            <div class="flex items-center justify-between py-2 cursor-pointer" onclick="toggleAccordion('learn-accordion')">
+                                <span class="text-gray-800 dark:text-gray-200 font-semibold">LEARN</span>
+                                <i id="learn-accordion-icon" class="fas fa-chevron-down text-gray-500 dark:text-gray-400 transition-transform duration-200"></i>
+                            </div>
+                            <div id="learn-accordion" class="hidden mt-2 ml-2 space-y-2">
+                                <a href="/" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                                    <i class="fas fa-map-marker-alt mr-2 text-teal-500"></i><span>Classes Near Me</span>
+                                </a>
+                                <a href="/" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                                    <i class="fas fa-book-open mr-2 text-teal-500"></i><span>Courses</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Auth Section -->
+                    <div class="flex flex-col space-y-2 mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <div id="mobile-auth-not-logged-in">
+                            <a href="/login.html" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                                <i class="fa-solid fa-right-to-bracket mr-2 text-teal-500"></i><span>Login</span>
+                            </a>
+                            <a href="/login.html?tab=register" class="flex items-center py-2 px-3 bg-orange-500 hover:bg-orange-600 text-white rounded-md mt-2">
+                                <i class="fa-solid fa-user-plus mr-2"></i><span>Signup</span>
+                            </a>
+                        </div>
+
+                        <div id="mobile-auth-logged-in" class="hidden">
+                            <div class="flex items-center space-x-2 py-2 px-3 bg-teal-100 dark:bg-teal-900 rounded-md mb-2">
+                                <div id="mobile-profile-avatar" class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white text-sm">
+                                    A
+                                </div>
+                                <span id="mobile-profile-greeting" class="font-semibold text-gray-800 dark:text-gray-200">Hi, Alice</span>
+                            </div>
+                            <a href="/dashboard.html" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                                <i class="fas fa-chart-line mr-2 text-teal-500"></i><span>Dashboard</span>
+                            </a>
+                            <a href="/settings.html" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                                <i class="fas fa-cog mr-2 text-teal-500"></i><span>Settings</span>
+                            </a>
+                            <button onclick="logout()" class="w-full flex items-center py-2 px-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md mt-2">
+                                <i class="fas fa-sign-out-alt mr-2"></i><span>Logout</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="toggleDarkMode()" class="w-full flex items-center py-2 px-3 mt-4 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                        <i id="darkModeIconMobile" class="fas fa-moon mr-2 text-teal-500"></i>
+                        <span>Toggle Dark Mode</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
