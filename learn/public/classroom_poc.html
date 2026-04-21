@@ -295,6 +295,20 @@
     const STORAGE_AUTH_USER_KEY  = 'edu_user';
     const searchParams = new URLSearchParams(window.location.search);
 
+    function sanitizeRoomId(value) {
+        return String(value || '')
+            .trim()
+            .replace(/[^a-zA-Z0-9_-]/g, '')
+            .slice(0, 64);
+    }
+
+    function sanitizeDisplayName(value) {
+        return String(value || '')
+            .replace(/[\u0000-\u001F\u007F]/g, '')
+            .trim()
+            .slice(0, 48);
+    }
+
     function generateOpaqueId() {
         if (window.crypto?.randomUUID) {
             return crypto.randomUUID();
@@ -333,12 +347,12 @@
     }
 
     function getPreferredDisplayName() {
-        const queryName = searchParams.get('name');
-        if (queryName && queryName.trim()) return queryName.trim();
+        const queryName = sanitizeDisplayName(searchParams.get('name') || '');
+        if (queryName) return queryName;
         try {
             const user = JSON.parse(localStorage.getItem(STORAGE_AUTH_USER_KEY) || 'null');
-            if (user?.name) return String(user.name);
-            if (user?.username) return String(user.username);
+            if (user?.name) return sanitizeDisplayName(user.name);
+            if (user?.username) return sanitizeDisplayName(user.username);
         } catch (_) {
             // Ignore malformed user payload.
         }
@@ -404,8 +418,10 @@
         reconnectAttempts = 0;
         isSeated = false;
         currentSeat = null;
-        roomId = lobbyRoomId.value.trim() || 'demo-room';
-        myDisplayName = lobbyDisplayName.value.trim() || `User-${Math.random().toString(36).slice(2,6)}`;
+        roomId = sanitizeRoomId(lobbyRoomId.value) || 'demo-room';
+        myDisplayName = sanitizeDisplayName(lobbyDisplayName.value) || `User-${Math.random().toString(36).slice(2,6)}`;
+        lobbyRoomId.value = roomId;
+        lobbyDisplayName.value = myDisplayName;
         myParticipantId = resolveParticipantId();
 
         topRoomId.textContent = roomId;
@@ -869,12 +885,12 @@
     const preferredName = getPreferredDisplayName();
     if (preferredName) lobbyDisplayName.value = preferredName;
 
-    const initialRoom = (searchParams.get('room') || '').trim();
+    const initialRoom = sanitizeRoomId(searchParams.get('room') || '');
     if (initialRoom) lobbyRoomId.value = initialRoom;
 
-    const shouldAutoJoin = ['1', 'true', 'yes'].includes((searchParams.get('autojoin') || '').toLowerCase());
+    const shouldAutoJoin = searchParams.get('autojoin') === '1';
     if (shouldAutoJoin && btnJoin) {
-        if (!lobbyRoomId.value.trim()) lobbyRoomId.value = 'lobby';
+        if (!lobbyRoomId.value) lobbyRoomId.value = 'lobby';
         joinClassroom();
     } else {
         lobbyDisplayName.focus();
