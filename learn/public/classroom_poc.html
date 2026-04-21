@@ -113,11 +113,11 @@
     </header>
 
     <!-- Main Content -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
 
         <!-- Classroom Canvas -->
-        <div class="flex-1 flex flex-col p-3 gap-3 min-w-0">
-            <div id="classroomCanvas" class="flex-1 relative rounded-xl overflow-hidden border border-gray-800 shadow-2xl" style="min-height:400px;">
+        <div class="flex-1 flex flex-col p-3 gap-3 min-w-0 min-h-0">
+            <div id="classroomCanvas" class="flex-1 h-[50vh] min-h-[280px] lg:min-h-[400px] lg:h-auto relative rounded-xl overflow-hidden border border-gray-800 shadow-2xl">
                 <!-- Walls -->
                 <div class="absolute inset-0" style="background: linear-gradient(180deg, #E6E2D7 0%, #E6E2D7 38%, #C7B299 38%, #C7B299 100%);"></div>
                 <!-- Wainscoting line -->
@@ -149,7 +149,7 @@
                 </div>
             </div>
             <!-- Controls bar -->
-            <div class="flex items-center gap-4 px-3 py-2 bg-gray-900/60 rounded-lg border border-gray-800 text-xs text-gray-400 shrink-0">
+            <div class="flex flex-wrap items-center gap-3 px-3 py-2 bg-gray-900/60 rounded-lg border border-gray-800 text-xs text-gray-400 shrink-0">
                 <div class="flex items-center gap-1.5">
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">↑</kbd>
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">↓</kbd>
@@ -161,12 +161,12 @@
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">E</kbd>
                     <span>Sit/Stand</span>
                 </div>
-                <div class="ml-auto text-gray-500">Virtual Classroom</div>
+                <div class="w-full sm:w-auto sm:ml-auto text-gray-500">Virtual Classroom</div>
             </div>
         </div>
 
         <!-- Chat Sidebar -->
-        <div id="chatPanel" class="w-80 shrink-0 bg-gray-900/70 border-l border-gray-800 flex flex-col">
+        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-auto shrink-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
             <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
                 <i data-lucide="message-circle" class="w-4 h-4 text-teal-400"></i>
                 <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
@@ -293,6 +293,7 @@
 
     const STORAGE_PARTICIPANT_KEY = 'classroom_participant_id';
     const STORAGE_AUTH_USER_KEY  = 'edu_user';
+    const searchParams = new URLSearchParams(window.location.search);
 
     function generateOpaqueId() {
         if (window.crypto?.randomUUID) {
@@ -329,6 +330,19 @@
 
     function resolveParticipantId() {
         return getStoredUserParticipantId() || getStoredAnonParticipantId();
+    }
+
+    function getPreferredDisplayName() {
+        const queryName = searchParams.get('name');
+        if (queryName && queryName.trim()) return queryName.trim();
+        try {
+            const user = JSON.parse(localStorage.getItem(STORAGE_AUTH_USER_KEY) || 'null');
+            if (user?.name) return String(user.name);
+            if (user?.username) return String(user.username);
+        } catch (_) {
+            // Ignore malformed user payload.
+        }
+        return '';
     }
 
     // Desk rendering
@@ -848,9 +862,21 @@
         return div.innerHTML;
     }
 
-    // Init Lucide icons and auto-focus
+    // Init Lucide icons and entry behavior
     refreshIcons();
-    lobbyDisplayName.focus();
+    const preferredName = getPreferredDisplayName();
+    if (preferredName) lobbyDisplayName.value = preferredName;
+
+    const initialRoom = (searchParams.get('room') || '').trim();
+    if (initialRoom) lobbyRoomId.value = initialRoom;
+
+    const shouldAutoJoin = ['1', 'true', 'yes'].includes((searchParams.get('autojoin') || '').toLowerCase());
+    if (shouldAutoJoin) {
+        if (!lobbyRoomId.value.trim()) lobbyRoomId.value = 'lobby';
+        setTimeout(() => btnJoin.click(), 0);
+    } else {
+        lobbyDisplayName.focus();
+    }
 })();
 </script>
 
