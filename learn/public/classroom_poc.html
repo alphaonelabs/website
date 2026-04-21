@@ -117,7 +117,7 @@
 
         <!-- Classroom Canvas -->
         <div class="flex-1 flex flex-col p-3 gap-3 min-w-0 min-h-0">
-            <div id="classroomCanvas" class="flex-1 h-[50vh] min-h-[280px] lg:min-h-[400px] lg:h-auto relative rounded-xl overflow-hidden border border-gray-800 shadow-2xl">
+            <div id="classroomCanvas" class="flex-1 min-h-[280px] lg:min-h-[400px] relative rounded-xl overflow-hidden border border-gray-800 shadow-2xl">
                 <!-- Walls -->
                 <div class="absolute inset-0" style="background: linear-gradient(180deg, #E6E2D7 0%, #E6E2D7 38%, #C7B299 38%, #C7B299 100%);"></div>
                 <!-- Wainscoting line -->
@@ -873,7 +873,7 @@
     const shouldAutoJoin = ['1', 'true', 'yes'].includes((searchParams.get('autojoin') || '').toLowerCase());
     if (shouldAutoJoin) {
         if (!lobbyRoomId.value.trim()) lobbyRoomId.value = 'lobby';
-        setTimeout(() => btnJoin.click(), 0);
+        requestAnimationFrame(() => btnJoin.click());
     } else {
         lobbyDisplayName.focus();
     }
