@@ -113,11 +113,11 @@
     </header>
 
     <!-- Main Content -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
 
         <!-- Classroom Canvas -->
-        <div class="flex-1 flex flex-col p-3 gap-3 min-w-0">
-            <div id="classroomCanvas" class="flex-1 relative rounded-xl overflow-hidden border border-gray-800 shadow-2xl" style="min-height:400px;">
+        <div class="flex-1 flex flex-col p-3 gap-3 min-w-0 min-h-0">
+            <div id="classroomCanvas" class="flex-1 min-h-[280px] lg:min-h-[400px] relative rounded-xl overflow-hidden border border-gray-800 shadow-2xl">
                 <!-- Walls -->
                 <div class="absolute inset-0" style="background: linear-gradient(180deg, #E6E2D7 0%, #E6E2D7 38%, #C7B299 38%, #C7B299 100%);"></div>
                 <!-- Wainscoting line -->
@@ -149,7 +149,7 @@
                 </div>
             </div>
             <!-- Controls bar -->
-            <div class="flex items-center gap-4 px-3 py-2 bg-gray-900/60 rounded-lg border border-gray-800 text-xs text-gray-400 shrink-0">
+            <div class="flex flex-wrap items-center gap-3 px-3 py-2 bg-gray-900/60 rounded-lg border border-gray-800 text-xs text-gray-400 shrink-0">
                 <div class="flex items-center gap-1.5">
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">↑</kbd>
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">↓</kbd>
@@ -161,12 +161,12 @@
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">E</kbd>
                     <span>Sit/Stand</span>
                 </div>
-                <div class="ml-auto text-gray-500">Virtual Classroom</div>
+                <div class="w-full sm:w-auto sm:ml-auto text-gray-500">Virtual Classroom</div>
             </div>
         </div>
 
         <!-- Chat Sidebar -->
-        <div id="chatPanel" class="w-80 shrink-0 bg-gray-900/70 border-l border-gray-800 flex flex-col">
+        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-auto shrink-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
             <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
                 <i data-lucide="message-circle" class="w-4 h-4 text-teal-400"></i>
                 <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
@@ -293,6 +293,21 @@
 
     const STORAGE_PARTICIPANT_KEY = 'classroom_participant_id';
     const STORAGE_AUTH_USER_KEY  = 'edu_user';
+    const searchParams = new URLSearchParams(window.location.search);
+
+    function sanitizeRoomId(value) {
+        return String(value || '')
+            .trim()
+            .replace(/[^a-zA-Z0-9_-]/g, '')
+            .slice(0, 64);
+    }
+
+    function sanitizeDisplayName(value) {
+        return String(value || '')
+            .replace(/[\u0000-\u001F\u007F]/g, '')
+            .trim()
+            .slice(0, 48);
+    }
 
     function generateOpaqueId() {
         if (window.crypto?.randomUUID) {
@@ -329,6 +344,19 @@
 
     function resolveParticipantId() {
         return getStoredUserParticipantId() || getStoredAnonParticipantId();
+    }
+
+    function getPreferredDisplayName() {
+        const queryName = sanitizeDisplayName(searchParams.get('name') || '');
+        if (queryName) return queryName;
+        try {
+            const user = JSON.parse(localStorage.getItem(STORAGE_AUTH_USER_KEY) || 'null');
+            if (user?.name) return sanitizeDisplayName(user.name);
+            if (user?.username) return sanitizeDisplayName(user.username);
+        } catch (_) {
+            // Ignore malformed user payload.
+        }
+        return '';
     }
 
     // Desk rendering
@@ -385,13 +413,15 @@
     function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
 
     // Join / Leave
-    btnJoin.addEventListener('click', async () => {
+    function joinClassroom() {
         intentionalDisconnect = false;
         reconnectAttempts = 0;
         isSeated = false;
         currentSeat = null;
-        roomId = lobbyRoomId.value.trim() || 'demo-room';
-        myDisplayName = lobbyDisplayName.value.trim() || `User-${Math.random().toString(36).slice(2,6)}`;
+        roomId = sanitizeRoomId(lobbyRoomId.value) || 'demo-room';
+        myDisplayName = sanitizeDisplayName(lobbyDisplayName.value) || `User-${Math.random().toString(36).slice(2,6)}`;
+        lobbyRoomId.value = roomId;
+        lobbyDisplayName.value = myDisplayName;
         myParticipantId = resolveParticipantId();
 
         topRoomId.textContent = roomId;
@@ -406,9 +436,11 @@
         connectWS();
         startGameLoop();
         refreshIcons();
-    });
+    }
 
-    lobbyDisplayName.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnJoin.click(); });
+    btnJoin.addEventListener('click', joinClassroom);
+
+    lobbyDisplayName.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinClassroom(); });
     lobbyRoomId.addEventListener('keydown', (e) => { if (e.key === 'Enter') lobbyDisplayName.focus(); });
 
     btnLeave.addEventListener('click', () => {
@@ -848,9 +880,21 @@
         return div.innerHTML;
     }
 
-    // Init Lucide icons and auto-focus
+    // Init Lucide icons and entry behavior
     refreshIcons();
-    lobbyDisplayName.focus();
+    const preferredName = getPreferredDisplayName();
+    if (preferredName) lobbyDisplayName.value = preferredName;
+
+    const initialRoom = sanitizeRoomId(searchParams.get('room') || '');
+    if (initialRoom) lobbyRoomId.value = initialRoom;
+
+    const shouldAutoJoin = searchParams.get('autojoin') === '1';
+    if (shouldAutoJoin && btnJoin) {
+        if (!lobbyRoomId.value) lobbyRoomId.value = 'lobby';
+        joinClassroom();
+    } else {
+        lobbyDisplayName.focus();
+    }
 })();
 </script>
 
