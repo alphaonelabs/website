@@ -399,7 +399,7 @@
     function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
 
     // Join / Leave
-    btnJoin.addEventListener('click', async () => {
+    function joinClassroom() {
         intentionalDisconnect = false;
         reconnectAttempts = 0;
         isSeated = false;
@@ -420,9 +420,11 @@
         connectWS();
         startGameLoop();
         refreshIcons();
-    });
+    }
 
-    lobbyDisplayName.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnJoin.click(); });
+    btnJoin.addEventListener('click', joinClassroom);
+
+    lobbyDisplayName.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinClassroom(); });
     lobbyRoomId.addEventListener('keydown', (e) => { if (e.key === 'Enter') lobbyDisplayName.focus(); });
 
     btnLeave.addEventListener('click', () => {
@@ -871,9 +873,9 @@
     if (initialRoom) lobbyRoomId.value = initialRoom;
 
     const shouldAutoJoin = ['1', 'true', 'yes'].includes((searchParams.get('autojoin') || '').toLowerCase());
-    if (shouldAutoJoin) {
+    if (shouldAutoJoin && btnJoin) {
         if (!lobbyRoomId.value.trim()) lobbyRoomId.value = 'lobby';
-        requestAnimationFrame(() => btnJoin.click());
+        joinClassroom();
     } else {
         lobbyDisplayName.focus();
     }
