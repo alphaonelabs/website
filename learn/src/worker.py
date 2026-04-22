@@ -1697,6 +1697,301 @@ class ClassroomDO(DurableObject):
             print(f"[ClassroomDO._persist_attachment] sid={session_id} pid={info.get('participant_id')} error={exc!r}")
 
 
+class PresenceDO(DurableObject):
+    """Room-scoped real-time user presence Durable Object."""
+
+    def __init__(self, ctx, env):
+        super().__init__(ctx, env)
+        # session_id -> {ws, user_id, display_name}
+        self.sessions = {}
+        # user_id -> {x, y, emoji, hand_raised, display_name}
+        self.presence = {}
+
+        for ws in self.ctx.getWebSockets():
+            try:
+                attachment = ws.deserializeAttachment()
+                if not attachment:
+                    continue
+                data = json.loads(attachment) if isinstance(attachment, str) else attachment
+                session_id = data.get("session_id", str(uuid.uuid4()))
+                user_id = str(data.get("user_id", ""))[:64]
+                display_name = str(data.get("display_name", user_id or "Unknown"))[:64]
+                if not user_id:
+                    continue
+
+                self.sessions[session_id] = {
+                    "ws": ws,
+                    "user_id": user_id,
+                    "display_name": display_name,
+                }
+                if user_id not in self.presence:
+                    self.presence[user_id] = {
+                        "x": self._clamp_01(data.get("x", 0.5)),
+                        "y": self._clamp_01(data.get("y", 0.5)),
+                        "emoji": data.get("emoji", "") if isinstance(data.get("emoji", ""), str) else "",
+                        "hand_raised": data.get("hand_raised", False) is True,
+                        "display_name": display_name,
+                    }
+            except Exception as exc:
+                print(f"[PresenceDO.__init__.restore] error={exc!r}")
+
+        self.ctx.setWebSocketAutoResponse(
+            WebSocketRequestResponsePair.new("ping", "pong")
+        )
+
+    async def on_fetch(self, request):
+        upgrade = request.headers.get("Upgrade") or ""
+        if upgrade.lower() != "websocket":
+            return Response(
+                json.dumps({"error": "Expected WebSocket upgrade"}),
+                status=426,
+                headers={"Content-Type": "application/json"},
+            )
+
+        parsed = urlparse(request.url)
+        qs = parse_qs(parsed.query)
+        token_param = (qs.get("token") or [None])[0]
+        user_param = (qs.get("user_id") or [None])[0]
+        display_param = (qs.get("display_name") or [None])[0]
+
+        allow_presence_setting = getattr(self.env, "ALLOW_ANON_PRESENCE", None)
+        if allow_presence_setting is None:
+            allow_presence_setting = getattr(self.env, "ALLOW_ANON_CLASSROOM_POC", "")
+        allow_anonymous = str(allow_presence_setting).lower() in {"1", "true", "yes"}
+        authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
+
+        if authenticated_user:
+            user_id = str(authenticated_user.get("id", ""))
+            display_name = str(authenticated_user.get("username") or user_id)
+        else:
+            if token_param or not allow_anonymous or not user_param:
+                return Response(
+                    json.dumps({"error": "Authentication required"}),
+                    status=401,
+                    headers={"Content-Type": "application/json"},
+                )
+            user_id = str(user_param)
+            display_name = str(display_param or user_id)
+
+        user_id = user_id[:64]
+        display_name = display_name[:64]
+        if not user_id:
+            return Response(
+                json.dumps({"error": "Invalid user_id"}),
+                status=400,
+                headers={"Content-Type": "application/json"},
+            )
+
+        client, server = WebSocketPair.new().object_values()
+        self.ctx.acceptWebSocket(server)
+
+        session_id = str(uuid.uuid4())
+        existing = self.presence.get(user_id)
+        if existing is None:
+            existing = {
+                "x": 0.5,
+                "y": 0.5,
+                "emoji": "",
+                "hand_raised": False,
+                "display_name": display_name,
+            }
+            self.presence[user_id] = dict(existing)
+
+        attachment = json.dumps({
+            "session_id": session_id,
+            "user_id": user_id,
+            "display_name": display_name,
+            "x": existing["x"],
+            "y": existing["y"],
+            "emoji": existing["emoji"],
+            "hand_raised": existing["hand_raised"],
+        })
+        server.serializeAttachment(attachment)
+
+        self.sessions[session_id] = {
+            "ws": server,
+            "user_id": user_id,
+            "display_name": display_name,
+        }
+
+        self._send_welcome(server, session_id, user_id)
+        self._broadcast(
+            json.dumps({
+                "type": "delta",
+                "user_id": user_id,
+                "display_name": display_name,
+                "x": existing["x"],
+                "y": existing["y"],
+                "emoji": existing["emoji"],
+                "hand_raised": existing["hand_raised"],
+            }),
+            exclude_session_id=session_id,
+        )
+
+        try:
+            return Response(None, status=101, web_socket=client)
+        except TypeError:
+            # CPython tests use a minimal Response stub without web_socket support.
+            return Response(None, status=101)
+
+    async def on_webSocketMessage(self, ws, message):
+        try:
+            raw = message if isinstance(message, str) else message.decode("utf-8")
+            if len(raw) > 512:
+                return
+            data = json.loads(raw)
+        except Exception:
+            return
+
+        if not isinstance(data, dict):
+            return
+
+        session = self._session_for_ws(ws)
+        if not session:
+            return
+        sid, info = session
+        user_id = info["user_id"]
+        current = self.presence.get(user_id)
+        if current is None:
+            current = {
+                "x": 0.5,
+                "y": 0.5,
+                "emoji": "",
+                "hand_raised": False,
+                "display_name": info["display_name"],
+            }
+            self.presence[user_id] = current
+
+        msg_type = data.get("type", "")
+        if msg_type == "join":
+            self._send_welcome(ws, sid, user_id)
+            return
+
+        if msg_type != "presence":
+            return
+
+        delta = {"type": "delta", "user_id": user_id}
+        changed = False
+
+        if "x" in data:
+            next_x = self._clamp_01(data.get("x"))
+            if next_x != current["x"]:
+                current["x"] = next_x
+                delta["x"] = next_x
+                changed = True
+
+        if "y" in data:
+            next_y = self._clamp_01(data.get("y"))
+            if next_y != current["y"]:
+                current["y"] = next_y
+                delta["y"] = next_y
+                changed = True
+
+        if "emoji" in data and isinstance(data.get("emoji"), str):
+            next_emoji = data.get("emoji", "")[:32]
+            if next_emoji != current["emoji"]:
+                current["emoji"] = next_emoji
+                delta["emoji"] = next_emoji
+                changed = True
+
+        if "hand_raised" in data and isinstance(data.get("hand_raised"), bool):
+            next_hand = data.get("hand_raised")
+            if next_hand != current["hand_raised"]:
+                current["hand_raised"] = next_hand
+                delta["hand_raised"] = next_hand
+                changed = True
+
+        if not changed:
+            return
+
+        self.presence[user_id] = current
+        self._persist_user_attachments(user_id)
+        self._broadcast(json.dumps(delta), exclude_session_id=sid)
+
+    async def on_webSocketClose(self, ws, code, reason, wasClean):
+        session = self._session_for_ws(ws)
+        if not session:
+            return
+
+        sid, info = session
+        user_id = info["user_id"]
+        self.sessions.pop(sid, None)
+
+        still_connected = any(s["user_id"] == user_id for s in self.sessions.values())
+        if not still_connected:
+            self.presence.pop(user_id, None)
+            self._broadcast(json.dumps({"type": "leave", "user_id": user_id}))
+
+    async def on_webSocketError(self, ws, error):
+        print(f"[PresenceDO.on_webSocketError] error={error!r}")
+
+    def _send_welcome(self, ws, session_id, user_id):
+        try:
+            ws.send(json.dumps({
+                "type": "welcome",
+                "session_id": session_id,
+                "user_id": user_id,
+                "state": self.presence,
+            }))
+        except Exception as exc:
+            print(f"[PresenceDO._send_welcome] error={exc!r}")
+
+    def _session_for_ws(self, ws):
+        try:
+            raw = ws.deserializeAttachment()
+            if raw:
+                data = json.loads(raw) if isinstance(raw, str) else raw
+                session_id = data.get("session_id", "")
+                if session_id and session_id in self.sessions:
+                    return session_id, self.sessions[session_id]
+        except Exception as exc:
+            print(f"[PresenceDO._session_for_ws.deserialize] error={exc!r}")
+
+        for sid, info in self.sessions.items():
+            try:
+                if info["ws"] == ws:
+                    return sid, info
+            except Exception as exc:
+                print(f"[PresenceDO._session_for_ws.fallback] sid={sid} error={exc!r}")
+        return None
+
+    def _broadcast(self, payload, exclude_session_id=None):
+        for sid, info in self.sessions.items():
+            if sid == exclude_session_id:
+                continue
+            try:
+                info["ws"].send(payload)
+            except Exception as exc:
+                print(f"[PresenceDO._broadcast] sid={sid} user_id={info.get('user_id')} error={exc!r}")
+
+    def _persist_user_attachments(self, user_id):
+        state = self.presence.get(user_id)
+        if not state:
+            return
+        for sid, info in self.sessions.items():
+            if info["user_id"] != user_id:
+                continue
+            try:
+                info["ws"].serializeAttachment(json.dumps({
+                    "session_id": sid,
+                    "user_id": user_id,
+                    "display_name": info["display_name"],
+                    "x": state["x"],
+                    "y": state["y"],
+                    "emoji": state["emoji"],
+                    "hand_raised": state["hand_raised"],
+                }))
+            except Exception as exc:
+                print(f"[PresenceDO._persist_user_attachments] sid={sid} user_id={user_id} error={exc!r}")
+
+    @staticmethod
+    def _clamp_01(value):
+        try:
+            return max(0.0, min(1.0, float(value)))
+        except (TypeError, ValueError):
+            return 0.5
+
+
 # ---------------------------------------------------------------------------
 # Main dispatcher
 # ---------------------------------------------------------------------------
@@ -1724,6 +2019,17 @@ async def _dispatch(request, env):
         except Exception as e:
             await capture_exception(e, request, env, "classroom_do_dispatch")
             return err("Failed to connect to classroom", 500)
+
+    m_presence = re.fullmatch(r"/api/presence/([A-Za-z0-9_-]+)", path)
+    if m_presence:
+        room_id = m_presence.group(1)
+        try:
+            do_id = env.PRESENCE_DO.idFromName(room_id)
+            stub = env.PRESENCE_DO.get(do_id)
+            return await stub.fetch(request)
+        except Exception as e:
+            await capture_exception(e, request, env, "presence_do_dispatch")
+            return err("Failed to connect to presence channel", 500)
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
