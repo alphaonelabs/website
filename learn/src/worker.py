@@ -1796,6 +1796,9 @@ class PresenceDO(DurableObject):
                 "display_name": display_name,
             }
             self.presence[user_id] = dict(existing)
+        else:
+            existing["display_name"] = display_name
+            self.presence[user_id] = existing
 
         attachment = json.dumps({
             "session_id": session_id,
@@ -1828,19 +1831,17 @@ class PresenceDO(DurableObject):
             exclude_session_id=session_id,
         )
 
-        try:
-            return Response(None, status=101, web_socket=client)
-        except TypeError:
-            # CPython tests use a minimal Response stub without web_socket support.
-            return Response(None, status=101)
+        return Response(None, status=101, web_socket=client)
 
     async def on_webSocketMessage(self, ws, message):
         try:
             raw = message if isinstance(message, str) else message.decode("utf-8")
             if len(raw) > 512:
+                print("[PresenceDO.on_webSocketMessage] dropped oversized payload")
                 return
             data = json.loads(raw)
-        except Exception:
+        except Exception as exc:
+            await capture_exception(exc, None, self.env, "presence_on_webSocketMessage.parse")
             return
 
         if not isinstance(data, dict):
@@ -1901,6 +1902,16 @@ class PresenceDO(DurableObject):
                 delta["hand_raised"] = next_hand
                 changed = True
 
+        if "display_name" in data and isinstance(data.get("display_name"), str):
+            next_display_name = data.get("display_name", "").strip()[:64]
+            if next_display_name and next_display_name != current.get("display_name", ""):
+                current["display_name"] = next_display_name
+                delta["display_name"] = next_display_name
+                for session_info in self.sessions.values():
+                    if session_info["user_id"] == user_id:
+                        session_info["display_name"] = next_display_name
+                changed = True
+
         if not changed:
             return
 
@@ -1908,7 +1919,7 @@ class PresenceDO(DurableObject):
         self._persist_user_attachments(user_id)
         self._broadcast(json.dumps(delta), exclude_session_id=sid)
 
-    async def on_webSocketClose(self, ws, code, reason, wasClean):
+    async def on_webSocketClose(self, ws, _code, _reason, _was_clean):
         session = self._session_for_ws(ws)
         if not session:
             return
@@ -1922,16 +1933,17 @@ class PresenceDO(DurableObject):
             self.presence.pop(user_id, None)
             self._broadcast(json.dumps({"type": "leave", "user_id": user_id}))
 
-    async def on_webSocketError(self, ws, error):
+    async def on_webSocketError(self, _ws, error):
         print(f"[PresenceDO.on_webSocketError] error={error!r}")
 
     def _send_welcome(self, ws, session_id, user_id):
+        snapshot = {uid: dict(state) for uid, state in self.presence.items()}
         try:
             ws.send(json.dumps({
                 "type": "welcome",
                 "session_id": session_id,
                 "user_id": user_id,
-                "state": self.presence,
+                "state": snapshot,
             }))
         except Exception as exc:
             print(f"[PresenceDO._send_welcome] error={exc!r}")

@@ -149,6 +149,32 @@ class TestPresenceDOOnFetch:
         assert len(do.sessions) == 1
         assert "bob" in do.presence
 
+    async def test_authenticated_join_uses_token_identity(self):
+        env = _make_presence_env(allow_anon="false")
+        ctx = _make_ctx()
+        do = worker.PresenceDO(ctx, env)
+        token = worker.create_token("token-user", "TokenName", "student", env.JWT_SECRET)
+        req = _make_request(
+            upgrade="websocket",
+            token=token,
+            user_id="query-user",
+            display_name="QueryName",
+        )
+        resp = await do.on_fetch(req)
+        assert resp.status == 101
+        assert "token-user" in do.presence
+        assert "query-user" not in do.presence
+        assert do.presence["token-user"]["display_name"] == "TokenName"
+
+    async def test_rejects_empty_user_from_token(self):
+        env = _make_presence_env(allow_anon="false")
+        ctx = _make_ctx()
+        do = worker.PresenceDO(ctx, env)
+        token = worker.create_token("", "NoId", "student", env.JWT_SECRET)
+        req = _make_request(upgrade="websocket", token=token)
+        resp = await do.on_fetch(req)
+        assert resp.status == 400
+
     async def test_welcome_message_contains_full_state(self):
         do = _make_presence_do()
         # Pre-populate an existing user
@@ -187,6 +213,12 @@ class TestPresenceDOOnFetch:
         await do.on_fetch(_make_request(upgrade="websocket", user_id=uid))
         assert uid[:64] in do.presence
         assert uid not in do.presence  # raw 100-char uid must not exist
+
+    async def test_display_name_sanitised_to_64_chars(self):
+        do = _make_presence_do()
+        dname = "b" * 100
+        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name=dname))
+        assert do.presence["alice"]["display_name"] == dname[:64]
 
     async def test_same_user_can_have_multiple_sessions(self):
         """Multi-tab: same user_id, two independent WS connections."""
@@ -235,20 +267,20 @@ class TestPresenceDOMessage:
 
     async def test_no_broadcast_on_no_change(self):
         """If nothing actually changed, skip broadcast entirely."""
-        do, sid, ws = await self._setup_user()
+        do, _sid, ws = await self._setup_user()
         ws.send.reset_mock()
         # Send the same values that are already stored (defaults)
         await do.on_webSocketMessage(ws, json.dumps({"type": "presence", "x": 0.5, "y": 0.5}))
         ws.send.assert_not_called()
 
     async def test_position_clamped_to_01(self):
-        do, sid, ws = await self._setup_user()
+        do, _sid, ws = await self._setup_user()
         await do.on_webSocketMessage(ws, json.dumps({"type": "presence", "x": 99.0, "y": -5.0}))
         assert do.presence["alice"]["x"] == pytest.approx(1.0)
         assert do.presence["alice"]["y"] == pytest.approx(0.0)
 
     async def test_emoji_update(self):
-        do, sid, ws = await self._setup_user()
+        do, _sid, ws = await self._setup_user()
         await do.on_webSocketMessage(ws, json.dumps({"type": "presence", "emoji": "🎉"}))
         assert do.presence["alice"]["emoji"] == "🎉"
 
@@ -276,7 +308,7 @@ class TestPresenceDOMessage:
         assert do.presence["alice"]["hand_raised"] is False
 
     async def test_non_bool_hand_raised_ignored(self):
-        do, sid, ws = await self._setup_user()
+        do, _sid, ws = await self._setup_user()
         ws.send.reset_mock()
         await do.on_webSocketMessage(ws, json.dumps({"type": "presence", "hand_raised": "yes"}))
         # hand_raised must stay False (non-bool rejected)
@@ -284,7 +316,7 @@ class TestPresenceDOMessage:
         ws.send.assert_not_called()
 
     async def test_join_message_returns_welcome(self):
-        do, sid, ws = await self._setup_user()
+        do, _sid, ws = await self._setup_user()
         ws.send.reset_mock()
         await do.on_webSocketMessage(ws, json.dumps({"type": "join"}))
         call = json.loads(ws.send.call_args_list[0][0][0])
@@ -292,7 +324,7 @@ class TestPresenceDOMessage:
         assert "alice" in call["state"]
 
     async def test_oversized_message_ignored(self):
-        do, sid, ws = await self._setup_user()
+        do, _sid, ws = await self._setup_user()
         ws.send.reset_mock()
         big = json.dumps({"type": "presence", "x": 0.1, "data": "A" * 600})
         await do.on_webSocketMessage(ws, big)
@@ -492,3 +524,4 @@ class TestPresenceDispatch:
         resp = await worker._dispatch(req, env)
         # PRESENCE_DO must not have been touched
         env.PRESENCE_DO.idFromName.assert_not_called()
+        assert resp.status == 404
