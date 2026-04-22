@@ -180,17 +180,14 @@ document.addEventListener('DOMContentLoaded', async () => {
      updateDarkModeIcon();
 });
 
-// conditional rendering for the join lobby classroom btn
-document.addEventListener('DOMContentLoaded', function() {
+// Conditional rendering for the "Join Lobby Classroom" button.
+// These elements only exist on the homepage, so we guard against nulls.
+document.addEventListener('DOMContentLoaded', () => {
     const loggedInEl = document.getElementById('join-logged-in');
     const notLoggedInEl = document.getElementById('join-not-logged-in');
-    const token = localStorage.getItem('edu_token');
-    const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
-    if (token && user) {
-        loggedInEl.style.display = 'flex';
-        notLoggedInEl.style.display = 'none';
-    } else {
-        loggedInEl.style.display = 'none';
-        notLoggedInEl.style.display = 'flex';
-    }
+    if (!loggedInEl || !notLoggedInEl) return;
+
+    const authed = isAuthenticated();
+    loggedInEl.style.display = authed ? 'flex' : 'none';
+    notLoggedInEl.style.display = authed ? 'none' : 'flex';
 });

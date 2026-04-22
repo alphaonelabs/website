@@ -256,11 +256,32 @@ function switchTab(tab) {
             : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
 }
 
-// Store authentication data
+// Store authentication data and handle post-login flow
 function storeAuth(data) {
     localStorage.setItem('edu_token', data.token);
     localStorage.setItem('edu_user', JSON.stringify(data.user));
-    window.location.href = '/dashboard.html';
+    
+    // Show success toast
+    showToast('Redirecting...');
+    
+    // Wait a few seconds then redirect
+    setTimeout(() => {
+        handlePostLoginRedirect();
+    }, 500);
+}
+
+// Show success toast message
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300 text-sm flex items-start gap-2 animate-pulse shadow-lg z-50';
+    toast.innerHTML = `
+        <i class="fas fa-check-circle mt-0.5 flex-shrink-0"></i>
+        <span>${msg}</span>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
 }
 
 // Show error message
@@ -274,10 +295,31 @@ function showErr(id, msg) {
     }, 5000);
 }
 
+// Handle redirect after successful login
+function handlePostLoginRedirect() {
+    // Check if there's a stored redirect URL
+    const redirectUrl = sessionStorage.getItem('post_login_redirect');
+    
+    if (redirectUrl) {
+        // Clear it so it doesn't trigger again
+        sessionStorage.removeItem('post_login_redirect');
+        // Redirect to the original destination
+        window.location.href = redirectUrl;
+    } else {
+        // Default redirect
+        window.location.href = '/dashboard.html';
+    }
+}
+
 // Handle tab parameter in URL
 const params = new URLSearchParams(location.search);
 if (params.get('tab') === 'register') {
     switchTab('register');
+}
+
+// Handle next parameter for post-login redirect
+if (params.get('next')) {
+    sessionStorage.setItem('post_login_redirect', decodeURIComponent(params.get('next')));
 }
 
 // Login form submission

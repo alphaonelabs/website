@@ -428,8 +428,12 @@
     // Join / Leave
     function joinClassroom() {
         if (!isAuthenticated()) {
-            alert('You must be signed in to join the virtual classroom.');
-            window.location.href = '/login.html';
+            showToast('Please sign in to join the virtual classroom.', 'warning');
+            // Preserve the user's intended destination so login.html can send
+            // them back here after authentication.
+            const returnTo = window.location.pathname + window.location.search;
+            sessionStorage.setItem('post_login_redirect', returnTo);
+            setTimeout(() => { window.location.href = '/login.html'; }, 800);
             return;
         }
         intentionalDisconnect = false;
