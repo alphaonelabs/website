@@ -274,10 +274,11 @@ function storeAuth(data) {
 function showToast(msg) {
     const toast = document.createElement('div');
     toast.className = 'fixed top-4 right-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300 text-sm flex items-start gap-2 animate-pulse shadow-lg z-50';
-    toast.innerHTML = `
-        <i class="fas fa-check-circle mt-0.5 flex-shrink-0"></i>
-        <span>${msg}</span>
-    `;
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-check-circle mt-0.5 flex-shrink-0';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    toast.append(icon, span);
     document.body.appendChild(toast);
     setTimeout(() => {
         toast.remove();
@@ -297,18 +298,11 @@ function showErr(id, msg) {
 
 // Handle redirect after successful login
 function handlePostLoginRedirect() {
-    // Check if there's a stored redirect URL
     const redirectUrl = sessionStorage.getItem('post_login_redirect');
-    
-    if (redirectUrl) {
-        // Clear it so it doesn't trigger again
-        sessionStorage.removeItem('post_login_redirect');
-        // Redirect to the original destination
-        window.location.href = redirectUrl;
-    } else {
-        // Default redirect
-        window.location.href = '/dashboard.html';
-    }
+    sessionStorage.removeItem('post_login_redirect');
+    // Only honor same-origin, path-only redirects to prevent open-redirect abuse.
+    const safe = redirectUrl && /^\/(?!\/)/.test(redirectUrl);
+    window.location.href = safe ? redirectUrl : '/dashboard.html';
 }
 
 // Handle tab parameter in URL
@@ -317,9 +311,11 @@ if (params.get('tab') === 'register') {
     switchTab('register');
 }
 
-// Handle next parameter for post-login redirect
-if (params.get('next')) {
-    sessionStorage.setItem('post_login_redirect', decodeURIComponent(params.get('next')));
+// Handle next parameter for post-login redirect.
+// URLSearchParams.get() already performs percent-decoding — no need to decode again.
+const nextParam = params.get('next');
+if (nextParam) {
+    sessionStorage.setItem('post_login_redirect', nextParam);
 }
 
 // Login form submission
