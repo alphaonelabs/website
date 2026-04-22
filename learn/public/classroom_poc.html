@@ -235,6 +235,19 @@
     const desksContainer      = document.getElementById('desksContainer');
     const toastContainer      = document.getElementById('toastContainer');
 
+    // Authentication utils
+    function getAuth() {
+        return {
+            token: localStorage.getItem('edu_token'),
+            user: JSON.parse(localStorage.getItem('edu_user') || 'null')
+        };
+    }
+
+    function isAuthenticated() {
+        const { token, user } = getAuth();
+        return token && user;
+    }
+
     // COORDINATE HELPERS
     // Positions are stored and transmitted as NORMALIZED values (0.0 – 1.0)
     // representing a fraction of the canvas width/height.
@@ -414,6 +427,11 @@
 
     // Join / Leave
     function joinClassroom() {
+        if (!isAuthenticated()) {
+            alert('You must be signed in to join the virtual classroom.');
+            window.location.href = '/login.html';
+            return;
+        }
         intentionalDisconnect = false;
         reconnectAttempts = 0;
         isSeated = false;

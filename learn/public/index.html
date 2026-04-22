@@ -153,9 +153,14 @@
                                 </div>
                                 <span>21 learners inside</span>
                             </div>
-                            <a href="/classroom_poc.html?autojoin=1&room=lobby" class="w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg flex items-center justify-center gap-2">
-                                <i class="fas fa-door-open"></i> Join Lobby Classroom
-                            </a>
+                            <div id="classroom-join-container">
+                                <a href="/classroom_poc.html?autojoin=1&room=lobby" class="w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg flex items-center justify-center gap-2" id="join-logged-in">
+                                    <i class="fas fa-door-open"></i> Join Lobby Classroom
+                                </a>
+                                <a href="/login.html" class="w-full bg-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white hover:text-black transition-all shadow-lg flex items-center justify-center gap-2" id="join-not-logged-in" style="display: none;">
+                                    <i class="fas fa-sign-in-alt"></i> Login to Join Classroom
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
