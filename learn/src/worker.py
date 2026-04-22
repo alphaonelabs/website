@@ -537,7 +537,8 @@ _DDL = [
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notif_unread ON notifications(user_id, is_read)",
+    "CREATE INDEX IF NOT EXISTS idx_notif_unread  ON notifications(user_id, is_read)",
+    "CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(user_id, created_at DESC)",
 
 ]
 
