@@ -1457,10 +1457,13 @@ async def _create_notification(env, user_id: str, type_: str, title: str,
     parent operation (e.g. grading, peer requests, new assignments).
     """
     try:
+        enc = env.ENCRYPTION_KEY
         await env.DB.prepare(
             "INSERT INTO notifications (id, user_id, type, title, message, related_id)"
             " VALUES (?, ?, ?, ?, ?, ?)"
-        ).bind(new_id(), user_id, type_, title, message, related_id).run()
+        ).bind(new_id(), user_id, type_,
+               encrypt(title, enc), encrypt(message, enc),
+               related_id).run()
     except Exception as exc:
         await capture_exception(exc, env=env, where="_create_notification")
 
@@ -1503,8 +1506,8 @@ async def api_list_notifications(req, env):
         {
             "id":         r.id,
             "type":       r.type,
-            "title":      r.title,
-            "message":    r.message,
+            "title":      decrypt(r.title or "", env.ENCRYPTION_KEY),
+            "message":    decrypt(r.message or "", env.ENCRYPTION_KEY),
             "is_read":    bool(r.is_read),
             "related_id": r.related_id,
             "created_at": r.created_at,
