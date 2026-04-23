@@ -161,7 +161,10 @@ class TestApiRegister:
         assert first.status == 200
         assert second.status == 200
         assert third.status == 429
-        assert int(third.headers["Retry-After"]) >= 1
+        assert "Retry-After" in third.headers
+        retry_after = third.headers["Retry-After"]
+        assert retry_after.isdigit()
+        assert int(retry_after) > 0
         assert _parse(third).get("error") == "Too many requests"
 
 
@@ -261,7 +264,10 @@ class TestApiLogin:
         assert first.status == 200
         assert second.status == 200
         assert third.status == 429
-        assert int(third.headers["Retry-After"]) >= 1
+        assert "Retry-After" in third.headers
+        retry_after = third.headers["Retry-After"]
+        assert retry_after.isdigit()
+        assert int(retry_after) > 0
         assert _parse(third).get("error") == "Too many requests"
 
     async def test_login_rate_limit_resets_after_window(self, monkeypatch):
@@ -298,5 +304,8 @@ class TestApiLogin:
         req5.headers["CF-Connecting-IP"] = "198.51.100.10"
         limited = await worker.api_login(req5, env)
         assert limited.status == 429
-        assert int(limited.headers["Retry-After"]) >= 1
+        assert "Retry-After" in limited.headers
+        limited_retry_after = limited.headers["Retry-After"]
+        assert limited_retry_after.isdigit()
+        assert int(limited_retry_after) > 0
         assert _parse(limited).get("error") == "Too many requests"

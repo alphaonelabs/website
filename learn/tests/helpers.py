@@ -159,7 +159,10 @@ def basic_auth_header(user: str, password: str) -> str:
 # ---------------------------------------------------------------------------
 
 def json_request(path: str, payload: dict, headers=None, method="POST") -> MockRequest:
-    h = {"Content-Type": "application/json"}
+    h = {
+        "Content-Type": "application/json",
+        "CF-Connecting-IP": "127.0.0.1",
+    }
     if headers:
         h.update(headers)
     return MockRequest(method=method, url=f"http://localhost{path}", headers=h,

@@ -56,6 +56,7 @@ _SENTRY_DSN: str = ""
 _AUTH_RATE_LIMIT_STATE: Dict[str, Dict[str, int]] = {}
 _AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
 _AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
+_AUTH_RATE_LIMIT_MAX_KEYS = 10000
 
 
 def init_sentry(env):
@@ -448,6 +449,9 @@ def _check_auth_rate_limit(req, env, route: str):
     max_attempts = max(1, _auth_rate_limit_env_value(
         env, "AUTH_RATE_LIMIT_MAX_ATTEMPTS", _AUTH_RATE_LIMIT_MAX_ATTEMPTS
     ))
+    max_keys = max(1, _auth_rate_limit_env_value(
+        env, "AUTH_RATE_LIMIT_MAX_KEYS", _AUTH_RATE_LIMIT_MAX_KEYS
+    ))
 
     # Only CF-Connecting-IP is trusted in Cloudflare Workers.
     client_ip = (req.headers.get("CF-Connecting-IP") or "").strip()
@@ -457,6 +461,21 @@ def _check_auth_rate_limit(req, env, route: str):
 
     key = f"{route}:{client_ip}"
     now = int(time.time())
+
+    # Keep in-memory state bounded by pruning expired entries and evicting oldest keys.
+    stale_before = now - window_seconds
+    for stale_key, stale_state in list(_AUTH_RATE_LIMIT_STATE.items()):
+        if int(stale_state.get("window_start", 0)) < stale_before:
+            _AUTH_RATE_LIMIT_STATE.pop(stale_key, None)
+
+    if len(_AUTH_RATE_LIMIT_STATE) > max_keys:
+        overflow = len(_AUTH_RATE_LIMIT_STATE) - max_keys
+        oldest_keys = sorted(
+            _AUTH_RATE_LIMIT_STATE.items(),
+            key=lambda item: int(item[1].get("window_start", 0)),
+        )[:overflow]
+        for oldest_key, _ in oldest_keys:
+            _AUTH_RATE_LIMIT_STATE.pop(oldest_key, None)
 
     state = _AUTH_RATE_LIMIT_STATE.get(key)
     if not state or now - int(state.get("window_start", 0)) >= window_seconds:
