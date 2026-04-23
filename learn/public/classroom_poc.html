@@ -139,8 +139,9 @@
                 <!-- Current user character -->
                 <div id="myCharacter" class="absolute transition-all duration-75 ease-linear" style="z-index:50; display:none;">
                     <div class="flex flex-col items-center">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-teal-500/30 border-2 border-white/30">
+                        <div class="relative w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-teal-500/30 border-2 border-white/30">
                             <span id="myInitial">?</span>
+                            <span id="myPresenceBadge" class="absolute -top-1 -right-1 text-[12px] leading-none"></span>
                         </div>
                         <div class="mt-0.5 px-2 py-0.5 bg-gray-900/90 rounded text-[10px] text-white font-medium whitespace-nowrap shadow">
                             <span id="myNameLabel">You</span>
@@ -160,6 +161,14 @@
                 <div class="hidden sm:flex items-center gap-1.5">
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">E</kbd>
                     <span>Sit/Stand</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnThumbsUp" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Send thumbs-up reaction">
+                        👍
+                    </button>
+                    <button id="btnRaiseHand" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Toggle raised hand">
+                        ✋
+                    </button>
                 </div>
                 <div class="w-full sm:w-auto sm:ml-auto text-gray-500">Virtual Classroom</div>
             </div>
@@ -225,6 +234,7 @@
     const myCharacter         = document.getElementById('myCharacter');
     const myInitial           = document.getElementById('myInitial');
     const myNameLabel         = document.getElementById('myNameLabel');
+    const myPresenceBadge     = document.getElementById('myPresenceBadge');
     const chatMessages        = document.getElementById('chatMessages');
     const chatForm            = document.getElementById('chatForm');
     const chatInput           = document.getElementById('chatInput');
@@ -234,6 +244,8 @@
     const participantsList    = document.getElementById('participantsList');
     const desksContainer      = document.getElementById('desksContainer');
     const toastContainer      = document.getElementById('toastContainer');
+    const btnThumbsUp         = document.getElementById('btnThumbsUp');
+    const btnRaiseHand        = document.getElementById('btnRaiseHand');
 
     // Authentication utils
     function getAuth() {
@@ -271,19 +283,27 @@
 
     // State
     let ws = null;
+    let presenceWs = null;
     let roomId = '';
     let myParticipantId = '';
     let myDisplayName = '';
     let mySessionId = '';
     let reconnectAttempts = 0;
+    let presenceReconnectAttempts = 0;
     let intentionalDisconnect = false;
     const MAX_RECONNECT = 10;
     const BASE_DELAY = 1000;
     let reconnectTimer = null;
+    let presenceReconnectTimer = null;
 
     // participants: participant_id → { display_name, normPos:{x,y}, direction, is_moving, seat_id }
     // normPos is always in normalized (0–1) space.
     const participants = {};
+    // user_id -> { x, y, emoji, hand_raised, display_name }
+    const presenceByUser = {};
+    let pendingSelfPresenceReplay = false;
+    // seat_id -> { name, pid }
+    const seatOccupants = {};
 
     const THROTTLE_MS = 100;
     let lastPositionSend = 0;
@@ -400,13 +420,28 @@
         }
     }
 
-    function updateSeatLabel(seatId, name) {
-        const label = document.querySelector(`[data-seat-label="${seatId}"]`);
-        if (label) { label.textContent = name; label.classList.remove('hidden'); }
+    function updateSeatLabel(seatId, name, pid = null) {
+        if (!seatId) return;
+        seatOccupants[seatId] = { name, pid };
+        renderSeatLabel(seatId);
     }
     function clearSeatLabel(seatId) {
+        delete seatOccupants[seatId];
         const label = document.querySelector(`[data-seat-label="${seatId}"]`);
         if (label) { label.textContent = ''; label.classList.add('hidden'); }
+    }
+
+    function renderSeatLabel(seatId) {
+        const label = document.querySelector(`[data-seat-label="${seatId}"]`);
+        const occupant = seatOccupants[seatId];
+        if (!label || !occupant) return;
+        const badge = occupant.pid ? presenceBadge(occupant.pid) : '';
+        label.textContent = badge ? `${occupant.name} ${badge}` : occupant.name;
+        label.classList.remove('hidden');
+    }
+
+    function renderSeatLabels() {
+        Object.keys(seatOccupants).forEach((seatId) => renderSeatLabel(seatId));
     }
 
     // Toast
@@ -457,6 +492,7 @@
         renderDesks();
         connectWS();
         startGameLoop();
+        updatePresenceControls();
         refreshIcons();
     }
 
@@ -474,6 +510,7 @@
         classroomScreen.classList.remove('flex');
         lobby.classList.remove('hidden');
         Object.keys(participants).forEach(k => delete participants[k]);
+        Object.keys(presenceByUser).forEach(k => delete presenceByUser[k]);
         avatarLayer.innerHTML = '';
         chatMessages.innerHTML = '<div class="text-center text-xs text-gray-600 py-6">No messages yet</div>';
         chatFirstMessage = true;
@@ -498,6 +535,7 @@
         ws.onopen = () => {
             reconnectAttempts = 0;
             setConnStatus(true);
+            connectPresenceWS();
             showToast('Connected to classroom', 'success');
         };
 
@@ -520,7 +558,9 @@
     function disconnectWS() {
         intentionalDisconnect = true;
         if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        if (presenceReconnectTimer) { clearTimeout(presenceReconnectTimer); presenceReconnectTimer = null; }
         if (ws) { ws.close(); ws = null; }
+        if (presenceWs) { presenceWs.close(); presenceWs = null; }
         setConnStatus(false);
     }
 
@@ -546,6 +586,125 @@
         if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
     }
 
+    function connectPresenceWS() {
+        if (presenceWs && (presenceWs.readyState === WebSocket.OPEN || presenceWs.readyState === WebSocket.CONNECTING)) return;
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const token = localStorage.getItem('edu_token') || '';
+        const params = new URLSearchParams();
+        if (token) params.set('token', token);
+        params.set('user_id', myParticipantId);
+        params.set('display_name', myDisplayName);
+        const url = `${proto}//${location.host}/api/presence/${encodeURIComponent(roomId)}?${params.toString()}`;
+        presenceWs = new WebSocket(url);
+        presenceWs.onopen = () => {
+            presenceReconnectAttempts = 0;
+            if (presenceReconnectTimer) { clearTimeout(presenceReconnectTimer); presenceReconnectTimer = null; }
+            updatePresenceControls();
+            replaySelfPresence();
+        };
+        presenceWs.onmessage = (ev) => {
+            try {
+                handlePresenceMessage(JSON.parse(ev.data));
+            } catch (err) {
+                console.warn('[presence] dropped malformed ws frame', err, ev.data);
+            }
+        };
+        presenceWs.onerror = () => {
+            showToast('Presence channel error', 'warning');
+        };
+        presenceWs.onclose = () => {
+            if (intentionalDisconnect) return;
+            if (presenceReconnectAttempts >= MAX_RECONNECT) {
+                showToast('Lost connection to presence channel - please rejoin.', 'warning');
+                return;
+            }
+            const delay = Math.min(BASE_DELAY * Math.pow(2, presenceReconnectAttempts), 30000);
+            presenceReconnectAttempts++;
+            presenceReconnectTimer = setTimeout(() => {
+                if (!presenceWs || presenceWs.readyState === WebSocket.CLOSED) connectPresenceWS();
+            }, delay);
+        };
+    }
+
+    function presenceSend(obj) {
+        if (presenceWs && presenceWs.readyState === WebSocket.OPEN) {
+            presenceWs.send(JSON.stringify(obj));
+            return;
+        }
+        pendingSelfPresenceReplay = true;
+    }
+
+    function replaySelfPresence() {
+        const self = presenceByUser[myParticipantId];
+        if (!self || !pendingSelfPresenceReplay) return;
+        if (!presenceWs || presenceWs.readyState !== WebSocket.OPEN) return;
+        presenceWs.send(JSON.stringify({
+            type: 'presence',
+            x: Number.isFinite(Number(self.x)) ? Number(self.x) : 0.5,
+            y: Number.isFinite(Number(self.y)) ? Number(self.y) : 0.5,
+            emoji: typeof self.emoji === 'string' ? self.emoji : '',
+            hand_raised: self.hand_raised === true,
+        }));
+        pendingSelfPresenceReplay = false;
+    }
+
+    function handlePresenceMessage(data) {
+        if (!data || typeof data !== 'object') return;
+        if (data.type === 'welcome' && data.state && typeof data.state === 'object') {
+            const localSelf = presenceByUser[myParticipantId] ? { ...presenceByUser[myParticipantId] } : null;
+            Object.keys(presenceByUser).forEach((k) => delete presenceByUser[k]);
+            Object.entries(data.state).forEach(([uid, state]) => {
+                presenceByUser[uid] = {
+                    x: Number.isFinite(Number(state?.x)) ? Number(state.x) : 0.5,
+                    y: Number.isFinite(Number(state?.y)) ? Number(state.y) : 0.5,
+                    emoji: typeof state?.emoji === 'string' ? state.emoji : '',
+                    hand_raised: state?.hand_raised === true,
+                    display_name: typeof state?.display_name === 'string' ? state.display_name : uid,
+                };
+            });
+            if (localSelf) {
+                const serverSelf = presenceByUser[myParticipantId] || {};
+                presenceByUser[myParticipantId] = {
+                    ...serverSelf,
+                    x: Number.isFinite(Number(localSelf.x)) ? Number(localSelf.x) : (Number.isFinite(Number(serverSelf.x)) ? Number(serverSelf.x) : 0.5),
+                    y: Number.isFinite(Number(localSelf.y)) ? Number(localSelf.y) : (Number.isFinite(Number(serverSelf.y)) ? Number(serverSelf.y) : 0.5),
+                    emoji: typeof localSelf.emoji === 'string' ? localSelf.emoji : (serverSelf.emoji || ''),
+                    hand_raised: localSelf.hand_raised === true,
+                    display_name: localSelf.display_name || serverSelf.display_name || myDisplayName,
+                };
+            }
+            renderOtherAvatars();
+            renderParticipantsList();
+            renderSeatLabels();
+            updatePresenceControls();
+            return;
+        }
+        if (data.type === 'delta' && data.user_id) {
+            const current = presenceByUser[data.user_id] || {
+                x: 0.5, y: 0.5, emoji: '', hand_raised: false, display_name: data.user_id,
+            };
+            const next = { ...current };
+            if (Object.prototype.hasOwnProperty.call(data, 'x')) next.x = Number.isFinite(Number(data.x)) ? Number(data.x) : current.x;
+            if (Object.prototype.hasOwnProperty.call(data, 'y')) next.y = Number.isFinite(Number(data.y)) ? Number(data.y) : current.y;
+            if (Object.prototype.hasOwnProperty.call(data, 'emoji') && typeof data.emoji === 'string') next.emoji = data.emoji;
+            if (Object.prototype.hasOwnProperty.call(data, 'hand_raised') && typeof data.hand_raised === 'boolean') next.hand_raised = data.hand_raised;
+            if (Object.prototype.hasOwnProperty.call(data, 'display_name') && typeof data.display_name === 'string') next.display_name = data.display_name;
+            presenceByUser[data.user_id] = next;
+            renderOtherAvatars();
+            renderParticipantsList();
+            renderSeatLabels();
+            updatePresenceControls();
+            return;
+        }
+        if (data.type === 'leave' && data.user_id) {
+            delete presenceByUser[data.user_id];
+            renderOtherAvatars();
+            renderParticipantsList();
+            renderSeatLabels();
+            updatePresenceControls();
+        }
+    }
+
     // Message handler
     function handleMessage(data) {
         switch (data.type) {
@@ -554,8 +713,14 @@
                 mySessionId     = data.session_id;
                 myParticipantId = data.participant_id;
                 myDisplayName   = data.display_name;
+                if (!presenceByUser[myParticipantId]) {
+                    presenceByUser[myParticipantId] = {
+                        x: 0.5, y: 0.5, emoji: '', hand_raised: false, display_name: myDisplayName,
+                    };
+                }
                 myInitial.textContent  = myDisplayName.charAt(0).toUpperCase();
                 myNameLabel.textContent = myDisplayName;
+                updatePresenceControls();
 
                 // Place the local character at the centre of the canvas (in px).
                 myCharacter.style.display = '';
@@ -578,6 +743,7 @@
             case 'participant_left':
                 showToast(`${data.display_name} left the classroom`, 'info');
                 delete participants[data.participant_id];
+                delete presenceByUser[data.participant_id];
                 renderOtherAvatars();
                 renderParticipantsList();
                 break;
@@ -608,21 +774,44 @@
                 break;
 
             case 'seat_updated':
+                if (!participants[data.participant_id] && data.participant_id !== myParticipantId) {
+                    participants[data.participant_id] = {
+                        display_name: data.display_name || data.participant_id,
+                        normPos: { x: 0.5, y: 0.5 },
+                        direction: 'down',
+                        is_moving: false,
+                        seat_id: '',
+                    };
+                }
+                if (participants[data.participant_id]) {
+                    participants[data.participant_id].seat_id = data.seat_id || '';
+                    if (data.display_name) participants[data.participant_id].display_name = data.display_name;
+                }
                 if (data.participant_id === myParticipantId) {
                     isSeated = true;
                     currentSeat = data.seat_id;
+                    myCharacter.style.display = 'none';
                 }
-                updateSeatLabel(data.seat_id, data.display_name);
+                updateSeatLabel(data.seat_id, data.display_name, data.participant_id);
                 showToast(`${data.display_name} took ${data.seat_id}`, 'info');
+                renderOtherAvatars();
+                renderParticipantsList();
                 break;
 
             case 'seat_left':
+                if (participants[data.participant_id]) {
+                    participants[data.participant_id].seat_id = '';
+                    if (data.display_name) participants[data.participant_id].display_name = data.display_name;
+                }
                 if (data.participant_id === myParticipantId) {
                     isSeated = false;
                     currentSeat = null;
+                    myCharacter.style.display = '';
                 }
                 clearSeatLabel(data.seat_id);
                 showToast(`${data.display_name} left ${data.seat_id}`, 'info');
+                renderOtherAvatars();
+                renderParticipantsList();
                 break;
 
             case 'seat_occupied':
@@ -636,6 +825,7 @@
     // Room state (bulk sync on join / reconnect)
     function handleRoomState(data) {
         Object.keys(participants).forEach(k => delete participants[k]);
+        Object.keys(seatOccupants).forEach(k => delete seatOccupants[k]);
         document.querySelectorAll('[data-seat-label]').forEach(el => {
             el.textContent = '';
             el.classList.add('hidden');
@@ -665,15 +855,18 @@
                 is_moving:    p.is_moving  || false,
                 seat_id:      p.seat_id    || '',
             };
-            if (p.seat_id) updateSeatLabel(p.seat_id, p.display_name);
+            if (p.seat_id) updateSeatLabel(p.seat_id, p.display_name, p.participant_id);
         });
 
         // Restore own seat if server knows about it
         const selfP = (data.participants || []).find(p => p.participant_id === myParticipantId);
         if (selfP && selfP.seat_id) {
-            updateSeatLabel(selfP.seat_id, myDisplayName);
+            updateSeatLabel(selfP.seat_id, myDisplayName, myParticipantId);
             isSeated = true;
             currentSeat = selfP.seat_id;
+            myCharacter.style.display = 'none';
+        } else {
+            myCharacter.style.display = '';
         }
 
         participantCount.textContent = data.count || (Object.keys(participants).length + 1);
@@ -690,6 +883,7 @@
         const canvasRect = classroomCanvas.getBoundingClientRect();
 
         Object.entries(participants).forEach(([pid, p]) => {
+            if (p.seat_id) return;
             const [c1, c2] = colorForId(pid);
 
             // Convert stored normalized position to local pixels
@@ -707,9 +901,10 @@
             el.style.zIndex    = '41';
             el.style.transform = 'translate(-50%, -50%)';
             el.innerHTML = `
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white/20"
+                <div class="relative w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white/20"
                      style="background: linear-gradient(135deg, ${c1}, ${c2});">
                     ${(p.display_name || '?').charAt(0).toUpperCase()}
+                    <span class="absolute -top-1 -right-1 text-[12px] leading-none">${presenceBadge(pid)}</span>
                 </div>
                 <div class="mt-0.5 px-1.5 py-0.5 bg-gray-900/90 rounded text-[9px] text-white font-medium whitespace-nowrap shadow">
                     ${escapeHtml(p.display_name || pid)}
@@ -740,10 +935,67 @@
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-200 truncate">${escapeHtml(name)}${isSelf ? ' <span class="text-teal-400">(You)</span>' : ''}</p>
                 <p class="text-[10px] text-gray-500">${seatId ? 'Seat ' + escapeHtml(seatId) : 'Walking around'}</p>
+                <p class="text-[11px] text-gray-300 mt-0.5">${presenceBadge(pid)}</p>
             </div>
         `;
         return card;
     }
+
+    function presenceBadge(userId) {
+        const p = presenceByUser[userId];
+        if (!p) return '';
+        // Returned string is safe for innerHTML interpolation (emoji is escaped).
+        let badge = '';
+        if (p.emoji) badge += escapeHtml(p.emoji) + ' ';
+        if (p.hand_raised) badge += '✋';
+        return badge.trim();
+    }
+
+    function updatePresenceControls() {
+        const self = presenceByUser[myParticipantId] || { emoji: '', hand_raised: false };
+        btnThumbsUp.classList.toggle('bg-teal-700', self.emoji === '👍');
+        btnThumbsUp.classList.toggle('border-teal-500', self.emoji === '👍');
+        btnRaiseHand.classList.toggle('bg-teal-700', self.hand_raised === true);
+        btnRaiseHand.classList.toggle('border-teal-500', self.hand_raised === true);
+        myPresenceBadge.textContent = presenceBadge(myParticipantId);
+        renderSeatLabels();
+    }
+
+    btnThumbsUp.addEventListener('click', () => {
+        const current = presenceByUser[myParticipantId] || {};
+        const nextEmoji = current.emoji === '👍' ? '' : '👍';
+        pendingSelfPresenceReplay = true;
+        presenceByUser[myParticipantId] = {
+            x: Number.isFinite(Number(current.x)) ? Number(current.x) : 0.5,
+            y: Number.isFinite(Number(current.y)) ? Number(current.y) : 0.5,
+            emoji: nextEmoji,
+            hand_raised: current.hand_raised === true,
+            display_name: current.display_name || myDisplayName,
+        };
+        renderOtherAvatars();
+        renderParticipantsList();
+        renderSeatLabels();
+        updatePresenceControls();
+        presenceSend({ type: 'presence', emoji: nextEmoji });
+    });
+
+    btnRaiseHand.addEventListener('click', () => {
+        const current = presenceByUser[myParticipantId] || {};
+        const nextHandRaised = current.hand_raised !== true;
+        pendingSelfPresenceReplay = true;
+        presenceByUser[myParticipantId] = {
+            x: Number.isFinite(Number(current.x)) ? Number(current.x) : 0.5,
+            y: Number.isFinite(Number(current.y)) ? Number(current.y) : 0.5,
+            emoji: typeof current.emoji === 'string' ? current.emoji : '',
+            hand_raised: nextHandRaised,
+            display_name: current.display_name || myDisplayName,
+        };
+        renderOtherAvatars();
+        renderParticipantsList();
+        renderSeatLabels();
+        updatePresenceControls();
+        presenceSend({ type: 'presence', hand_raised: nextHandRaised });
+    });
 
     // Chat
     chatForm.addEventListener('submit', (e) => {
@@ -858,6 +1110,7 @@
 
             myIsMoving = Math.abs(myVel.x) > 0.1 || Math.abs(myVel.y) > 0.1;
 
+            myCharacter.style.display = isSeated ? 'none' : '';
             myCharacter.style.left      = myPos.x + 'px';
             myCharacter.style.top       = myPos.y + 'px';
             myCharacter.style.transform = 'translate(-50%, -50%)';

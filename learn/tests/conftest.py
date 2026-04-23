@@ -22,10 +22,11 @@ import sys
 class _Response:
     """Minimal stub for workers.Response."""
 
-    def __init__(self, body="", *, status=200, headers=None):
+    def __init__(self, body="", *, status=200, headers=None, web_socket=None, **_kwargs):
         self.body = body
         self.status = status
         self.headers = dict(headers or {})
+        self.web_socket = web_socket
 
     def json(self):
         import json

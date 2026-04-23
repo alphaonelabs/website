@@ -23,9 +23,17 @@ database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
 name = "CLASSROOM_DO"
 class_name = "ClassroomDO"
 
+[[durable_objects.bindings]]
+name = "PRESENCE_DO"
+class_name = "PresenceDO"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ClassroomDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["PresenceDO"]
 
 
 [observability]
