@@ -43,7 +43,7 @@ def _enc(val: str) -> str:
 
 class TestApiRegister:
     def _req(self, payload):
-        return json_request("/api/register", payload)
+        return json_request("/api/register", payload, headers={"CF-Connecting-IP": "127.0.0.1"})
 
     def _rate_limited_env(self):
         env = make_env(db=MockDB([make_stmt()]))
@@ -138,6 +138,7 @@ class TestApiRegister:
 
     async def test_invalid_json_returns_400(self):
         req = MockRequest(method="POST", url="http://localhost/api/register",
+                          headers={"CF-Connecting-IP": "127.0.0.1"},
                           body="not-json")
         r = await worker.api_register(req, make_env())
         assert r.status == 400
@@ -160,6 +161,8 @@ class TestApiRegister:
         assert first.status == 200
         assert second.status == 200
         assert third.status == 429
+        assert int(third.headers["Retry-After"]) >= 1
+        assert _parse(third).get("error") == "Too many requests"
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +171,7 @@ class TestApiRegister:
 
 class TestApiLogin:
     def _req(self, payload):
-        return json_request("/api/login", payload)
+        return json_request("/api/login", payload, headers={"CF-Connecting-IP": "127.0.0.1"})
 
     def _rate_limited_env(self):
         env = make_env(db=MockDB([make_stmt(first=None)]))
@@ -231,7 +234,7 @@ class TestApiLogin:
         assert payload is not None
 
     async def test_invalid_json_returns_400(self):
-        req = MockRequest(method="POST", url="http://localhost/api/login", body="bad-json")
+        req = MockRequest(method="POST", url="http://localhost/api/login", headers={"CF-Connecting-IP": "127.0.0.1"}, body="bad-json")
         r = await worker.api_login(req, make_env())
         assert r.status == 400
 
@@ -258,11 +261,14 @@ class TestApiLogin:
         assert first.status == 200
         assert second.status == 200
         assert third.status == 429
+        assert int(third.headers["Retry-After"]) >= 1
+        assert _parse(third).get("error") == "Too many requests"
 
     async def test_login_rate_limit_resets_after_window(self, monkeypatch):
         row = self._make_user_row()
         env = self._rate_limited_env()
         env.DB = MockDB([
+            make_stmt(first=row),
             make_stmt(first=row),
             make_stmt(first=row),
             make_stmt(first=row),
@@ -283,3 +289,14 @@ class TestApiLogin:
         req3 = self._req({"username": "alice", "password": "password123"})
         req3.headers["CF-Connecting-IP"] = "198.51.100.10"
         assert (await worker.api_login(req3, env)).status == 200
+
+        req4 = self._req({"username": "alice", "password": "password123"})
+        req4.headers["CF-Connecting-IP"] = "198.51.100.10"
+        assert (await worker.api_login(req4, env)).status == 200
+
+        req5 = self._req({"username": "alice", "password": "password123"})
+        req5.headers["CF-Connecting-IP"] = "198.51.100.10"
+        limited = await worker.api_login(req5, env)
+        assert limited.status == 429
+        assert int(limited.headers["Retry-After"]) >= 1
+        assert _parse(limited).get("error") == "Too many requests"

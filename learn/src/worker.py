@@ -449,12 +449,12 @@ def _check_auth_rate_limit(req, env, route: str):
         env, "AUTH_RATE_LIMIT_MAX_ATTEMPTS", _AUTH_RATE_LIMIT_MAX_ATTEMPTS
     ))
 
-    client_ip = (
-        (req.headers.get("CF-Connecting-IP") or "")
-        or (req.headers.get("X-Forwarded-For") or "")
-        or (req.headers.get("X-Real-IP") or "")
-        or "unknown"
-    ).split(",")[0].strip() or "unknown"
+    # Only CF-Connecting-IP is trusted in Cloudflare Workers.
+    client_ip = (req.headers.get("CF-Connecting-IP") or "").strip()
+    if not client_ip:
+        print(json.dumps({"level": "warn", "where": "auth_rate_limit", "error": "missing_cf_connecting_ip"}))
+        return _too_many_requests(1)
+
     key = f"{route}:{client_ip}"
     now = int(time.time())
 
