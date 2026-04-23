@@ -256,11 +256,33 @@ function switchTab(tab) {
             : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
 }
 
-// Store authentication data
+// Store authentication data and handle post-login flow
 function storeAuth(data) {
     localStorage.setItem('edu_token', data.token);
     localStorage.setItem('edu_user', JSON.stringify(data.user));
-    window.location.href = '/dashboard.html';
+    
+    // Show success toast
+    showToast('Redirecting...');
+    
+    // Wait a few seconds then redirect
+    setTimeout(() => {
+        handlePostLoginRedirect();
+    }, 500);
+}
+
+// Show success toast message
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300 text-sm flex items-start gap-2 animate-pulse shadow-lg z-50';
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-check-circle mt-0.5 flex-shrink-0';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    toast.append(icon, span);
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
 }
 
 // Show error message
@@ -274,10 +296,26 @@ function showErr(id, msg) {
     }, 5000);
 }
 
+// Handle redirect after successful login
+function handlePostLoginRedirect() {
+    const redirectUrl = sessionStorage.getItem('post_login_redirect');
+    sessionStorage.removeItem('post_login_redirect');
+    // Only honor same-origin, path-only redirects to prevent open-redirect abuse.
+    const safe = redirectUrl && /^\/(?!\/)/.test(redirectUrl);
+    window.location.href = safe ? redirectUrl : '/dashboard.html';
+}
+
 // Handle tab parameter in URL
 const params = new URLSearchParams(location.search);
 if (params.get('tab') === 'register') {
     switchTab('register');
+}
+
+// Handle next parameter for post-login redirect.
+// URLSearchParams.get() already performs percent-decoding — no need to decode again.
+const nextParam = params.get('next');
+if (nextParam) {
+    sessionStorage.setItem('post_login_redirect', nextParam);
 }
 
 // Login form submission

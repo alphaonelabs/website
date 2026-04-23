@@ -179,3 +179,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await inject('site-footer', '/partials/footer.html');
      updateDarkModeIcon();
 });
+
+// Conditional rendering for the "Join Lobby Classroom" button.
+// These elements only exist on the homepage, so we guard against nulls.
+document.addEventListener('DOMContentLoaded', () => {
+    const loggedInEl = document.getElementById('join-logged-in');
+    const notLoggedInEl = document.getElementById('join-not-logged-in');
+    if (!loggedInEl || !notLoggedInEl) return;
+
+    const authed = isAuthenticated();
+    loggedInEl.style.display = authed ? 'flex' : 'none';
+    notLoggedInEl.style.display = authed ? 'none' : 'flex';
+});
