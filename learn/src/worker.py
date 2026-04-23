@@ -523,6 +523,22 @@ _DDL = [
     "CREATE INDEX IF NOT EXISTS idx_sa_session           ON session_attendance(session_id)",
     "CREATE INDEX IF NOT EXISTS idx_sa_user              ON session_attendance(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_at_activity          ON activity_tags(activity_id)",
+    # Notifications
+    """CREATE TABLE IF NOT EXISTS notifications (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL,
+        type       TEXT NOT NULL,
+        title      TEXT NOT NULL,
+        message    TEXT NOT NULL,
+        is_read    INTEGER NOT NULL DEFAULT 0,
+        related_id TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_notif_unread  ON notifications(user_id, is_read)",
+    "CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(user_id, created_at DESC)",
+
 ]
 
 
@@ -2100,6 +2116,18 @@ async def _dispatch(request, env):
             await capture_exception(exc, request, env, "api_error_test")
             return ok(None, "Test error sent to Sentry v2")
 
+
+        # Notifications
+        if path == "/api/notifications" and method == "GET":
+            return await api_list_notifications(request, env)
+        if path == "/api/notifications/unread-count" and method == "GET":
+            return await api_unread_count(request, env)
+        m_notif_read = re.fullmatch(r"/api/notifications/([A-Za-z0-9_-]+)/read", path)
+        if m_notif_read and method == "POST":
+            return await api_mark_notification_read(request, env, m_notif_read.group(1))
+        if path == "/api/notifications/read-all" and method == "POST":
+            return await api_mark_all_read(request, env)
+
         return err("API endpoint not found", 404)
 
     return await serve_static(path, env)
@@ -2112,3 +2140,129 @@ async def on_fetch(request, env):
     except Exception as e:
         await capture_exception(e, request, env, "on_fetch_unhandled")
         return err("Internal server error", 500)
+
+
+# ---------------------------------------------------------------------------
+# Notifications API
+# ---------------------------------------------------------------------------
+
+async def _create_notification(env, user_id: str, type_: str, title: str,
+                                message: str, related_id: str | None = None) -> None:
+    """Internal helper called by other handlers to create a notification.
+
+    Silently swallows errors so a notification failure never breaks the
+    parent operation (e.g. grading, peer requests, new assignments).
+    """
+    try:
+        enc = env.ENCRYPTION_KEY
+        await env.DB.prepare(
+            "INSERT INTO notifications (id, user_id, type, title, message, related_id)"
+            " VALUES (?, ?, ?, ?, ?, ?)"
+        ).bind(new_id(), user_id, type_,
+               encrypt(title, enc), encrypt(message, enc),
+               related_id).run()
+    except Exception as exc:
+        await capture_exception(exc, env=env, where="_create_notification")
+
+
+async def api_list_notifications(req, env):
+    """GET /api/notifications — list notifications for the authenticated user.
+
+    Query params:
+      - unread_only=true   return only unread notifications (default: false)
+      - limit=N            max results, default 20, max 50
+    """
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    url = req.url
+    unread_only = "unread_only=true" in url
+    try:
+        raw_limit = int(url.split("limit=")[1].split("&")[0]) if "limit=" in url else 20
+        limit = max(1, min(raw_limit, 50))
+    except (ValueError, IndexError):
+        limit = 20
+
+    if unread_only:
+        rows = await env.DB.prepare(
+            "SELECT id, type, title, message, is_read, related_id, created_at"
+            " FROM notifications"
+            " WHERE user_id = ? AND is_read = 0"
+            " ORDER BY created_at DESC LIMIT ?"
+        ).bind(user["id"], limit).all()
+    else:
+        rows = await env.DB.prepare(
+            "SELECT id, type, title, message, is_read, related_id, created_at"
+            " FROM notifications"
+            " WHERE user_id = ?"
+            " ORDER BY created_at DESC LIMIT ?"
+        ).bind(user["id"], limit).all()
+
+    notifications = [
+        {
+            "id":         r.id,
+            "type":       r.type,
+            "title":      decrypt(r.title or "", env.ENCRYPTION_KEY),
+            "message":    decrypt(r.message or "", env.ENCRYPTION_KEY),
+            "is_read":    bool(r.is_read),
+            "related_id": r.related_id,
+            "created_at": r.created_at,
+        }
+        for r in rows.results or []
+    ]
+
+    unread_count = await env.DB.prepare(
+        "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND is_read = 0"
+    ).bind(user["id"]).first()
+
+    return ok({
+        "notifications": notifications,
+        "unread_count":  unread_count.cnt if unread_count else 0,
+    })
+
+
+async def api_unread_count(req, env):
+    """GET /api/notifications/unread-count — return unread badge count only."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    row = await env.DB.prepare(
+        "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND is_read = 0"
+    ).bind(user["id"]).first()
+
+    return ok({"unread_count": row.cnt if row else 0})
+
+
+async def api_mark_notification_read(req, env, notification_id: str):
+    """POST /api/notifications/:id/read — mark a single notification as read."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    notif = await env.DB.prepare(
+        "SELECT id FROM notifications WHERE id = ? AND user_id = ?"
+    ).bind(notification_id, user["id"]).first()
+
+    if not notif:
+        return err("Notification not found", 404)
+
+    await env.DB.prepare(
+        "UPDATE notifications SET is_read = 1 WHERE id = ?"
+    ).bind(notification_id).run()
+
+    return ok(msg="Notification marked as read")
+
+
+async def api_mark_all_read(req, env):
+    """POST /api/notifications/read-all — mark all notifications as read."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    await env.DB.prepare(
+        "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0"
+    ).bind(user["id"]).run()
+
+    return ok(msg="All notifications marked as read")
