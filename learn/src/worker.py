@@ -40,7 +40,7 @@ import os
 import re
 import traceback
 from types import SimpleNamespace
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse, parse_qs
 
 from workers import Response, DurableObject
@@ -2147,7 +2147,7 @@ async def on_fetch(request, env):
 # ---------------------------------------------------------------------------
 
 async def _create_notification(env, user_id: str, type_: str, title: str,
-                                message: str, related_id: str | None = None) -> None:
+                                message: str, related_id: Optional[str] = None) -> None:
     """Internal helper called by other handlers to create a notification.
 
     Silently swallows errors so a notification failure never breaks the
