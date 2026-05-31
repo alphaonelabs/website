@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Notifications - Alpha One Labs">
+  <title>Notifications - Alpha One Labs</title>
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
+    (function () {
+      if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+    })();
+  </script>
+</head>
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+
+  <div id="site-navbar"></div>
+
+  <section class="border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-black/40 backdrop-blur">
+    <div class="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between gap-4">
+      <div>
+        
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3 flex-wrap">
+          <i class="fas fa-bell text-teal-600 dark:text-teal-400"></i> Notifications
+          <span id="header-unread" class="hidden text-xs font-semibold bg-red-500 text-white px-2 py-0.5 rounded-full"></span>
+        </h1>
+       
+      </div>
+      <a href="/notification-preferences.html"
+        class="shrink-0 hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
+        <i class="fas fa-sliders-h"></i> Preferences
+      </a>
+    </div>
+  </section>
+
+  <main class="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <div class="flex gap-2">
+        <button id="filter-all" type="button" onclick="setFilter(false)"
+          class="px-4 py-2 rounded-lg text-sm font-semibold bg-teal-600 text-white">All</button>
+        <button id="filter-unread" type="button" onclick="setFilter(true)"
+          class="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">Unread</button>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <a href="/notification-preferences.html"
+          class="sm:hidden px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
+          <i class="fas fa-sliders-h mr-1"></i> Preferences
+        </a>
+        <button type="button" onclick="markAllRead()"
+          class="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 hover:opacity-90">
+          Mark all read
+        </button>
+      </div>
+    </div>
+
+    <div id="notif-list" class="space-y-3">
+      <div class="animate-pulse rounded-xl h-20 bg-gray-200 dark:bg-gray-800"></div>
+    </div>
+
+    <div id="load-more-wrap" class="hidden mt-6 text-center">
+      <button type="button" onclick="loadMore()"
+        class="px-6 py-2 rounded-lg border border-teal-500 text-teal-600 dark:text-teal-400 font-semibold hover:bg-teal-50 dark:hover:bg-teal-900/30">
+        Load more
+      </button>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    const API = '';
+    const token = localStorage.getItem('edu_token');
+    const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+    const esc = window.esc || (s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+    const cssEscape = window.CSS && window.CSS.escape
+      ? window.CSS.escape
+      : (s) => String(s || '').replace(/["\\]/g, '\\$&');
+
+    if (!token || !user) window.location.href = '/login.html';
+    let unreadOnly = false;
+    let offset = 0;
+    const limit = 20;
+    let hasMore = true;
+    let refreshTimer = null;
+    let isRefreshing = false;
+    const CACHE_KEY = 'notif_cache_v1';
+    const CACHE_TTL_MS = 30000;
+
+    const typeStyle = {
+      info:    'border-l-blue-500 bg-blue-50/50 dark:bg-blue-900/20',
+      success: 'border-l-green-500 bg-green-50/50 dark:bg-green-900/20',
+      warning: 'border-l-amber-500 bg-amber-50/50 dark:bg-amber-900/20',
+      error:   'border-l-red-500 bg-red-50/50 dark:bg-red-900/20',
+    };
+
+    const typeLabel = {
+      info: 'Info',
+      success: 'Success',
+      warning: 'Warning',
+      error: 'Alert',
+    };
+
+    const typeBadge = {
+      info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
+      success: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200',
+      warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
+      error: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200',
+    };
+
+    function setFilter(unread) {
+      unreadOnly = unread;
+      offset = 0;
+      hasMore = true;
+      document.getElementById('filter-all').className = unread
+        ? 'px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
+        : 'px-4 py-2 rounded-lg text-sm font-semibold bg-teal-600 text-white';
+      document.getElementById('filter-unread').className = unread
+        ? 'px-4 py-2 rounded-lg text-sm font-semibold bg-teal-600 text-white'
+        : 'px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200';
+      loadNotifications(true);
+    }
+
+    function formatWhen(iso) {
+      if (!iso) return '';
+      const d = new Date(iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z');
+      if (Number.isNaN(d.getTime())) return esc(iso);
+      return d.toLocaleString();
+    }
+
+    function renderItem(n) {
+      const style = typeStyle[n.type] || typeStyle.info;
+      const badge = typeBadge[n.type] || typeBadge.info;
+      const label = typeLabel[n.type] || 'Info';
+      const unread = !n.is_read;
+      const safeId = esc(n.id);
+      return `
+        <article class="rounded-xl border border-gray-200 dark:border-gray-700 border-l-4 ${style} p-4 ${unread ? 'ring-1 ring-teal-500/30' : 'opacity-90'}"
+          data-id="${safeId}" data-read="${unread ? '0' : '1'}">
+          <div class="flex justify-between gap-3 items-start">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${badge}">${label}</span>
+                <h2 class="font-semibold text-gray-900 dark:text-gray-100">${esc(n.title)}</h2>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${esc(n.message)}</p>
+              <p class="text-xs text-gray-500 mt-2">${formatWhen(n.created_at)}</p>
+            </div>
+            ${unread ? `<button type="button" data-mark-read="${safeId}"
+              class="shrink-0 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">Mark read</button>` : ''}
+          </div>
+        </article>`;
+    }
+
+    document.getElementById('notif-list').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-mark-read]');
+      if (btn) markRead(btn.getAttribute('data-mark-read'));
+    });
+
+    function renderEmpty(list) {
+      list.innerHTML = `
+        <div class="text-center py-16 text-gray-500 dark:text-gray-400">
+          <i class="fas fa-bell-slash text-4xl mb-3 block opacity-50"></i>
+          <p class="font-medium">${unreadOnly ? 'No unread notifications' : 'No notifications yet'}</p>
+        </div>`;
+    }
+
+    function readCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || !Array.isArray(data.items)) return null;
+        if (Date.now() - data.ts > CACHE_TTL_MS) return null;
+        return data;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function writeCache(items, unread) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), items, unread }));
+      } catch (_) {
+        /* ignore */
+      }
+    }
+
+    async function fetchNotifications({ pageOffset = offset, pageLimit = limit } = {}) {
+      const q = new URLSearchParams({ limit: String(pageLimit), offset: String(pageOffset) });
+      if (unreadOnly) q.set('unread_only', 'true');
+      const res = await fetch(`${API}/api/notifications?${q}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('edu_token');
+        localStorage.removeItem('edu_user');
+        window.location.href = '/login.html';
+        return null;
+      }
+      if (!res.ok) throw new Error('Failed to load notifications');
+      const body = await res.json();
+      const data = body.data || {};
+      return {
+        items: data.notifications || [],
+        unread: data.unread_count ?? 0,
+      };
+    }
+
+    async function loadNotifications(replace) {
+      if (isRefreshing) return;
+      isRefreshing = true;
+      const list = document.getElementById('notif-list');
+      if (replace) {
+        const cached = !unreadOnly && offset === 0 ? readCache() : null;
+        if (cached && cached.items.length) {
+          list.innerHTML = cached.items.map(renderItem).join('');
+          updateHeaderUnread(cached.unread ?? 0);
+        } else {
+          list.innerHTML = '<div class="animate-pulse rounded-xl h-20 bg-gray-200 dark:bg-gray-800"></div>';
+        }
+      }
+      try {
+        const result = await fetchNotifications();
+        if (!result) return;
+        const { items, unread } = result;
+
+        updateHeaderUnread(unread);
+        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
+
+        if (replace) {
+          if (!items.length) {
+            renderEmpty(list);
+          } else {
+            list.innerHTML = items.map(renderItem).join('');
+          }
+          if (!unreadOnly && offset === 0) writeCache(items, unread);
+        } else if (items.length) {
+          list.insertAdjacentHTML('beforeend', items.map(renderItem).join(''));
+        }
+
+        hasMore = items.length >= limit;
+        document.getElementById('load-more-wrap').classList.toggle('hidden', !hasMore);
+      } catch (e) {
+        list.innerHTML = `<p class="text-red-600 dark:text-red-400 text-center py-8">${esc(e.message)}</p>`;
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    function updateHeaderUnread(unread) {
+      const badge = document.getElementById('header-unread');
+      if (!badge) return;
+      if (unread > 0) {
+        badge.textContent = `${unread} unread`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    let headerUnreadPollTimer = null;
+
+    async function pollUnreadCount() {
+      try {
+        const res = await fetch(`${API}/api/notifications/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        const unread = (body.data && body.data.unread_count) || 0;
+        updateHeaderUnread(unread);
+        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
+      } catch (_) {
+        /* ignore */
+      }
+    }
+
+    function startHeaderUnreadPolling() {
+      if (headerUnreadPollTimer) return;
+      headerUnreadPollTimer = setInterval(pollUnreadCount, 5000);
+      pollUnreadCount();
+    }
+
+    async function silentRefresh() {
+      if (isRefreshing) return;
+      const list = document.getElementById('notif-list');
+      const currentScroll = window.scrollY;
+      const beforeHeight = list.scrollHeight;
+      try {
+        const result = await fetchNotifications({ pageOffset: 0, pageLimit: limit });
+        if (!result) return;
+        const { items, unread } = result;
+        updateHeaderUnread(unread);
+        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
+
+        if (!items.length) {
+          if (!list.querySelector('[data-id]')) {
+            renderEmpty(list);
+          }
+          return;
+        }
+
+        const newItems = [];
+        items.forEach((n) => {
+          const id = String(n.id);
+          const existing = list.querySelector(`[data-id="${cssEscape(id)}"]`);
+          if (!existing) {
+            newItems.push(renderItem(n));
+          } else if (existing.getAttribute('data-read') !== (n.is_read ? '1' : '0')) {
+            existing.outerHTML = renderItem(n);
+          }
+        });
+
+        if (newItems.length) {
+          list.insertAdjacentHTML('afterbegin', newItems.join(''));
+          const afterHeight = list.scrollHeight;
+          const delta = afterHeight - beforeHeight;
+          window.scrollTo(0, currentScroll + delta);
+        }
+
+        hasMore = items.length >= limit;
+        document.getElementById('load-more-wrap').classList.toggle('hidden', !hasMore);
+      } catch (_) {
+        /* silent */
+      }
+    }
+
+    function startListPolling() {
+      if (refreshTimer) return;
+      refreshTimer = setInterval(() => {
+        silentRefresh();
+      }, 8000);
+    }
+
+    function loadMore() {
+      offset += limit;
+      loadNotifications(false);
+    }
+
+    async function markRead(id) {
+      const res = await fetch(`${API}/api/notifications/${encodeURIComponent(id)}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        offset = 0;
+        loadNotifications(true);
+        pollUnreadCount();
+      }
+    }
+
+    async function markAllRead() {
+      const res = await fetch(`${API}/api/notifications/read-all`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        offset = 0;
+        loadNotifications(true);
+        pollUnreadCount();
+      }
+    }
+
+    async function initPage() {
+      loadNotifications(true);
+      startHeaderUnreadPolling();
+      startListPolling();
+      if (window.initLayout) await window.initLayout();
+      if (window.updateAuthSection) window.updateAuthSection();
+      if (window.refreshUnreadBadge) window.refreshUnreadBadge();
+    }
+
+    document.addEventListener('DOMContentLoaded', initPage);
+  </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Notification preferences - Alpha One Labs">
+  <title>Notification Preferences - Alpha One Labs</title>
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
+    (function () {
+      if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+    })();
+  </script>
+</head>
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+
+  <div id="site-navbar"></div>
+
+  <main class="flex-1 max-w-2xl w-full mx-auto px-4 py-12">
+    <h1 class="text-3xl font-bold mb-2">Notification preferences</h1>
+    <p class="text-gray-600 dark:text-gray-400 mb-8">Choose which in-app notifications you receive.</p>
+
+    <div id="status" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+    <form id="prefs-form" class="space-y-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-md">
+      <label class="flex items-center justify-between gap-4 cursor-pointer">
+        <span>
+          <span class="font-semibold block">Enrollment updates</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">Join confirmations and new participants on your activities</span>
+        </span>
+        <input type="checkbox" id="enrollment_notify" class="h-5 w-5 rounded text-teal-600 focus:ring-teal-500" />
+      </label>
+      <label class="flex items-center justify-between gap-4 cursor-pointer">
+        <span>
+          <span class="font-semibold block">Session updates</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">New sessions scheduled for activities you joined</span>
+        </span>
+        <input type="checkbox" id="session_notify" class="h-5 w-5 rounded text-teal-600 focus:ring-teal-500" />
+      </label>
+      <label class="flex items-center justify-between gap-4 cursor-pointer">
+        <span>
+          <span class="font-semibold block">System messages</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">Welcome messages and activity publishing confirmations</span>
+        </span>
+        <input type="checkbox" id="system_notify" class="h-5 w-5 rounded text-teal-600 focus:ring-teal-500" />
+      </label>
+      <div class="flex flex-wrap gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button type="submit" class="px-6 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">
+          Save preferences
+        </button>
+        <a href="/notifications.html" class="px-6 py-2 rounded-lg border border-gray-300 dark:border-gray-600 font-medium hover:bg-gray-50 dark:hover:bg-gray-900">
+          Back to notifications
+        </a>
+      </div>
+    </form>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    const API = '';
+    const token = localStorage.getItem('edu_token');
+    const esc = window.esc || (s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;'));
+
+    if (!token) window.location.href = '/login.html';
+
+    function showStatus(msg, ok) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'mb-4 p-3 rounded-lg text-sm ' + (ok
+        ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
+        : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800');
+      el.classList.remove('hidden');
+    }
+
+    async function loadPrefs() {
+      const res = await fetch(`${API}/api/notification-preferences`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        window.location.href = '/login.html';
+        return;
+      }
+      if (!res.ok) throw new Error('Failed to load preferences');
+      const body = await res.json();
+      const p = body.data || {};
+      document.getElementById('enrollment_notify').checked = !!p.enrollment_notify;
+      document.getElementById('session_notify').checked = !!p.session_notify;
+      document.getElementById('system_notify').checked = !!p.system_notify;
+    }
+
+    document.getElementById('prefs-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        enrollment_notify: document.getElementById('enrollment_notify').checked,
+        session_notify: document.getElementById('session_notify').checked,
+        system_notify: document.getElementById('system_notify').checked,
+      };
+      const res = await fetch(`${API}/api/notification-preferences`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showStatus(err.error || 'Save failed', false);
+        return;
+      }
+      showStatus('Preferences saved.', true);
+    });
+
+    loadPrefs().catch(err => showStatus(esc(err.message), false));
+  </script>
+</body>
+</html>

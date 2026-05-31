@@ -17,9 +17,9 @@ function logout() {
     window.location.href = '/login.html';
 }
 
-function esc(s) {
+window.esc = window.esc || function (s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+};
 
 // ── Dark mode utilities ───────────────────────────────────────────────
 window.toggleDarkMode = function () {
@@ -109,14 +109,69 @@ function updateAuthSection() {
         
         if (mobileAvatarEl) mobileAvatarEl.textContent = firstLetter;
         if (mobileGreetingEl) mobileGreetingEl.textContent = `Hi, ${firstName}`;
+
+        startUnreadPolling();
     } else {
         // User is not logged in
         if (notLoggedInDiv) notLoggedInDiv.classList.remove('hidden');
         if (loggedInDiv) loggedInDiv.classList.add('hidden');
         if (mobileNotLoggedIn) mobileNotLoggedIn.classList.remove('hidden');
         if (mobileLoggedIn) mobileLoggedIn.classList.add('hidden');
+
+        const badge = document.getElementById('notif-unread-badge');
+        if (badge) badge.classList.add('hidden');
+        stopUnreadPolling();
     }
 }
+
+window.updateAuthSection = updateAuthSection;
+
+async function refreshUnreadBadge() {
+    const badge = document.getElementById('notif-unread-badge');
+    const { token } = getAuth();
+    if (!badge) return;
+    if (!token) {
+        badge.classList.add('hidden');
+        return;
+    }
+    try {
+        const res = await fetch('/api/notifications/unread-count', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        const count = (body.data && body.data.unread_count) || 0;
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    } catch (_) {
+        /* ignore */
+    }
+}
+
+window.refreshUnreadBadge = refreshUnreadBadge;
+
+var unreadPollTimer = null;
+
+function startUnreadPolling() {
+    if (unreadPollTimer) return;
+    unreadPollTimer = setInterval(() => {
+        refreshUnreadBadge();
+    }, 5000);
+    refreshUnreadBadge();
+}
+
+function stopUnreadPolling() {
+    if (!unreadPollTimer) return;
+    clearInterval(unreadPollTimer);
+    unreadPollTimer = null;
+}
+
+window.startUnreadPolling = startUnreadPolling;
+window.stopUnreadPolling = stopUnreadPolling;
 
 // ── Mobile menu toggle ────────────────────────────────────────────────
 window.toggleMobileMenu = function () {
@@ -173,12 +228,23 @@ document.addEventListener('click', (event) => {
 });
 
 // ── Initialize on DOM ready ───────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
+async function initLayout() {
     initializeDarkMode();
-    await inject('site-navbar', '/partials/navbar.html', updateAuthSection);
+    await inject('site-navbar', '/partials/navbar.html', () => {
+        updateAuthSection();
+        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
+    });
     await inject('site-footer', '/partials/footer.html');
-     updateDarkModeIcon();
-});
+    updateDarkModeIcon();
+}
+
+window.initLayout = initLayout;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLayout);
+} else {
+    initLayout();
+}
 
 // Conditional rendering for the "Join Lobby Classroom" button.
 // These elements only exist on the homepage, so we guard against nulls.
