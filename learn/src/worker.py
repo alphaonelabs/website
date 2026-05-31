@@ -2386,14 +2386,14 @@ async def _on_activity_created(env, p: dict) -> None:
 @_event_handler("ACTIVITY_TAGS_UPDATED")
 async def _on_activity_tags_updated(env, p: dict) -> None:
     recipient_ids = p.get("recipient_ids") or []
-    pref_map = await _get_pref_map(env, recipient_ids, "enrollment_notify")
+    pref_map = await _get_pref_map(env, recipient_ids, "system_notify")
     for uid in recipient_ids:
         if pref_map is not None and pref_map.get(uid) is False:
             continue
         await _create_notification(
             env, uid, "info", f"Activity Updated: {p['activity_title']}",
             f"New tags were added to '{p['activity_title']}'.",
-            related_id=p["activity_id"], category="enrollment", skip_pref_check=True,
+            related_id=p["activity_id"], category="system", skip_pref_check=True,
         )
 
 
