@@ -1113,71 +1113,78 @@ async def api_join(req, env):
         return bad_resp
 
     act_id = body.get("activity_id")
-    role   = (body.get("role") or "participant").strip()
+    role = (body.get("role") or "participant").strip()
 
     if not act_id:
         return err("activity_id is required")
+
     if role not in ("participant", "instructor", "organizer"):
         role = "participant"
 
+    # 1️⃣ Get activity
     act = await env.DB.prepare(
         "SELECT id, title, host_id FROM activities WHERE id=?"
     ).bind(act_id).first()
+
     if not act:
         return err("Activity not found", 404)
 
-    existing = await env.DB.prepare(
-        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=?"
-    ).bind(act_id, user["id"]).first()
-    if existing:
-        return ok(None, "Already joined this activity")
+    # ❌ REMOVE existing check completely
 
+    # 2️⃣ Insert enrollment
     enr_id = new_id()
     try:
         insert_res = await env.DB.prepare(
-            "INSERT INTO enrollments (id,activity_id,user_id,role)"
-            " VALUES (?,?,?,?)"
+            "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role) VALUES (?,?,?,?)"
         ).bind(enr_id, act_id, user["id"], role).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
 
+    # 3️⃣ Idempotency via changes
     changes = None
     try:
-        meta = getattr(insert_res, "meta", None) if insert_res is not None else None
+        meta = getattr(insert_res, "meta", None)
         if isinstance(meta, dict):
             changes = meta.get("changes")
         elif meta is not None:
             changes = getattr(meta, "changes", None)
     except Exception:
-        changes = None
+        pass
 
     if changes == 0:
         return ok(None, "Already joined this activity")
 
+    # 4️⃣ Participant name
     participant_name = user.get("username") or "Participant"
+    host_id = getattr(act, "host_id", None)
+
+    if host_id != user["id"]:
+        try:
+            u_row = await env.DB.prepare(
+                "SELECT name FROM users WHERE id=?"
+            ).bind(user["id"]).first()
+
+            if u_row and u_row.name:
+                dec_name = await decrypt_aes(u_row.name, env.ENCRYPTION_KEY)
+                if dec_name and dec_name != "[decryption error]":
+                    participant_name = dec_name
+        except Exception:
+            pass
+
+    # 5️⃣ Emit notification
     try:
-        u_row = await env.DB.prepare(
-            "SELECT name FROM users WHERE id=?"
-        ).bind(user["id"]).first()
-        if u_row and u_row.name:
-            dec_name = await decrypt_aes(u_row.name, env.ENCRYPTION_KEY)
-            if dec_name and dec_name != "[decryption error]":
-                participant_name = dec_name
+        await emit_event(env, "USER_ENROLLED", {
+            "user_id": user["id"],
+            "host_id": host_id,
+            "activity_id": act_id,
+            "activity_title": getattr(act, "title", "Activity"),
+            "participant_name": participant_name,
+        })
     except Exception:
         pass
 
-    await emit_event(env, "USER_ENROLLED", {
-        "user_id":      user["id"],
-        "host_id":      act.host_id,
-        "activity_id":  act_id,
-        "activity_title": act.title,
-        "participant_name": participant_name,
-    })
-
     return ok(None, "Joined activity successfully")
-
-
 async def api_dashboard(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
@@ -1289,6 +1296,7 @@ async def api_create_session(req, env):
         "SELECT title FROM activities WHERE id = ?"
     ).bind(act_id).first()
     recipient_ids = await _activity_enrollee_ids(env, act_id, exclude_user_id=user["id"])
+    
     await emit_event(env, "SESSION_CREATED", {
         "session_id":    sid,
         "session_title": title,
@@ -2306,6 +2314,23 @@ async def _activity_enrollee_ids(env, activity_id: str,
     return ids
 
 
+async def _get_pref_map(env, user_ids: list, pref_col: str) -> Optional[dict]:
+    if not user_ids:
+        return None
+    allowed = {"enrollment_notify", "session_notify", "system_notify"}
+    if pref_col not in allowed:
+        pref_col = "system_notify"
+    placeholders = ",".join(["?"] * len(user_ids))
+    try:
+        rows = await env.DB.prepare(
+            f"SELECT user_id, {pref_col} AS enabled FROM notification_preferences"
+            f" WHERE user_id IN ({placeholders})"
+        ).bind(*user_ids).all()
+        return {r.user_id: bool(r.enabled) for r in (rows.results or [])}
+    except Exception:
+        return None
+
+
 async def emit_event(env, event: str, payload: dict) -> None:
     """Dispatch a domain event to registered notification handlers."""
     handler = _EVENT_HANDLERS.get(event)
@@ -2337,11 +2362,15 @@ async def _on_user_enrolled(env, p: dict) -> None:
 
 @_event_handler("SESSION_CREATED")
 async def _on_session_created(env, p: dict) -> None:
-    for uid in p.get("recipient_ids") or []:
+    recipient_ids = p.get("recipient_ids") or []
+    pref_map = await _get_pref_map(env, recipient_ids, "session_notify")
+    for uid in recipient_ids:
+        if pref_map is not None and pref_map.get(uid) is False:
+            continue
         await _create_notification(
             env, uid, "info", f"New Session: {p['session_title']}",
             f"A new session was added to '{p['activity_title']}'.",
-            related_id=p["session_id"], category="session",
+            related_id=p["session_id"], category="session", skip_pref_check=True,
         )
 
 
@@ -2356,34 +2385,40 @@ async def _on_activity_created(env, p: dict) -> None:
 
 @_event_handler("ACTIVITY_TAGS_UPDATED")
 async def _on_activity_tags_updated(env, p: dict) -> None:
-    for uid in p.get("recipient_ids") or []:
+    recipient_ids = p.get("recipient_ids") or []
+    pref_map = await _get_pref_map(env, recipient_ids, "enrollment_notify")
+    for uid in recipient_ids:
+        if pref_map is not None and pref_map.get(uid) is False:
+            continue
         await _create_notification(
             env, uid, "info", f"Activity Updated: {p['activity_title']}",
             f"New tags were added to '{p['activity_title']}'.",
-            related_id=p["activity_id"], category="enrollment",
+            related_id=p["activity_id"], category="enrollment", skip_pref_check=True,
         )
 
 
 async def _create_notification(env, user_id: str, type_: str, title: str,
                                 message: str, related_id: Optional[str] = None,
-                                category: str = "system") -> None:
+                                category: str = "system",
+                                skip_pref_check: bool = False) -> None:
     """Internal helper called by other handlers to create a notification.
 
     Respects user notification preferences.  Silently swallows errors so a
     notification failure never breaks the parent operation.
     """
     try:
-        # Check user preferences (default: all enabled)
-        pref_col = _NOTIF_PREF_MAP.get(category, "system_notify")
-        try:
-            pref = await env.DB.prepare(
-                f"SELECT {pref_col} AS enabled FROM notification_preferences"
-                " WHERE user_id = ?"
-            ).bind(user_id).first()
-            if pref and not pref.enabled:
-                return  # user opted out of this category
-        except Exception:
-            pass  # table may not exist yet; default to enabled
+        if not skip_pref_check:
+            try:
+                pref = await env.DB.prepare(
+                    "SELECT enrollment_notify, session_notify, system_notify"
+                    " FROM notification_preferences WHERE user_id = ?"
+                ).bind(user_id).first()
+                if pref:
+                    col = _NOTIF_PREF_MAP.get(category, "system_notify")
+                    if not bool(getattr(pref, col, 1)):
+                        return
+            except Exception:
+                pass  # table may not exist yet; default to enabled
 
         enc = env.ENCRYPTION_KEY
         await env.DB.prepare(
@@ -2394,8 +2429,7 @@ async def _create_notification(env, user_id: str, type_: str, title: str,
                await encrypt_aes(message, enc),
                related_id).run()
     except Exception as exc:
-        print(f"[_create_notification ERROR] {type(exc).__name__}: {exc}")
-        return f"{type(exc).__name__}: {exc}"
+        await capture_exception(exc, _env=env, where="_create_notification")
     return None
 
 
@@ -2560,7 +2594,7 @@ async def api_patch_notification_preferences(req, env):
             updates[key] = 1 if val else 0
 
     if not updates:
-        return err("No valid fields to update")
+        return err("Provide at least one of: enrollment_notify, session_notify, system_notify")
 
     # Read current prefs (or defaults)
     current = await env.DB.prepare(

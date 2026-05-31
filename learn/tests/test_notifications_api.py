@@ -50,6 +50,21 @@ class TestNotificationsApi:
         assert body["data"]["unread_count"] == 1
         assert body["data"]["notifications"][0]["title"] == "Welcome"
 
+    async def test_list_pagination_params(self):
+        stmt_list = make_stmt(all_results=[])
+        stmt_count = make_stmt(first=MockRow(cnt=0))
+        env = make_env(db=MockDB([stmt_list, stmt_count]), jwt_secret=JWT)
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/notifications?unread_only=true&limit=5&offset=10",
+            headers=_auth_header(),
+        )
+        resp = await worker.api_list_notifications(req, env)
+        body = _parse(resp)
+        assert resp.status == 200
+        assert body["data"]["limit"] == 5
+        assert body["data"]["offset"] == 10
+
     async def test_list_requires_auth(self):
         env = make_env(jwt_secret=JWT)
         req = MockRequest(method="GET", url="http://localhost/api/notifications")
@@ -86,6 +101,7 @@ class TestNotificationsApi:
         )
         resp = await worker.api_mark_notification_read(req, env, "n1")
         assert resp.status == 200
+        assert stmt_update.bind.return_value.run.called
 
     async def test_mark_one_read_404(self):
         stmt_select = make_stmt(first=None)
@@ -114,6 +130,7 @@ class TestNotificationsApi:
         )
         resp = await worker.api_mark_all_read(req, env)
         assert resp.status == 200
+        assert stmt_update.bind.return_value.run.called
 
     async def test_mark_all_requires_auth(self):
         env = make_env(jwt_secret=JWT)

@@ -39,9 +39,9 @@
   <main class="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
       <div class="flex gap-2">
-        <button id="filter-all" type="button" onclick="setFilter(false)"
+        <button id="filter-all" type="button" onclick="setFilter(false)" aria-pressed="true"
           class="px-4 py-2 rounded-lg text-sm font-semibold bg-teal-600 text-white">All</button>
-        <button id="filter-unread" type="button" onclick="setFilter(true)"
+        <button id="filter-unread" type="button" onclick="setFilter(true)" aria-pressed="false"
           class="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">Unread</button>
       </div>
       <div class="flex gap-2 flex-wrap">
@@ -87,7 +87,7 @@
     let hasMore = true;
     let refreshTimer = null;
     let isRefreshing = false;
-    const CACHE_KEY = 'notif_cache_v1';
+    const CACHE_KEY = `notif_cache_v1_${user.id || 'anon'}`;
     const CACHE_TTL_MS = 30000;
 
     const typeStyle = {
@@ -121,7 +121,14 @@
       document.getElementById('filter-unread').className = unread
         ? 'px-4 py-2 rounded-lg text-sm font-semibold bg-teal-600 text-white'
         : 'px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200';
+      document.getElementById('filter-all').setAttribute('aria-pressed', unread ? 'false' : 'true');
+      document.getElementById('filter-unread').setAttribute('aria-pressed', unread ? 'true' : 'false');
       loadNotifications(true);
+    }
+
+    function syncUnreadBadges(unread) {
+      updateHeaderUnread(unread);
+      if (window.applyUnreadBadgeCount) window.applyUnreadBadgeCount(unread);
     }
 
     function formatWhen(iso) {
@@ -218,7 +225,7 @@
         const cached = !unreadOnly && offset === 0 ? readCache() : null;
         if (cached && cached.items.length) {
           list.innerHTML = cached.items.map(renderItem).join('');
-          updateHeaderUnread(cached.unread ?? 0);
+          syncUnreadBadges(cached.unread ?? 0);
         } else {
           list.innerHTML = '<div class="animate-pulse rounded-xl h-20 bg-gray-200 dark:bg-gray-800"></div>';
         }
@@ -228,8 +235,7 @@
         if (!result) return;
         const { items, unread } = result;
 
-        updateHeaderUnread(unread);
-        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
+        syncUnreadBadges(unread);
 
         if (replace) {
           if (!items.length) {
@@ -240,6 +246,8 @@
           if (!unreadOnly && offset === 0) writeCache(items, unread);
         } else if (items.length) {
           list.insertAdjacentHTML('beforeend', items.map(renderItem).join(''));
+        } else {
+          hasMore = false;
         }
 
         hasMore = items.length >= limit;
@@ -262,29 +270,6 @@
       }
     }
 
-    let headerUnreadPollTimer = null;
-
-    async function pollUnreadCount() {
-      try {
-        const res = await fetch(`${API}/api/notifications/unread-count`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const body = await res.json();
-        const unread = (body.data && body.data.unread_count) || 0;
-        updateHeaderUnread(unread);
-        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
-      } catch (_) {
-        /* ignore */
-      }
-    }
-
-    function startHeaderUnreadPolling() {
-      if (headerUnreadPollTimer) return;
-      headerUnreadPollTimer = setInterval(pollUnreadCount, 5000);
-      pollUnreadCount();
-    }
-
     async function silentRefresh() {
       if (isRefreshing) return;
       const list = document.getElementById('notif-list');
@@ -294,8 +279,7 @@
         const result = await fetchNotifications({ pageOffset: 0, pageLimit: limit });
         if (!result) return;
         const { items, unread } = result;
-        updateHeaderUnread(unread);
-        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
+        syncUnreadBadges(unread);
 
         if (!items.length) {
           if (!list.querySelector('[data-id]')) {
@@ -332,13 +316,40 @@
     function startListPolling() {
       if (refreshTimer) return;
       refreshTimer = setInterval(() => {
-        silentRefresh();
-      }, 8000);
+        if (!document.hidden) {
+          silentRefresh();
+        }
+      }, 10000);
     }
 
-    function loadMore() {
-      offset += limit;
-      loadNotifications(false);
+    function stopListPolling() {
+      if (!refreshTimer) return;
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+
+    async function loadMore() {
+      if (!hasMore || isRefreshing) return;
+      const nextOffset = offset + limit;
+      isRefreshing = true;
+      try {
+        const result = await fetchNotifications({ pageOffset: nextOffset, pageLimit: limit });
+        if (!result) return;
+        const list = document.getElementById('notif-list');
+        const { items } = result;
+        if (items.length) {
+          list.insertAdjacentHTML('beforeend', items.map(renderItem).join(''));
+          offset = nextOffset;
+        }
+        hasMore = items.length >= limit;
+        document.getElementById('load-more-wrap').classList.toggle('hidden', !hasMore);
+      } catch (e) {
+        const list = document.getElementById('notif-list');
+        list.insertAdjacentHTML('beforeend',
+          `<p class="text-red-600 dark:text-red-400 text-center py-4">${esc(e.message)}</p>`);
+      } finally {
+        isRefreshing = false;
+      }
     }
 
     async function markRead(id) {
@@ -349,7 +360,6 @@
       if (res.ok) {
         offset = 0;
         loadNotifications(true);
-        pollUnreadCount();
       }
     }
 
@@ -361,18 +371,23 @@
       if (res.ok) {
         offset = 0;
         loadNotifications(true);
-        pollUnreadCount();
       }
     }
 
     async function initPage() {
       loadNotifications(true);
-      startHeaderUnreadPolling();
       startListPolling();
       if (window.initLayout) await window.initLayout();
-      if (window.updateAuthSection) window.updateAuthSection();
-      if (window.refreshUnreadBadge) window.refreshUnreadBadge();
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopListPolling();
+      } else {
+        startListPolling();
+        silentRefresh();
+      }
+    });
 
     document.addEventListener('DOMContentLoaded', initPage);
   </script>

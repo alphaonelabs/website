@@ -227,15 +227,38 @@ document.addEventListener('click', (event) => {
     }
 });
 
+function applyUnreadBadgeCount(count) {
+    const badge = document.getElementById('notif-unread-badge');
+    if (!badge) return;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.classList.remove('hidden');
+        badge.setAttribute('aria-label', `${count} unread notifications`);
+    } else {
+        badge.classList.add('hidden');
+        badge.setAttribute('aria-label', '');
+    }
+    const link = document.getElementById('notif-bell-link');
+    if (link) {
+        link.setAttribute('aria-label', count > 0 ? `Notifications, ${count} unread` : 'Notifications');
+    }
+}
+
+window.applyUnreadBadgeCount = applyUnreadBadgeCount;
+
 // ── Initialize on DOM ready ───────────────────────────────────────────
+let layoutInitPromise = null;
+
 async function initLayout() {
-    initializeDarkMode();
-    await inject('site-navbar', '/partials/navbar.html', () => {
-        updateAuthSection();
-        if (window.refreshUnreadBadge) window.refreshUnreadBadge();
-    });
-    await inject('site-footer', '/partials/footer.html');
-    updateDarkModeIcon();
+    if (!layoutInitPromise) {
+        layoutInitPromise = (async () => {
+            initializeDarkMode();
+            await inject('site-navbar', '/partials/navbar.html', updateAuthSection);
+            await inject('site-footer', '/partials/footer.html');
+            updateDarkModeIcon();
+        })();
+    }
+    return layoutInitPromise;
 }
 
 window.initLayout = initLayout;

@@ -23,7 +23,7 @@
     <h1 class="text-3xl font-bold mb-2">Notification preferences</h1>
     <p class="text-gray-600 dark:text-gray-400 mb-8">Choose which in-app notifications you receive.</p>
 
-    <div id="status" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+    <div id="status" class="hidden mb-4 p-3 rounded-lg text-sm" role="status" aria-live="polite"></div>
 
     <form id="prefs-form" class="space-y-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-md">
       <label class="flex items-center justify-between gap-4 cursor-pointer">
@@ -64,7 +64,7 @@
   <script>
     const API = '';
     const token = localStorage.getItem('edu_token');
-    const esc = window.esc || (s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;'));
+    const esc = window.esc || (s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
 
     if (!token) window.location.href = '/login.html';
 
@@ -100,20 +100,24 @@
         session_notify: document.getElementById('session_notify').checked,
         system_notify: document.getElementById('system_notify').checked,
       };
-      const res = await fetch(`${API}/api/notification-preferences`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showStatus(err.error || 'Save failed', false);
-        return;
+      try {
+        const res = await fetch(`${API}/api/notification-preferences`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showStatus(err.error || 'Save failed', false);
+          return;
+        }
+        showStatus('Preferences saved.', true);
+      } catch (err) {
+        showStatus(err.message || 'Network error — please try again', false);
       }
-      showStatus('Preferences saved.', true);
     });
 
     loadPrefs().catch(err => showStatus(esc(err.message), false));

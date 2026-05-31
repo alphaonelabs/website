@@ -34,6 +34,12 @@ class TestNotificationPreferences:
         assert body["data"]["session_notify"] is True
         assert body["data"]["system_notify"] is True
 
+    async def test_get_requires_auth(self):
+        env = make_env(jwt_secret=JWT)
+        req = MockRequest(method="GET", url="http://localhost/api/notification-preferences")
+        resp = await worker.api_get_notification_preferences(req, env)
+        assert resp.status == 401
+
     async def test_patch_partial_update(self):
         current = MockRow(enrollment_notify=0, session_notify=1, system_notify=1)
         stmt_select = make_stmt(first=current)
@@ -51,6 +57,8 @@ class TestNotificationPreferences:
         assert body["data"]["enrollment_notify"] is True
         assert body["data"]["session_notify"] is True
         assert body["data"]["system_notify"] is True
+        assert stmt_upsert.bind.called
+        assert stmt_upsert.bind.call_args[0] == ("uid-1", 1, 1, 1)
 
     async def test_patch_invalid_boolean(self):
         env = make_env(jwt_secret=JWT)

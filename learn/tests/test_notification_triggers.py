@@ -2,7 +2,8 @@
 Tests for notification triggers on register/join/create_session.
 """
 
-import json
+from unittest.mock import AsyncMock, MagicMock
+
 from tests.helpers import load_worker, MockRow, MockDB, make_env, make_stmt, json_request
 
 worker = load_worker()
@@ -18,9 +19,11 @@ class TestNotificationTriggers:
     async def test_join_creates_notifications(self):
         act = MockRow(id="act-1", title="Activity", host_id="host-1")
         stmt_act = make_stmt(first=act)
-        stmt_existing = make_stmt(first=None)
         stmt_insert = make_stmt()
-        stmt_participant = make_stmt(first=MockRow(name="v1:"))
+        stmt_insert.bind.return_value.run = AsyncMock(
+            return_value=MagicMock(meta=MagicMock(changes=1))
+        )
+        stmt_name = make_stmt(first=MockRow(name="v1:Bob"))
         stmt_pref_select_1 = make_stmt(first=None)
         stmt_notif_insert_1 = make_stmt()
         stmt_pref_select_2 = make_stmt(first=None)
@@ -28,9 +31,8 @@ class TestNotificationTriggers:
         env = make_env(
             db=MockDB([
                 stmt_act,
-                stmt_existing,
                 stmt_insert,
-                stmt_participant,
+                stmt_name,
                 stmt_pref_select_1,
                 stmt_notif_insert_1,
                 stmt_pref_select_2,
@@ -47,6 +49,8 @@ class TestNotificationTriggers:
         assert resp.status == 200
         assert stmt_notif_insert_1.bind.return_value.run.called
         assert stmt_notif_insert_2.bind.return_value.run.called
+        assert stmt_notif_insert_1.bind.call_args[0][1] == "user-1"
+        assert stmt_notif_insert_2.bind.call_args[0][1] == "host-1"
 
     async def test_create_session_creates_notifications(self):
         owned = MockRow(id="act-1")
@@ -56,7 +60,7 @@ class TestNotificationTriggers:
         stmt_insert_session = make_stmt()
         stmt_act_title = make_stmt(first=act_row)
         stmt_enrollees = make_stmt(all_results=enrollee_rows)
-        stmt_pref_select = make_stmt(first=None)
+        stmt_pref_batch = make_stmt(all_results=[])
         stmt_notif_insert = make_stmt()
         env = make_env(
             db=MockDB([
@@ -64,7 +68,7 @@ class TestNotificationTriggers:
                 stmt_insert_session,
                 stmt_act_title,
                 stmt_enrollees,
-                stmt_pref_select,
+                stmt_pref_batch,
                 stmt_notif_insert,
             ]),
             jwt_secret=JWT,
@@ -84,3 +88,4 @@ class TestNotificationTriggers:
         resp = await worker.api_create_session(req, env)
         assert resp.status == 200
         assert stmt_notif_insert.bind.return_value.run.called
+        assert stmt_notif_insert.bind.call_args[0][1] == "user-2"
