@@ -243,6 +243,32 @@ async def decrypt_aes(ciphertext: str, secret: str) -> str:
         return "[decryption error]"
 
 
+async def decrypt_aes_with_key(ciphertext: str, crypto_key: object, secret: str) -> str:
+    """
+    AES-256-GCM decryption using a pre-imported CryptoKey.
+    Handles both v1 (AES-GCM) and legacy (XOR) ciphertext.
+    """
+    if not ciphertext:
+        return ""
+    if not ciphertext.startswith("v1:"):
+        return _decrypt_xor(ciphertext, secret)
+    try:
+        raw = base64.b64decode(ciphertext[3:])
+        iv, ct = raw[:12], raw[12:]
+    except Exception as exc:
+        await capture_exception(exc, where="decrypt_aes_with_key.decode")
+        return "[decryption error]"
+    try:
+        iv_array = to_js(iv, create_pyproxies=False)
+        algo = to_js({"name": "AES-GCM", "iv": iv_array}, dict_converter=js.Object.fromEntries)
+        data = to_js(ct, create_pyproxies=False)
+        pt_buf = await js.crypto.subtle.decrypt(algo, crypto_key, data)
+        return bytes(js.Uint8Array.new(pt_buf)).decode("utf-8")
+    except Exception as exc:
+        await capture_exception(exc, where="decrypt_aes_with_key.auth")
+        return "[decryption error]"
+
+
 def _encrypt_xor(plaintext: str, secret: str) -> str:
     """Legacy XOR stream cipher — kept for backward compatibility only."""
     if not plaintext:
@@ -357,7 +383,7 @@ def verify_token(raw: str, secret: str):
 
 _CORS = {
     "Access-Control-Allow-Origin":  "*",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
@@ -538,7 +564,15 @@ _DDL = [
     "CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_notif_unread  ON notifications(user_id, is_read)",
     "CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(user_id, created_at DESC)",
-
+    # Notification preferences
+    """CREATE TABLE IF NOT EXISTS notification_preferences (
+        user_id           TEXT PRIMARY KEY,
+        enrollment_notify INTEGER NOT NULL DEFAULT 1,
+        session_notify    INTEGER NOT NULL DEFAULT 1,
+        system_notify     INTEGER NOT NULL DEFAULT 1,
+        updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
 ]
 
 
@@ -782,6 +816,9 @@ async def api_register(req, env):
         return err("Registration failed — please try again", 500)
 
     token = create_token(uid, username, role, env.JWT_SECRET)
+
+    await _seed_notification_preferences(env, uid)
+
     return ok(
         {"token": token,
          "user": {"id": uid, "username": username, "name": name, "role": role}},
@@ -987,6 +1024,10 @@ async def api_create_activity(req, env):
             await capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
+    await emit_event(env, "ACTIVITY_CREATED", {
+        "user_id": user["id"], "activity_id": act_id, "title": title,
+    })
+
     return ok({"id": act_id, "title": title}, "Activity created")
 
 
@@ -1072,32 +1113,78 @@ async def api_join(req, env):
         return bad_resp
 
     act_id = body.get("activity_id")
-    role   = (body.get("role") or "participant").strip()
+    role = (body.get("role") or "participant").strip()
 
     if not act_id:
         return err("activity_id is required")
+
     if role not in ("participant", "instructor", "organizer"):
         role = "participant"
 
+    # 1️⃣ Get activity
     act = await env.DB.prepare(
-        "SELECT id FROM activities WHERE id=?"
+        "SELECT id, title, host_id FROM activities WHERE id=?"
     ).bind(act_id).first()
+
     if not act:
         return err("Activity not found", 404)
 
+    # ❌ REMOVE existing check completely
+
+    # 2️⃣ Insert enrollment
     enr_id = new_id()
     try:
-        await env.DB.prepare(
-            "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role)"
-            " VALUES (?,?,?,?)"
+        insert_res = await env.DB.prepare(
+            "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role) VALUES (?,?,?,?)"
         ).bind(enr_id, act_id, user["id"], role).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
 
+    # 3️⃣ Idempotency via changes
+    changes = None
+    try:
+        meta = getattr(insert_res, "meta", None)
+        if isinstance(meta, dict):
+            changes = meta.get("changes")
+        elif meta is not None:
+            changes = getattr(meta, "changes", None)
+    except Exception:
+        pass
+
+    if changes == 0:
+        return ok(None, "Already joined this activity")
+
+    # 4️⃣ Participant name
+    participant_name = user.get("username") or "Participant"
+    host_id = getattr(act, "host_id", None)
+
+    if host_id != user["id"]:
+        try:
+            u_row = await env.DB.prepare(
+                "SELECT name FROM users WHERE id=?"
+            ).bind(user["id"]).first()
+
+            if u_row and u_row.name:
+                dec_name = await decrypt_aes(u_row.name, env.ENCRYPTION_KEY)
+                if dec_name and dec_name != "[decryption error]":
+                    participant_name = dec_name
+        except Exception:
+            pass
+
+    # 5️⃣ Emit notification
+    try:
+        await emit_event(env, "USER_ENROLLED", {
+            "user_id": user["id"],
+            "host_id": host_id,
+            "activity_id": act_id,
+            "activity_title": getattr(act, "title", "Activity"),
+            "participant_name": participant_name,
+        })
+    except Exception:
+        pass
+
     return ok(None, "Joined activity successfully")
-
-
 async def api_dashboard(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
@@ -1205,6 +1292,19 @@ async def api_create_session(req, env):
         await capture_exception(e, req, env, "api_create_session.insert_session")
         return err("Failed to create session — please try again", 500)
 
+    act_row = await env.DB.prepare(
+        "SELECT title FROM activities WHERE id = ?"
+    ).bind(act_id).first()
+    recipient_ids = await _activity_enrollee_ids(env, act_id, exclude_user_id=user["id"])
+    
+    await emit_event(env, "SESSION_CREATED", {
+        "session_id":    sid,
+        "session_title": title,
+        "activity_id":   act_id,
+        "activity_title": act_row.title if act_row else act_id,
+        "recipient_ids": recipient_ids,
+    })
+
     return ok({"id": sid}, "Session created")
 
 
@@ -1261,6 +1361,17 @@ async def api_add_activity_tags(req, env):
             await capture_exception(e, req, env, f"api_add_activity_tags.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
+    act_row = await env.DB.prepare(
+        "SELECT title FROM activities WHERE id=?"
+    ).bind(act_id).first()
+    recipient_ids = await _activity_enrollee_ids(env, act_id, exclude_user_id=user["id"])
+    if recipient_ids:
+        await emit_event(env, "ACTIVITY_TAGS_UPDATED", {
+            "activity_id":    act_id,
+            "activity_title": act_row.title if act_row else act_id,
+            "recipient_ids":  recipient_ids,
+        })
+
     return ok(None, "Tags updated")
 
 
@@ -1309,6 +1420,12 @@ _MIME = {
 }
 
 
+def _static_cache_control(ext: str) -> str:
+    if ext in {"html", "json"}:
+        return "public, max-age=60, s-maxage=300"
+    return "public, max-age=86400, s-maxage=604800, immutable"
+
+
 async def serve_static(path: str, env):
     if path in ("/", ""):
         key = "index.html"
@@ -1337,7 +1454,14 @@ async def serve_static(path: str, env):
 
     ext  = key.rsplit(".", 1)[-1] if "." in key else "html"
     mime = _MIME.get(ext, "text/plain")
-    return Response(content, headers={"Content-Type": mime, **_CORS})
+    return Response(
+        content,
+        headers={
+            "Content-Type": mime,
+            "Cache-Control": _static_cache_control(ext),
+            **_CORS,
+        },
+    )
 
 class ClassroomDO(DurableObject):
     """WebSocket based virtual classroom Durable Object.
@@ -2128,6 +2252,12 @@ async def _dispatch(request, env):
         if path == "/api/notifications/read-all" and method == "POST":
             return await api_mark_all_read(request, env)
 
+        # Notification Preferences
+        if path == "/api/notification-preferences" and method == "GET":
+            return await api_get_notification_preferences(request, env)
+        if path == "/api/notification-preferences" and method == "PATCH":
+            return await api_patch_notification_preferences(request, env)
+
         return err("API endpoint not found", 404)
 
     return await serve_static(path, env)
@@ -2146,23 +2276,171 @@ async def on_fetch(request, env):
 # Notifications API
 # ---------------------------------------------------------------------------
 
+# Notification category → preference column mapping
+_NOTIF_PREF_MAP = {
+    "enrollment": "enrollment_notify",
+    "session":    "session_notify",
+    "system":     "system_notify",
+}
+
+_EVENT_HANDLERS = {}
+
+
+def _event_handler(name: str):
+    def decorator(fn):
+        _EVENT_HANDLERS[name] = fn
+        return fn
+    return decorator
+
+
+async def _seed_notification_preferences(env, user_id: str) -> None:
+    try:
+        await env.DB.prepare(
+            "INSERT OR IGNORE INTO notification_preferences (user_id) VALUES (?)"
+        ).bind(user_id).run()
+    except Exception:
+        pass
+
+
+async def _activity_enrollee_ids(env, activity_id: str,
+                                 exclude_user_id: Optional[str] = None) -> list:
+    rows = await env.DB.prepare(
+        "SELECT user_id FROM enrollments"
+        " WHERE activity_id = ? AND status = 'active'"
+    ).bind(activity_id).all()
+    ids = [r.user_id for r in (rows.results or [])]
+    if exclude_user_id:
+        ids = [uid for uid in ids if uid != exclude_user_id]
+    return ids
+
+
+async def _get_pref_map(env, user_ids: list, pref_col: str) -> Optional[dict]:
+    if not user_ids:
+        return None
+    allowed = {"enrollment_notify", "session_notify", "system_notify"}
+    if pref_col not in allowed:
+        pref_col = "system_notify"
+    placeholders = ",".join(["?"] * len(user_ids))
+    try:
+        rows = await env.DB.prepare(
+            f"SELECT user_id, {pref_col} AS enabled FROM notification_preferences"
+            f" WHERE user_id IN ({placeholders})"
+        ).bind(*user_ids).all()
+        return {r.user_id: bool(r.enabled) for r in (rows.results or [])}
+    except Exception:
+        return None
+
+
+async def emit_event(env, event: str, payload: dict) -> None:
+    """Dispatch a domain event to registered notification handlers."""
+    handler = _EVENT_HANDLERS.get(event)
+    if handler:
+        try:
+            await handler(env, payload)
+        except Exception as exc:
+            print(f"[emit_event ERROR] {event}: {type(exc).__name__}: {exc}")
+
+
+@_event_handler("USER_ENROLLED")
+async def _on_user_enrolled(env, p: dict) -> None:
+    title = p["activity_title"]
+    act_id = p["activity_id"]
+    await _create_notification(
+        env, p["user_id"], "success", "Enrollment Confirmed",
+        f"You have joined '{title}'.",
+        related_id=act_id, category="enrollment",
+    )
+    host_id = p.get("host_id")
+    if host_id and host_id != p["user_id"]:
+        joiner = p.get("participant_name") or "A new participant"
+        await _create_notification(
+            env, host_id, "info", "New Participant",
+            f"{joiner} joined '{title}'.",
+            related_id=act_id, category="enrollment",
+        )
+
+
+@_event_handler("SESSION_CREATED")
+async def _on_session_created(env, p: dict) -> None:
+    recipient_ids = p.get("recipient_ids") or []
+    pref_map = await _get_pref_map(env, recipient_ids, "session_notify")
+    for uid in recipient_ids:
+        if pref_map is not None and pref_map.get(uid) is False:
+            continue
+        await _create_notification(
+            env, uid, "info", f"New Session: {p['session_title']}",
+            f"A new session was added to '{p['activity_title']}'.",
+            related_id=p["session_id"], category="session", skip_pref_check=True,
+        )
+
+
+@_event_handler("ACTIVITY_CREATED")
+async def _on_activity_created(env, p: dict) -> None:
+    await _create_notification(
+        env, p["user_id"], "success", "Activity Published",
+        f"Your activity '{p['title']}' is now live.",
+        related_id=p["activity_id"], category="system",
+    )
+
+
+@_event_handler("ACTIVITY_TAGS_UPDATED")
+async def _on_activity_tags_updated(env, p: dict) -> None:
+    recipient_ids = p.get("recipient_ids") or []
+    pref_map = await _get_pref_map(env, recipient_ids, "system_notify")
+    for uid in recipient_ids:
+        if pref_map is not None and pref_map.get(uid) is False:
+            continue
+        await _create_notification(
+            env, uid, "info", f"Activity Updated: {p['activity_title']}",
+            f"New tags were added to '{p['activity_title']}'.",
+            related_id=p["activity_id"], category="system", skip_pref_check=True,
+        )
+
+
 async def _create_notification(env, user_id: str, type_: str, title: str,
-                                message: str, related_id: Optional[str] = None) -> None:
+                                message: str, related_id: Optional[str] = None,
+                                category: str = "system",
+                                skip_pref_check: bool = False) -> None:
     """Internal helper called by other handlers to create a notification.
 
-    Silently swallows errors so a notification failure never breaks the
-    parent operation (e.g. grading, peer requests, new assignments).
+    Respects user notification preferences.  Silently swallows errors so a
+    notification failure never breaks the parent operation.
     """
     try:
+        if not skip_pref_check:
+            try:
+                pref = await env.DB.prepare(
+                    "SELECT enrollment_notify, session_notify, system_notify"
+                    " FROM notification_preferences WHERE user_id = ?"
+                ).bind(user_id).first()
+                if pref:
+                    col = _NOTIF_PREF_MAP.get(category, "system_notify")
+                    if not bool(getattr(pref, col, 1)):
+                        return
+            except Exception:
+                pass  # table may not exist yet; default to enabled
+
         enc = env.ENCRYPTION_KEY
         await env.DB.prepare(
             "INSERT INTO notifications (id, user_id, type, title, message, related_id)"
             " VALUES (?, ?, ?, ?, ?, ?)"
         ).bind(new_id(), user_id, type_,
-               encrypt(title, enc), encrypt(message, enc),
+               await encrypt_aes(title, enc),
+               await encrypt_aes(message, enc),
                related_id).run()
     except Exception as exc:
-        await capture_exception(exc, env=env, where="_create_notification")
+        await capture_exception(exc, _env=env, where="_create_notification")
+    return None
+
+
+def _query_int(params: dict, key: str, default: int, min_val: int, max_val: int) -> int:
+    raw = (params.get(key) or [None])[0]
+    if raw is None:
+        return default
+    try:
+        return max(min_val, min(int(raw), max_val))
+    except (ValueError, TypeError):
+        return default
 
 
 async def api_list_notifications(req, env):
@@ -2171,46 +2449,47 @@ async def api_list_notifications(req, env):
     Query params:
       - unread_only=true   return only unread notifications (default: false)
       - limit=N            max results, default 20, max 50
+      - offset=N           skip N rows for pagination (default 0)
     """
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
 
-    url = req.url
-    unread_only = "unread_only=true" in url
-    try:
-        raw_limit = int(url.split("limit=")[1].split("&")[0]) if "limit=" in url else 20
-        limit = max(1, min(raw_limit, 50))
-    except (ValueError, IndexError):
-        limit = 20
+    parsed = urlparse(req.url)
+    params = parse_qs(parsed.query)
+    unread_only = (params.get("unread_only") or [""])[0].lower() == "true"
+    limit  = _query_int(params, "limit",  20, 1, 50)
+    offset = _query_int(params, "offset",  0, 0, 10_000)
 
     if unread_only:
         rows = await env.DB.prepare(
             "SELECT id, type, title, message, is_read, related_id, created_at"
             " FROM notifications"
             " WHERE user_id = ? AND is_read = 0"
-            " ORDER BY created_at DESC LIMIT ?"
-        ).bind(user["id"], limit).all()
+            " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        ).bind(user["id"], limit, offset).all()
     else:
         rows = await env.DB.prepare(
             "SELECT id, type, title, message, is_read, related_id, created_at"
             " FROM notifications"
             " WHERE user_id = ?"
-            " ORDER BY created_at DESC LIMIT ?"
-        ).bind(user["id"], limit).all()
+            " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        ).bind(user["id"], limit, offset).all()
 
-    notifications = [
-        {
+    enc = env.ENCRYPTION_KEY
+    key_bytes = _derive_aes_key_bytes(enc)
+    crypto_key = await _import_aes_key(key_bytes)
+    notifications = []
+    for r in rows.results or []:
+        notifications.append({
             "id":         r.id,
             "type":       r.type,
-            "title":      decrypt(r.title or "", env.ENCRYPTION_KEY),
-            "message":    decrypt(r.message or "", env.ENCRYPTION_KEY),
+            "title":      await decrypt_aes_with_key(r.title or "", crypto_key, enc),
+            "message":    await decrypt_aes_with_key(r.message or "", crypto_key, enc),
             "is_read":    bool(r.is_read),
             "related_id": r.related_id,
             "created_at": r.created_at,
-        }
-        for r in rows.results or []
-    ]
+        })
 
     unread_count = await env.DB.prepare(
         "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND is_read = 0"
@@ -2219,6 +2498,8 @@ async def api_list_notifications(req, env):
     return ok({
         "notifications": notifications,
         "unread_count":  unread_count.cnt if unread_count else 0,
+        "limit":         limit,
+        "offset":        offset,
     })
 
 
@@ -2266,3 +2547,81 @@ async def api_mark_all_read(req, env):
     ).bind(user["id"]).run()
 
     return ok(msg="All notifications marked as read")
+
+
+async def api_get_notification_preferences(req, env):
+    """GET /api/notification-preferences — return user notification settings."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    row = await env.DB.prepare(
+        "SELECT enrollment_notify, session_notify, system_notify"
+        " FROM notification_preferences WHERE user_id = ?"
+    ).bind(user["id"]).first()
+
+    if not row:
+        return ok({
+            "enrollment_notify": True,
+            "session_notify":    True,
+            "system_notify":     True,
+        })
+
+    return ok({
+        "enrollment_notify": bool(row.enrollment_notify),
+        "session_notify":    bool(row.session_notify),
+        "system_notify":     bool(row.system_notify),
+    })
+
+
+async def api_patch_notification_preferences(req, env):
+    """PATCH /api/notification-preferences — update user notification settings."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    allowed = {"enrollment_notify", "session_notify", "system_notify"}
+    updates = {}
+    for key in allowed:
+        if key in body:
+            val = body[key]
+            if not isinstance(val, bool):
+                return err(f"{key} must be a boolean")
+            updates[key] = 1 if val else 0
+
+    if not updates:
+        return err("Provide at least one of: enrollment_notify, session_notify, system_notify")
+
+    # Read current prefs (or defaults)
+    current = await env.DB.prepare(
+        "SELECT enrollment_notify, session_notify, system_notify"
+        " FROM notification_preferences WHERE user_id = ?"
+    ).bind(user["id"]).first()
+
+    en = updates.get("enrollment_notify",
+                     current.enrollment_notify if current else 1)
+    sn = updates.get("session_notify",
+                     current.session_notify if current else 1)
+    sy = updates.get("system_notify",
+                     current.system_notify if current else 1)
+
+    await env.DB.prepare(
+        "INSERT INTO notification_preferences"
+        " (user_id, enrollment_notify, session_notify, system_notify)"
+        " VALUES (?, ?, ?, ?)"
+        " ON CONFLICT(user_id) DO UPDATE SET"
+        " enrollment_notify = excluded.enrollment_notify,"
+        " session_notify = excluded.session_notify,"
+        " system_notify = excluded.system_notify,"
+        " updated_at = datetime('now')"
+    ).bind(user["id"], en, sn, sy).run()
+
+    return ok({
+        "enrollment_notify": bool(en),
+        "session_notify":    bool(sn),
+        "system_notify":     bool(sy),
+    }, "Preferences updated")

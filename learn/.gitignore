@@ -27,3 +27,6 @@ Thumbs.db
 .idea/
 *.swp
 .env*
+
+# Local reference folder
+_django_ref/

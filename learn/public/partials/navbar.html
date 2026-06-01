@@ -179,8 +179,9 @@
                 </a>
 
                 <!-- Notification Button -->
-                <a href="#" class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg">
+                <a href="/notifications.html" id="notif-bell-link" class="relative hover:underline flex items-center p-2 hover:bg-teal-700 rounded-lg" aria-label="Notifications" title="Notifications">
                     <i class="fas fa-bell"></i>
+                    <span id="notif-unread-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold"></span>
                 </a>
 
                 <!-- Language Dropdown -->
@@ -238,10 +239,6 @@
                             <a href="/dashboard.html" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
                                 <i class="fas fa-chart-line mr-2 text-teal-500"></i>
                                 <span>Dashboard</span>
-                            </a>
-                            <a href="/" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900 hover:text-teal-600 dark:hover:text-teal-300">
-                                <i class="fas fa-cog mr-2 text-teal-500"></i>
-                                <span>Settings</span>
                             </a>
                             <hr class="border-gray-200 dark:border-gray-700 my-1">
                             <button onclick="logout()" class="w-full text-left flex items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
@@ -306,8 +303,8 @@
                             <a href="/dashboard.html" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
                                 <i class="fas fa-chart-line mr-2 text-teal-500"></i><span>Dashboard</span>
                             </a>
-                            <a href="/settings.html" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                                <i class="fas fa-cog mr-2 text-teal-500"></i><span>Settings</span>
+                            <a href="/notifications.html" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                                <i class="fas fa-bell mr-2 text-teal-500"></i><span>Notifications</span>
                             </a>
                             <button onclick="logout()" class="w-full flex items-center py-2 px-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md mt-2">
                                 <i class="fas fa-sign-out-alt mr-2"></i><span>Logout</span>
