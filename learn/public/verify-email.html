@@ -78,7 +78,9 @@
               <i class="fas fa-envelope mr-1 text-teal-500"></i>Resend verification email
             </p>
             <form id="resend-form" class="flex gap-2">
+              <label for="resend-email" class="sr-only">Email address</label>
               <input id="resend-email" type="email" placeholder="your@email.com" required
+                aria-label="Email address"
                 class="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-700 dark:text-white" />
               <button type="submit"
                 class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-lg transition active:scale-95">
@@ -167,7 +169,13 @@
           body:    JSON.stringify({ email }),
         });
         const data = await res.json();
-        msgEl.textContent = data.message || 'Check your inbox for a new link.';
+        if (res.ok) {
+          msgEl.textContent = data.message || 'Check your inbox for a new link.';
+          msgEl.className = 'text-xs text-teal-600 dark:text-teal-400 mt-2';
+        } else {
+          msgEl.textContent = data.error || 'Something went wrong. Please try again.';
+          msgEl.className = 'text-xs text-red-600 dark:text-red-400 mt-2';
+        }
         msgEl.classList.remove('hidden');
       } catch {
         msgEl.textContent = 'Something went wrong. Please try again.';

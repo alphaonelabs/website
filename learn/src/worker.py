@@ -1136,6 +1136,17 @@ async def api_resend_verification(req, env):
             not real_email or real_email == "[decryption error]"):
         return ok(None, _GENERIC_OK)
 
+    # Per-account cooldown: silently drop if a token was issued in the last 5 minutes.
+    try:
+        recent = await env.DB.prepare(
+            "SELECT id FROM email_verification_tokens"
+            " WHERE user_id=? AND created_at > datetime('now', '-5 minutes')"
+        ).bind(user_row.id).first()
+        if recent:
+            return ok(None, _GENERIC_OK)
+    except Exception:
+        pass
+
     # Replace any existing token so only the latest link is valid.
     try:
         await env.DB.prepare(
@@ -1197,6 +1208,17 @@ async def api_forgot_password(req, env):
     if (not username   or username   == "[decryption error]" or
             not real_email or real_email == "[decryption error]"):
         return ok(None, _GENERIC_OK)
+
+    # Per-account cooldown: silently drop if a reset token was issued in the last 5 minutes.
+    try:
+        recent = await env.DB.prepare(
+            "SELECT id FROM password_reset_tokens"
+            " WHERE user_id=? AND created_at > datetime('now', '-5 minutes')"
+        ).bind(user_row.id).first()
+        if recent:
+            return ok(None, _GENERIC_OK)
+    except Exception:
+        pass
 
     # Replace any existing reset token for this user (only one active at a time).
     try:
