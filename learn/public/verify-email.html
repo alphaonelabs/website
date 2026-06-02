@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Alpha One Labs - Verify Email">
+  <title>Verify Email - Alpha One Labs</title>
+
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+    const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+    if (darkModeEnabled) document.documentElement.classList.add('dark');
+  </script>
+
+  <style>
+    html, body { overflow-x: hidden; box-sizing: border-box; }
+    .dark { color-scheme: dark; }
+    :root  { color-scheme: light; }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300">
+
+  <div id="site-navbar"></div>
+
+  <main class="flex-1 w-full flex items-center justify-center py-12 px-4">
+    <div class="w-full max-w-md">
+
+      <!-- Brand Header -->
+      <div class="text-center mb-8">
+        <a href="/" class="inline-flex items-center justify-center gap-3 mb-4 group">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+            <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs Logo" class="w-6 h-6">
+          </div>
+          <span class="font-bold text-2xl bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Alpha One Labs</span>
+        </a>
+      </div>
+
+      <!-- Card -->
+      <div class="rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
+
+        <!-- Loading state -->
+        <div id="state-loading">
+          <div class="w-16 h-16 bg-teal-100 dark:bg-teal-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-spinner fa-spin text-3xl text-teal-600 dark:text-teal-400"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Verifying your email…</h2>
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Please wait a moment.</p>
+        </div>
+
+        <!-- Success state -->
+        <div id="state-success" class="hidden">
+          <div class="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check-circle text-3xl text-green-600 dark:text-green-400"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Email Verified!</h2>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">Your email address has been confirmed. You can now sign in to your account.</p>
+          <a href="/login" class="inline-block bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95">
+            <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+          </a>
+        </div>
+
+        <!-- Error state -->
+        <div id="state-error" class="hidden">
+          <div class="w-16 h-16 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-times-circle text-3xl text-red-600 dark:text-red-400"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Verification Failed</h2>
+          <p id="error-msg" class="text-gray-600 dark:text-gray-400 text-sm mb-6">This verification link is invalid or has expired.</p>
+          <div class="space-y-3">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Verification links expire after 24 hours.</p>
+            <a href="/login?tab=register" class="inline-block text-teal-600 dark:text-teal-400 hover:underline font-semibold text-sm">
+              <i class="fas fa-user-plus mr-1"></i>Register a new account
+            </a>
+          </div>
+        </div>
+
+        <!-- No token state -->
+        <div id="state-no-token" class="hidden">
+          <div class="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-exclamation-circle text-3xl text-yellow-600 dark:text-yellow-400"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No Verification Token</h2>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">
+            Please use the verification link from your email. Links look like:<br>
+            <span class="font-mono text-xs text-gray-500">…/verify-email?token=…</span>
+          </p>
+          <a href="/" class="inline-block text-teal-600 dark:text-teal-400 hover:underline font-semibold text-sm">
+            <i class="fas fa-arrow-left mr-1"></i>Back to home
+          </a>
+        </div>
+
+      </div>
+
+      <p class="text-center text-gray-500 dark:text-gray-400 text-xs mt-6">
+        <a href="/" class="text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1 font-semibold transition">
+          <i class="fas fa-arrow-left"></i>Back to activities
+        </a>
+      </p>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    const API = '';
+
+    async function verifyEmail() {
+      const params = new URLSearchParams(location.search);
+      const token  = params.get('token');
+
+      if (!token) {
+        show('state-no-token');
+        return;
+      }
+
+      try {
+        const res  = await fetch(`${API}/api/verify-email?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (res.ok) {
+          show('state-success');
+        } else {
+          document.getElementById('error-msg').textContent =
+            data.error || 'This verification link is invalid or has expired.';
+          show('state-error');
+        }
+      } catch {
+        document.getElementById('error-msg').textContent =
+          'Something went wrong. Please try again later.';
+        show('state-error');
+      }
+    }
+
+    function show(id) {
+      ['state-loading', 'state-success', 'state-error', 'state-no-token'].forEach(s => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+      });
+    }
+
+    verifyEmail();
+  </script>
+</body>
+</html>
