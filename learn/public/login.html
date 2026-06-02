@@ -440,19 +440,36 @@ document.getElementById('form-register').addEventListener('submit', async e => {
 function showRegisterSuccess(msg) {
     // Replace the register form with a success banner
     const panel = document.getElementById('panel-register');
-    panel.innerHTML = `
-      <div class="text-center py-8">
-        <div class="w-16 h-16 bg-teal-100 dark:bg-teal-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="fas fa-envelope-open-text text-3xl text-teal-600 dark:text-teal-400"></i>
-        </div>
-        <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Check your email</h2>
-        <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">${msg}</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          Once verified, you can
-          <button onclick="switchTab('login')" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">sign in here</button>.
-        </p>
-      </div>
-    `;
+    
+    // Build HTML structure safely using DOM APIs
+    const container = document.createElement('div');
+    container.className = 'text-center py-8';
+    
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'w-16 h-16 bg-teal-100 dark:bg-teal-900/40 rounded-full flex items-center justify-center mx-auto mb-4';
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-envelope-open-text text-3xl text-teal-600 dark:text-teal-400';
+    iconDiv.appendChild(icon);
+    
+    const heading = document.createElement('h2');
+    heading.className = 'text-xl font-bold text-gray-800 dark:text-gray-200 mb-2';
+    heading.textContent = 'Check your email';
+    
+    const msgPara = document.createElement('p');
+    msgPara.className = 'text-gray-600 dark:text-gray-400 text-sm mb-6';
+    msgPara.textContent = msg;  // Safe: uses textContent for user message
+    
+    const actionPara = document.createElement('p');
+    actionPara.className = 'text-xs text-gray-500 dark:text-gray-400';
+    actionPara.innerHTML = 'Once verified, you can <button onclick="switchTab(\'login\')" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">sign in here</button>.';
+    
+    container.appendChild(iconDiv);
+    container.appendChild(heading);
+    container.appendChild(msgPara);
+    container.appendChild(actionPara);
+    
+    panel.innerHTML = '';
+    panel.appendChild(container);
 }
   </script>
 </body>
