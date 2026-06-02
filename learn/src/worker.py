@@ -538,7 +538,9 @@ async def send_verification_email(to_email: str, username: str, token: str, env)
     frontend_url = (getattr(env, "FRONTEND_URL", "") or "https://alphaonelabs.com").rstrip("/")
     link    = f"{frontend_url}/verify-email?token={token}"
     subject = "[alphaonelabs.com] Please Confirm Your Email Address"
-    html = (
+    # Local variable named email_html (not 'html') so html.escape() can be called unambiguously
+    safe_username = username.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    email_html = (
         '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
         '<body style="font-family:Arial,sans-serif;color:#1a1a1a;max-width:600px;margin:0 auto;padding:20px;">'
         '<div style="text-align:center;margin-bottom:24px;">'
@@ -547,7 +549,7 @@ async def send_verification_email(to_email: str, username: str, token: str, env)
         '<span style="font-weight:bold;font-size:20px;color:#0d9488;">Alpha One Labs</span>'
         "</div>"
         "<p>Hello from alphaonelabs.com!</p>"
-        f"<p>You&#39;re receiving this email because user <strong>{username}</strong> has given your "
+        f"<p>You&#39;re receiving this email because user <strong>{safe_username}</strong> has given your "
         "email address to register an account on alphaonelabs.com.</p>"
         "<p>To confirm this is correct, go to:</p>"
         f'<p><a href="{link}" style="color:#0d9488;word-break:break-all;">{link}</a></p>'
@@ -558,15 +560,15 @@ async def send_verification_email(to_email: str, username: str, token: str, env)
         "Thank you for using alphaonelabs.com!<br>alphaonelabs.com</p>"
         "</body></html>"
     )
-    return await _send_email_via_mailgun(to_email, subject, html, env)
+    return await _send_email_via_mailgun(to_email, subject, email_html, env)
 
 
-async def send_password_reset_email(to_email: str, username: str, token: str, env) -> bool:
+async def send_password_reset_email(to_email: str, _username: str, token: str, env) -> bool:
     """Send a password reset link via Mailgun."""
     frontend_url = (getattr(env, "FRONTEND_URL", "") or "https://alphaonelabs.com").rstrip("/")
     link    = f"{frontend_url}/reset-password?token={token}"
     subject = "[alphaonelabs.com] Reset Your Password"
-    html = (
+    email_html = (
         '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
         '<body style="font-family:Arial,sans-serif;color:#1a1a1a;max-width:600px;margin:0 auto;padding:20px;">'
         '<div style="text-align:center;margin-bottom:24px;">'
@@ -585,7 +587,7 @@ async def send_password_reset_email(to_email: str, username: str, token: str, en
         "Thank you for using alphaonelabs.com!<br>alphaonelabs.com</p>"
         "</body></html>"
     )
-    return await _send_email_via_mailgun(to_email, subject, html, env)
+    return await _send_email_via_mailgun(to_email, subject, email_html, env)
 
 
 # ---------------------------------------------------------------------------
@@ -732,8 +734,9 @@ async def init_db(env):
         ).run()
         # Pre-existing accounts are treated as verified (registered before this feature).
         await env.DB.prepare("UPDATE users SET email_verified=1").run()
-    except Exception:
-        pass
+        print("[init_db] email_verified column added successfully")
+    except Exception as e:
+        print(f"[init_db] email_verified migration skipped (likely already exists): {e}")
 
 
 _NO_SUCH_TABLE_RE = re.compile(r"\bno such table\b", re.IGNORECASE)
@@ -986,7 +989,7 @@ async def api_register(req, env):
     v_hash     = hash_token(v_token)
     v_id       = new_id()
     expires_at = (
-        datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)
     ).strftime("%Y-%m-%d %H:%M:%S")
     try:
         await env.DB.prepare(
@@ -995,6 +998,12 @@ async def api_register(req, env):
         ).bind(v_id, uid, v_hash, expires_at).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_register.insert_verification_token")
+        # Compensating rollback: remove the just-created user so the caller can retry.
+        try:
+            await env.DB.prepare("DELETE FROM users WHERE id=?").bind(uid).run()
+        except Exception:
+            pass
+        return err("Registration failed — please try again", 500)
 
     await send_verification_email(email, username, v_token, env)
 
@@ -1091,6 +1100,69 @@ async def api_verify_email(req, env):
         return err("Verification failed — please try again", 500)
 
     return ok(None, "Email verified successfully. You can now sign in.")
+
+
+async def api_resend_verification(req, env):
+    """POST /api/resend-verification — issue a fresh verification token for an unverified account."""
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    email = (body.get("email") or "").strip()
+    if not email:
+        return err("Email address is required")
+
+    # Generic message to prevent account-existence enumeration.
+    _GENERIC_OK = "If an unverified account with that email exists, a new verification link has been sent."
+
+    enc        = env.ENCRYPTION_KEY
+    email_hash = blind_index(email, enc)
+
+    try:
+        user_row = await env.DB.prepare(
+            "SELECT id, username, email, email_verified FROM users WHERE email_hash=?"
+        ).bind(email_hash).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_resend_verification.lookup")
+        return ok(None, _GENERIC_OK)
+
+    # Return generic ok if account not found or already verified (no enumeration).
+    if not user_row or user_row.email_verified:
+        return ok(None, _GENERIC_OK)
+
+    username   = await decrypt_aes(user_row.username, enc)
+    real_email = await decrypt_aes(user_row.email,    enc)
+    if (not username   or username   == "[decryption error]" or
+            not real_email or real_email == "[decryption error]"):
+        return ok(None, _GENERIC_OK)
+
+    # Replace any existing token so only the latest link is valid.
+    try:
+        await env.DB.prepare(
+            "DELETE FROM email_verification_tokens WHERE user_id=?"
+        ).bind(user_row.id).run()
+    except Exception:
+        pass
+
+    v_token    = generate_secure_token()
+    v_hash     = hash_token(v_token)
+    v_id       = new_id()
+    expires_at = (
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        await env.DB.prepare(
+            "INSERT INTO email_verification_tokens (id,user_id,token_hash,expires_at)"
+            " VALUES (?,?,?,?)"
+        ).bind(v_id, user_row.id, v_hash, expires_at).run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_resend_verification.insert_token")
+        return ok(None, _GENERIC_OK)
+
+    await send_verification_email(real_email, username, v_token, env)
+
+    return ok(None, _GENERIC_OK)
 
 
 async def api_forgot_password(req, env):
@@ -2588,6 +2660,8 @@ async def _dispatch(request, env):
         # Email verification and password reset
         if path == "/api/verify-email" and method == "GET":
             return await api_verify_email(request, env)
+        if path == "/api/resend-verification" and method == "POST":
+            return await api_resend_verification(request, env)
         if path == "/api/forgot-password" and method == "POST":
             return await api_forgot_password(request, env)
         if path == "/api/reset-password" and method == "POST":
