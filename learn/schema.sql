@@ -121,9 +121,6 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0;
-UPDATE users SET email_verified = 1;
-
 -- EMAIL VERIFICATION TOKENS
 -- token_hash is SHA-256(plaintext_token) — never store plaintext tokens.
 -- expires_at is UTC datetime string 'YYYY-MM-DD HH:MM:SS'.
