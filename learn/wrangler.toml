@@ -16,6 +16,7 @@ not_found_handling = "404-page"
 binding = "DB"
 database_name = "education_db"
 database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
+migrations_dir = "migrations"
 
 
 # Virtual Classroom Durable Object
@@ -50,3 +51,6 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
+
+[build]
+command = "bash migrate.sh"
