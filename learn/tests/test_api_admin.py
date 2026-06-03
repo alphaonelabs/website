@@ -86,6 +86,7 @@ class TestApiAdminTableCounts:
                 failing_count_stmt,                   # initial users count fails
             ]
             + [make_stmt() for _ in range(ddl_count)]  # init_db DDL statements
+            + [make_stmt(), make_stmt()]               # init_db migration: ALTER TABLE + UPDATE
             + [
                 make_stmt(all_results=[tables_row]),  # retried sqlite_master query
                 make_stmt(first=count_row),           # retried users count succeeds

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     email         TEXT NOT NULL,          -- encrypt(email)
     password_hash TEXT NOT NULL,          -- PBKDF2-SHA256, per-user salt
     role          TEXT NOT NULL,          -- encrypt('host' | 'member')
+    email_verified INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -119,3 +120,29 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- EMAIL VERIFICATION TOKENS
+-- token_hash is SHA-256(plaintext_token) — never store plaintext tokens.
+-- expires_at is UTC datetime string 'YYYY-MM-DD HH:MM:SS'.
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_evtoken_user ON email_verification_tokens(user_id);
+
+-- PASSWORD RESET TOKENS
+-- token_hash is SHA-256(plaintext_token) — never store plaintext tokens.
+-- expires_at is UTC datetime string 'YYYY-MM-DD HH:MM:SS'.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_prtoken_user ON password_reset_tokens(user_id);
