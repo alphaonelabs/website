@@ -1136,7 +1136,7 @@ async def api_resend_verification(req, env):
             not real_email or real_email == "[decryption error]"):
         return ok(None, _GENERIC_OK)
 
-    # Per-account cooldown: silently drop if a token was issued in the last 5 minutes.
+    # Per-account cooldown: abort (fail closed) if the lookup errors or a recent token exists.
     try:
         recent = await env.DB.prepare(
             "SELECT id FROM email_verification_tokens"
@@ -1144,8 +1144,9 @@ async def api_resend_verification(req, env):
         ).bind(user_row.id).first()
         if recent:
             return ok(None, _GENERIC_OK)
-    except Exception:
-        pass
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_resend_verification.cooldown_check")
+        return ok(None, _GENERIC_OK)
 
     # Replace any existing token so only the latest link is valid.
     try:
@@ -1209,7 +1210,7 @@ async def api_forgot_password(req, env):
             not real_email or real_email == "[decryption error]"):
         return ok(None, _GENERIC_OK)
 
-    # Per-account cooldown: silently drop if a reset token was issued in the last 5 minutes.
+    # Per-account cooldown: abort (fail closed) if the lookup errors or a recent token exists.
     try:
         recent = await env.DB.prepare(
             "SELECT id FROM password_reset_tokens"
@@ -1217,8 +1218,9 @@ async def api_forgot_password(req, env):
         ).bind(user_row.id).first()
         if recent:
             return ok(None, _GENERIC_OK)
-    except Exception:
-        pass
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_forgot_password.cooldown_check")
+        return ok(None, _GENERIC_OK)
 
     # Replace any existing reset token for this user (only one active at a time).
     try:
