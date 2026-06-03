@@ -726,17 +726,6 @@ _DDL = [
 async def init_db(env):
     for sql in _DDL:
         await env.DB.prepare(sql).run()
-    # Idempotent migration: add email_verified to existing users table.
-    # Fails silently when the column already exists (second run is a no-op).
-    try:
-        await env.DB.prepare(
-            "ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0"
-        ).run()
-        # Pre-existing accounts are treated as verified (registered before this feature).
-        await env.DB.prepare("UPDATE users SET email_verified=1").run()
-        print("[init_db] email_verified column added successfully")
-    except Exception as e:
-        print(f"[init_db] email_verified migration skipped (likely already exists): {e}")
 
 
 _NO_SUCH_TABLE_RE = re.compile(r"\bno such table\b", re.IGNORECASE)
