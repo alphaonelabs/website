@@ -188,13 +188,20 @@
       }
 
       // Avatar
+      const _initials = (p.name || p.username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      const _imgEl      = document.getElementById('profile-avatar-img');
+      const _initialsEl = document.getElementById('profile-initials');
       if (p.avatar_url) {
-        document.getElementById('profile-avatar-img').src = p.avatar_url;
-        document.getElementById('profile-avatar-img').classList.remove('hidden');
-        document.getElementById('profile-initials').classList.add('hidden');
+        _imgEl.src = p.avatar_url;
+        _imgEl.classList.remove('hidden');
+        _initialsEl.classList.add('hidden');
+        _imgEl.addEventListener('error', () => {
+          _imgEl.classList.add('hidden');
+          _initialsEl.textContent = _initials;
+          _initialsEl.classList.remove('hidden');
+        });
       } else {
-        const initials = (p.name || p.username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-        document.getElementById('profile-initials').textContent = initials;
+        _initialsEl.textContent = _initials;
       }
 
       // Bio

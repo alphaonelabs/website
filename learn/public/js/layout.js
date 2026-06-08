@@ -158,7 +158,14 @@ function _setNavButtonAvatar(avatarElId, name, username, avatarUrl) {
     if (!el) return;
     const initials = (name || username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
     if (avatarUrl) {
-        el.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full" alt="" onerror="this.parentElement.textContent='${initials}'" />`;
+        // Build element programmatically — avoids XSS via inline onerror with user-derived initials
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        img.className = 'w-full h-full object-cover rounded-full';
+        img.alt = '';
+        img.addEventListener('error', () => { el.textContent = initials; });
+        el.innerHTML = '';
+        el.appendChild(img);
     } else {
         el.textContent = initials;
     }

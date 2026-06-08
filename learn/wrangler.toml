@@ -19,7 +19,12 @@ database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
 migrations_dir = "migrations"
 
 
-# Create bucket: wrangler r2 bucket create learn-avatars
+# To enable R2 avatar storage:
+#   1. Create the bucket:  wrangler r2 bucket create learn-avatars
+#   2. Enable public access in the Cloudflare dashboard for the bucket
+#   3. Add R2_PUBLIC_URL as an environment variable (Workers → Settings → Variables)
+#      e.g. https://pub-xxxxx.r2.dev  or your custom domain
+#   Without R2_PUBLIC_URL, the worker falls back to base64 data-URLs stored in D1.
 # [[r2_buckets]]
 # binding  = "R2"
 # bucket_name = "learn-avatars"

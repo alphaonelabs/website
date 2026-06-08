@@ -405,3 +405,20 @@ class TestUploadAvatar:
         assert r.status == 200
         url = _parse(r)["data"]["avatar_url"]
         assert url.startswith("data:image/png;base64,")
+
+    async def test_r2_upload_returns_public_url(self):
+        from unittest.mock import AsyncMock, MagicMock
+        small_b64 = base64.b64encode(b"\x89PNG fake").decode()
+        env = make_env(db=MockDB([make_stmt(), make_stmt()]))
+        mock_r2 = MagicMock()
+        mock_r2.put = AsyncMock(return_value=None)
+        env.R2 = mock_r2
+        env.R2_PUBLIC_URL = "https://pub-abc123.r2.dev"
+        r = await worker.api_upload_avatar(
+            self._req({"image_data": small_b64, "image_type": "image/png"}), env
+        )
+        assert r.status == 200
+        url = _parse(r)["data"]["avatar_url"]
+        assert url.startswith("https://pub-abc123.r2.dev/avatars/")
+        assert url.endswith(".png")
+        mock_r2.put.assert_awaited_once()

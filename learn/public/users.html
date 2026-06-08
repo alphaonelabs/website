@@ -53,10 +53,11 @@
         <div class="relative flex-1">
           <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
           <input id="search-input" type="text" placeholder="Search by name, username or skill…"
+            aria-label="Search members by name, username, or skill"
             class="w-full pl-11 pr-4 py-3 rounded-xl border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
             oninput="filterUsers()" />
         </div>
-        <button id="filter-teachers" onclick="toggleTeacherFilter()"
+        <button type="button" id="filter-teachers" onclick="toggleTeacherFilter()"
           class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-semibold shadow-md hover:bg-teal-50 dark:hover:bg-teal-900/30 transition whitespace-nowrap">
           <i class="fas fa-chalkboard-teacher text-teal-500"></i> Teachers Only
         </button>
