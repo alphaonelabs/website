@@ -19,6 +19,12 @@ database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
 migrations_dir = "migrations"
 
 
+# Create bucket: wrangler r2 bucket create learn-avatars
+# [[r2_buckets]]
+# binding  = "R2"
+# bucket_name = "learn-avatars"
+
+
 # Virtual Classroom Durable Object
 [[durable_objects.bindings]]
 name = "CLASSROOM_DO"

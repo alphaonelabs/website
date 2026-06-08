@@ -6,16 +6,24 @@
 -- username_hash and email_hash are HMAC-SHA256 blind indexes used for O(1)
 -- lookups so no plaintext ever needs to be stored in an indexed column.
 CREATE TABLE IF NOT EXISTS users (
-    id            TEXT PRIMARY KEY,
-    username_hash TEXT NOT NULL UNIQUE,   -- HMAC(username) for lookups
-    email_hash    TEXT NOT NULL UNIQUE,   -- HMAC(email)    for lookups
-    name          TEXT NOT NULL,          -- encrypt(display_name)
-    username      TEXT NOT NULL,          -- encrypt(login_username)
-    email         TEXT NOT NULL,          -- encrypt(email)
-    password_hash TEXT NOT NULL,          -- PBKDF2-SHA256, per-user salt
-    role          TEXT NOT NULL,          -- encrypt('host' | 'member')
-    email_verified INTEGER NOT NULL DEFAULT 0,
-    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    id                TEXT PRIMARY KEY,
+    username_hash     TEXT NOT NULL UNIQUE,   -- HMAC(username) for lookups
+    email_hash        TEXT NOT NULL UNIQUE,   -- HMAC(email)    for lookups
+    name              TEXT NOT NULL,          -- encrypt(display_name)
+    username          TEXT NOT NULL,          -- encrypt(login_username)
+    email             TEXT NOT NULL,          -- encrypt(email)
+    password_hash     TEXT NOT NULL,          -- PBKDF2-SHA256, per-user salt
+    role              TEXT NOT NULL,          -- encrypt('host' | 'member')
+    email_verified    INTEGER NOT NULL DEFAULT 0,
+    bio               TEXT,                   -- encrypt(bio)
+    avatar_url        TEXT,
+    is_teacher        INTEGER NOT NULL DEFAULT 0,
+    github_username   TEXT,                   -- encrypt(github_username)
+    discord_username  TEXT,                   -- encrypt(discord_username)
+    slack_username    TEXT,                   -- encrypt(slack_username)
+    expertise         TEXT,                   -- encrypt(expertise)
+    is_profile_public INTEGER NOT NULL DEFAULT 0,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- ACTIVITIES (courses, meetups, workshops, seminars, etc.)

@@ -99,7 +99,10 @@ function initializeDarkMode() {
 }
 
 // ── Layout injection ──────────────────────────────────────────────────
-async function inject(id, file, callback) {
+const _navbarPromise = fetch('/partials/navbar.html');
+const _footerPromise = fetch('/partials/footer.html');
+
+async function inject(id, fetchPromise, callback) {
     const el = document.getElementById(id);
     if (!el) return;
     if (el.dataset.inline === 'true') {
@@ -109,13 +112,11 @@ async function inject(id, file, callback) {
         return;
     }
     try {
-        const res = await fetch(file);
+        const res = await fetchPromise;
         el.innerHTML = await res.text();
-        if (callback && typeof callback === 'function') {
-            callback();
-        }
-    } catch (err) {
-        console.error(`Failed to load ${file}:`, err);
+        if (typeof callback === 'function') callback();
+    } catch (e) {
+        console.error('Layout inject error:', e);
     }
 }
 
@@ -128,6 +129,41 @@ window.toggleProfileDropdown = function () {
 };
 
 // ── Update auth section with profile ─────────────────────────────────
+// ── Avatar helpers ───────────────────────────────────────────────────
+function _setNavAvatar(initialsId, imgId, name, username, avatarUrl) {
+    const initials = (name || username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const initialsEl = document.getElementById(initialsId);
+    const imgEl      = document.getElementById(imgId);
+    if (!initialsEl) return;
+    if (avatarUrl) {
+        initialsEl.classList.add('hidden');
+        if (imgEl) {
+            imgEl.src = avatarUrl;
+            imgEl.classList.remove('hidden');
+            imgEl.onerror = function () {
+                this.classList.add('hidden');
+                initialsEl.classList.remove('hidden');
+            };
+        }
+    } else {
+        initialsEl.textContent = initials;
+        initialsEl.classList.remove('hidden');
+        if (imgEl) imgEl.classList.add('hidden');
+    }
+}
+
+// Keep the old profile-avatar element (button circle) in sync too
+function _setNavButtonAvatar(avatarElId, name, username, avatarUrl) {
+    const el = document.getElementById(avatarElId);
+    if (!el) return;
+    const initials = (name || username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    if (avatarUrl) {
+        el.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full" alt="" onerror="this.parentElement.textContent='${initials}'" />`;
+    } else {
+        el.textContent = initials;
+    }
+}
+
 function updateAuthSection() {
     const { token, user } = getAuth();
     const notLoggedInDiv = document.getElementById('auth-not-logged-in');
@@ -136,11 +172,11 @@ function updateAuthSection() {
     const mobileLoggedIn = document.getElementById('mobile-auth-logged-in');
 
     if (token && user) {
-        // User is logged in
-        const firstName = user.name ? user.name.split(' ')[0] : user.username;
-        const firstLetter = firstName.charAt(0).toUpperCase();
+        const firstName  = user.name ? user.name.split(' ')[0] : user.username;
+        const avatarUrl  = user.avatar_url || '';
+        const role       = user.role || '';
 
-        // Desktop view
+        // Desktop
         if (notLoggedInDiv) notLoggedInDiv.classList.add('hidden');
         if (loggedInDiv) loggedInDiv.classList.remove('hidden');
         
@@ -154,24 +190,45 @@ function updateAuthSection() {
         const notifLink = document.getElementById('notif-bell-link');
         if (notifLink) notifLink.classList.remove('hidden');
 
-        // Mobile view
+        // Trigger button circle (existing id="profile-avatar")
+        _setNavButtonAvatar('profile-avatar', user.name, user.username, avatarUrl);
+
+        const greetingEl  = document.getElementById('profile-greeting');
+        const usernameEl  = document.getElementById('dropdown-username');
+        const roleEl      = document.getElementById('dropdown-user-role');
+
+        if (greetingEl) greetingEl.textContent = `Hi, ${firstName}`;
+        if (usernameEl) usernameEl.textContent  = `@${user.username}`;
+        if (roleEl)     roleEl.textContent      = role;
+
+        // Dropdown avatar (new elements)
+        _setNavAvatar('dropdown-avatar-initials', 'dropdown-avatar-img', user.name, user.username, avatarUrl);
+
+        // "My Public Profile" deep link
+        const profileLink = document.getElementById('dropdown-view-profile-link');
+        if (profileLink) profileLink.href = `/public-profile.html?username=${encodeURIComponent(user.username)}`;
+
+        // Mobile
         if (mobileNotLoggedIn) mobileNotLoggedIn.classList.add('hidden');
-        if (mobileLoggedIn) mobileLoggedIn.classList.remove('hidden');
-        
-        const mobileAvatarEl = document.getElementById('mobile-profile-avatar');
+        if (mobileLoggedIn)    mobileLoggedIn.classList.remove('hidden');
+
+        _setNavAvatar('mobile-avatar-initials', 'mobile-avatar-img', user.name, user.username, avatarUrl);
+
         const mobileGreetingEl = document.getElementById('mobile-profile-greeting');
-        
-        if (mobileAvatarEl) mobileAvatarEl.textContent = firstLetter;
+        const mobileRoleEl     = document.getElementById('mobile-user-role');
         if (mobileGreetingEl) mobileGreetingEl.textContent = `Hi, ${firstName}`;
+        if (mobileRoleEl)     mobileRoleEl.textContent     = role;
+
+        const mobileProfileLink = document.getElementById('mobile-view-profile-link');
+        if (mobileProfileLink) mobileProfileLink.href = `/public-profile.html?username=${encodeURIComponent(user.username)}`;
 
         runLayoutIdle(startUnreadPolling, 1200);
         runLayoutIdle(refreshCartBadge, 1200);
     } else {
-        // User is not logged in
         if (notLoggedInDiv) notLoggedInDiv.classList.remove('hidden');
-        if (loggedInDiv) loggedInDiv.classList.add('hidden');
+        if (loggedInDiv)    loggedInDiv.classList.add('hidden');
         if (mobileNotLoggedIn) mobileNotLoggedIn.classList.remove('hidden');
-        if (mobileLoggedIn) mobileLoggedIn.classList.add('hidden');
+        if (mobileLoggedIn)    mobileLoggedIn.classList.add('hidden');
 
         const badge = document.getElementById('notif-unread-badge');
         if (badge) badge.classList.add('hidden');
@@ -330,8 +387,10 @@ async function initLayout() {
     if (!layoutInitPromise) {
         layoutInitPromise = (async () => {
             initializeDarkMode();
-            await inject('site-navbar', '/partials/navbar.html', updateAuthSection);
-            await inject('site-footer', '/partials/footer.html');
+            await Promise.all([
+                inject('site-navbar', _navbarPromise, updateAuthSection),
+                inject('site-footer', _footerPromise),
+            ]);
             updateDarkModeIcon();
         })();
     }

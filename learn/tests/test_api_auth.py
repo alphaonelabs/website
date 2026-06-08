@@ -192,6 +192,7 @@ class TestApiLogin:
             name=_enc(name),
             username=_enc(username),
             email_verified=1,
+            avatar_url=None,
         )
 
     async def test_missing_username_returns_400(self):

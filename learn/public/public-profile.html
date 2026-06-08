@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="User Profile - Alpha One Labs">
+  <title id="page-title">Profile - Alpha One Labs</title>
+
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
+    (function () {
+      if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+    })();
+  </script>
+
+  <style>
+    html, body { overflow-x: hidden; }
+    .dark { color-scheme: dark; }
+    :root  { color-scheme: light; }
+    .avatar-ring { box-shadow: 0 0 0 4px #0d9488, 0 0 0 8px rgba(13,148,136,.2); }
+    .skill-chip { @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200; }
+    .social-link { @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition; }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors">
+
+  <div id="site-navbar"></div>
+
+  <!-- Not-found / private state -->
+  <div id="state-error" class="hidden flex-1 flex flex-col items-center justify-center py-24 text-center px-4">
+    <div class="text-7xl mb-4">🔒</div>
+    <h1 class="text-2xl font-bold mb-2" id="error-title">Profile Not Found</h1>
+    <p class="text-gray-500 dark:text-gray-400 mb-6" id="error-msg">This profile is private or does not exist.</p>
+    <a href="/users.html" class="inline-flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-semibold px-6 py-2.5 rounded-xl transition">
+      <i class="fas fa-users"></i> Browse Community
+    </a>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div id="state-loading" class="flex-1">
+    <div class="bg-gradient-to-br from-teal-600 to-cyan-600 py-20"></div>
+    <div class="max-w-3xl mx-auto px-4 py-10 animate-pulse space-y-4">
+      <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+    </div>
+  </div>
+
+  <!-- Profile content (hidden until loaded) -->
+  <div id="state-profile" class="hidden flex-1 flex flex-col">
+
+    <!-- Hero -->
+    <section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 py-16 relative overflow-hidden">
+      <div class="absolute inset-0 opacity-10 pointer-events-none select-none" aria-hidden="true">
+        <i class="fas fa-graduation-cap absolute top-6 left-8 text-7xl"></i>
+        <i class="fas fa-star absolute bottom-6 right-8 text-7xl"></i>
+      </div>
+      <div class="max-w-3xl mx-auto px-4 md:px-6 flex flex-col sm:flex-row items-center gap-8 relative">
+        <!-- Avatar -->
+        <div class="flex-shrink-0">
+          <div id="profile-avatar" class="avatar-ring w-28 h-28 rounded-full overflow-hidden bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-4xl font-bold select-none">
+            <span id="profile-initials">?</span>
+            <img id="profile-avatar-img" class="hidden w-full h-full object-cover" alt="avatar" />
+          </div>
+        </div>
+        <div class="text-center sm:text-left">
+          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
+            <h1 id="profile-name" class="text-3xl font-extrabold text-white"></h1>
+            <span id="teacher-badge" class="hidden items-center gap-1 bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
+              <i class="fas fa-chalkboard-teacher"></i> Teacher
+            </span>
+          </div>
+          <p id="profile-username" class="text-teal-100 text-sm">@username</p>
+          <p id="profile-member-since" class="text-teal-200 text-xs mt-1"></p>
+        </div>
+      </div>
+    </section>
+
+    <main class="flex-1 max-w-3xl mx-auto w-full px-4 md:px-6 py-10 space-y-6">
+
+      <!-- Bio -->
+      <div id="bio-card" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 class="font-bold text-base mb-3 flex items-center gap-2">
+          <i class="fas fa-quote-left text-teal-400"></i> About
+        </h2>
+        <p id="profile-bio" class="text-gray-700 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap"></p>
+      </div>
+
+      <!-- Expertise -->
+      <div id="expertise-card" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 class="font-bold text-base mb-3 flex items-center gap-2">
+          <i class="fas fa-tools text-teal-400"></i> Expertise &amp; Skills
+        </h2>
+        <div id="expertise-chips" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Social links -->
+      <div id="social-card" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 class="font-bold text-base mb-4 flex items-center gap-2">
+          <i class="fas fa-share-alt text-teal-400"></i> Connect
+        </h2>
+        <div id="social-links" class="flex flex-wrap gap-3"></div>
+      </div>
+
+      <!-- Activities -->
+      <div id="activities-card" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 class="font-bold text-base mb-4 flex items-center gap-2">
+          <i class="fas fa-broadcast-tower text-teal-400"></i> Hosted Activities
+        </h2>
+        <div id="activities-list" class="space-y-3"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="site-footer"></div>
+  <script src="/js/layout.js" defer></script>
+
+  <script>
+    const esc = window.esc || (s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+
+    const TYPE_ICON = { course:'fa-book', meetup:'fa-handshake', workshop:'fa-tools', seminar:'fa-microphone', other:'fa-star' };
+    const TYPE_COLOR = { course:'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200', meetup:'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200', workshop:'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200', seminar:'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200', other:'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+
+    function show(id)   { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
+    function hide(id)   { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+    function showBlock(id) { document.getElementById(id).classList.remove('hidden'); }
+    function hideBlock(id) { document.getElementById(id).classList.add('hidden'); }
+
+    async function loadProfile() {
+      const params   = new URLSearchParams(window.location.search);
+      const username = (params.get('username') || '').trim();
+
+      if (!username) {
+        showError('No username provided', 'Provide a ?username= parameter in the URL.');
+        return;
+      }
+
+      try {
+        const res  = await fetch(`/api/users/${encodeURIComponent(username)}`);
+        const json = await res.json();
+
+        hideBlock('state-loading');
+
+        if (!res.ok) {
+          const isPrivate = res.status === 403;
+          showError(
+            isPrivate ? 'Private Profile' : 'Profile Not Found',
+            isPrivate ? 'This member has chosen to keep their profile private.'
+                      : 'No account found with that username.',
+          );
+          return;
+        }
+
+        renderProfile(json.data);
+      } catch (e) {
+        hideBlock('state-loading');
+        showError('Error Loading Profile', 'Could not reach the server. Please try again.');
+      }
+    }
+
+    function showError(title, msg) {
+      document.getElementById('error-title').textContent = title;
+      document.getElementById('error-msg').textContent   = msg;
+      show('state-error');
+      hideBlock('state-profile');
+    }
+
+    function renderProfile(p) {
+      document.title = `${esc(p.name || p.username)} - Alpha One Labs`;
+      document.getElementById('page-title').textContent = `${p.name || p.username} - Alpha One Labs`;
+
+      document.getElementById('profile-name').textContent      = p.name || p.username;
+      document.getElementById('profile-username').textContent  = `@${p.username}`;
+      document.getElementById('profile-member-since').textContent = p.member_since
+        ? `Member since ${new Date(p.member_since).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}`
+        : '';
+
+      if (p.is_teacher) {
+        const badge = document.getElementById('teacher-badge');
+        badge.classList.remove('hidden');
+        badge.classList.add('inline-flex');
+      }
+
+      // Avatar
+      if (p.avatar_url) {
+        document.getElementById('profile-avatar-img').src = p.avatar_url;
+        document.getElementById('profile-avatar-img').classList.remove('hidden');
+        document.getElementById('profile-initials').classList.add('hidden');
+      } else {
+        const initials = (p.name || p.username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+        document.getElementById('profile-initials').textContent = initials;
+      }
+
+      // Bio
+      if (p.bio) {
+        document.getElementById('profile-bio').textContent = p.bio;
+      } else {
+        hideBlock('bio-card');
+      }
+
+      // Expertise chips
+      if (p.expertise) {
+        const skills = p.expertise.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+        const container = document.getElementById('expertise-chips');
+        skills.forEach(skill => {
+          const chip = document.createElement('span');
+          chip.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200';
+          chip.textContent = skill;
+          container.appendChild(chip);
+        });
+      } else {
+        hideBlock('expertise-card');
+      }
+
+      // Social links
+      const socials = document.getElementById('social-links');
+      let hasSocial = false;
+      if (p.github_username) {
+        hasSocial = true;
+        socials.innerHTML += `<a href="https://github.com/${encodeURIComponent(p.github_username)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"><i class="fab fa-github"></i> ${esc(p.github_username)}</a>`;
+      }
+      if (p.discord_username) {
+        hasSocial = true;
+        socials.innerHTML += `<span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium"><i class="fab fa-discord text-indigo-500"></i> ${esc(p.discord_username)}</span>`;
+      }
+      if (p.slack_username) {
+        hasSocial = true;
+        socials.innerHTML += `<span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium"><i class="fab fa-slack text-pink-500"></i> ${esc(p.slack_username)}</span>`;
+      }
+      if (!hasSocial) hideBlock('social-card');
+
+      // Activities
+      const actList = document.getElementById('activities-list');
+      if (p.activities && p.activities.length > 0) {
+        p.activities.forEach(a => {
+          const icon  = TYPE_ICON[a.type]  || TYPE_ICON.other;
+          const color = TYPE_COLOR[a.type] || TYPE_COLOR.other;
+          actList.innerHTML += `
+            <a href="/activity.html?id=${encodeURIComponent(a.id)}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition group">
+              <span class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${color}">
+                <i class="fas ${icon} text-sm"></i>
+              </span>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm truncate group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">${esc(a.title)}</p>
+                <p class="text-xs text-gray-400 capitalize">${esc(a.type)} · ${esc(a.format.replace('_',' '))}</p>
+              </div>
+              <i class="fas fa-chevron-right text-gray-300 dark:text-gray-600 group-hover:text-teal-500 transition text-xs"></i>
+            </a>`;
+        });
+      } else {
+        hideBlock('activities-card');
+      }
+
+      showBlock('state-profile');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProfile);
+  </script>
+</body>
+</html>
