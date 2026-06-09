@@ -98,7 +98,7 @@
       <a href="/activity.html" class="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 font-semibold hover:underline">
         <i class="fas fa-arrow-left"></i>Back to Activities
       </a>
-      <button id="download-btn" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-5 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
+      <button id="download-btn" type="button" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-5 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
         <i class="fas fa-download"></i>Download as PDF
       </button>
     </div>
@@ -195,8 +195,12 @@
     }
 
     function showError(message) {
-      document.getElementById('status').innerHTML =
-        `<div class="text-red-600 dark:text-red-400 font-semibold">${message}</div>`;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'text-red-600 dark:text-red-400 font-semibold';
+      wrapper.textContent = message;
+      const status = document.getElementById('status');
+      status.innerHTML = '';
+      status.appendChild(wrapper);
     }
 
     // Before printing: extract the QR <img> from the screen QR container and

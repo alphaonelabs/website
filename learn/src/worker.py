@@ -2536,17 +2536,26 @@ async def api_generate_certificate(request, env, enrollment_id):
         "SELECT id FROM certificates WHERE enrollment_id = ?"
     ).bind(enrollment_id).first()
     if existing:
-        return json_resp({
+        return ok({
             "uuid": existing.id,
             "url": "/certificate.html?uuid=" + existing.id,
-        }, status=409)
+        })
 
-    cert_uuid = str(uuid.uuid4())
+    cert_uuid = new_id()
     try:
         await env.DB.prepare(
             "INSERT INTO certificates (id, enrollment_id) VALUES (?, ?)"
         ).bind(cert_uuid, enrollment_id).run()
     except Exception as exc:
+        # Handle UNIQUE constraint violation (concurrent duplicate request)
+        existing_after = await env.DB.prepare(
+            "SELECT id FROM certificates WHERE enrollment_id = ?"
+        ).bind(enrollment_id).first()
+        if existing_after:
+            return ok({
+                "uuid": existing_after.id,
+                "url": "/certificate.html?uuid=" + existing_after.id,
+            })
         await capture_exception(exc, request, env, "api_generate_certificate.insert")
         return err("Failed to generate certificate", 500)
 

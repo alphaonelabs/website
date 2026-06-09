@@ -800,9 +800,8 @@
         });
         const payload = await res.json();
 
-        if (res.status === 200 || res.status === 409) {
-          const data = res.status === 409 ? payload : payload.data;
-          window.open('/certificate.html?uuid=' + encodeURIComponent(data.uuid), '_blank');
+        if (res.ok) {
+          window.open('/certificate.html?uuid=' + encodeURIComponent(payload.data.uuid), '_blank');
           button.disabled = false;
           button.innerHTML = originalHtml;
           return;
