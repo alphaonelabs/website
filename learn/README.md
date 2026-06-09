@@ -147,3 +147,26 @@ Frontend Server will start at:
 ```bash
 http://localhost:3000
 ```
+## API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| POST | /api/register | Register a new user |
+| POST | /api/login | Authenticate and return token |
+
+### Activities
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| GET | /api/activities | List activities |
+| POST | /api/activities | Create activity |
+| GET | /api/activities/:id | Get activity details |
+| POST | /api/join | Join activity |
+
+### Dashboard
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| GET | /api/dashboard | User dashboard |
