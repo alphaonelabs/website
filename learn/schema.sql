@@ -59,6 +59,14 @@ CREATE TABLE IF NOT EXISTS enrollments (
     FOREIGN KEY (user_id)     REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS certificates (
+    id            TEXT PRIMARY KEY,
+    enrollment_id TEXT NOT NULL UNIQUE,
+    issued_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
+);
+
 -- SESSION ATTENDANCE (optional per-session tracking)
 CREATE TABLE IF NOT EXISTS session_attendance (
     id         TEXT PRIMARY KEY,
@@ -90,6 +98,7 @@ CREATE TABLE IF NOT EXISTS activity_tags (
 CREATE INDEX IF NOT EXISTS idx_activities_host      ON activities(host_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_activity ON enrollments(activity_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_user     ON enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_enrollment ON certificates(enrollment_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_activity    ON sessions(activity_id);
 CREATE INDEX IF NOT EXISTS idx_sa_session           ON session_attendance(session_id);
 CREATE INDEX IF NOT EXISTS idx_sa_user              ON session_attendance(user_id);
