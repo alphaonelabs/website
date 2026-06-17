@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <!-- math.js for robust expression parsing & evaluation -->
+  <!-- math.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/13.0.0/math.min.js"></script>
 
   <script>
@@ -218,7 +218,7 @@
 
 <div id="site-navbar"></div>
 
-<!-- ═══════════════════════════════════════  HERO  ═══ -->
+<!-- Hero -->
 <section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 relative overflow-hidden py-12 md:py-14">
   <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
     <i class="fas fa-chart-line absolute top-6 left-10 text-8xl"></i>
@@ -238,17 +238,13 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════  MAIN  ═══ -->
 <main class="flex-1 w-full">
   <div class="max-w-[90rem] mx-auto">
 
-    <!-- Two-column layout: sidebar + graph, no gap so sidebar touches edges -->
     <div class="flex flex-col lg:flex-row items-stretch">
 
-      <!-- ════════════════════  LEFT PANEL  ════════════════════ -->
       <aside id="left-panel" class="flex flex-col bg-white dark:bg-gray-800 flex-shrink-0">
 
-        <!-- ── Enter Equation ── -->
         <div class="px-4 pt-4 pb-3">
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Enter Equation</p>
           <div class="flex gap-2">
@@ -261,7 +257,7 @@
               aria-label="Enter equation expression"
               onkeydown="if(event.key==='Enter') addFromInput()"
             />
-            <button
+            <button type="button"
               onclick="addFromInput()"
               class="px-4 py-2.5 text-sm font-semibold rounded-lg bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white transition-colors flex-shrink-0 shadow-sm"
               aria-label="Add equation"
@@ -269,24 +265,21 @@
           </div>
         </div>
 
-        <!-- ── Functions list ── -->
         <div class="panel-section-header">
           <span class="text-gray-600 dark:text-gray-300">Functions</span>
-          <!-- idle state -->
-          <button
+          <button type="button"
             id="clear-all-btn"
             onclick="askClearAll()"
             class="text-xs text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors flex items-center gap-1 font-medium"
             aria-label="Clear all equations"
           ><i class="fas fa-trash-alt text-xs"></i> Clear All</button>
-          <!-- confirm state (hidden by default) -->
           <span id="clear-confirm" class="hidden items-center gap-1.5">
             <span class="text-xs text-gray-500 dark:text-gray-400">Sure?</span>
-            <button
+            <button type="button"
               onclick="confirmClearAll()"
               class="text-xs font-semibold px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/40 transition-colors"
             >Yes</button>
-            <button
+            <button type="button"
               onclick="cancelClearAll()"
               class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >No</button>
@@ -296,58 +289,53 @@
           <!-- populated by JS -->
         </div>
 
-        <!-- ── Examples ── -->
         <div class="panel-section-header">
           <span class="text-gray-600 dark:text-gray-300">Examples</span>
         </div>
         <div class="px-4 pb-3 pt-1">
           <div class="grid grid-cols-3 gap-2">
-            <button onclick="loadExample(['x^2'],'Parabola')" class="ex-btn">
+            <button type="button" onclick="loadExample(['x^2'],'Parabola')" class="ex-btn">
               Parabola<span class="ex-math">x²</span>
             </button>
-            <button onclick="loadExample(['sin(x)'],'Sine Wave')" class="ex-btn">
+            <button type="button" onclick="loadExample(['sin(x)'],'Sine Wave')" class="ex-btn">
               Sine<span class="ex-math">sin(x)</span>
             </button>
-            <button onclick="loadExample(['sqrt(9-x^2)','-sqrt(9-x^2)'],'Circle')" class="ex-btn">
+            <button type="button" onclick="loadExample(['sqrt(9-x^2)','-sqrt(9-x^2)'],'Circle')" class="ex-btn">
               Circle<span class="ex-math">x²+y²=9</span>
             </button>
-            <button onclick="loadExample(['tan(x)'],'Tangent')" class="ex-btn">
+            <button type="button" onclick="loadExample(['tan(x)'],'Tangent')" class="ex-btn">
               Tangent<span class="ex-math">tan(x)</span>
             </button>
-            <button onclick="loadExample(['log10(x)'],'Logarithm')" class="ex-btn">
+            <button type="button" onclick="loadExample(['log10(x)'],'Logarithm')" class="ex-btn">
               Log<span class="ex-math">log(x)</span>
             </button>
-            <button onclick="loadExample(['exp(x)'],'Exponential')" class="ex-btn">
+            <button type="button" onclick="loadExample(['exp(x)'],'Exponential')" class="ex-btn">
               Exp<span class="ex-math">eˣ</span>
             </button>
           </div>
         </div>
 
-        <!-- ── Controls ── -->
         <div class="panel-section-header">
           <span class="text-gray-600 dark:text-gray-300">Controls</span>
         </div>
         <div class="px-4 py-3 space-y-2">
-          <!-- Zoom row -->
           <div class="grid grid-cols-3 gap-2">
-            <button class="ctrl-btn" onclick="zoomIn()"    title="Zoom In">  <i class="fas fa-magnifying-glass-plus"></i>Zoom In</button>
-            <button class="ctrl-btn reset-btn" onclick="resetView()" title="Reset View"><i class="fas fa-expand-arrows-alt"></i>Reset</button>
-            <button class="ctrl-btn" onclick="zoomOut()"   title="Zoom Out"> <i class="fas fa-magnifying-glass-minus"></i>Zoom Out</button>
+            <button type="button" class="ctrl-btn" onclick="zoomIn()"    title="Zoom In">  <i class="fas fa-magnifying-glass-plus"></i>Zoom In</button>
+            <button type="button" class="ctrl-btn reset-btn" onclick="resetView()" title="Reset View"><i class="fas fa-expand-arrows-alt"></i>Reset</button>
+            <button type="button" class="ctrl-btn" onclick="zoomOut()"   title="Zoom Out"> <i class="fas fa-magnifying-glass-minus"></i>Zoom Out</button>
           </div>
-          <!-- D-pad -->
           <div class="dpad-wrap">
             <div class="grid grid-cols-3 gap-1.5">
-              <button class="ctrl-btn" onclick="panLeft()"  title="Pan Left"> <i class="fas fa-arrow-left"></i>Left</button>
-              <button class="ctrl-btn" onclick="panUp()"    title="Pan Up">   <i class="fas fa-arrow-up"></i>Up</button>
-              <button class="ctrl-btn" onclick="panRight()" title="Pan Right"><i class="fas fa-arrow-right"></i>Right</button>
-              <button class="ctrl-btn" id="grid-toggle-btn" onclick="toggleGrid()" title="Toggle Grid"><i class="fas fa-border-all"></i>Grid</button>
-              <button class="ctrl-btn" onclick="panDown()"  title="Pan Down"> <i class="fas fa-arrow-down"></i>Down</button>
-              <button class="ctrl-btn" onclick="exportPNG()" title="Export PNG"><i class="fas fa-download"></i>Export</button>
+              <button type="button" class="ctrl-btn" onclick="panLeft()"  title="Pan Left"> <i class="fas fa-arrow-left"></i>Left</button>
+              <button type="button" class="ctrl-btn" onclick="panUp()"    title="Pan Up">   <i class="fas fa-arrow-up"></i>Up</button>
+              <button type="button" class="ctrl-btn" onclick="panRight()" title="Pan Right"><i class="fas fa-arrow-right"></i>Right</button>
+              <button type="button" class="ctrl-btn" id="grid-toggle-btn" onclick="toggleGrid()" title="Toggle Grid"><i class="fas fa-border-all"></i>Grid</button>
+              <button type="button" class="ctrl-btn" onclick="panDown()"  title="Pan Down"> <i class="fas fa-arrow-down"></i>Down</button>
+              <button type="button" class="ctrl-btn" onclick="exportPNG()" title="Export PNG"><i class="fas fa-download"></i>Export</button>
             </div>
           </div>
         </div>
 
-        <!-- ── Settings ── -->
         <div class="panel-section-header">
           <span class="text-gray-600 dark:text-gray-300">Settings</span>
         </div>
@@ -385,16 +373,13 @@
 
       </aside>
 
-      <!-- ════════════════════  GRAPH AREA  ════════════════════ -->
       <div class="flex-1 min-w-0 flex flex-col gap-2 p-4 md:p-6">
 
-        <!-- Error banner -->
         <div id="error-banner" class="hidden rounded-xl px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-300 flex items-start gap-2" role="alert" aria-live="polite">
           <i class="fas fa-circle-exclamation mt-0.5 flex-shrink-0"></i>
           <span id="error-text"></span>
         </div>
 
-        <!-- Canvas card -->
         <div class="rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden flex-1" style="min-height:460px; height: calc(100vh - 70px - 120px);">
           <canvas id="graph-canvas"
             role="img"
@@ -403,13 +388,11 @@
           ></canvas>
         </div>
 
-        <!-- Info bar -->
         <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 px-1">
           <span id="coords-display">Hover or touch the graph to see coordinates</span>
           <span id="view-range" class="font-mono"></span>
         </div>
 
-        <!-- Keyboard hint -->
         <p class="text-xs text-gray-400 dark:text-gray-500 px-1">
           <i class="fas fa-keyboard mr-1"></i>Arrow keys to pan · <kbd class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">+</kbd>/<kbd class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">−</kbd> to zoom · Scroll wheel or pinch to zoom
         </p>
@@ -418,17 +401,17 @@
   </div>
 </main>
 
-<!-- ═════════  FULLSCREEN OVERLAY  ═════════ -->
+<!-- Fullscreen overlay -->
 <div id="fs-overlay" class="hidden">
   <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
     <span class="font-bold text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
       <i class="fas fa-calculator text-teal-500"></i>Graphing Calculator — Fullscreen
     </span>
     <div class="flex gap-2">
-      <button onclick="exportPNG(true)" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors">
+      <button type="button" onclick="exportPNG(true)" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors">
         <i class="fas fa-download mr-1"></i>Export
       </button>
-      <button onclick="toggleFullscreen()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors">
+      <button type="button" onclick="toggleFullscreen()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors">
         <i class="fas fa-compress mr-1"></i>Exit Fullscreen
       </button>
     </div>
@@ -439,13 +422,10 @@
 <div id="site-footer"></div>
 <script src="/js/layout.js" defer></script>
 
-<!-- GRAPHING CALCULATOR — JAVASCRIPT ENGINE  -->
 <script>
 'use strict';
 
-
-//  STATE
-
+// state
 
 const PALETTE = [
   '#0d9488','#7c3aed','#dc2626','#2563eb',
@@ -464,9 +444,8 @@ let V = { xMin:-10, xMax:10, yMin:-7, yMax:7 };
 // Settings
 let showGrid    = true;
 let gridSizeMul = 1;    // 0.5 = fine, 1 = normal, 2 = coarse
-let lineWidth   = 2
+let lineWidth   = 2;
 
-//  MATH ENGINE  (math.js)
 
 function normalizeExpr(raw) {
   let e = raw.trim();
@@ -487,7 +466,7 @@ function compileFn(exprStr) {
   };
 }
 
-//  CANVAS SETUP
+// canvas setup
 
 const canvas = document.getElementById('graph-canvas');
 const ctx    = canvas.getContext('2d');
@@ -533,7 +512,7 @@ function toMath(px, py) {
   };
 }
 
-//  DRAW
+// drawing
 
 function isDark() { return document.documentElement.classList.contains('dark'); }
 
@@ -675,7 +654,7 @@ function updateInfoBar() {
   }
 }
 
-//  ZOOM & PAN
+// zoom and pan
 
 function zoomAround(cx, cy, factor) {
   V.xMin = cx + (V.xMin - cx) * factor;
@@ -717,7 +696,7 @@ function centerOrigin() {
   draw();
 }
 
-// ─── Mouse wheel zoom ───
+// mouse wheel zoom
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const rect  = canvas.getBoundingClientRect();
@@ -725,7 +704,7 @@ canvas.addEventListener('wheel', e => {
   zoomAround(x, y, e.deltaY > 0 ? 1.14 : 0.88);
 }, { passive: false });
 
-// ─── Mouse drag pan ───
+// mouse drag pan
 let drag = { on: false, sx: 0, sy: 0, V0: null };
 
 canvas.addEventListener('mousedown', e => {
@@ -749,7 +728,7 @@ window.addEventListener('mousemove', e => {
 });
 window.addEventListener('mouseup', () => { drag.on = false; });
 
-// ─── Touch ───
+// touch events
 let touch = { dist: null, cx: null, cy: null };
 
 canvas.addEventListener('touchstart', e => {
@@ -787,7 +766,7 @@ canvas.addEventListener('touchmove', e => {
 
 canvas.addEventListener('touchend', () => { drag.on = false; touch.dist = null; });
 
-// ─── Keyboard ───
+// keyboard navigation
 canvas.addEventListener('keydown', e => {
   switch (e.key) {
     case 'ArrowLeft':  panLeft();  break;
@@ -801,7 +780,7 @@ canvas.addEventListener('keydown', e => {
   e.preventDefault();
 });
 
-//  EQUATION MANAGEMENT
+// equation management
 
 function addFromInput() {
   const inp = document.getElementById('eq-input');
@@ -915,7 +894,7 @@ function showErrors() {
   }
 }
 
-//  RENDER FUNCTION LIST
+// render function list
 
 function renderFunctionList() {
   const el = document.getElementById('functions-list');
@@ -935,7 +914,7 @@ function renderFunctionList() {
     const hasErr = eq.errors.length > 0;
     return `
     <div class="eq-row flex items-center gap-2.5 px-4 py-3 ${eq.enabled ? '' : 'dimmed'}" role="listitem">
-      <button
+      <button type="button"
         class="color-dot flex-shrink-0"
         style="background:${eq.color}"
         onclick="cycleColor(${eq.id})"
@@ -957,7 +936,7 @@ function renderFunctionList() {
         aria-label="Equation ${idx + 1}"
         autocomplete="off" spellcheck="false"
       />
-      <button
+      <button type="button"
         onclick="toggleEquation(${eq.id})"
         class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
                ${eq.enabled ? 'text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20' : 'text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}
@@ -966,7 +945,7 @@ function renderFunctionList() {
         aria-pressed="${eq.enabled}"
         aria-label="${eq.enabled ? 'Hide' : 'Show'} equation ${idx + 1}"
       ><i class="fas ${eq.enabled ? 'fa-eye' : 'fa-eye-slash'} text-xs"></i></button>
-      <button
+      <button type="button"
         onclick="removeEquation(${eq.id})"
         class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
                text-gray-300 dark:text-gray-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -981,7 +960,7 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-//  EXAMPLES
+// examples
 
 function loadExample(exprs, label) {
   // For multi-part examples like circles, add all parts sharing one color slot
@@ -996,7 +975,7 @@ function loadExample(exprs, label) {
   showErrors();
 }
 
-//  SETTINGS
+// settings
 
 function toggleGrid() {
   showGrid = !showGrid;
@@ -1024,7 +1003,7 @@ function onLineWidthChange(val) {
   draw();
 }
 
-//  EXPORT
+// export
 
 function exportPNG(fromFs) {
   const src   = fromFs ? fsCanvas : canvas;
@@ -1034,7 +1013,7 @@ function exportPNG(fromFs) {
   link.click();
 }
 
-//  FULLSCREEN
+// fullscreen
 
 const fsOverlay = document.getElementById('fs-overlay');
 const fsCanvas  = document.getElementById('fs-canvas');
@@ -1143,14 +1122,14 @@ fsCanvas.addEventListener('wheel', e => {
   drawFs(w, h);
 }, { passive: false });
 
-//  DARK MODE OBSERVER — redraw on toggle
+// redraw on dark mode toggle
 
 new MutationObserver(() => {
   draw();
   if (fsOn) drawFs(fsCanvas.clientWidth, fsCanvas.clientHeight);
 }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-//  INIT
+// init
 
 window.addEventListener('resize', () => {
   resizeCanvas();
