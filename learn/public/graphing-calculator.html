@@ -690,12 +690,6 @@ function resetView() {
   draw();
 }
 
-function centerOrigin() {
-  const rx = (V.xMax - V.xMin) / 2, ry = (V.yMax - V.yMin) / 2;
-  V = { xMin:-rx, xMax:rx, yMin:-ry, yMax:ry };
-  draw();
-}
-
 // mouse wheel zoom
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
@@ -843,10 +837,11 @@ function cycleColor(id) {
 function onRawInput(id, val) {
   const eq = equations.find(e => e.id === id);
   if (!eq) return;
-  eq.raw = val;
+  // Capture whether this was a multi-part equation before overwriting
+  const wasArray = Array.isArray(eq.raw);
+  eq.raw = wasArray ? val.split(',').map(s => s.trim()).filter(Boolean) : val;
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
-    eq.raw = Array.isArray(eq.raw) ? eq.raw : val; // keep single
     compileEq(eq);
     renderFunctionList();
     draw();
