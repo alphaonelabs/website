@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Graphing Calculator – visualize and explore mathematical functions interactively on Alpha One Labs.">
+  <meta name="keywords" content="graphing calculator, math, functions, equations, Alpha One Labs">
+  <title>Graphing Calculator - Alpha One Labs</title>
+
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- math.js for robust expression parsing & evaluation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/13.0.0/math.min.js"></script>
+
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
+    (function () {
+      if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+      else if (localStorage.getItem('darkMode') === null) localStorage.setItem('darkMode', 'false');
+    })();
+  </script>
+
+  <style>
+    html, body { overflow-x: hidden; box-sizing: border-box; }
+    .dark  { color-scheme: dark; }
+    :root  { color-scheme: light; }
+
+    /* Canvas */
+    #graph-canvas { cursor: grab; display: block; width: 100%; height: 100%; touch-action: none; }
+    #graph-canvas:active { cursor: grabbing; }
+
+    /* Equation rows */
+    .eq-row          { transition: opacity 0.18s; }
+    .eq-row.dimmed   { opacity: 0.38; }
+
+    /* Color dot */
+    .color-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.7);
+      cursor: pointer; flex-shrink: 0;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
+      transition: transform 0.12s;
+    }
+    .color-dot:hover { transform: scale(1.25); }
+
+    /* Panel section headers */
+    .panel-section-header {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #4b5563;
+      padding: 0.75rem 1rem 0.35rem;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dark .panel-section-header {
+      color: #9ca3af;
+      border-color: #1f2937;
+    }
+
+    /* Control grid buttons */
+    .ctrl-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px;
+      height: 50px;
+      border-radius: 10px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.13s, border-color 0.13s, color 0.13s, transform 0.1s;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      color: #4b5563;
+      user-select: none;
+      letter-spacing: 0.01em;
+    }
+    .dark .ctrl-btn {
+      background: #1f2937;
+      border-color: #374151;
+      color: #9ca3af;
+    }
+    .ctrl-btn:hover {
+      background: #f0fdfa;
+      border-color: #99f6e4;
+      color: #0f766e;
+    }
+    .dark .ctrl-btn:hover {
+      background: #0d3330;
+      border-color: #2dd4bf;
+      color: #5eead4;
+    }
+    .ctrl-btn:active { transform: scale(0.91); }
+    .ctrl-btn i { font-size: 0.85rem; }
+
+    /* Reset button gets a subtle accent */
+    .ctrl-btn.reset-btn {
+      background: #f0fdfa;
+      border-color: #ccfbf1;
+      color: #0f766e;
+    }
+    .dark .ctrl-btn.reset-btn {
+      background: #0d3330;
+      border-color: #115e59;
+      color: #5eead4;
+    }
+    .ctrl-btn.reset-btn:hover {
+      background: #ccfbf1;
+      border-color: #5eead4;
+    }
+    .dark .ctrl-btn.reset-btn:hover {
+      background: #134e4a;
+      border-color: #2dd4bf;
+    }
+
+    /* Direction pad subtle background */
+    .dpad-wrap {
+      background: #f9fafb;
+      border: 1px solid #f3f4f6;
+      border-radius: 12px;
+      padding: 6px;
+    }
+    .dark .dpad-wrap {
+      background: #111827;
+      border-color: #1f2937;
+    }
+
+    /* (ex-chip replaced by ex-btn below) */
+
+    /* Left panel — full-height sticky sidebar */
+    #left-panel {
+      width: 300px;
+      min-width: 280px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 70px;                       /* sit flush below the 70px navbar */
+      height: calc(100vh - 70px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-right: 1px solid #e5e7eb;
+      border-radius: 0;
+    }
+    .dark #left-panel { border-right-color: #1f2937; }
+
+    /* Thin scrollbar on the sidebar itself */
+    #left-panel::-webkit-scrollbar       { width: 4px; }
+    #left-panel::-webkit-scrollbar-track { background: transparent; }
+    #left-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+    .dark #left-panel::-webkit-scrollbar-thumb { background: #374151; }
+
+    /* Functions list — no max-height, sidebar handles scroll */
+    #functions-list { overflow: visible; }
+
+    @media (max-width: 1023px) {
+      #left-panel {
+        position: static;
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .dark #left-panel { border-bottom-color: #1f2937; }
+    }
+
+    /* Examples 3×3 grid — clean, no colour */
+    .ex-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px;
+      padding: 12px 6px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: #111827;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .ex-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+    .ex-btn:active { transform: scale(0.96); }
+    .dark .ex-btn {
+      background: #1f2937; border-color: #374151; color: #f9fafb;
+    }
+    .dark .ex-btn:hover { background: #111827; border-color: #4b5563; }
+    .ex-btn .ex-math {
+      font-family: 'Georgia', serif;
+      font-size: 0.68rem;
+      color: #6b7280;
+      font-weight: 400;
+    }
+    .dark .ex-btn .ex-math { color: #9ca3af; }
+
+    /* Hero fade */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.3s ease both; }
+
+    /* Fullscreen overlay */
+    #fs-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column;
+      background: #fff;
+    }
+    .dark #fs-overlay { background: #111827; }
+    #fs-overlay.hidden { display: none; }
+    #fs-canvas { cursor: grab; display: block; flex: 1; width: 100%; touch-action: none; }
+    #fs-canvas:active { cursor: grabbing; }
+
+    /* Tooltip */
+    [title] { position: relative; }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+
+<div id="site-navbar"></div>
+
+<!-- ═══════════════════════════════════════  HERO  ═══ -->
+<section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 relative overflow-hidden py-12 md:py-14">
+  <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
+    <i class="fas fa-chart-line absolute top-6 left-10 text-8xl"></i>
+    <i class="fas fa-infinity    absolute bottom-4 right-10 text-8xl"></i>
+    <i class="fas fa-square-root-variable absolute top-1/2 right-1/4 -translate-y-1/2 text-6xl"></i>
+  </div>
+  <div class="relative max-w-[90rem] mx-auto px-4 md:px-6 fade-up">
+    <p class="text-teal-100 text-xs font-semibold tracking-widest uppercase mb-2">
+      <i class="fas fa-calculator mr-2"></i>LEARN › Tools
+    </p>
+    <h1 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-2">
+      Graphing Calculator
+    </h1>
+    <p class="text-base text-teal-100 max-w-xl">
+      Visualize mathematical functions, explore equations, and learn through interactive graphing.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════  MAIN  ═══ -->
+<main class="flex-1 w-full">
+  <div class="max-w-[90rem] mx-auto">
+
+    <!-- Two-column layout: sidebar + graph, no gap so sidebar touches edges -->
+    <div class="flex flex-col lg:flex-row items-stretch">
+
+      <!-- ════════════════════  LEFT PANEL  ════════════════════ -->
+      <aside id="left-panel" class="flex flex-col bg-white dark:bg-gray-800 flex-shrink-0">
+
+        <!-- ── Enter Equation ── -->
+        <div class="px-4 pt-4 pb-3">
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Enter Equation</p>
+          <div class="flex gap-2">
+            <input
+              id="eq-input"
+              type="text"
+              placeholder="e.g., y = sin(x)"
+              class="flex-1 min-w-0 text-sm rounded-lg px-3 py-2.5 bg-gray-50 dark:bg-gray-700/80 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
+              autocomplete="off" spellcheck="false"
+              aria-label="Enter equation expression"
+              onkeydown="if(event.key==='Enter') addFromInput()"
+            />
+            <button
+              onclick="addFromInput()"
+              class="px-4 py-2.5 text-sm font-semibold rounded-lg bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white transition-colors flex-shrink-0 shadow-sm"
+              aria-label="Add equation"
+            >Add</button>
+          </div>
+        </div>
+
+        <!-- ── Functions list ── -->
+        <div class="panel-section-header">
+          <span class="text-gray-600 dark:text-gray-300">Functions</span>
+          <!-- idle state -->
+          <button
+            id="clear-all-btn"
+            onclick="askClearAll()"
+            class="text-xs text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors flex items-center gap-1 font-medium"
+            aria-label="Clear all equations"
+          ><i class="fas fa-trash-alt text-xs"></i> Clear All</button>
+          <!-- confirm state (hidden by default) -->
+          <span id="clear-confirm" class="hidden items-center gap-1.5">
+            <span class="text-xs text-gray-500 dark:text-gray-400">Sure?</span>
+            <button
+              onclick="confirmClearAll()"
+              class="text-xs font-semibold px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/40 transition-colors"
+            >Yes</button>
+            <button
+              onclick="cancelClearAll()"
+              class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >No</button>
+          </span>
+        </div>
+        <div id="functions-list" class="divide-y divide-gray-100 dark:divide-gray-700/40" role="list" aria-label="Active equations">
+          <!-- populated by JS -->
+        </div>
+
+        <!-- ── Examples ── -->
+        <div class="panel-section-header">
+          <span class="text-gray-600 dark:text-gray-300">Examples</span>
+        </div>
+        <div class="px-4 pb-3 pt-1">
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="loadExample(['x^2'],'Parabola')" class="ex-btn">
+              Parabola<span class="ex-math">x²</span>
+            </button>
+            <button onclick="loadExample(['sin(x)'],'Sine Wave')" class="ex-btn">
+              Sine<span class="ex-math">sin(x)</span>
+            </button>
+            <button onclick="loadExample(['sqrt(9-x^2)','-sqrt(9-x^2)'],'Circle')" class="ex-btn">
+              Circle<span class="ex-math">x²+y²=9</span>
+            </button>
+            <button onclick="loadExample(['tan(x)'],'Tangent')" class="ex-btn">
+              Tangent<span class="ex-math">tan(x)</span>
+            </button>
+            <button onclick="loadExample(['log10(x)'],'Logarithm')" class="ex-btn">
+              Log<span class="ex-math">log(x)</span>
+            </button>
+            <button onclick="loadExample(['exp(x)'],'Exponential')" class="ex-btn">
+              Exp<span class="ex-math">eˣ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Controls ── -->
+        <div class="panel-section-header">
+          <span class="text-gray-600 dark:text-gray-300">Controls</span>
+        </div>
+        <div class="px-4 py-3 space-y-2">
+          <!-- Zoom row -->
+          <div class="grid grid-cols-3 gap-2">
+            <button class="ctrl-btn" onclick="zoomIn()"    title="Zoom In">  <i class="fas fa-magnifying-glass-plus"></i>Zoom In</button>
+            <button class="ctrl-btn reset-btn" onclick="resetView()" title="Reset View"><i class="fas fa-expand-arrows-alt"></i>Reset</button>
+            <button class="ctrl-btn" onclick="zoomOut()"   title="Zoom Out"> <i class="fas fa-magnifying-glass-minus"></i>Zoom Out</button>
+          </div>
+          <!-- D-pad -->
+          <div class="dpad-wrap">
+            <div class="grid grid-cols-3 gap-1.5">
+              <button class="ctrl-btn" onclick="panLeft()"  title="Pan Left"> <i class="fas fa-arrow-left"></i>Left</button>
+              <button class="ctrl-btn" onclick="panUp()"    title="Pan Up">   <i class="fas fa-arrow-up"></i>Up</button>
+              <button class="ctrl-btn" onclick="panRight()" title="Pan Right"><i class="fas fa-arrow-right"></i>Right</button>
+              <button class="ctrl-btn" id="grid-toggle-btn" onclick="toggleGrid()" title="Toggle Grid"><i class="fas fa-border-all"></i>Grid</button>
+              <button class="ctrl-btn" onclick="panDown()"  title="Pan Down"> <i class="fas fa-arrow-down"></i>Down</button>
+              <button class="ctrl-btn" onclick="exportPNG()" title="Export PNG"><i class="fas fa-download"></i>Export</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Settings ── -->
+        <div class="panel-section-header">
+          <span class="text-gray-600 dark:text-gray-300">Settings</span>
+        </div>
+        <div class="px-4 pb-4 pt-1 space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Grid Size</span>
+              <span id="grid-size-label" class="text-sm font-semibold text-teal-600 dark:text-teal-400">Normal</span>
+            </div>
+            <input
+              id="grid-size-range"
+              type="range" min="1" max="3" step="1" value="2"
+              class="w-full accent-teal-500 cursor-pointer h-1.5"
+              oninput="onGridSizeChange(this.value)"
+              aria-label="Grid size"
+            />
+            <div class="flex justify-between text-xs text-gray-400 dark:text-gray-600 mt-1.5">
+              <span>Fine</span><span>Normal</span><span>Coarse</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Line Width</span>
+              <span id="line-width-label" class="text-sm font-semibold text-teal-600 dark:text-teal-400">2px</span>
+            </div>
+            <input
+              id="line-width-range"
+              type="range" min="1" max="4" step="0.5" value="2"
+              class="w-full accent-teal-500 cursor-pointer h-1.5"
+              oninput="onLineWidthChange(this.value)"
+              aria-label="Line width"
+            />
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ════════════════════  GRAPH AREA  ════════════════════ -->
+      <div class="flex-1 min-w-0 flex flex-col gap-2 p-4 md:p-6">
+
+        <!-- Error banner -->
+        <div id="error-banner" class="hidden rounded-xl px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-300 flex items-start gap-2" role="alert" aria-live="polite">
+          <i class="fas fa-circle-exclamation mt-0.5 flex-shrink-0"></i>
+          <span id="error-text"></span>
+        </div>
+
+        <!-- Canvas card -->
+        <div class="rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden flex-1" style="min-height:460px; height: calc(100vh - 70px - 120px);">
+          <canvas id="graph-canvas"
+            role="img"
+            aria-label="Interactive graph of mathematical functions. Use mouse wheel to zoom, drag to pan."
+            tabindex="0"
+          ></canvas>
+        </div>
+
+        <!-- Info bar -->
+        <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 px-1">
+          <span id="coords-display">Hover or touch the graph to see coordinates</span>
+          <span id="view-range" class="font-mono"></span>
+        </div>
+
+        <!-- Keyboard hint -->
+        <p class="text-xs text-gray-400 dark:text-gray-500 px-1">
+          <i class="fas fa-keyboard mr-1"></i>Arrow keys to pan · <kbd class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">+</kbd>/<kbd class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">−</kbd> to zoom · Scroll wheel or pinch to zoom
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ═════════  FULLSCREEN OVERLAY  ═════════ -->
+<div id="fs-overlay" class="hidden">
+  <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+    <span class="font-bold text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+      <i class="fas fa-calculator text-teal-500"></i>Graphing Calculator — Fullscreen
+    </span>
+    <div class="flex gap-2">
+      <button onclick="exportPNG(true)" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors">
+        <i class="fas fa-download mr-1"></i>Export
+      </button>
+      <button onclick="toggleFullscreen()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors">
+        <i class="fas fa-compress mr-1"></i>Exit Fullscreen
+      </button>
+    </div>
+  </div>
+  <canvas id="fs-canvas" role="img" aria-label="Fullscreen graph"></canvas>
+</div>
+
+<div id="site-footer"></div>
+<script src="/js/layout.js" defer></script>
+
+<!-- GRAPHING CALCULATOR — JAVASCRIPT ENGINE  -->
+<script>
+'use strict';
+
+
+//  STATE
+
+
+const PALETTE = [
+  '#0d9488','#7c3aed','#dc2626','#2563eb',
+  '#d97706','#db2777','#059669','#9333ea',
+  '#0891b2','#ea580c','#65a30d','#c026d3',
+];
+
+let equations    = [];   // { id, raw, exprs[], color, enabled, fns[], errors[] }
+let nextId       = 0;
+let nextColorIdx = 0;
+let debounceTimer= null;
+
+// View
+let V = { xMin:-10, xMax:10, yMin:-7, yMax:7 };
+
+// Settings
+let showGrid    = true;
+let gridSizeMul = 1;    // 0.5 = fine, 1 = normal, 2 = coarse
+let lineWidth   = 2
+
+//  MATH ENGINE  (math.js)
+
+function normalizeExpr(raw) {
+  let e = raw.trim();
+  // Strip leading "y =", "f(x) =", "y=" etc.
+  e = e.replace(/^[yfg]\s*\(?\s*x\s*\)?\s*=\s*/i, '').replace(/^y\s*=\s*/i, '');
+  return e;
+}
+
+function compileFn(exprStr) {
+  const e = normalizeExpr(exprStr);
+  if (!e) return null;
+  const compiled = math.compile(e);
+  return function(x) {
+    const scope = { x, pi: Math.PI, e: Math.E, tau: 2 * Math.PI };
+    const result = compiled.evaluate(scope);
+    if (typeof result !== 'number') return NaN;
+    return result;
+  };
+}
+
+//  CANVAS SETUP
+
+const canvas = document.getElementById('graph-canvas');
+const ctx    = canvas.getContext('2d');
+let dpr      = window.devicePixelRatio || 1;
+
+function resizeCanvas() {
+  const c = canvas.parentElement;
+  dpr = window.devicePixelRatio || 1;
+  canvas.width  = c.clientWidth  * dpr;
+  canvas.height = c.clientHeight * dpr;
+  canvas.style.width  = c.clientWidth  + 'px';
+  canvas.style.height = c.clientHeight + 'px';
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+  fitAspect(c.clientWidth, c.clientHeight);
+  draw();
+}
+
+function fitAspect(w, h) {
+  const cx = (V.xMin + V.xMax) / 2;
+  const cy = (V.yMin + V.yMax) / 2;
+  const rx = (V.xMax - V.xMin) / 2;
+  const ratio = h / w;
+  V.yMin = cy - rx * ratio;
+  V.yMax = cy + rx * ratio;
+}
+
+const LW = () => canvas.clientWidth;
+const LH = () => canvas.clientHeight;
+
+function toPixel(x, y) {
+  const w = LW(), h = LH();
+  return {
+    px: ((x - V.xMin) / (V.xMax - V.xMin)) * w,
+    py: h - ((y - V.yMin) / (V.yMax - V.yMin)) * h,
+  };
+}
+function toMath(px, py) {
+  const w = LW(), h = LH();
+  return {
+    x: V.xMin + (px / w) * (V.xMax - V.xMin),
+    y: V.yMin + ((h - py) / h) * (V.yMax - V.yMin),
+  };
+}
+
+//  DRAW
+
+function isDark() { return document.documentElement.classList.contains('dark'); }
+
+function draw() {
+  const w = LW(), h = LH(), dark = isDark();
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = dark ? '#1f2937' : '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+
+  if (showGrid) drawGrid(w, h, dark);
+  drawAxes(w, h, dark);
+  drawCurves(w, h);
+  updateInfoBar();
+}
+
+function niceStep(range, maxTicks) {
+  const raw = range / maxTicks;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const r   = raw / mag;
+  const step = r < 1.5 ? 1 : r < 3.5 ? 2 : r < 7.5 ? 5 : 10;
+  return step * mag * gridSizeMul;
+}
+
+function drawGrid(w, h, dark) {
+  const xStep  = niceStep(V.xMax - V.xMin, 10);
+  const yStep  = niceStep(V.yMax - V.yMin, 8);
+
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.065)';
+  ctx.lineWidth   = 1;
+
+  const x0 = Math.ceil(V.xMin / xStep) * xStep;
+  for (let x = x0; x <= V.xMax + xStep * 0.01; x += xStep) {
+    const { px } = toPixel(x, 0);
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, h); ctx.stroke();
+  }
+  const y0 = Math.ceil(V.yMin / yStep) * yStep;
+  for (let y = y0; y <= V.yMax + yStep * 0.01; y += yStep) {
+    const { py } = toPixel(0, y);
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(w, py); ctx.stroke();
+  }
+
+  // Tick labels
+  const origin = toPixel(0, 0);
+  const lx = Math.min(Math.max(origin.px + 5, 5), w - 36);
+  const ly = Math.min(Math.max(origin.py + 4, 4), h - 14);
+
+  ctx.fillStyle = dark ? 'rgba(156,163,175,0.85)' : 'rgba(100,116,139,0.85)';
+  ctx.font = '10.5px system-ui,sans-serif';
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let x = x0; x <= V.xMax + xStep * 0.01; x += xStep) {
+    if (Math.abs(x) < xStep * 0.01) continue;
+    const { px } = toPixel(x, 0);
+    ctx.fillText(fmtNum(x), px, ly);
+  }
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let y = y0; y <= V.yMax + yStep * 0.01; y += yStep) {
+    if (Math.abs(y) < yStep * 0.01) continue;
+    const { py } = toPixel(0, y);
+    ctx.fillText(fmtNum(y), lx, py);
+  }
+}
+
+function fmtNum(n) {
+  const s = parseFloat(n.toPrecision(5)).toString();
+  return s.length > 8 ? n.toExponential(1) : s;
+}
+
+function drawAxes(w, h, dark) {
+  const o = toPixel(0, 0);
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.28)' : 'rgba(15,23,42,0.32)';
+  ctx.lineWidth   = 1.5;
+
+  ctx.beginPath(); ctx.moveTo(0, o.py); ctx.lineTo(w, o.py); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(o.px, 0); ctx.lineTo(o.px, h); ctx.stroke();
+
+  // Axis arrows
+  const s = 5;
+  ctx.fillStyle = ctx.strokeStyle;
+  // X arrow
+  ctx.beginPath();
+  ctx.moveTo(w - 1, o.py); ctx.lineTo(w - s * 2, o.py - s); ctx.lineTo(w - s * 2, o.py + s); ctx.closePath(); ctx.fill();
+  // Y arrow
+  ctx.beginPath();
+  ctx.moveTo(o.px, 1); ctx.lineTo(o.px - s, s * 2); ctx.lineTo(o.px + s, s * 2); ctx.closePath(); ctx.fill();
+
+  // Axis labels
+  ctx.fillStyle = dark ? 'rgba(148,163,184,0.9)' : 'rgba(71,85,105,0.9)';
+  ctx.font = 'bold 12px system-ui,sans-serif';
+  ctx.textAlign = 'left';  ctx.textBaseline = 'middle'; ctx.fillText('x', w - 14, o.py - 8);
+  ctx.textAlign = 'left';  ctx.textBaseline = 'top';    ctx.fillText('y', o.px + 6, 4);
+}
+
+function drawCurves(w, h) {
+  const steps = Math.ceil(w * 2.5);
+  const dx    = (V.xMax - V.xMin) / steps;
+  const yRange = V.yMax - V.yMin;
+
+  for (const eq of equations) {
+    if (!eq.enabled) continue;
+
+    for (const fn of eq.fns) {
+      ctx.strokeStyle = eq.color;
+      ctx.lineWidth   = lineWidth;
+      ctx.lineJoin    = 'round';
+      ctx.lineCap     = 'round';
+      ctx.beginPath();
+
+      let penDown = false;
+      let prevY   = null;
+
+      for (let i = 0; i <= steps; i++) {
+        const x = V.xMin + i * dx;
+        let y;
+        try { y = fn(x); } catch (_) { penDown = false; prevY = null; continue; }
+
+        if (!isFinite(y) || isNaN(y)) { penDown = false; prevY = null; continue; }
+
+        // Discontinuity guard (asymptotes)
+        if (prevY !== null && Math.abs(y - prevY) > yRange * 2.5) { penDown = false; }
+        prevY = y;
+
+        const { px, py } = toPixel(x, y);
+        if (!penDown) { ctx.moveTo(px, py); penDown = true; }
+        else           { ctx.lineTo(px, py); }
+      }
+      ctx.stroke();
+    }
+  }
+}
+
+function updateInfoBar() {
+  const el = document.getElementById('view-range');
+  if (el) {
+    const f = v => parseFloat(v.toPrecision(4));
+    el.textContent = `x [${f(V.xMin)}, ${f(V.xMax)}]  y [${f(V.yMin)}, ${f(V.yMax)}]`;
+  }
+}
+
+//  ZOOM & PAN
+
+function zoomAround(cx, cy, factor) {
+  V.xMin = cx + (V.xMin - cx) * factor;
+  V.xMax = cx + (V.xMax - cx) * factor;
+  V.yMin = cy + (V.yMin - cy) * factor;
+  V.yMax = cy + (V.yMax - cy) * factor;
+  draw();
+}
+
+function zoomIn()  { const c = viewCenter(); zoomAround(c.x, c.y, 0.72); }
+function zoomOut() { const c = viewCenter(); zoomAround(c.x, c.y, 1.39); }
+
+function viewCenter() {
+  return { x: (V.xMin + V.xMax) / 2, y: (V.yMin + V.yMax) / 2 };
+}
+
+function panBy(fx, fy) {
+  const rx = V.xMax - V.xMin, ry = V.yMax - V.yMin;
+  V.xMin += rx * fx; V.xMax += rx * fx;
+  V.yMin += ry * fy; V.yMax += ry * fy;
+  draw();
+}
+
+function panLeft()  { panBy(-0.18,  0); }
+function panRight() { panBy( 0.18,  0); }
+function panUp()    { panBy( 0,  0.18); }
+function panDown()  { panBy( 0, -0.18); }
+
+function resetView() {
+  const w = LW(), h = LH();
+  const ratio = h / w;
+  V = { xMin:-10, xMax:10, yMin:-10 * ratio, yMax:10 * ratio };
+  draw();
+}
+
+function centerOrigin() {
+  const rx = (V.xMax - V.xMin) / 2, ry = (V.yMax - V.yMin) / 2;
+  V = { xMin:-rx, xMax:rx, yMin:-ry, yMax:ry };
+  draw();
+}
+
+// ─── Mouse wheel zoom ───
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect  = canvas.getBoundingClientRect();
+  const { x, y } = toMath(e.clientX - rect.left, e.clientY - rect.top);
+  zoomAround(x, y, e.deltaY > 0 ? 1.14 : 0.88);
+}, { passive: false });
+
+// ─── Mouse drag pan ───
+let drag = { on: false, sx: 0, sy: 0, V0: null };
+
+canvas.addEventListener('mousedown', e => {
+  drag = { on: true, sx: e.clientX, sy: e.clientY, V0: { ...V } };
+});
+window.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  if (mx >= 0 && mx <= LW() && my >= 0 && my <= LH()) {
+    const { x, y } = toMath(mx, my);
+    const el = document.getElementById('coords-display');
+    if (el) el.textContent = `x = ${x.toFixed(3)},  y = ${y.toFixed(3)}`;
+  }
+  if (!drag.on) return;
+  const rx = drag.V0.xMax - drag.V0.xMin, ry = drag.V0.yMax - drag.V0.yMin;
+  const shx = -((e.clientX - drag.sx) / LW()) * rx;
+  const shy =  ((e.clientY - drag.sy) / LH()) * ry;
+  V.xMin = drag.V0.xMin + shx; V.xMax = drag.V0.xMax + shx;
+  V.yMin = drag.V0.yMin + shy; V.yMax = drag.V0.yMax + shy;
+  draw();
+});
+window.addEventListener('mouseup', () => { drag.on = false; });
+
+// ─── Touch ───
+let touch = { dist: null, cx: null, cy: null };
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    drag = { on: true, sx: e.touches[0].clientX, sy: e.touches[0].clientY, V0: { ...V } };
+    touch.dist = null;
+  } else if (e.touches.length === 2) {
+    drag.on = false;
+    const [t1, t2] = [e.touches[0], e.touches[1]];
+    touch.dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    const rect  = canvas.getBoundingClientRect();
+    touch.cx = ((t1.clientX + t2.clientX) / 2) - rect.left;
+    touch.cy = ((t1.clientY + t2.clientY) / 2) - rect.top;
+  }
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && drag.on) {
+    const rx = drag.V0.xMax - drag.V0.xMin, ry = drag.V0.yMax - drag.V0.yMin;
+    V.xMin = drag.V0.xMin - ((e.touches[0].clientX - drag.sx) / LW()) * rx;
+    V.xMax = drag.V0.xMax - ((e.touches[0].clientX - drag.sx) / LW()) * rx;
+    V.yMin = drag.V0.yMin + ((e.touches[0].clientY - drag.sy) / LH()) * ry;
+    V.yMax = drag.V0.yMax + ((e.touches[0].clientY - drag.sy) / LH()) * ry;
+    draw();
+  } else if (e.touches.length === 2 && touch.dist !== null) {
+    const [t1, t2] = [e.touches[0], e.touches[1]];
+    const d2 = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    const { x, y } = toMath(touch.cx, touch.cy);
+    zoomAround(x, y, touch.dist / d2);
+    touch.dist = d2;
+  }
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { drag.on = false; touch.dist = null; });
+
+// ─── Keyboard ───
+canvas.addEventListener('keydown', e => {
+  switch (e.key) {
+    case 'ArrowLeft':  panLeft();  break;
+    case 'ArrowRight': panRight(); break;
+    case 'ArrowUp':    panUp();    break;
+    case 'ArrowDown':  panDown();  break;
+    case '+': case '=': zoomIn();  break;
+    case '-': case '_': zoomOut(); break;
+    default: return;
+  }
+  e.preventDefault();
+});
+
+//  EQUATION MANAGEMENT
+
+function addFromInput() {
+  const inp = document.getElementById('eq-input');
+  const val = inp.value.trim();
+  if (!val) { inp.focus(); return; }
+  addEquation(val);
+  inp.value = '';
+  inp.focus();
+}
+
+function addEquation(raw, color) {
+  const id = nextId++;
+  const c  = color || PALETTE[nextColorIdx % PALETTE.length];
+  nextColorIdx++;
+  const eq = { id, raw, color: c, enabled: true, fns: [], errors: [] };
+  compileEq(eq);
+  equations.push(eq);
+  renderFunctionList();
+  draw();
+  showErrors();
+}
+
+function compileEq(eq) {
+  // An equation might represent multiple curves (e.g., circle = two exprs)
+  eq.fns    = [];
+  eq.errors = [];
+  for (const expr of (Array.isArray(eq.raw) ? eq.raw : [eq.raw])) {
+    try {
+      const fn = compileFn(expr);
+      if (fn) { fn(0); eq.fns.push(fn); } // test-call to catch syntax errors
+    } catch (err) {
+      eq.errors.push(friendlyErr(err.message, expr));
+    }
+  }
+}
+
+function removeEquation(id) {
+  equations = equations.filter(e => e.id !== id);
+  renderFunctionList();
+  draw();
+  showErrors();
+}
+
+function toggleEquation(id) {
+  const eq = equations.find(e => e.id === id);
+  if (eq) eq.enabled = !eq.enabled;
+  renderFunctionList();
+  draw();
+}
+
+function cycleColor(id) {
+  const eq = equations.find(e => e.id === id);
+  if (!eq) return;
+  const i = PALETTE.indexOf(eq.color);
+  eq.color = PALETTE[(i + 1) % PALETTE.length];
+  renderFunctionList();
+  draw();
+}
+
+function onRawInput(id, val) {
+  const eq = equations.find(e => e.id === id);
+  if (!eq) return;
+  eq.raw = val;
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    eq.raw = Array.isArray(eq.raw) ? eq.raw : val; // keep single
+    compileEq(eq);
+    renderFunctionList();
+    draw();
+    showErrors();
+  }, 280);
+}
+
+function askClearAll() {
+  if (!equations.length) return;
+  document.getElementById('clear-all-btn').classList.add('hidden');
+  document.getElementById('clear-confirm').classList.remove('hidden');
+  document.getElementById('clear-confirm').classList.add('flex');
+}
+
+function confirmClearAll() {
+  equations = []; nextColorIdx = 0;
+  renderFunctionList();
+  draw();
+  document.getElementById('error-banner').classList.add('hidden');
+  cancelClearAll();
+}
+
+function cancelClearAll() {
+  document.getElementById('clear-all-btn').classList.remove('hidden');
+  document.getElementById('clear-confirm').classList.add('hidden');
+  document.getElementById('clear-confirm').classList.remove('flex');
+}
+
+function friendlyErr(msg, expr) {
+  if (/unexpected token|syntax|Unexpected/i.test(msg)) return `"${expr}" — invalid syntax`;
+  if (/undefined symbol|Undefined/i.test(msg)) return `"${expr}" — unknown function or variable`;
+  if (/complex/i.test(msg)) return `"${expr}" — result is complex (domain error)`;
+  return `"${expr}" — ${msg.split('\n')[0]}`;
+}
+
+function showErrors() {
+  const banner = document.getElementById('error-banner');
+  const text   = document.getElementById('error-text');
+  const errs   = equations.flatMap(e => e.errors);
+  if (errs.length) {
+    text.textContent = errs.join(' | ');
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+//  RENDER FUNCTION LIST
+
+function renderFunctionList() {
+  const el = document.getElementById('functions-list');
+  if (!el) return;
+
+  if (!equations.length) {
+    el.innerHTML = `
+      <div class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+        <i class="fas fa-chart-line text-2xl mb-2 block opacity-20"></i>
+        No functions added yet
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = equations.map((eq, idx) => {
+    const rawStr = Array.isArray(eq.raw) ? eq.raw.join(', ') : (eq.raw || '');
+    const hasErr = eq.errors.length > 0;
+    return `
+    <div class="eq-row flex items-center gap-2.5 px-4 py-3 ${eq.enabled ? '' : 'dimmed'}" role="listitem">
+      <button
+        class="color-dot flex-shrink-0"
+        style="background:${eq.color}"
+        onclick="cycleColor(${eq.id})"
+        title="Click to change colour"
+        aria-label="Equation colour"
+      ></button>
+      <input
+        id="eq-raw-${eq.id}"
+        type="text"
+        value="${esc(rawStr)}"
+        placeholder="e.g. sin(x)"
+        class="flex-1 min-w-0 text-sm rounded-lg px-2.5 py-2 bg-gray-50 dark:bg-gray-700/60
+               border ${hasErr ? 'border-red-400 dark:border-red-600' : 'border-gray-200 dark:border-gray-600'}
+               text-gray-800 dark:text-gray-100 placeholder-gray-400
+               focus:outline-none focus:ring-2 ${hasErr ? 'focus:ring-red-400' : 'focus:ring-teal-400'}
+               transition-colors"
+        oninput="onRawInput(${eq.id}, this.value)"
+        onkeydown="if(event.key==='Enter'){compileEq(equations.find(e=>e.id===${eq.id}));renderFunctionList();draw();showErrors();}"
+        aria-label="Equation ${idx + 1}"
+        autocomplete="off" spellcheck="false"
+      />
+      <button
+        onclick="toggleEquation(${eq.id})"
+        class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
+               ${eq.enabled ? 'text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20' : 'text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}
+               transition-colors"
+        title="${eq.enabled ? 'Hide' : 'Show'}"
+        aria-pressed="${eq.enabled}"
+        aria-label="${eq.enabled ? 'Hide' : 'Show'} equation ${idx + 1}"
+      ><i class="fas ${eq.enabled ? 'fa-eye' : 'fa-eye-slash'} text-xs"></i></button>
+      <button
+        onclick="removeEquation(${eq.id})"
+        class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
+               text-gray-300 dark:text-gray-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+        title="Remove"
+        aria-label="Remove equation ${idx + 1}"
+      ><i class="fas fa-times text-xs"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+//  EXAMPLES
+
+function loadExample(exprs, label) {
+  // For multi-part examples like circles, add all parts sharing one color slot
+  const c = PALETTE[nextColorIdx % PALETTE.length];
+  nextColorIdx++;
+  const id = nextId++;
+  const eq = { id, raw: exprs, color: c, enabled: true, fns: [], errors: [] };
+  compileEq(eq);
+  equations.push(eq);
+  renderFunctionList();
+  draw();
+  showErrors();
+}
+
+//  SETTINGS
+
+function toggleGrid() {
+  showGrid = !showGrid;
+  const btn = document.getElementById('grid-toggle-btn');
+  if (btn) {
+    btn.style.background   = showGrid ? '' : (isDark() ? '#134e4a' : '#f0fdfa');
+    btn.style.borderColor  = showGrid ? '' : '#5eead4';
+    btn.style.color        = showGrid ? '' : '#0f766e';
+  }
+  draw();
+}
+
+const GRID_LABELS = { '1':'Fine', '2':'Normal', '3':'Coarse' };
+const GRID_MULS   = { '1': 0.5,   '2': 1,       '3': 2 };
+
+function onGridSizeChange(val) {
+  gridSizeMul = GRID_MULS[val] || 1;
+  document.getElementById('grid-size-label').textContent = GRID_LABELS[val] || 'Normal';
+  draw();
+}
+
+function onLineWidthChange(val) {
+  lineWidth = parseFloat(val);
+  document.getElementById('line-width-label').textContent = lineWidth + 'px';
+  draw();
+}
+
+//  EXPORT
+
+function exportPNG(fromFs) {
+  const src   = fromFs ? fsCanvas : canvas;
+  const link  = document.createElement('a');
+  link.download = 'graph.png';
+  link.href     = src.toDataURL('image/png');
+  link.click();
+}
+
+//  FULLSCREEN
+
+const fsOverlay = document.getElementById('fs-overlay');
+const fsCanvas  = document.getElementById('fs-canvas');
+const fsCtx     = fsCanvas.getContext('2d');
+let fsDpr       = 1;
+let fsOn        = false;
+
+function toggleFullscreen() {
+  fsOn = !fsOn;
+  if (fsOn) {
+    fsOverlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    setupFs();
+  } else {
+    fsOverlay.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+function setupFs() {
+  fsDpr = window.devicePixelRatio || 1;
+  const w = window.innerWidth, h = window.innerHeight - 44;
+  fsCanvas.width  = w * fsDpr; fsCanvas.height = h * fsDpr;
+  fsCanvas.style.width = w + 'px'; fsCanvas.style.height = h + 'px';
+  fsCtx.setTransform(1,0,0,1,0,0); fsCtx.scale(fsDpr, fsDpr);
+  drawFs(w, h);
+}
+
+function drawFs(w, h) {
+  const dark = isDark();
+  fsCtx.clearRect(0,0,w,h);
+  fsCtx.fillStyle = dark ? '#1f2937' : '#fff';
+  fsCtx.fillRect(0,0,w,h);
+
+  function fsPx(x, y) {
+    return {
+      px: ((x - V.xMin) / (V.xMax - V.xMin)) * w,
+      py: h - ((y - V.yMin) / (V.yMax - V.yMin)) * h,
+    };
+  }
+
+  if (showGrid) {
+    const xStep = niceStep(V.xMax - V.xMin, 12), yStep = niceStep(V.yMax - V.yMin, 9);
+    fsCtx.strokeStyle = dark ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.065)';
+    fsCtx.lineWidth = 1;
+    for (let x = Math.ceil(V.xMin/xStep)*xStep; x <= V.xMax; x += xStep) {
+      const { px } = fsPx(x, 0);
+      fsCtx.beginPath(); fsCtx.moveTo(px,0); fsCtx.lineTo(px,h); fsCtx.stroke();
+    }
+    for (let y = Math.ceil(V.yMin/yStep)*yStep; y <= V.yMax; y += yStep) {
+      const { py } = fsPx(0, y);
+      fsCtx.beginPath(); fsCtx.moveTo(0,py); fsCtx.lineTo(w,py); fsCtx.stroke();
+    }
+  }
+
+  const o = fsPx(0, 0);
+  fsCtx.strokeStyle = dark ? 'rgba(255,255,255,0.28)' : 'rgba(15,23,42,0.32)';
+  fsCtx.lineWidth = 1.5;
+  fsCtx.beginPath(); fsCtx.moveTo(0,o.py); fsCtx.lineTo(w,o.py); fsCtx.stroke();
+  fsCtx.beginPath(); fsCtx.moveTo(o.px,0); fsCtx.lineTo(o.px,h); fsCtx.stroke();
+
+  const steps = Math.ceil(w * 2.5), dx = (V.xMax - V.xMin) / steps;
+  for (const eq of equations) {
+    if (!eq.enabled) continue;
+    for (const fn of eq.fns) {
+      fsCtx.strokeStyle = eq.color; fsCtx.lineWidth = lineWidth + 0.5;
+      fsCtx.beginPath();
+      let penDown = false, prevY = null;
+      for (let i = 0; i <= steps; i++) {
+        const x = V.xMin + i * dx;
+        let y; try { y = fn(x); } catch(_) { penDown=false; prevY=null; continue; }
+        if (!isFinite(y)||isNaN(y)) { penDown=false; prevY=null; continue; }
+        if (prevY!==null && Math.abs(y-prevY) > (V.yMax-V.yMin)*2.5) penDown=false;
+        prevY=y;
+        const { px, py } = fsPx(x, y);
+        if (!penDown) { fsCtx.moveTo(px,py); penDown=true; } else fsCtx.lineTo(px,py);
+      }
+      fsCtx.stroke();
+    }
+  }
+}
+
+// Fullscreen drag
+let fsDrag = { on:false, sx:0, sy:0, V0:null };
+fsCanvas.addEventListener('mousedown', e => { fsDrag={on:true,sx:e.clientX,sy:e.clientY,V0:{...V}}; });
+window.addEventListener('mousemove', e => {
+  if (!fsDrag.on) return;
+  const w=fsCanvas.clientWidth, h=fsCanvas.clientHeight;
+  const rx=fsDrag.V0.xMax-fsDrag.V0.xMin, ry=fsDrag.V0.yMax-fsDrag.V0.yMin;
+  V.xMin=fsDrag.V0.xMin-((e.clientX-fsDrag.sx)/w)*rx;
+  V.xMax=fsDrag.V0.xMax-((e.clientX-fsDrag.sx)/w)*rx;
+  V.yMin=fsDrag.V0.yMin+((e.clientY-fsDrag.sy)/h)*ry;
+  V.yMax=fsDrag.V0.yMax+((e.clientY-fsDrag.sy)/h)*ry;
+  drawFs(w, h);
+});
+window.addEventListener('mouseup', () => { fsDrag.on=false; });
+fsCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const w=fsCanvas.clientWidth, h=fsCanvas.clientHeight;
+  const rect=fsCanvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const x=V.xMin+(mx/w)*(V.xMax-V.xMin), y=V.yMin+((h-my)/h)*(V.yMax-V.yMin);
+  const f=e.deltaY>0?1.14:0.88;
+  V.xMin=x+(V.xMin-x)*f; V.xMax=x+(V.xMax-x)*f;
+  V.yMin=y+(V.yMin-y)*f; V.yMax=y+(V.yMax-y)*f;
+  drawFs(w, h);
+}, { passive: false });
+
+//  DARK MODE OBSERVER — redraw on toggle
+
+new MutationObserver(() => {
+  draw();
+  if (fsOn) drawFs(fsCanvas.clientWidth, fsCanvas.clientHeight);
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+//  INIT
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  if (fsOn) setupFs();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  resizeCanvas();
+  draw();
+});
+</script>
+</body>
+</html>
