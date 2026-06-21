@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Share your feedback with Alpha One Labs - help us improve our platform.">
+  <meta name="keywords" content="feedback, Alpha One Labs, suggestions, contact">
+  <title>Feedback - Alpha One Labs</title>
+
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+
+    function initializeDarkMode() {
+      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+      if (darkModeEnabled) document.documentElement.classList.add('dark');
+      else if (localStorage.getItem('darkMode') === null) localStorage.setItem('darkMode', 'false');
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark.toString());
+    }
+
+    function updateDarkModeIcon() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const icon = document.getElementById('darkModeIcon');
+      const iconMobile = document.getElementById('darkModeIconMobile');
+      if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+      if (iconMobile) iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
+    }
+
+    initializeDarkMode();
+    document.addEventListener('DOMContentLoaded', initializeDarkMode);
+  </script>
+
+  <style>
+    html, body { overflow-x: hidden; box-sizing: border-box; }
+    .dark { color-scheme: dark; }
+    :root { color-scheme: light; }
+
+    .input-field {
+      width: 100%;
+      padding: 0.625rem 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      background: transparent;
+      color: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .dark .input-field { border-color: #4b5563; }
+    .input-field:focus { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,0.15); }
+
+    .success-check { animation: popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275); }
+    @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+
+  <div id="site-navbar"></div>
+
+  <main class="flex-1 w-full">
+
+    <!-- Hero -->
+    <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 py-16 relative overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none select-none" aria-hidden="true">
+        <div class="animate-bounce absolute top-[15%] left-[8%] text-white/20 text-5xl"><i class="fas fa-comment-dots"></i></div>
+        <div class="animate-pulse absolute bottom-[10%] right-[10%] text-white/15 text-6xl"><i class="fas fa-lightbulb"></i></div>
+      </div>
+      <div class="relative max-w-[90rem] mx-auto px-4 md:px-6 text-center">
+        <span class="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-semibold bg-white/20 text-white backdrop-blur-sm border border-white/30">
+          💬 We're Listening
+        </span>
+        <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4">Share Your Feedback</h1>
+        <p class="text-teal-100 max-w-2xl mx-auto text-lg">
+          We value your feedback and are committed to continuously improving our platform. Please share your thoughts, suggestions, or concerns with us.
+        </p>
+      </div>
+    </section>
+
+    <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-16">
+      <div class="flex flex-col lg:flex-row gap-12 items-start">
+
+        <!-- Info sidebar -->
+        <div class="lg:w-80 flex-shrink-0 space-y-6">
+          <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-md">
+            <h2 class="font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+              <i class="fas fa-circle-info text-teal-500"></i> Why Your Feedback Matters
+            </h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              Your feedback directly shapes the future of Alpha One Labs. Every suggestion is reviewed by our team and influences our roadmap.
+            </p>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-md space-y-4">
+            <h2 class="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <i class="fas fa-envelope text-teal-500"></i> Other Ways to Reach Us
+            </h2>
+            <a href="https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg" target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
+              <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i class="fab fa-slack text-indigo-600 dark:text-indigo-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Slack</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Join our community</p>
+              </div>
+            </a>
+            <a href="https://github.com/AlphaOneLabs" target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
+              <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i class="fab fa-github text-gray-700 dark:text-gray-300"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">GitHub</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Open an issue</p>
+              </div>
+            </a>
+            <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
+              <div class="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i class="fab fa-twitter text-sky-500"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Twitter / X</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">@alphaonelabs</p>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Feedback form -->
+        <div class="flex-1 min-w-0">
+
+          <!-- Success state (hidden by default) -->
+          <div id="success-state" class="hidden text-center py-16">
+            <div class="success-check w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto mb-6">
+              <i class="fas fa-check text-green-600 dark:text-green-400 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-3">Thank You for Your Feedback!</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+              We appreciate your input. Your feedback helps us continuously improve the Alpha One Labs experience.
+            </p>
+            <button onclick="resetForm()" class="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors">
+              <i class="fas fa-plus mr-2"></i>Submit More Feedback
+            </button>
+          </div>
+
+          <!-- Form -->
+          <form id="feedback-form" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md space-y-6" onsubmit="submitFeedback(event)">
+            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <i class="fas fa-pen text-teal-500"></i> Your Feedback
+            </h2>
+
+            <!-- Error banner -->
+            <div id="error-banner" class="hidden p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm flex items-start gap-2">
+              <i class="fas fa-circle-exclamation mt-0.5 flex-shrink-0"></i>
+              <span id="error-message"></span>
+            </div>
+
+            <!-- Name -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Name <span class="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                id="feedback-name"
+                name="name"
+                maxlength="100"
+                placeholder="Your name (optional)"
+                class="input-field dark:bg-gray-700"
+              />
+            </div>
+
+            <!-- Email -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Email <span class="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="email"
+                id="feedback-email"
+                name="email"
+                placeholder="Your email (optional)"
+                class="input-field dark:bg-gray-700"
+              />
+              <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Provide your email if you'd like us to follow up with you.</p>
+            </div>
+
+            <!-- Feedback text -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Your Feedback <span class="text-red-500">*</span>
+              </label>
+              <textarea
+                id="feedback-description"
+                name="description"
+                rows="5"
+                required
+                placeholder="Your feedback..."
+                class="input-field dark:bg-gray-700 resize-none"
+              ></textarea>
+              <p id="char-count" class="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">0 / 5000</p>
+            </div>
+
+            <!-- Submit -->
+            <button
+              type="submit"
+              id="submit-btn"
+              class="w-full py-3 px-6 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+            >
+              <i class="fas fa-paper-plane"></i>
+              <span id="submit-label">Submit Feedback</span>
+            </button>
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    const API = '';
+
+    const textarea = document.getElementById('feedback-description');
+    const charCount = document.getElementById('char-count');
+
+    textarea.addEventListener('input', () => {
+      const len = textarea.value.length;
+      charCount.textContent = `${len} / 5000`;
+      if (len > 5000) textarea.value = textarea.value.slice(0, 5000);
+    });
+
+    function showError(msg) {
+      const banner = document.getElementById('error-banner');
+      document.getElementById('error-message').textContent = msg;
+      banner.classList.remove('hidden');
+      banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideError() {
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    function setLoading(loading) {
+      const btn = document.getElementById('submit-btn');
+      const label = document.getElementById('submit-label');
+      btn.disabled = loading;
+      label.textContent = loading ? 'Submitting...' : 'Submit Feedback';
+      btn.querySelector('i').className = loading ? 'fas fa-spinner fa-spin' : 'fas fa-paper-plane';
+    }
+
+    async function submitFeedback(e) {
+      e.preventDefault();
+      hideError();
+
+      const description = document.getElementById('feedback-description').value.trim();
+      if (!description) {
+        showError('Please enter your feedback before submitting.');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const payload = {
+          name: document.getElementById('feedback-name').value.trim() || null,
+          email: document.getElementById('feedback-email').value.trim() || null,
+          description,
+        };
+
+        const res = await fetch(`${API}/api/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to submit feedback. Please try again.');
+        }
+
+        // Show success
+        document.getElementById('feedback-form').classList.add('hidden');
+        const successEl = document.getElementById('success-state');
+        successEl.classList.remove('hidden');
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      } catch (err) {
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('feedback-form').reset();
+      document.getElementById('feedback-form').classList.remove('hidden');
+      document.getElementById('success-state').classList.add('hidden');
+      charCount.textContent = '0 / 5000';
+      hideError();
+    }
+  </script>
+</body>
+</html>

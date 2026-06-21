@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Alpha One Labs Terms of Service and Privacy Policy">
+  <meta name="keywords" content="terms, privacy policy, Alpha One Labs, service agreement">
+  <title>Terms of Service & Privacy Policy - Alpha One Labs</title>
+
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+
+    function initializeDarkMode() {
+      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+      if (darkModeEnabled) document.documentElement.classList.add('dark');
+      else if (localStorage.getItem('darkMode') === null) localStorage.setItem('darkMode', 'false');
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark.toString());
+    }
+
+    function updateDarkModeIcon() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const icon = document.getElementById('darkModeIcon');
+      const iconMobile = document.getElementById('darkModeIconMobile');
+      if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+      if (iconMobile) iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
+    }
+
+    initializeDarkMode();
+    document.addEventListener('DOMContentLoaded', initializeDarkMode);
+  </script>
+
+  <style>
+    html, body { overflow-x: hidden; box-sizing: border-box; }
+    .dark { color-scheme: dark; }
+    :root { color-scheme: light; }
+
+    .toc-link { transition: all 0.2s; }
+    .toc-link:hover { padding-left: 0.75rem; }
+    .toc-link.active { padding-left: 0.75rem; border-left: 3px solid #0d9488; color: #0d9488; }
+
+    .section-anchor { scroll-margin-top: 90px; }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
+
+  <div id="site-navbar"></div>
+
+  <main class="flex-1 w-full">
+
+    <!-- Hero -->
+    <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 py-16">
+      <div class="max-w-[90rem] mx-auto px-4 md:px-6 text-center">
+        <span class="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-semibold bg-white/20 text-white backdrop-blur-sm border border-white/30">
+          Last Updated: June 20, 2026
+        </span>
+        <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4">Terms of Service &amp; Privacy Policy</h1>
+        <p class="text-teal-100 max-w-2xl mx-auto text-lg">
+          Please read these terms carefully before using the Alpha One Labs platform.
+        </p>
+      </div>
+    </section>
+
+    <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-12">
+      <div class="flex flex-col lg:flex-row gap-10">
+
+        <!-- Table of Contents (sidebar) -->
+        <aside class="lg:w-64 flex-shrink-0">
+          <div class="sticky top-[90px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-md">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
+              <i class="fas fa-list text-teal-500"></i> Contents
+            </h2>
+            <nav class="space-y-1 text-sm">
+              <a href="#commission" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">1. Commission Structure</a>
+              <a href="#payments" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">2. Teacher Payments</a>
+              <a href="#rules" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">3. Platform Rules</a>
+              <a href="#content" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">4. Course Content</a>
+              <a href="#refunds" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">5. Refund Policy</a>
+              <a href="#privacy" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">6. Privacy &amp; Data</a>
+              <a href="#ip-collection" class="toc-link block py-1.5 pl-4 text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400">6.1 IP Collection</a>
+              <a href="#ip-processing" class="toc-link block py-1.5 pl-4 text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400">6.2 IP Processing</a>
+              <a href="#ip-rights" class="toc-link block py-1.5 pl-4 text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400">6.4 Your Rights</a>
+              <a href="#changes" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">7. Platform Changes</a>
+            </nav>
+          </div>
+        </aside>
+
+        <!-- Main content -->
+        <div class="flex-1 min-w-0 space-y-10">
+
+          <!-- Section 1 -->
+          <section id="commission" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow">
+                <i class="fas fa-percent text-white"></i>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">1. Commission Structure</h2>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              Alpha One Labs operates on a revenue-sharing model where:
+            </p>
+            <ul class="space-y-3">
+              <li class="flex items-start gap-3">
+                <span class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                  <i class="fas fa-check text-green-600 dark:text-green-400 text-xs"></i>
+                </span>
+                <span class="text-gray-600 dark:text-gray-300">Teachers receive <strong class="text-gray-800 dark:text-gray-200">90%</strong> of the course and session fees</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center">
+                  <i class="fas fa-check text-teal-600 dark:text-teal-400 text-xs"></i>
+                </span>
+                <span class="text-gray-600 dark:text-gray-300">Alpha One Labs retains a <strong class="text-gray-800 dark:text-gray-200">10% commission</strong> to cover platform maintenance, payment processing, and support services</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                  <i class="fas fa-check text-blue-600 dark:text-blue-400 text-xs"></i>
+                </span>
+                <span class="text-gray-600 dark:text-gray-300">Payments are processed automatically through <strong class="text-gray-800 dark:text-gray-200">Stripe</strong> and distributed to teachers' connected accounts</span>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Section 2 -->
+          <section id="payments" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow">
+                <i class="fas fa-credit-card text-white"></i>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">2. Teacher Payments</h2>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">To receive payments, teachers must:</p>
+            <ul class="space-y-3">
+              <li class="flex items-start gap-3">
+                <span class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold text-green-700 dark:text-green-300">1</span>
+                <span class="text-gray-600 dark:text-gray-300">Create and connect a Stripe account</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold text-green-700 dark:text-green-300">2</span>
+                <span class="text-gray-600 dark:text-gray-300">Provide necessary tax information and banking details</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold text-green-700 dark:text-green-300">3</span>
+                <span class="text-gray-600 dark:text-gray-300">Maintain compliance with Stripe's terms of service</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold text-green-700 dark:text-green-300">4</span>
+                <span class="text-gray-600 dark:text-gray-300">Keep their payment information up to date</span>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Section 3 -->
+          <section id="rules" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow">
+                <i class="fas fa-shield-halved text-white"></i>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">3. Platform Rules</h2>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">All users must adhere to the following rules:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
+                <i class="fas fa-check-circle text-teal-500"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Provide accurate and truthful information</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
+                <i class="fas fa-check-circle text-teal-500"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Respect intellectual property rights</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
+                <i class="fas fa-check-circle text-teal-500"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Maintain professional conduct</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700">
+                <i class="fas fa-check-circle text-teal-500"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Follow content guidelines</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 4 -->
+          <section id="content" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow">
+                <i class="fas fa-book text-white"></i>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">4. Course Content</h2>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">Teachers are responsible for:</p>
+            <ul class="space-y-3">
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-orange-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Creating and maintaining high-quality course content</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-orange-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Ensuring content accuracy and relevance</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-orange-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Responding to student inquiries in a timely manner</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-orange-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Updating course materials as needed</span>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Section 5 -->
+          <section id="refunds" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow">
+                <i class="fas fa-rotate-left text-white"></i>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">5. Refund Policy</h2>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">Our refund policy includes:</p>
+            <div class="space-y-3">
+              <div class="flex items-start gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                <i class="fas fa-circle-check text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300"><strong>30-day money-back guarantee</strong> for course purchases</span>
+              </div>
+              <div class="flex items-start gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <i class="fas fa-circle-check text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300"><strong>Pro-rated refunds</strong> for subscription-based courses</span>
+              </div>
+              <div class="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                <i class="fas fa-circle-xmark text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300"><strong>No refunds</strong> for completed individual sessions</span>
+              </div>
+              <div class="flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                <i class="fas fa-circle-info text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0"></i>
+                <span class="text-sm text-gray-700 dark:text-gray-300">Case-by-case evaluation for special circumstances</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 6 -->
+          <section id="privacy" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow">
+                <i class="fas fa-lock text-white"></i>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">6. Privacy and Data Protection</h2>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">We are committed to:</p>
+            <ul class="space-y-3 mb-8">
+              <li class="flex items-start gap-3">
+                <i class="fas fa-lock text-teal-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Protecting user data and privacy</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-scale-balanced text-teal-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Complying with relevant data protection regulations</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-shield-halved text-teal-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Securing payment information</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-eye text-teal-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Maintaining transparent data practices</span>
+              </li>
+            </ul>
+
+            <!-- 6.1 -->
+            <div id="ip-collection" class="section-anchor mb-6 pl-4 border-l-4 border-teal-400">
+              <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">6.1 IP Address Collection and Usage</h3>
+              <p class="text-gray-600 dark:text-gray-300 text-sm mb-3">For certain features on our platform, we collect and store IP addresses. This includes:</p>
+              <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <li class="flex items-start gap-2"><i class="fas fa-dot-circle text-teal-500 mt-1 flex-shrink-0 text-xs"></i>Feature voting system, where IP addresses are used to prevent duplicate votes from anonymous users</li>
+                <li class="flex items-start gap-2"><i class="fas fa-dot-circle text-teal-500 mt-1 flex-shrink-0 text-xs"></i>Security monitoring to detect and prevent abuse or unauthorized access</li>
+                <li class="flex items-start gap-2"><i class="fas fa-dot-circle text-teal-500 mt-1 flex-shrink-0 text-xs"></i>Analytics to understand geographical distribution of our users (in aggregated form only)</li>
+              </ul>
+            </div>
+
+            <!-- 6.2 -->
+            <div id="ip-processing" class="section-anchor mb-6 pl-4 border-l-4 border-blue-400">
+              <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">6.2 IP Address Data Processing</h3>
+              <p class="text-gray-600 dark:text-gray-300 text-sm mb-3">When we process IP address data, we adhere to the following practices:</p>
+              <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <li class="flex items-start gap-2"><i class="fas fa-dot-circle text-blue-500 mt-1 flex-shrink-0 text-xs"></i>IP addresses are stored securely in our database with appropriate access controls</li>
+                <li class="flex items-start gap-2"><i class="fas fa-dot-circle text-blue-500 mt-1 flex-shrink-0 text-xs"></i>For feature voting, IP addresses are stored only when a user is not logged in</li>
+                <li class="flex items-start gap-2"><i class="fas fa-dot-circle text-blue-500 mt-1 flex-shrink-0 text-xs"></i>IP addresses for feature votes are never used for marketing purposes</li>
+                <li class="flex items-start gap-2"><i class="fas fa-dot-circle text-blue-500 mt-1 flex-shrink-0 text-xs"></i>We do not share IP addresses with third parties except when required by law</li>
+              </ul>
+            </div>
+
+            <!-- 6.4 -->
+            <div id="ip-rights" class="section-anchor pl-4 border-l-4 border-purple-400">
+              <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">6.4 Your Rights Regarding IP Address Data</h3>
+              <p class="text-gray-600 dark:text-gray-300 text-sm mb-3">You have the following rights regarding the IP address data we collect:</p>
+              <div class="space-y-2">
+                <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <i class="fas fa-eye text-purple-500 mt-0.5 flex-shrink-0"></i>
+                  <div>
+                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Right to access</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">You can request information about what IP address data we store</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <i class="fas fa-trash text-purple-500 mt-0.5 flex-shrink-0"></i>
+                  <div>
+                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Right to deletion</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">You can request deletion of your IP address data</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <i class="fas fa-ban text-purple-500 mt-0.5 flex-shrink-0"></i>
+                  <div>
+                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">Right to opt-out</span>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">You can choose not to participate in features that collect IP addresses by creating an account and logging in</p>
+                  </div>
+                </div>
+              </div>
+              <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">To exercise these rights, please contact our support team with your request.</p>
+            </div>
+          </section>
+
+          <!-- Section 7 -->
+          <section id="changes" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow">
+                <i class="fas fa-rotate text-white"></i>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">7. Platform Changes</h2>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">Alpha One Labs reserves the right to:</p>
+            <ul class="space-y-3">
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-yellow-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Modify these terms with notice to users</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-yellow-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Update platform features and functionality</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-yellow-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Adjust commission rates with advance notice</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <i class="fas fa-circle-dot text-yellow-500 mt-1 flex-shrink-0"></i>
+                <span class="text-gray-600 dark:text-gray-300">Change payment processing methods if necessary</span>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Contact -->
+          <div class="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/30 dark:to-cyan-900/30 border border-teal-200 dark:border-teal-700 rounded-2xl p-6 text-center">
+            <i class="fas fa-envelope text-teal-500 text-2xl mb-3"></i>
+            <h3 class="font-bold text-gray-800 dark:text-gray-200 mb-2">Questions About These Terms?</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
+              For questions about these terms or privacy policy, please contact our support team.
+            </p>
+            <a href="/feedback.html" class="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors">
+              <i class="fas fa-comment-dots"></i> Contact Support
+            </a>
+          </div>
+
+          <p class="text-sm text-gray-400 dark:text-gray-500 text-center">Last Updated: June 20, 2026</p>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    // Highlight active TOC link on scroll
+    const sections = document.querySelectorAll('.section-anchor');
+    const tocLinks = document.querySelectorAll('.toc-link');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          tocLinks.forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+          });
+        }
+      });
+    }, { rootMargin: '-80px 0px -60% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>
