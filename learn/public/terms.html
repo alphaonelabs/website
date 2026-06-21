@@ -87,7 +87,7 @@
               <a href="#privacy" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">6. Privacy &amp; Data</a>
               <a href="#ip-collection" class="toc-link block py-1.5 pl-4 text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400">6.1 IP Collection</a>
               <a href="#ip-processing" class="toc-link block py-1.5 pl-4 text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400">6.2 IP Processing</a>
-              <a href="#ip-rights" class="toc-link block py-1.5 pl-4 text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400">6.4 Your Rights</a>
+              <a href="#ip-rights" class="toc-link block py-1.5 pl-4 text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400">6.3 Your Rights</a>
               <a href="#changes" class="toc-link block py-1.5 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400">7. Platform Changes</a>
             </nav>
           </div>
@@ -298,7 +298,7 @@
 
             <!-- 6.4 -->
             <div id="ip-rights" class="section-anchor pl-4 border-l-4 border-purple-400">
-              <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">6.4 Your Rights Regarding IP Address Data</h3>
+              <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">6.3 Your Rights Regarding IP Address Data</h3>
               <p class="text-gray-600 dark:text-gray-300 text-sm mb-3">You have the following rights regarding the IP address data we collect:</p>
               <div class="space-y-2">
                 <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
@@ -388,7 +388,13 @@
         if (entry.isIntersecting) {
           const id = entry.target.id;
           tocLinks.forEach(link => {
-            link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+            const isActive = link.getAttribute('href') === '#' + id;
+            link.classList.toggle('active', isActive);
+            if (isActive) {
+              link.setAttribute('aria-current', 'location');
+            } else {
+              link.removeAttribute('aria-current');
+            }
           });
         }
       });

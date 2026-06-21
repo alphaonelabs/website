@@ -146,7 +146,7 @@
             <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
               We appreciate your input. Your feedback helps us continuously improve the Alpha One Labs experience.
             </p>
-            <button onclick="resetForm()" class="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors">
+            <button type="button" onclick="resetForm()" class="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors">
               <i class="fas fa-plus mr-2"></i>Submit More Feedback
             </button>
           </div>
@@ -165,7 +165,7 @@
 
             <!-- Name -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <label for="feedback-name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                 Name <span class="text-gray-400 font-normal">(Optional)</span>
               </label>
               <input
@@ -180,7 +180,7 @@
 
             <!-- Email -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <label for="feedback-email" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                 Email <span class="text-gray-400 font-normal">(Optional)</span>
               </label>
               <input
@@ -195,7 +195,7 @@
 
             <!-- Feedback text -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              <label for="feedback-description" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                 Your Feedback <span class="text-red-500">*</span>
               </label>
               <textarea

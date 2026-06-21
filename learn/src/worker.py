@@ -33,6 +33,7 @@ Static HTML pages (public/) are served via Workers Sites (KV binding).
 """
 
 import base64
+import html as _html
 import datetime
 import hashlib
 import hmac as _hmac
@@ -2722,7 +2723,10 @@ async def _dispatch(request, env):
 async def api_submit_feedback(request, env):
     try:
         body = json.loads(await request.text())
-    except Exception:
+    except (json.JSONDecodeError, ValueError):
+        return err("Invalid JSON", 400)
+
+    if not isinstance(body, dict):
         return err("Invalid JSON", 400)
 
     description = (body.get("description") or "").strip()
@@ -2738,13 +2742,16 @@ async def api_submit_feedback(request, env):
     admin_email = (getattr(env, "ADMIN_EMAIL", "") or getattr(env, "EMAIL_FROM", "") or "").strip()
     if admin_email:
         subject = f"[Alpha One Labs] New Feedback from {name}"
+        safe_name = _html.escape(name)
+        safe_email = _html.escape(email)
+        safe_description = _html.escape(description)
         html = f"""
         <h2 style="color:#0d9488">New Feedback Received</h2>
         <table style="border-collapse:collapse;width:100%;max-width:600px">
-          <tr><td style="padding:8px;font-weight:bold;width:120px">From</td><td style="padding:8px">{name}</td></tr>
-          <tr style="background:#f9fafb"><td style="padding:8px;font-weight:bold">Email</td><td style="padding:8px">{email}</td></tr>
+          <tr><td style="padding:8px;font-weight:bold;width:120px">From</td><td style="padding:8px">{safe_name}</td></tr>
+          <tr style="background:#f9fafb"><td style="padding:8px;font-weight:bold">Email</td><td style="padding:8px">{safe_email}</td></tr>
           <tr><td style="padding:8px;font-weight:bold;vertical-align:top">Feedback</td>
-              <td style="padding:8px;white-space:pre-wrap">{description}</td></tr>
+              <td style="padding:8px;white-space:pre-wrap">{safe_description}</td></tr>
         </table>
         """
         await _send_email_via_mailgun(admin_email, subject, html, env)
@@ -2762,9 +2769,11 @@ async def api_submit_feedback(request, env):
                 },
                 dict_converter=js.Object.fromEntries,
             )
-            await js.fetch(slack_url, options)
-        except Exception:
-            pass
+            resp = await js.fetch(slack_url, options)
+            if not resp.ok:
+                print(f"[feedback] Slack webhook returned {resp.status}")
+        except Exception as e:
+            print(f"[feedback] Slack webhook delivery failed: {e}")
 
     return ok({"message": "Thank you for your feedback! We appreciate your input."})
 
