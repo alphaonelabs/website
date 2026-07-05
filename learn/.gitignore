@@ -31,3 +31,4 @@ Thumbs.db
 # Local reference folder
 _django_ref/
 todo.md
+migration.md
