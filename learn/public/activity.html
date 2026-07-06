@@ -742,12 +742,12 @@
         '<span class="badge ' + fc + '">' + esc(fmtLabel[a.format] || a.format || 'Activity') + '</span>' +
         '<span class="badge bg-white/20 text-white">' + esc(schedLabel[a.schedule_type] || a.schedule_type || 'Flexible') + '</span>';
 
-      const detailImageUrl = a.image_url || '';
+      const detailImageUrl = a.image_url || '/images/logo.png';
       document.getElementById('act-details').innerHTML =
         '<div class="md:col-span-2 lg:col-span-3 mb-2">' +
           '<div class="max-w-sm rounded-lg shadow-md overflow-hidden bg-white/10 border border-white/20">' +
             '<div class="aspect-square w-full bg-white/10">' +
-              '<img src="' + esc(detailImageUrl) + '" alt="' + esc(a.title) + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\\'/images/logo.png\\';">' +
+              '<img src="' + esc(detailImageUrl) + '" alt="' + esc(a.title) + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=&quot;/images/logo.png&quot;;">' +
             '</div>' +
           '</div>' +
         '</div>' +
