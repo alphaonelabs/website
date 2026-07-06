@@ -173,73 +173,6 @@
                 </div>
             </section>
 
-            <!-- ===== SECTION 3: REFERRAL | WEEKLY CHALLENGES ===== -->
-            <section>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    <!-- Referral Program -->
-                    <div id="referral-program-card" class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-purple-500">
-                        <h2 class="text-lg font-bold mb-4 flex items-center">
-                            <i class="fa-solid fa-gift text-purple-600 dark:text-purple-400 mr-2"></i>
-                            Referral Program
-                        </h2>
-                        <div class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-purple-100 dark:border-purple-800 mb-4">
-                            <h3 id="referral-title" class="font-medium mb-2 text-purple-800 dark:text-purple-200">Share and Earn!</h3>
-                            <p id="referral-copy" class="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                                Get $5 when someone you refer enrolls in their first course!
-                            </p>
-                            <div class="flex items-center space-x-2 mb-3">
-                                <label for="referral-link-input" class="sr-only">Referral link</label>
-                                <input id="referral-link-input" type="text" value="Sign in to get your referral link" readonly class="text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 flex-1 min-w-0" />
-                                <button id="referral-copy-button" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs whitespace-nowrap flex-shrink-0">
-                                    <i class="fas fa-copy mr-1"></i>Copy
-                                </button>
-                            </div>
-                            <p id="referral-stats" class="text-xs text-gray-500 dark:text-gray-400">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                Sign in to see your referral earnings and signup totals.
-                            </p>
-                        </div>
-                        <div class="rounded-lg border border-purple-100 dark:border-purple-800 overflow-hidden">
-                            <div class="px-4 py-3 bg-purple-50 dark:bg-purple-900/30 flex items-center justify-between">
-                                <h3 class="font-semibold text-purple-800 dark:text-purple-200 text-sm">
-                                    <i class="fas fa-ranking-star mr-1"></i>Referral Leaderboard
-                                </h3>
-                                <a href="/referral-leaderboard" aria-label="View full referral leaderboard" class="text-xs font-bold text-purple-700 dark:text-purple-300 hover:underline">View leaderboard</a>
-                            </div>
-                            <div id="referral-leaderboard-list" class="divide-y divide-purple-100 dark:divide-purple-900/50">
-                                <div class="p-4 text-xs text-gray-500 dark:text-gray-400">
-                                    <i class="fas fa-spinner fa-spin mr-1"></i>Loading leaderboard...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Weekly Challenges -->
-                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-teal-500">
-                        <h2 class="text-lg font-bold mb-4 flex items-center">
-                            <span class="mr-2 text-xl">🏆</span> Weekly Challenges
-                        </h2>
-                        <div class="challenge-item">
-                            <h3 class="text-base font-semibold mb-3 text-gray-800 dark:text-gray-200">Array Algorithms</h3>
-                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">Master advanced array manipulation techniques.</p>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-4">
-                                <i class="fas fa-calendar-alt mr-1"></i>
-                                <strong>Duration:</strong> Apr 10 - Apr 17
-                            </p>
-                            <a href="/challenges" class="inline-flex items-center min-h-11 bg-teal-600 text-white px-5 py-2.5 rounded-lg hover:bg-teal-700 transition-shadow shadow-md text-sm">
-                                <i class="fas fa-check mr-2"></i>View Challenge
-                            </a>
-                        </div>
-                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <a href="/challenges" class="min-h-11 flex items-center justify-center text-center bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm">
-                                <i class="fas fa-list mr-2"></i>View All Challenges
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
                         <!-- ===== SECTION 4: TESTIMONIALS ===== -->
             <section>
                 <div class="relative flex py-5 items-center mb-8">
@@ -268,7 +201,7 @@
                             "Alpha One Labs helped me find useful activities, supportive instructors, and a community that made it easier to keep going. Highly recommended!"
                         </p>
                         <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
+                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80" alt="Learner testimonial portrait" width="48" height="48" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" loading="lazy" decoding="async">
                             <div>
                                 <p class="font-semibold text-gray-800 dark:text-gray-200">Sarah Johnson</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Web Developer</p>
@@ -291,7 +224,7 @@
                             "The community here is amazing! I've learned so much from peers and mentors. It's not just about courses, it's about growing together."
                         </p>
                          <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-teal-500"></div>
+                            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80" alt="Community testimonial portrait" width="48" height="48" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" loading="lazy" decoding="async">
                             <div>
                                 <p class="font-semibold text-gray-800 dark:text-gray-200">Alex Chen</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Data Scientist</p>
@@ -314,33 +247,13 @@
                             "Teaching on Alpha One Labs has been rewarding. The platform makes it easy to share knowledge and connect with eager learners worldwide."
                         </p>
                         <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-orange-500"></div>
+                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=80" alt="Teacher testimonial portrait" width="48" height="48" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" loading="lazy" decoding="async">
                             <div>
                                 <p class="font-semibold text-gray-800 dark:text-gray-200">Emily Brown</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">UI/UX Instructor</p>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
-
-                       <!-- ===== SECTION 5: VIEW WAITING ROOMS | VIEW CONTRIBUTIONS ===== -->
-            <section>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- View Waiting Rooms -->
-                    <a href="/waiting-rooms"
-                       class="group block rounded-2xl p-10 bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
-                        <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
-                            <i class="fas fa-door-open text-4xl"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold mb-3">View Waiting Rooms</h3>
-                        <p class="text-white text-sm mb-6 max-w-sm mx-auto">
-                            Browse open waiting rooms and connect with learners seeking teachers for specific topics.
-                        </p>
-                        <span class="inline-flex items-center gap-2 bg-white/25 group-hover:bg-white/35 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
-                            Browse Waiting Rooms <i class="fas fa-arrow-right"></i>
-                        </span>
-                    </a>
                 </div>
             </section>
 
@@ -433,104 +346,6 @@
                 </div>
             </section>
 
-            <!-- ===== SECTION 7: AFFILIATIONS ===== -->
-            <section class="rounded-2xl p-6 shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                <h2 class="text-xl font-semibold flex items-center mb-4">
-                    <i class="fas fa-handshake text-teal-600 dark:text-teal-400 mr-2"></i> Our Affiliations
-                </h2>
-                <div class="flex flex-wrap items-center justify-center gap-6">
-                    <a href="https://opensciencelabs.org/" target="_blank" rel="noopener" class="block">
-                        <img src="./images/logo-osl.svg" alt="Open Science Lab" width="220" height="80" loading="lazy" decoding="async">
-                    </a>
-                </div>
-                <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
-                    Alpha One Labs is proudly affiliated with leading open source and educational initiatives that advance technology and learning worldwide.
-                </p>
-            </section>
-
         </div>
-    
-        <section class="max-w-[90rem] mx-auto px-4 md:px-6 pb-10 text-center">
-          <a href="https://gsoc.alphaonelabs.com" target="_blank" rel="noopener" class="inline-flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-sm font-bold text-gray-700 dark:text-gray-200 hover:border-teal-500 hover:text-teal-600 dark:hover:text-teal-300 transition">
-            <img src="/images/gsoc-logo.png" alt="Google Summer of Code" width="110" height="32" class="h-8 w-auto" loading="lazy" decoding="async" onerror="this.style.display='none'">
-            <span>GSOC 2027 opportunities</span>
-            <i class="fas fa-arrow-up-right-from-square text-xs"></i>
-          </a>
-        </section>
     </main>
-<script>
-      function homeEsc(value) {
-        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      }
-      function homeMoney(cents) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(cents || 0) / 100);
-      }
-      async function loadReferralProgram() {
-        const token = localStorage.getItem('edu_token');
-        const input = document.getElementById('referral-link-input');
-        const stats = document.getElementById('referral-stats');
-        const copy = document.getElementById('referral-copy-button');
-        if (!input || !stats || !copy) return;
-        copy.addEventListener('click', async () => {
-          if (!input.value || input.value.startsWith('Sign in')) {
-            window.location.href = '/login';
-            return;
-          }
-          await navigator.clipboard.writeText(input.value);
-          copy.innerHTML = '<i class="fas fa-check mr-1"></i>Copied';
-          setTimeout(() => copy.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy', 1500);
-        });
-        if (!token) return;
-        try {
-          const res = await fetch('/api/referral', { headers: { Authorization: 'Bearer ' + token } });
-          const body = await res.json();
-          if (!res.ok) throw new Error(body.error || 'Could not load referral data');
-          const data = body.data || {};
-          input.value = data.referral_link || '';
-          stats.innerHTML = '<i class="fas fa-info-circle mr-1"></i>' +
-            'Total referral earnings: ' + homeMoney(data.referral_earnings_cents) +
-            ' · Signups: ' + Number(data.referred_count || 0) +
-            ' · Enrollments: ' + Number(data.referred_enrollment_count || 0);
-        } catch (err) {
-          stats.innerHTML = '<i class="fas fa-triangle-exclamation mr-1"></i>' + homeEsc(err.message);
-        }
-      }
-      async function loadReferralLeaderboard() {
-        const holder = document.getElementById('referral-leaderboard-list');
-        if (!holder) return;
-        try {
-          const res = await fetch('/api/referral/leaderboard?limit=5');
-          const body = await res.json();
-          if (!res.ok) throw new Error(body.error || 'Could not load referral leaderboard');
-          const leaders = body.leaders || [];
-          if (!leaders.length) {
-            holder.innerHTML = '<div class="p-4 text-xs text-gray-500 dark:text-gray-400">No referral leaders yet. Share your link to get started.</div>';
-            return;
-          }
-          holder.innerHTML = leaders.map(item => `
-            <div class="px-4 py-3 flex items-center justify-between gap-3 text-sm">
-              <div class="flex items-center gap-3 min-w-0">
-                <span class="w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold">${item.rank}</span>
-                <div class="min-w-0">
-                  <p class="font-semibold text-gray-800 dark:text-gray-100 truncate">${homeEsc(item.name)}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">${Number(item.referred_count || 0)} signups · ${Number(item.referred_enrollment_count || 0)} enrollments</p>
-                </div>
-              </div>
-              <span class="text-xs font-bold text-purple-700 dark:text-purple-300">${homeMoney(item.referral_earnings_cents)}</span>
-            </div>
-          `).join('');
-        } catch (err) {
-          holder.innerHTML = '<div class="p-4 text-xs text-red-600 dark:text-red-300">' + homeEsc(err.message) + '</div>';
-        }
-      }
-      function runHomeIdle(fn) {
-        const schedule = () => {
-          setTimeout(fn, 1800);
-        };
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule, { once: true });
-        else schedule();
-      }
-      runHomeIdle(loadReferralProgram);
-      runHomeIdle(loadReferralLeaderboard);
-    </script>
 {% endblock %}
