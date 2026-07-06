@@ -91,6 +91,16 @@
 
     <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
       <p>© 2026 Alpha One Labs. All rights reserved.</p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="/privacy" class="footer-bottom-icon-link" aria-label="Privacy Policy">
+          <i class="fas fa-shield-halved"></i>
+          <span>Privacy Policy</span>
+        </a>
+        <a href="/referral-leaderboard" class="footer-bottom-icon-link" aria-label="Referral Leaderboard">
+          <i class="fas fa-ranking-star"></i>
+          <span>Referral Leaderboard</span>
+        </a>
+      </div>
       <p>Open source education, current classes, and community learning tools.</p>
     </div>
   </div>
@@ -105,5 +115,9 @@
     .dark .social-link { background: rgb(55 65 81); color: rgb(209 213 219); }
     .social-link:hover { background: rgb(204 251 241); color: rgb(13 148 136); transform: translateY(-1px); }
     .dark .social-link:hover { background: rgba(19, 78, 74, .75); color: rgb(45 212 191); }
+    .footer-bottom-icon-link { display: inline-flex; align-items: center; gap: .5rem; border-radius: 9999px; background: rgb(243 244 246); color: rgb(75 85 99); padding: .5rem .85rem; font-weight: 700; transition: all .15s ease; }
+    .dark .footer-bottom-icon-link { background: rgb(55 65 81); color: rgb(209 213 219); }
+    .footer-bottom-icon-link:hover { background: rgb(204 251 241); color: rgb(13 148 136); transform: translateY(-1px); }
+    .dark .footer-bottom-icon-link:hover { background: rgba(19, 78, 74, .75); color: rgb(45 212 191); }
   </style>
 </footer>

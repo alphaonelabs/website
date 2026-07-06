@@ -86,48 +86,61 @@
   <div id="browser-view" class="view-browser">
 
     <!-- ===== HERO SECTION ===== -->
-    <section class="gradient-hero text-white py-16 md:py-20 relative overflow-hidden">
+    <section class="gradient-hero text-white py-4 md:py-5 relative overflow-hidden">
       <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
-        <i class="fas fa-book-open absolute top-10 left-10 text-6xl"></i>
-        <i class="fas fa-users absolute bottom-10 right-10 text-6xl"></i>
+        <i class="fas fa-book-open absolute top-4 left-8 text-4xl"></i>
+        <i class="fas fa-users absolute bottom-4 right-10 text-4xl"></i>
       </div>
 
       <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
-        <nav class="text-teal-100 text-sm mb-6 flex items-center gap-2">
-          <i class="fas fa-list mr-1"></i>
-          <span>All Activities</span>
-        </nav>
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div>
+            <nav class="text-teal-100 text-xs mb-1 flex items-center gap-2">
+              <i class="fas fa-list mr-1"></i>
+              <span>All Activities</span>
+            </nav>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-white leading-tight">
+              Discover Learning Activities
+            </h1>
+            <p class="text-sm text-teal-100 mt-1 max-w-2xl">
+              Browse courses, workshops, study groups, videos, and community classes.
+            </p>
+          </div>
 
-        <h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-4">
-          Discover Learning Activities
-        </h1>
-        <p class="text-lg text-teal-100 mb-8 max-w-2xl">
-          Browse courses, meetups, workshops, and study groups. All sessions encrypted and secure.
-        </p>
-
-        <!-- Search + Filters -->
-        <div class="flex flex-col md:flex-row gap-3 max-w-2xl">
-          <input id="search" type="text" placeholder="🔍 Search activities…"
-            class="flex-1 px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-white/40 text-sm backdrop-blur" />
-          <select id="filter-type"
-            class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
-            <option value="" class="bg-gray-800">All Types</option>
-            <option value="course" class="bg-gray-800">📚 Course</option>
-            <option value="meetup" class="bg-gray-800">🤝 Meetup</option>
-            <option value="workshop" class="bg-gray-800">🔧 Workshop</option>
-            <option value="seminar" class="bg-gray-800">🎤 Seminar</option>
-            <option value="club" class="bg-gray-800">🏛 Club</option>
-            <option value="event" class="bg-gray-800">📅 Event</option>
-            <option value="video" class="bg-gray-800">🎬 Video</option>
-            <option value="study_group" class="bg-gray-800">👥 Study Group</option>
-          </select>
-          <select id="filter-format"
-            class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
-            <option value="" class="bg-gray-800">All Formats</option>
-            <option value="live" class="bg-gray-800">🎥 Live</option>
-            <option value="self_paced" class="bg-gray-800">⏱ Self-paced</option>
-            <option value="hybrid" class="bg-gray-800">🔀 Hybrid</option>
-          </select>
+          <!-- Search + Filters -->
+          <div class="w-full xl:max-w-4xl">
+            <div class="flex flex-col md:flex-row gap-3">
+              <input id="search" type="text" placeholder="🔍 Search activities…"
+                class="flex-1 px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-white/40 text-sm backdrop-blur" />
+              <select id="filter-type"
+                class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
+                <option value="" class="bg-gray-800">All Types</option>
+                <option value="course" class="bg-gray-800">📚 Course</option>
+                <option value="meetup" class="bg-gray-800">🤝 Meetup</option>
+                <option value="workshop" class="bg-gray-800">🔧 Workshop</option>
+                <option value="seminar" class="bg-gray-800">🎤 Seminar</option>
+                <option value="club" class="bg-gray-800">🏛 Club</option>
+                <option value="event" class="bg-gray-800">📅 Event</option>
+                <option value="video" class="bg-gray-800">🎬 Video</option>
+                <option value="study_group" class="bg-gray-800">👥 Study Group</option>
+              </select>
+              <select id="filter-format"
+                class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
+                <option value="" class="bg-gray-800">All Formats</option>
+                <option value="live" class="bg-gray-800">🎥 Live</option>
+                <option value="self_paced" class="bg-gray-800">⏱ Self-paced</option>
+                <option value="hybrid" class="bg-gray-800">🔀 Hybrid</option>
+              </select>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+              <a href="/activity?tag=Programming" class="rounded-full bg-white/15 hover:bg-white/25 border border-white/15 px-3 py-1.5 text-white transition">Programming</a>
+              <a href="/activity?tag=Design" class="rounded-full bg-white/15 hover:bg-white/25 border border-white/15 px-3 py-1.5 text-white transition">Design</a>
+              <a href="/activity?tag=Business" class="rounded-full bg-white/15 hover:bg-white/25 border border-white/15 px-3 py-1.5 text-white transition">Business</a>
+              <a href="/activity?tag=Marketing" class="rounded-full bg-white/15 hover:bg-white/25 border border-white/15 px-3 py-1.5 text-white transition">Marketing</a>
+              <a href="/activity?tag=DIY" class="rounded-full bg-white/15 hover:bg-white/25 border border-white/15 px-3 py-1.5 text-white transition">DIY</a>
+              <a href="/activity?type=video" class="rounded-full bg-white/15 hover:bg-white/25 border border-white/15 px-3 py-1.5 text-white transition">Videos</a>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -142,6 +155,13 @@
       <div id="activity-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {% activity_cards limit=12 %}
       </div>
+      <nav id="activity-pagination" class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4" aria-label="Activity list pagination">
+        <div class="text-sm text-gray-600 dark:text-gray-300">Showing the first page of activities</div>
+        <div class="flex flex-wrap justify-center gap-2">
+          <span class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold">1</span>
+          <a href="#activity-grid" onclick="if (window.setActivityPage) { setActivityPage(2); return false; }" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:border-teal-500 hover:text-teal-700 dark:hover:text-teal-300 text-sm font-bold">Next</a>
+        </div>
+      </nav>
 
       <p id="no-results" class="hidden text-center text-gray-400 dark:text-gray-500 py-16 text-lg">
         <i class="fas fa-search text-4xl mb-4 block opacity-50"></i>
@@ -664,20 +684,35 @@
       return serverActivityDetailPayload;
     }
 
-    async function loadActivityDetail(activityRef) {
-      let data = readServerActivityDetail(activityRef);
-      if (!data) {
-        const headers = token ? { Authorization: 'Bearer ' + token } : {};
-        const res = await fetch('/api/activities/' + encodeURIComponent(activityRef), { headers });
-        data = await res.json();
-        if (!res.ok) { document.getElementById('act-title').textContent = 'Activity not found'; return; }
-      }
+    function normalizeActivityDetailPayload(body) {
+      const payload = body && body.data && body.data.activity ? body.data : body;
+      if (!payload || !payload.activity) throw new Error((body && body.error) || 'Activity data was not found.');
+      payload.sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+      payload.activity.tags = Array.isArray(payload.activity.tags) ? payload.activity.tags : [];
+      return payload;
+    }
 
-      const a = data.activity;
-      currentActivity = a;
-      if (a.slug && !new URLSearchParams(location.search).get('slug')) {
-        window.history.replaceState({activityRef: a.slug}, '', activityDetailUrl(a));
+    async function loadActivityDetail(activityRef) {
+      let data;
+      try {
+        data = normalizeActivityDetailPayload(readServerActivityDetail(activityRef));
+      } catch (_) {
+        data = null;
       }
+      try {
+        if (!data) {
+          const headers = token ? { Authorization: 'Bearer ' + token } : {};
+          const res = await fetch('/api/activities/' + encodeURIComponent(activityRef), { headers });
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error || 'Activity not found');
+          data = normalizeActivityDetailPayload(body);
+        }
+
+        const a = data.activity;
+        currentActivity = a;
+        if (a.slug && !new URLSearchParams(location.search).get('slug')) {
+          window.history.replaceState({activityRef: a.slug}, '', activityDetailUrl(a));
+        }
       
       document.title = a.title + ' - Alpha One Labs';
       document.getElementById('crumb-title').textContent = a.title;
@@ -704,8 +739,8 @@
       const ic = typeIcon[a.type] || '✨';
       document.getElementById('act-badges').innerHTML =
         '<span class="badge ' + tc + '">' + ic + ' ' + esc(typeLabel[a.type] || a.type) + '</span>' +
-        '<span class="badge ' + fc + '">' + fmtLabel[a.format] + '</span>' +
-        '<span class="badge bg-white/20 text-white">' + schedLabel[a.schedule_type] + '</span>';
+        '<span class="badge ' + fc + '">' + esc(fmtLabel[a.format] || a.format || 'Activity') + '</span>' +
+        '<span class="badge bg-white/20 text-white">' + esc(schedLabel[a.schedule_type] || a.schedule_type || 'Flexible') + '</span>';
 
       const detailImageUrl = a.image_url || '';
       document.getElementById('act-details').innerHTML =
@@ -720,8 +755,8 @@
         '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-signal"></i><strong>Level</strong></span><span>' + esc(a.level || 'All levels') + '</span></div>' +
         '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-users"></i><strong>Students</strong></span><span>' + a.participant_count + (a.max_students ? ' / ' + a.max_students : '') + '</span></div>' +
         '<div class="flex items-center gap-2 text-teal-100"><span>📋</span><span><strong>Type:</strong> ' + esc(typeLabel[a.type] || a.type) + '</span></div>' +
-        '<div class="flex items-center gap-2 text-teal-100"><span>📡</span><span><strong>Format:</strong> ' + fmtLabel[a.format] + '</span></div>' +
-        '<div class="flex items-center gap-2 text-teal-100"><span>🗓</span><span><strong>Schedule:</strong> ' + schedLabel[a.schedule_type] + '</span></div>' +
+        '<div class="flex items-center gap-2 text-teal-100"><span>📡</span><span><strong>Format:</strong> ' + esc(fmtLabel[a.format] || a.format || 'Activity') + '</span></div>' +
+        '<div class="flex items-center gap-2 text-teal-100"><span>🗓</span><span><strong>Schedule:</strong> ' + esc(schedLabel[a.schedule_type] || a.schedule_type || 'Flexible') + '</span></div>' +
         (a.level ? '<div class="flex items-center gap-2 text-teal-100"><span>📈</span><span><strong>Level:</strong> ' + esc(a.level) + '</span></div>' : '') +
         (a.status === 'waitlist' ? '<div class="flex items-center gap-2 text-teal-100"><span>🙋</span><span><strong>Waiting room:</strong> ' + (a.interest_count || 0) + ' interested</span></div>' : '') +
         '<div class="flex items-center gap-2 text-teal-100"><span>👥</span><span><strong>Participants:</strong> ' + a.participant_count + '</span></div>';
@@ -831,6 +866,15 @@
           }
         }
       }
+      } catch (e) {
+        console.error('Failed to load activity detail:', e);
+        document.getElementById('crumb-title').textContent = 'Not found';
+        document.getElementById('act-title').textContent = 'Activity not found';
+        document.getElementById('act-meta').textContent = e.message || 'Could not load this activity.';
+        document.getElementById('act-description').textContent = 'This activity could not be loaded. Please go back to the activity list and try again.';
+        document.getElementById('act-action').innerHTML =
+          '<a href="/activity" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"><i class="fas fa-arrow-left"></i>Browse activities</a>';
+      }
     }
 
     async function expressInterest() {
@@ -937,7 +981,10 @@
     
     if (pathRef || actSlug || actId) {
       const ref = pathRef || actSlug || actId;
-      showDetail(ref, ref);
+      document.documentElement.classList.add('activity-detail-route');
+      document.getElementById('browser-view').classList.add('hidden');
+      document.getElementById('detail-view').classList.add('active');
+      loadActivityDetail(ref);
     } else {
       loadAllActivities();
     }
