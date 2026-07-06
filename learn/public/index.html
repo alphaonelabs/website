@@ -22,34 +22,6 @@
         html.dark body { background: #000; }
         html.prepaint-home.dark body { background: #134e4a; }
 
-        .home-hero-title {
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            font-size: clamp(2.25rem, 5.6vw, 3.75rem);
-            line-height: 1.12;
-            letter-spacing: -0.045em;
-            font-weight: 900;
-            text-wrap: balance;
-            min-height: 3.36em;
-            font-synthesis: none;
-        }
-        .home-hero-accent {
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        .home-hero-accent-classes {
-            background-image: linear-gradient(90deg, #fde047, #fb923c);
-        }
-        .home-hero-accent-community {
-            background-image: linear-gradient(90deg, #67e8f9, #60a5fa);
-        }
-        @media (min-width: 768px) {
-            .home-hero-title { min-height: 2.24em; }
-        }
-        @media (min-width: 1024px) {
-            .home-hero-title { min-height: 3.36em; }
-        }
-
         .home-auth-only { display: none !important; }
         .home-guest-only { display: flex !important; }
         html.is-authenticated .home-auth-only { display: flex !important; }
@@ -92,9 +64,9 @@
             <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
                 <div class="flex flex-col lg:flex-row items-center gap-10">
                     <div class="lg:w-3/5 text-center lg:text-left">
-                        <h1 class="home-hero-title text-white mb-6">
-                            Activities, <span class="home-hero-accent home-hero-accent-classes">Classes</span>, and
-                            <span class="home-hero-accent home-hero-accent-community">Community</span> in One Place
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
+                            Activities, <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Classes</span>, and
+                            <span class="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">Community</span> in One Place
                         </h1>
                         <p class="text-lg md:text-xl text-white max-w-2xl mb-8 leading-relaxed">
                             Alpha One Labs is an activity platform for classes, workshops, study groups, classrooms, events, and community projects. Browse what is live, request what you want next, or offer something you can teach.
