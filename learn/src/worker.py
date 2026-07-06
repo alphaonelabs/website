@@ -4583,21 +4583,8 @@ _MIME = {
 
 def _static_cache_control(ext: str) -> str:
     if ext in {"html", "json"}:
-        return "public, max-age=60, s-maxage=900, stale-while-revalidate=86400"
+        return "public, max-age=60, s-maxage=300"
     return "public, max-age=31536000, s-maxage=31536000, immutable"
-
-
-_PUBLIC_HTML_CACHE_CONTROL = "public, max-age=60, s-maxage=900, stale-while-revalidate=86400"
-
-
-def _is_cacheable_home_document(req) -> bool:
-    if (getattr(req, "method", "") or "").upper() != "GET":
-        return False
-    if (req.headers.get("Authorization") or "").strip():
-        return False
-    parsed = urlparse(req.url)
-    path = re.sub(r"/+", "/", parsed.path or "/")
-    return not parsed.query and path in {"/", "/en", "/en/"}
 
 
 _SECURITY_HEADERS = {
@@ -6319,21 +6306,6 @@ async def _dispatch(request, env):
 async def on_fetch(request, env):
     try:
         init_sentry(env)
-        if _is_cacheable_home_document(request):
-            try:
-                cached = await js.caches.default.match(request)
-                if cached:
-                    return cached
-            except Exception:
-                pass
-            response = await _dispatch(request, env)
-            if getattr(response, "status", 200) == 200:
-                try:
-                    response.headers.set("Cache-Control", _PUBLIC_HTML_CACHE_CONTROL)
-                    await js.caches.default.put(request, response.clone())
-                except Exception:
-                    pass
-            return response
         return await _dispatch(request, env)
     except Exception as e:
         await capture_exception(e, request, env, "on_fetch_unhandled")
