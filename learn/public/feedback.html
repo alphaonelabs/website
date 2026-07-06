@@ -157,22 +157,86 @@
     </div>
   </main>
 <script>
-   document.getElementById('feedback-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = event.currentTarget;
-      const status = document.getElementById('feedback-status');
-      const token = localStorage.getItem('edu_token');
-      status.textContent = 'Submitting feedback...';
-      const body = Object.fromEntries(new FormData(form).entries());
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers.Authorization = 'Bearer ' + token;
-      try {
-        const res = await fetch('/api/feedback', { method: 'POST', headers, body: JSON.stringify(body) });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Could not submit feedback');
-        status.textContent = data.message || 'Thank you for the feedback.';
-        form.reset();
-      } catch (err) { status.textContent = err.message; }
+  const API = '';
+
+    const textarea = document.getElementById('feedback-description');
+    const charCount = document.getElementById('char-count');
+
+    textarea.addEventListener('input', () => {
+      const len = textarea.value.length;
+      charCount.textContent = `${len} / 5000`;
+      if (len > 5000) textarea.value = textarea.value.slice(0, 5000);
     });
+
+    function showError(msg) {
+      const banner = document.getElementById('error-banner');
+      document.getElementById('error-message').textContent = msg;
+      banner.classList.remove('hidden');
+      banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideError() {
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    function setLoading(loading) {
+      const btn = document.getElementById('submit-btn');
+      const label = document.getElementById('submit-label');
+      btn.disabled = loading;
+      label.textContent = loading ? 'Submitting...' : 'Submit Feedback';
+      btn.querySelector('i').className = loading ? 'fas fa-spinner fa-spin' : 'fas fa-paper-plane';
+    }
+
+    async function submitFeedback(e) {
+      e.preventDefault();
+      hideError();
+
+      const description = document.getElementById('feedback-description').value.trim();
+      if (!description) {
+        showError('Please enter your feedback before submitting.');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const payload = {
+          name: document.getElementById('feedback-name').value.trim() || null,
+          email: document.getElementById('feedback-email').value.trim() || null,
+          description,
+        };
+
+        const res = await fetch(`${API}/api/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to submit feedback. Please try again.');
+        }
+
+        // Show success
+        document.getElementById('feedback-form').classList.add('hidden');
+        const successEl = document.getElementById('success-state');
+        successEl.classList.remove('hidden');
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      } catch (err) {
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('feedback-form').reset();
+      document.getElementById('feedback-form').classList.remove('hidden');
+      document.getElementById('success-state').classList.add('hidden');
+      charCount.textContent = '0 / 5000';
+      hideError();
+    }
   </script>
 {% endblock %}
