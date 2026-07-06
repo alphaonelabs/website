@@ -14,11 +14,8 @@
     html.prepaint-home.dark body { background: #134e4a; }
     html.prepaint-home body > main > section:first-child { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #06b6d4 100%); }
     html.prepaint-home.dark body > main > section:first-child { background: linear-gradient(135deg, #134e4a 0%, #0f766e 50%, #164e63 100%); }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
-    .flex { display: flex; }
-    .inline-flex { display: inline-flex; }
-    .block { display: block; }
     .relative { position: relative; }
     .absolute { position: absolute; }
     .items-center { align-items: center; }
@@ -44,6 +41,23 @@
     html.prepaint-home main > section:first-child p { max-width: 42rem; color: #fff; }
     html.prepaint-home main > section:first-child a { min-height: 3.5rem; align-items: center; justify-content: center; text-decoration: none; }
     @media (max-width: 767px) { html.prepaint-home main > section:first-child { min-height: 720px; } }
+    @media (min-width: 640px) {
+      .sm\:inline { display: inline !important; }
+    }
+    @media (min-width: 768px) {
+      .md\:flex { display: flex !important; }
+      .md\:hidden { display: none !important; }
+      .md\:block { display: block !important; }
+    }
+    @media (min-width: 1024px) {
+      .lg\:block { display: block !important; }
+      .lg\:flex { display: flex !important; }
+      .lg\:hidden { display: none !important; }
+    }
+    @media (min-width: 1280px) {
+      .xl\:flex { display: flex !important; }
+      .xl\:hidden { display: none !important; }
+    }
     @font-face { font-family: "Font Awesome 6 Free"; font-style: normal; font-weight: 900; font-display: swap; src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/webfonts/fa-solid-900.woff2") format("woff2"); }
     @font-face { font-family: "Font Awesome 6 Brands"; font-style: normal; font-weight: 400; font-display: swap; src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/webfonts/fa-brands-400.woff2") format("woff2"); }
   </style>

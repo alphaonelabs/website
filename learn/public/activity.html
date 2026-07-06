@@ -479,18 +479,18 @@
         <img src="${esc(imageUrl)}" alt="${esc(a.title)}" width="500" height="500" loading="lazy" class="w-full h-full object-cover" onerror="this.remove();">
       </div>`;
       const price = formatPrice(a.price_cents, a.price_currency);
-      const actionHtml = `<button onclick="event.stopPropagation(); showDetail('${esc(a.id)}', '${esc(a.slug || '')}')" class="px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold">
+      const actionHtml = `<button onclick="event.stopPropagation(); showDetail('${esc(a.id)}', '${esc(a.slug || '')}')" class="min-h-11 px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold">
               <i class="fas fa-circle-info mr-1"></i>View More Info
             </button>`;
       return `
-        <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 card-hover flex flex-col gap-3 cursor-pointer" onclick="showDetail('${esc(a.id)}', '${esc(a.slug || '')}')">
+        <article class="h-full min-h-[36rem] bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 card-hover flex flex-col gap-3 cursor-pointer" onclick="showDetail('${esc(a.id)}', '${esc(a.slug || '')}')">
           ${image}
           <div class="flex items-start justify-between gap-2">
-            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-base leading-snug">${ic} ${esc(a.title)}</h3>
+            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-base leading-snug min-h-[3rem]">${ic} ${esc(a.title)}</h3>
             <span class="badge ${tc} shrink-0">${esc(typeLabel[a.type] || a.type)}</span>
           </div>
-          <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed flex-1">${esc(desc)}</p>
-          <div class="flex flex-wrap gap-1.5">${tags}</div>
+          <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed min-h-[4.75rem]">${esc(desc)}</p>
+          <div class="flex flex-wrap gap-1.5 min-h-[4.5rem] content-start">${tags}</div>
           <div class="flex items-center justify-between mt-auto pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
             <div class="flex gap-2 flex-wrap">
               <span class="badge ${fc}">${fmtLabel[a.format] || a.format}</span>
