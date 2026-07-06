@@ -448,7 +448,8 @@
       return;
     }
     try {
-      let data = normalizeActivityDetailPayload(readServerActivityDetail(ref));
+      const embedded = readServerActivityDetail(ref);
+      let data = embedded ? normalizeActivityDetailPayload(embedded) : null;
       if (!data) {
         const headers = token ? { Authorization: 'Bearer ' + token } : {};
         const res = await fetch('/api/activities/' + encodeURIComponent(ref), { headers });
