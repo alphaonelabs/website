@@ -12,6 +12,8 @@
     html.prepaint-home.dark { background: #134e4a; }
     html.prepaint-home body > main > section:first-child { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #06b6d4 100%); }
     html.prepaint-home.dark body > main > section:first-child { background: linear-gradient(135deg, #134e4a 0%, #0f766e 50%, #164e63 100%); }
+    @font-face { font-family: "Font Awesome 6 Free"; font-style: normal; font-weight: 900; font-display: swap; src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/webfonts/fa-solid-900.woff2") format("woff2"); }
+    @font-face { font-family: "Font Awesome 6 Brands"; font-style: normal; font-weight: 400; font-display: swap; src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/webfonts/fa-brands-400.woff2") format("woff2"); }
   </style>
   <script>
     (function () {
@@ -91,6 +93,7 @@
     html.auth-redirecting body { visibility: hidden; }
     .dark { color-scheme: dark; }
     :root { color-scheme: light; }
+    a, button, input, select, textarea { touch-action: manipulation; }
   </style>
   {% block head %}{% endblock %}
 </head>

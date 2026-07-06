@@ -5052,7 +5052,27 @@ _MIME = {
 def _static_cache_control(ext: str) -> str:
     if ext in {"html", "json"}:
         return "public, max-age=60, s-maxage=300"
-    return "public, max-age=86400, s-maxage=604800, immutable"
+    return "public, max-age=31536000, s-maxage=31536000, immutable"
+
+
+_SECURITY_HEADERS = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(self), payment=(self)",
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data: https://cdnjs.cloudflare.com; "
+        "connect-src 'self' https: wss:; "
+        "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    ),
+}
 
 
 def _template_attr_bool(value: Any, default: bool = False) -> bool:
@@ -5258,7 +5278,7 @@ def _server_activity_card_html(activity: Dict[str, Any], *, home: bool = False) 
         '<article class="group bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">'
         f'<a href="{href}" class="block">'
         '<div class="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">'
-        f'<img src="{image}" alt="{title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" fetchpriority="low" onerror="this.remove();">'
+        f'<img src="{image}" alt="{title}" width="500" height="500" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" fetchpriority="low" onerror="this.remove();">'
         '</div>'
         '<div class="p-5">'
         '<div class="flex items-center justify-between gap-3 mb-3">'
@@ -5697,6 +5717,7 @@ async def serve_static(path: str, env, req=None):
         headers={
             "Content-Type": mime,
             "Cache-Control": _static_cache_control(ext),
+            **_SECURITY_HEADERS,
             **_CORS,
         },
     )

@@ -110,8 +110,10 @@
           <!-- Search + Filters -->
           <div class="w-full xl:max-w-4xl">
             <div class="flex flex-col md:flex-row gap-3">
+              <label for="search" class="sr-only">Search activities</label>
               <input id="search" type="text" placeholder="🔍 Search activities…"
                 class="flex-1 px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-white/40 text-sm backdrop-blur" />
+              <label for="filter-type" class="sr-only">Filter by activity type</label>
               <select id="filter-type"
                 class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
                 <option value="" class="bg-gray-800">All Types</option>
@@ -124,6 +126,7 @@
                 <option value="video" class="bg-gray-800">🎬 Video</option>
                 <option value="study_group" class="bg-gray-800">👥 Study Group</option>
               </select>
+              <label for="filter-format" class="sr-only">Filter by activity format</label>
               <select id="filter-format"
                 class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
                 <option value="" class="bg-gray-800">All Formats</option>
@@ -477,7 +480,7 @@
         `<span class="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">${esc(t)}</span>`).join('');
       const imageUrl = a.image_url || '';
       const image = `<div class="w-full aspect-square overflow-hidden rounded-xl mb-3 bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-gray-900 dark:to-gray-700">
-        <img src="${esc(imageUrl)}" alt="${esc(a.title)}" loading="lazy" class="w-full h-full object-cover" onerror="this.remove();">
+        <img src="${esc(imageUrl)}" alt="${esc(a.title)}" width="500" height="500" loading="lazy" class="w-full h-full object-cover" onerror="this.remove();">
       </div>`;
       const price = formatPrice(a.price_cents, a.price_currency);
       const actionHtml = `<button onclick="event.stopPropagation(); showDetail('${esc(a.id)}', '${esc(a.slug || '')}')" class="px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold">
