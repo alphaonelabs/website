@@ -79,7 +79,7 @@
   </style>
 {% endblock %}
 {% block content %}
-{% activities_json limit=250 %}
+{% activities_json limit=1000 %}
   {% activity_detail_json %}
 
   <!-- ==================== BROWSER VIEW ==================== -->
@@ -626,7 +626,7 @@
       if (!type || loadedActivityTypes.has(type) || typeFetchesInFlight.has(type)) return;
       typeFetchesInFlight.add(type);
       try {
-        const res = await fetch(`${API}/api/activities?type=${encodeURIComponent(type)}`);
+        const res = await fetch(`${API}/api/activities?status=catalog&type=${encodeURIComponent(type)}`);
         const data = await res.json();
         mergeActivities(data.activities || []);
         buildTagCloud(allActivities);
@@ -676,7 +676,7 @@
         return;
       }
       try {
-        const res  = await fetch(`${API}/api/activities`);
+        const res  = await fetch(`${API}/api/activities?status=catalog`);
         const data = await res.json();
         allActivities = data.activities || [];
         mergeActivities([]);

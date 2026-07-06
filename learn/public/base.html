@@ -5,12 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}" />
   <title>{% block title %}Alpha One Labs{% endblock %}</title>
+  <style>
+    html { background: #ffffff; }
+    html.dark { background: #000000; }
+    html.prepaint-home { background: #0f766e; }
+    html.prepaint-home.dark { background: #134e4a; }
+    html.prepaint-home body > main > section:first-child { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #06b6d4 100%); }
+    html.prepaint-home.dark body > main > section:first-child { background: linear-gradient(135deg, #134e4a 0%, #0f766e 50%, #164e63 100%); }
+  </style>
   <script>
     (function () {
       try {
         if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
       } catch (_) {
         /* Ignore storage failures. */
+      }
+
+      const currentPath = ((location.pathname || '/').replace(/\/+$/, '') || '/').replace(/^\/en(?=\/|$)/, '') || '/';
+      if (currentPath === '/') {
+        document.documentElement.classList.add('prepaint-home');
       }
 
       const protectedPaths = new Set([

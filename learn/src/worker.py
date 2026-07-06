@@ -1862,9 +1862,9 @@ async def api_list_activities(req, env):
     fmt    = (params.get("format") or [None])[0]
     search = (params.get("q")      or [None])[0]
     tag    = (params.get("tag")    or [None])[0]
-    status = (params.get("status") or ["published"])[0]
-    if status not in {"published", "waitlist", "draft", "archived", "all"}:
-        status = "published"
+    status = (params.get("status") or ["catalog"])[0]
+    if status not in {"catalog", "published", "waitlist", "draft", "archived", "all"}:
+        status = "catalog"
     enc    = env.ENCRYPTION_KEY
     page_raw = (params.get("page") or [None])[0]
     page_size_raw = (params.get("page_size") or [None])[0]
@@ -1902,7 +1902,9 @@ async def api_list_activities(req, env):
             join = " JOIN activity_tags at2 ON at2.activity_id=a.id"
             clauses.append("at2.tag_id=?")
             binds.append(tag_row.id)
-        if status != "all":
+        if status == "catalog":
+            clauses.append("COALESCE(a.status,'published') IN ('published','waitlist')")
+        elif status != "all":
             clauses.append("a.status=?")
             binds.append(status)
         if atype:
@@ -5120,10 +5122,10 @@ def _activity_score(activity: Dict[str, Any]) -> int:
     )
 
 
-async def _server_list_activities(env, *, limit: int = 250, atype: str = "", fmt: str = "", search: str = "", tag: str = "", status: str = "published") -> Dict[str, Any]:
-    limit = max(1, min(250, int(limit or 250)))
-    if status not in {"published", "waitlist", "draft", "archived", "all"}:
-        status = "published"
+async def _server_list_activities(env, *, limit: int = 1000, atype: str = "", fmt: str = "", search: str = "", tag: str = "", status: str = "catalog") -> Dict[str, Any]:
+    limit = max(1, min(1000, int(limit or 1000)))
+    if status not in {"catalog", "published", "waitlist", "draft", "archived", "all"}:
+        status = "catalog"
     enc = env.ENCRYPTION_KEY
     base_q = (
         "SELECT a.id,a.title,a.description,a.type,a.format,a.schedule_type,"
@@ -5147,7 +5149,9 @@ async def _server_list_activities(env, *, limit: int = 250, atype: str = "", fmt
             join = " JOIN activity_tags at2 ON at2.activity_id=a.id"
             clauses.append("at2.tag_id=?")
             binds.append(tag_row.id)
-        if status != "all":
+        if status == "catalog":
+            clauses.append("COALESCE(a.status,'published') IN ('published','waitlist')")
+        elif status != "all":
             clauses.append("a.status=?")
             binds.append(status)
         if atype:
@@ -5487,7 +5491,7 @@ async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: 
     if name == "activities_json":
         if activity_ref:
             return '<script id="server-activities-data" type="application/json">' + _json_for_html({"activities": [], "pagination": {"page": 1, "page_size": 0, "total": 0, "total_pages": 1}}) + '</script>'
-        limit = _template_attr_int(attrs, "limit", 250, 1, 250)
+        limit = _template_attr_int(attrs, "limit", 1000, 1, 1000)
         payload = await cached_activity_list(
             limit,
             requested_activity_filter("type"),
@@ -5499,9 +5503,9 @@ async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: 
     if name == "activity_cards":
         if activity_ref:
             return ""
-        limit = _template_attr_int(attrs, "limit", 12, 1, 250)
+        limit = _template_attr_int(attrs, "limit", 12, 1, 1000)
         payload = await cached_activity_list(
-            max(limit, 250),
+            max(limit, 1000),
             requested_activity_filter("type"),
             requested_activity_filter("format"),
             requested_activity_filter("q"),
