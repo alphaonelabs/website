@@ -151,6 +151,8 @@ function updateAuthSection() {
         if (avatarEl) avatarEl.textContent = firstLetter;
         if (greetingEl) greetingEl.textContent = `Hi, ${firstName}`;
         if (usernameEl) usernameEl.textContent = user.username;
+        const notifLink = document.getElementById('notif-bell-link');
+        if (notifLink) notifLink.classList.remove('hidden');
 
         // Mobile view
         if (mobileNotLoggedIn) mobileNotLoggedIn.classList.add('hidden');
@@ -190,7 +192,7 @@ async function refreshUnreadBadge() {
     const badge = document.getElementById('notif-unread-badge');
     const link = document.getElementById('notif-bell-link');
     const { token } = getAuth();
-    if (!badge) return;
+        if (!badge) return;
     if (!token) {
         badge.classList.add('hidden');
         if (link) link.classList.add('hidden');
@@ -210,7 +212,7 @@ async function refreshUnreadBadge() {
             if (link) link.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
-            if (link) link.classList.add('hidden');
+            if (link) link.classList.remove('hidden');
         }
     } catch (_) {
         /* ignore */

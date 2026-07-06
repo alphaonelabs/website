@@ -27,7 +27,10 @@
     html.dark #site-navbar { background: #115e59; }
     #site-navbar header { background: inherit; color: inherit; }
     #site-navbar header > div { max-width: 90rem; margin: 0 auto; min-height: 70px; padding: .75rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
-    #site-navbar a, #site-navbar button { color: inherit; }
+    #site-navbar header > div > a,
+    #site-navbar header > div > nav a,
+    #site-navbar header > div > div > a,
+    #site-navbar header > div > button { color: inherit; }
     #site-navbar img { width: 40px; height: 40px; display: block; }
     html.is-authenticated #auth-not-logged-in,
     html.is-authenticated #mobile-auth-not-logged-in,
