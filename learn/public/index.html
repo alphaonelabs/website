@@ -18,7 +18,9 @@
         html.prepaint-home { background: #0f766e; }
         html.prepaint-home.dark { background: #134e4a; }
         body { background: #fff; }
+        html.prepaint-home body { background: #0f766e; }
         html.dark body { background: #000; }
+        html.prepaint-home.dark body { background: #134e4a; }
 
         .home-auth-only { display: none !important; }
         .home-guest-only { display: flex !important; }
@@ -28,15 +30,6 @@
         .home-below-fold {
             content-visibility: auto;
             contain-intrinsic-size: 1800px;
-        }
-
-        @view-transition {
-            navigation: auto;
-        }
-
-        ::view-transition-old(root),
-        ::view-transition-new(root) {
-            animation-duration: 120ms;
         }
 
         .delay-\[1500ms\] {
@@ -75,11 +68,11 @@
                             Activities, <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Classes</span>, and
                             <span class="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">Community</span> in One Place
                         </h1>
-                        <p class="text-lg md:text-xl text-teal-50 max-w-2xl mb-8 leading-relaxed">
+                        <p class="text-lg md:text-xl text-white max-w-2xl mb-8 leading-relaxed">
                             Alpha One Labs is an activity platform for classes, workshops, study groups, classrooms, events, and community projects. Browse what is live, request what you want next, or offer something you can teach.
                         </p>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                            <a href="/activity" class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
+                            <a href="/activity" aria-label="Browse activity catalog" class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
                                 <i class="fas fa-graduation-cap text-xl"></i>
                                 Browse Activities
                                 <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"></i>
@@ -98,8 +91,8 @@
                                 <span class="text-sm font-semibold uppercase tracking-wide">Live Now</span>
                             </div>
                             <h2 class="text-2xl font-bold mb-2">Global Virtual Classroom</h2>
-                            <p class="text-teal-100 text-sm mb-4">Drop in, collaborate, and connect with learners worldwide.</p>
-                            <div class="flex items-center gap-2 mb-4 text-sm text-teal-200">
+                            <p class="text-white text-sm mb-4">Drop in, collaborate, and connect with learners worldwide.</p>
+                            <div class="flex items-center gap-2 mb-4 text-sm text-white">
                                 <div class="flex -space-x-2">
                                     <div class="w-6 h-6 rounded-full bg-orange-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
                                     <div class="w-6 h-6 rounded-full bg-blue-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
@@ -163,7 +156,7 @@
                                 <h2 class="text-lg sm:text-xl font-extrabold text-gray-950 dark:text-white">Featured Activities</h2>
                             </div>
                         </div>
-                        <a href="/activity" class="text-sm font-semibold text-teal-700 hover:text-teal-900 dark:text-teal-300 dark:hover:text-teal-100 transition-colors">
+                        <a href="/activity" aria-label="Browse all activities" class="text-sm font-semibold text-teal-700 hover:text-teal-900 dark:text-teal-300 dark:hover:text-teal-100 transition-colors">
                             Browse all
                             <i class="fas fa-arrow-right ml-1"></i>
                         </a>
@@ -173,8 +166,8 @@
                     {% featured_activity_cards limit=3 %}
                 </div>
                 <div class="text-center mt-6">
-                    <a href="/activity" class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-                        View All Activity
+                    <a href="/activity" aria-label="View the full activity catalog" class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                        View All Activities
                         <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
@@ -212,7 +205,7 @@
                                 <h3 class="font-semibold text-purple-800 dark:text-purple-200 text-sm">
                                     <i class="fas fa-ranking-star mr-1"></i>Referral Leaderboard
                                 </h3>
-                                <a href="/referral-leaderboard" class="text-xs font-bold text-purple-700 dark:text-purple-300 hover:underline">View all</a>
+                                <a href="/referral-leaderboard" aria-label="View full referral leaderboard" class="text-xs font-bold text-purple-700 dark:text-purple-300 hover:underline">View leaderboard</a>
                             </div>
                             <div id="referral-leaderboard-list" class="divide-y divide-purple-100 dark:divide-purple-900/50">
                                 <div class="p-4 text-xs text-gray-500 dark:text-gray-400">
@@ -341,10 +334,10 @@
                             <i class="fas fa-door-open text-4xl"></i>
                         </div>
                         <h3 class="text-2xl font-bold mb-3">View Waiting Rooms</h3>
-                        <p class="text-blue-100 text-sm mb-6 max-w-sm mx-auto">
+                        <p class="text-white text-sm mb-6 max-w-sm mx-auto">
                             Browse open waiting rooms and connect with learners seeking teachers for specific topics.
                         </p>
-                        <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+                        <span class="inline-flex items-center gap-2 bg-white/25 group-hover:bg-white/35 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
                             Browse Waiting Rooms <i class="fas fa-arrow-right"></i>
                         </span>
                     </a>

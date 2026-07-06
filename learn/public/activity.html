@@ -457,12 +457,8 @@
     }
 
     function showDetail(activityId, slug) {
-      document.documentElement.classList.add('activity-detail-route');
-      document.getElementById('browser-view').classList.add('hidden');
-      document.getElementById('detail-view').classList.add('active');
       const ref = slug || activityId;
-      window.history.pushState({activityRef: ref}, '', `/activity/${encodeURIComponent(ref)}`);
-      loadActivityDetail(ref);
+      if (ref) window.location.href = `/activity/${encodeURIComponent(ref)}`;
     }
 
     function backToBrowser() {

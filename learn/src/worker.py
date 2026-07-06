@@ -5062,16 +5062,6 @@ _SECURITY_HEADERS = {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Cross-Origin-Opener-Policy": "same-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(self), payment=(self)",
-    "Content-Security-Policy": (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com; "
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-        "img-src 'self' data: https:; "
-        "font-src 'self' data: https://cdnjs.cloudflare.com; "
-        "connect-src 'self' https: wss:; "
-        "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; "
-        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
-    ),
 }
 
 
@@ -6570,8 +6560,12 @@ async def _dispatch(request, env):
     route_path = path[:-5] if path.endswith(".html") else path
     if len(route_path) > 1 and route_path.endswith("/"):
         route_path = route_path.rstrip("/")
+    if method == "GET" and route_path in ("/activity", "/activity.html"):
+        activity_query = parse_qs(urlparse(request.url).query)
+        if activity_query.get("slug") or activity_query.get("id"):
+            return await serve_static("/activity-detail.html", env, request)
     if method == "GET" and re.fullmatch(r"/activity/[^/]+", route_path):
-        return await serve_static("/activity.html", env, request)
+        return await serve_static("/activity-detail.html", env, request)
     m_blog_detail = re.fullmatch(r"/blog/([^/]+)", route_path)
     if method == "GET" and m_blog_detail:
         return await render_blog_detail(request, env, unquote(m_blog_detail.group(1)))
