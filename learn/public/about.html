@@ -1,96 +1,16 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="About Alpha One Labs - Our story, mission, and journey from hackerspace to education platform.">
-  <meta name="keywords" content="about, Alpha One Labs, education, STEM, hackerspace, history">
-  <title>About Us - Alpha One Labs</title>
-
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer">
-
-  <script>
-    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
-
-    function initializeDarkMode() {
-      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
-      if (darkModeEnabled) document.documentElement.classList.add('dark');
-      else if (localStorage.getItem('darkMode') === null) localStorage.setItem('darkMode', 'false');
-    }
-
-    function toggleDarkMode() {
-      const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('darkMode', isDark.toString());
-    }
-
-    function updateDarkModeIcon() {
-      const isDark = document.documentElement.classList.contains('dark');
-      const icon = document.getElementById('darkModeIcon');
-      const iconMobile = document.getElementById('darkModeIconMobile');
-      if (icon) { icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon'; }
-      if (iconMobile) { iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500'; }
-    }
-
-    initializeDarkMode();
-    document.addEventListener('DOMContentLoaded', initializeDarkMode);
-  </script>
-
-  <style>
-    html, body { overflow-x: hidden; box-sizing: border-box; }
-    .dark { color-scheme: dark; }
-    :root { color-scheme: light; }
-
-    .timeline-item:not(:last-child)::after {
-      content: '';
-      position: absolute;
-      left: 19px;
-      top: 40px;
-      bottom: -16px;
-      width: 2px;
-      background: linear-gradient(to bottom, #0d9488, #06b6d4);
-    }
-  </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-  <div id="site-navbar"></div>
-
-  <main class="flex-1 w-full">
-
-    <!-- Hero -->
-    <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 py-20 relative overflow-hidden">
-      <div class="absolute inset-0 pointer-events-none select-none" aria-hidden="true">
-        <div class="animate-bounce absolute top-[10%] left-[8%] text-white/20 text-6xl"><i class="fas fa-microscope" aria-hidden="true"></i></div>
-        <div class="animate-pulse absolute top-[20%] right-[12%] text-white/15 text-7xl"><i class="fas fa-robot" aria-hidden="true"></i></div>
-        <div class="animate-bounce absolute bottom-[15%] left-[15%] text-white/20 text-5xl"><i class="fas fa-wrench" aria-hidden="true"></i></div>
-        <div class="animate-bounce absolute bottom-[20%] right-[8%] text-white/15 text-6xl" style="animation-delay:2s"><i class="fas fa-graduation-cap" aria-hidden="true"></i></div>
-      </div>
-      <div class="relative max-w-[90rem] mx-auto px-4 md:px-6 text-center">
-        <span class="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-semibold bg-white/20 text-white backdrop-blur-sm border border-white/30">
-          🏗️ Founded 2009 · Brooklyn, NY
-        </span>
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
-          About <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Alpha One Labs</span>
-        </h1>
-        <p class="text-lg md:text-xl text-teal-50 max-w-3xl mx-auto leading-relaxed">
-          Your hub for hands-on learning and teaching experiences in tech, science, and engineering.
-        </p>
-      </div>
-    </section>
+{% extends "base.html" %}
+{% block title %}About Alpha One Labs - Alpha One Labs{% endblock %}
+{% block meta_description %}Welcome to Alpha One Labs, your hub for hands-on learning and teaching experiences in tech, science, and engineering.{% endblock %}
+{% block content %}
+<main class="flex-1 w-full max-w-[90rem] mx-auto mt-6 px-4 md:px-6">
 
     <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-16 space-y-20">
 
       <!-- Mission statement -->
       <section class="max-w-4xl mx-auto text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 shadow-lg mb-6">
-          <i class="fas fa-bullseye text-white text-2xl"></i>
-        </div>
-        <h2 class="text-3xl md:text-4xl font-extrabold mb-6 bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">
-          Our Story
-        </h2>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-black leading-tight mb-6">
+          About Alpha One Labs</span>
+        </h1>
         <p class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
           Welcome to Alpha One Labs, your hub for hands-on learning and teaching experiences in tech, science, and engineering.
           Since our founding in 2009, we've grown from a small community hackerspace into a dynamic organization committed to
@@ -327,14 +247,6 @@
           <a href="/teach.html" class="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-2">
             <i class="fas fa-chalkboard-user"></i> Start Teaching
           </a>
-        </div>
-      </section>
-
-    </div>
-  </main>
-
-  <div id="site-footer"></div>
-
-  <script src="/js/layout.js" defer></script>
-</body>
-</html>
+  </div>
+</main>
+{% endblock %}

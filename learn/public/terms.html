@@ -1,79 +1,22 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Alpha One Labs Terms of Service and Privacy Policy">
-  <meta name="keywords" content="terms, privacy policy, Alpha One Labs, service agreement">
-  <title>Terms of Service & Privacy Policy - Alpha One Labs</title>
-
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-  <script>
-    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
-
-    function initializeDarkMode() {
-      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
-      if (darkModeEnabled) document.documentElement.classList.add('dark');
-      else if (localStorage.getItem('darkMode') === null) localStorage.setItem('darkMode', 'false');
-    }
-
-    function toggleDarkMode() {
-      const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('darkMode', isDark.toString());
-    }
-
-    function updateDarkModeIcon() {
-      const isDark = document.documentElement.classList.contains('dark');
-      const icon = document.getElementById('darkModeIcon');
-      const iconMobile = document.getElementById('darkModeIconMobile');
-      if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-      if (iconMobile) iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
-    }
-
-    initializeDarkMode();
-    document.addEventListener('DOMContentLoaded', initializeDarkMode);
-  </script>
-
-  <style>
-    html, body { overflow-x: hidden; box-sizing: border-box; }
-    .dark { color-scheme: dark; }
-    :root { color-scheme: light; }
-
-    .toc-link { transition: all 0.2s; }
-    .toc-link:hover { padding-left: 0.75rem; }
-    .toc-link.active { padding-left: 0.75rem; border-left: 3px solid #0d9488; color: #0d9488; }
-
-    .section-anchor { scroll-margin-top: 90px; }
-  </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-  <div id="site-navbar"></div>
-
-  <main class="flex-1 w-full">
-
-    <!-- Hero -->
-    <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 py-16">
-      <div class="max-w-[90rem] mx-auto px-4 md:px-6 text-center">
-        <span class="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-semibold bg-white/20 text-white backdrop-blur-sm border border-white/30">
-          Last Updated: June 20, 2026
-        </span>
-        <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4">Terms of Service &amp; Privacy Policy</h1>
-        <p class="text-teal-100 max-w-2xl mx-auto text-lg">
+{% extends "base.html" %}
+{% block title %}Terms of Service & Privacy Policy - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs terms of service, teacher payments, refund policy, platform rules, and privacy policy.{% endblock %}
+{% block content %}
+<main class=" mx-auto px-4 py-8 flex-1 w-full">
+  <section class="py-6">
+   <div class="max-w-[90rem] mx-auto px-4 md:px-6 text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-black mb-4">Terms of Service &amp; Privacy Policy</h1>
+        <p class="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto text-lg">
           Please read these terms carefully before using the Alpha One Labs platform.
         </p>
       </div>
     </section>
 
-    <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-12">
+    <div class="max-w-none px-4 md:px-6 py-12">
       <div class="flex flex-col lg:flex-row gap-10">
 
         <!-- Table of Contents (sidebar) -->
-        <aside class="lg:w-64 flex-shrink-0">
+        <aside class="w-full lg:w-[260px] lg:flex-shrink-0">
           <div class="sticky top-[90px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-md">
             <h2 class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
               <i class="fas fa-list text-teal-500"></i> Contents
@@ -94,7 +37,7 @@
         </aside>
 
         <!-- Main content -->
-        <div class="flex-1 min-w-0 space-y-10">
+        <div class="w-full lg:flex-1 min-w-0 space-y-10">
 
           <!-- Section 1 -->
           <section id="commission" class="section-anchor bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-md">
@@ -368,39 +311,8 @@
             </a>
           </div>
 
-          <p class="text-sm text-gray-400 dark:text-gray-500 text-center">Last Updated: June 20, 2026</p>
-
         </div>
       </div>
     </div>
-  </main>
-
-  <div id="site-footer"></div>
-
-  <script src="/js/layout.js" defer></script>
-  <script>
-    // Highlight active TOC link on scroll
-    const sections = document.querySelectorAll('.section-anchor');
-    const tocLinks = document.querySelectorAll('.toc-link');
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const id = entry.target.id;
-          tocLinks.forEach(link => {
-            const isActive = link.getAttribute('href') === '#' + id;
-            link.classList.toggle('active', isActive);
-            if (isActive) {
-              link.setAttribute('aria-current', 'location');
-            } else {
-              link.removeAttribute('aria-current');
-            }
-          });
-        }
-      });
-    }, { rootMargin: '-80px 0px -60% 0px' });
-
-    sections.forEach(s => observer.observe(s));
-  </script>
-</body>
-</html>
+</main>
+{% endblock %}

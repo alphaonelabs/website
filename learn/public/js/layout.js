@@ -14,12 +14,58 @@ function isAuthenticated() {
 function logout() {
     localStorage.removeItem('edu_token');
     localStorage.removeItem('edu_user');
-    window.location.href = '/login.html';
+    window.location.href = '/login';
 }
 
 window.esc = window.esc || function (s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 };
+
+window.cartHumanStartedAt = window.cartHumanStartedAt || Date.now();
+
+function getGuestCartToken() {
+    try {
+        let token = localStorage.getItem('guest_cart_token');
+        if (!token) {
+            const bytes = new Uint8Array(32);
+            window.crypto.getRandomValues(bytes);
+            token = 'gct_' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+            localStorage.setItem('guest_cart_token', token);
+        }
+        return token;
+    } catch (_) {
+        return 'gct_' + String(Date.now()) + Math.random().toString(16).slice(2);
+    }
+}
+
+function cartHumanProof() {
+    return {
+        human_started_at: window.cartHumanStartedAt,
+        human_confirmed_at: Date.now(),
+        company_website: '',
+    };
+}
+
+function cartRequestHeaders() {
+    const { token } = getAuth();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    else headers['X-Guest-Cart'] = getGuestCartToken();
+    return headers;
+}
+
+window.getGuestCartToken = getGuestCartToken;
+window.cartHumanProof = cartHumanProof;
+window.cartRequestHeaders = cartRequestHeaders;
+
+function runLayoutIdle(fn, delay) {
+    const run = () => setTimeout(fn, delay || 900);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run, { once: true });
+    } else {
+        run();
+    }
+}
 
 // ── Dark mode utilities ───────────────────────────────────────────────
 window.toggleDarkMode = function () {
@@ -56,6 +102,12 @@ function initializeDarkMode() {
 async function inject(id, file, callback) {
     const el = document.getElementById(id);
     if (!el) return;
+    if (el.dataset.inline === 'true') {
+        if (callback && typeof callback === 'function') {
+            callback();
+        }
+        return;
+    }
     try {
         const res = await fetch(file);
         el.innerHTML = await res.text();
@@ -99,6 +151,8 @@ function updateAuthSection() {
         if (avatarEl) avatarEl.textContent = firstLetter;
         if (greetingEl) greetingEl.textContent = `Hi, ${firstName}`;
         if (usernameEl) usernameEl.textContent = user.username;
+        const notifLink = document.getElementById('notif-bell-link');
+        if (notifLink) notifLink.classList.remove('hidden');
 
         // Mobile view
         if (mobileNotLoggedIn) mobileNotLoggedIn.classList.add('hidden');
@@ -110,7 +164,8 @@ function updateAuthSection() {
         if (mobileAvatarEl) mobileAvatarEl.textContent = firstLetter;
         if (mobileGreetingEl) mobileGreetingEl.textContent = `Hi, ${firstName}`;
 
-        startUnreadPolling();
+        runLayoutIdle(startUnreadPolling, 1200);
+        runLayoutIdle(refreshCartBadge, 1200);
     } else {
         // User is not logged in
         if (notLoggedInDiv) notLoggedInDiv.classList.remove('hidden');
@@ -120,7 +175,14 @@ function updateAuthSection() {
 
         const badge = document.getElementById('notif-unread-badge');
         if (badge) badge.classList.add('hidden');
+        const notifLink = document.getElementById('notif-bell-link');
+        if (notifLink) notifLink.classList.add('hidden');
+        const cartBadge = document.getElementById('cart-count-badge');
+        if (cartBadge) cartBadge.classList.add('hidden');
+        const cartLink = document.getElementById('cart-nav-link');
+        if (cartLink) cartLink.classList.add('hidden');
         stopUnreadPolling();
+        runLayoutIdle(refreshCartBadge, 1200);
     }
 }
 
@@ -128,12 +190,15 @@ window.updateAuthSection = updateAuthSection;
 
 async function refreshUnreadBadge() {
     const badge = document.getElementById('notif-unread-badge');
+    const link = document.getElementById('notif-bell-link');
     const { token } = getAuth();
-    if (!badge) return;
+        if (!badge) return;
     if (!token) {
         badge.classList.add('hidden');
+        if (link) link.classList.add('hidden');
         return;
     }
+    if (link) link.classList.remove('hidden');
     try {
         const res = await fetch('/api/notifications/unread-count', {
             headers: { Authorization: `Bearer ${token}` },
@@ -144,8 +209,10 @@ async function refreshUnreadBadge() {
         if (count > 0) {
             badge.textContent = count > 99 ? '99+' : String(count);
             badge.classList.remove('hidden');
+            if (link) link.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
+            if (link) link.classList.remove('hidden');
         }
     } catch (_) {
         /* ignore */
@@ -173,6 +240,36 @@ function stopUnreadPolling() {
 window.startUnreadPolling = startUnreadPolling;
 window.stopUnreadPolling = stopUnreadPolling;
 
+async function refreshCartBadge() {
+    const badge = document.getElementById('cart-count-badge');
+    const link = document.getElementById('cart-nav-link');
+    const { token } = getAuth();
+    if (!badge) return;
+    if (!token && !localStorage.getItem('guest_cart_token')) {
+        badge.classList.add('hidden');
+        if (link) link.classList.add('hidden');
+        return;
+    }
+    try {
+        const res = await fetch('/api/cart', {
+            headers: cartRequestHeaders(),
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        const count = (body.items || []).reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    } catch (_) {
+        /* ignore */
+    }
+}
+
+window.refreshCartBadge = refreshCartBadge;
+
 // ── Mobile menu toggle ────────────────────────────────────────────────
 window.toggleMobileMenu = function () {
     const menu = document.getElementById('mobile-menu');
@@ -190,17 +287,6 @@ window.toggleAccordion = function (accordionId) {
     icon.classList.toggle('rotate-180', !accordion.classList.contains('hidden'));
 };
 
-// ── Language dropdown ─────────────────────────────────────────────────
-window.toggleLanguageDropdown = function () {
-    document.getElementById('language-dropdown')?.classList.toggle('hidden');
-};
-
-window.setLanguage = function (lang) {
-    localStorage.setItem('language', lang);
-    console.log('Language set to:', lang);
-    window.toggleLanguageDropdown();
-};
-
 // ── Click outside handlers ────────────────────────────────────────────
 document.addEventListener('click', (event) => {
     const menu = document.getElementById('mobile-menu');
@@ -208,15 +294,6 @@ document.addEventListener('click', (event) => {
     const menuContent = event.target.closest('.mobile-menu-content');
     if (menu && !menu.classList.contains('hidden') && !menuBtn && !menuContent) {
         window.toggleMobileMenu();
-    }
-
-    const langDropdown = document.getElementById('language-dropdown');
-    if (
-        langDropdown &&
-        !event.target.closest('[onclick="toggleLanguageDropdown()"]') &&
-        !langDropdown.contains(event.target)
-    ) {
-        langDropdown.classList.add('hidden');
     }
 
     // Close profile dropdown when clicking outside

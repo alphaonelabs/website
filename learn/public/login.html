@@ -1,16 +1,9 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Alpha One Labs - Login / Register">
-  <meta name="keywords" content="education, login, register, courses, Alpha One Labs">
-  <title>Login / Register - Alpha One Labs</title>
-  
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  
+{% extends "base.html" %}
+{% block title %}Login / Register{% endblock %}
+{% block meta_description %}Login or register for your account{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block head %}
+<meta name="keywords" content="education, login, register, activities">
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -70,23 +63,13 @@
     .dark { color-scheme: dark; }
     :root { color-scheme: light; }
   </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-  <div id="site-navbar"></div>
-
-  <!-- ===== MAIN CONTENT ===== -->
+{% endblock %}
+{% block content %}
+<!-- ===== MAIN CONTENT ===== -->
   <main class="flex-1 w-full flex items-center justify-center py-12 px-4">
     <div class="w-full max-w-md">
-      <!-- Brand Header -->
+      <!-- Security Note -->
       <div class="text-center mb-8">
-        <a href="/" class="inline-flex items-center justify-center gap-3 mb-4 group">
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-            <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs Logo" class="w-6 h-6">
-          </div>
-          <span class="font-bold text-2xl bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Alpha One Labs</span>
-        </a>
         <p class="text-gray-500 dark:text-gray-400 text-sm">
           <i class="fas fa-shield-alt mr-1"></i>All user data encrypted at rest - zero plaintext PII stored
         </p>
@@ -109,16 +92,16 @@
         <!-- LOGIN PANEL -->
         <div id="panel-login" class="p-8">
           <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Welcome back!</h2>
-          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in to your Alpha One Labs account</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in to your account</p>
           
           <form id="form-login" class="space-y-4" novalidate>
             <div>
               <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                <i class="fas fa-user mr-1.5 text-teal-600 dark:text-teal-400"></i>Username
+                <i class="fas fa-user mr-1.5 text-teal-600 dark:text-teal-400"></i>Username or Email
               </label>
               <input id="l-username" type="text" autocomplete="username" required
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 dark:bg-gray-700 dark:text-white text-sm transition" 
-                placeholder="your_username" />
+                placeholder="username or email" />
             </div>
 
             <div>
@@ -146,25 +129,12 @@
             </a>
           </div>
 
-          <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2 flex items-center">
-              <i class="fas fa-info-circle mr-2"></i>Demo Credentials
-            </p>
-            <div class="space-y-1.5 text-xs">
-              <div class="font-mono bg-white dark:bg-gray-800 p-2 rounded border border-blue-100 dark:border-blue-800 text-gray-700 dark:text-gray-300">
-                <span class="text-blue-600 dark:text-blue-300">alice</span> / <span class="text-blue-600 dark:text-blue-300">password123</span>
-              </div>
-              <div class="font-mono bg-white dark:bg-gray-800 p-2 rounded border border-blue-100 dark:border-blue-800 text-gray-700 dark:text-gray-300">
-                <span class="text-blue-600 dark:text-blue-300">charlie</span> / <span class="text-blue-600 dark:text-blue-300">password123</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- REGISTER PANEL -->
         <div id="panel-register" class="p-8 hidden">
           <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Create your account</h2>
-          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Join Alpha One Labs and start learning today</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Create an account and start learning today</p>
           
           <form id="form-register" class="space-y-4" novalidate>
             <div>
@@ -215,6 +185,16 @@
                 placeholder="confirm password" />
             </div>
 
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-gift mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Referral Code
+              </label>
+              <input id="r-referral-code" type="text" autocomplete="off"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition uppercase" 
+                placeholder="optional" />
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Use this if someone invited you through the referral program.</p>
+            </div>
+
             <div id="register-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm flex items-start gap-2 animate-pulse">
               <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
               <span id="register-err-msg"></span>
@@ -226,7 +206,7 @@
           </form>
 
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
-            By registering, you agree to our <a href="#" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Terms of Service</a> and <a href="#" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Privacy Policy</a>
+            By registering, you agree to our <a href="/terms" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Terms of Service</a> and <a href="/privacy" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Privacy Policy</a>
           </p>
         </div>
       </div>
@@ -239,16 +219,12 @@
       </p>
     </div>
   </main>
-
-  <div id="site-footer"></div>
-
-  <script src="/js/layout.js" defer></script>
-  <script>
+<script>
     const API = '';
 
 // Check if already logged in
 if (localStorage.getItem('edu_token')) {
-    window.location.href = '/dashboard.html';
+    window.location.href = '/dashboard';
 }
 
 // Tab switching
@@ -317,13 +293,18 @@ function handlePostLoginRedirect() {
     sessionStorage.removeItem('post_login_redirect');
     // Only honor same-origin, path-only redirects to prevent open-redirect abuse.
     const safe = redirectUrl && /^\/(?!\/)/.test(redirectUrl);
-    window.location.href = safe ? redirectUrl : '/dashboard.html';
+    window.location.href = safe ? redirectUrl : '/dashboard';
 }
 
 // Handle tab parameter in URL
 const params = new URLSearchParams(location.search);
 if (params.get('tab') === 'register') {
     switchTab('register');
+}
+if (params.get('referral_code')) {
+    switchTab('register');
+    const referralInput = document.getElementById('r-referral-code');
+    if (referralInput) referralInput.value = params.get('referral_code');
 }
 
 // Handle next parameter for post-login redirect.
@@ -394,6 +375,7 @@ document.getElementById('form-register').addEventListener('submit', async e => {
         const email = document.getElementById('r-email').value.trim();
         const password = document.getElementById('r-password').value;
         const confirmPassword = document.getElementById('r-confirm-password').value;
+        const referralCode = document.getElementById('r-referral-code').value.trim();
         
         if (!username || !email || !password) {
             throw new Error('Please fill in all required fields');
@@ -416,7 +398,8 @@ document.getElementById('form-register').addEventListener('submit', async e => {
                 name: name,
                 username: username,
                 email: email,
-                password: password
+                password: password,
+                referral_code: referralCode
             })
         });
         
@@ -472,5 +455,4 @@ function showRegisterSuccess(msg) {
     panel.appendChild(container);
 }
   </script>
-</body>
-</html>
+{% endblock %}
