@@ -150,6 +150,7 @@
   const token = localStorage.getItem('edu_token');
   const cartHumanStartedAt = Date.now();
   let currentActivity = null;
+  let currentActivityData = null;
 
   const typeIcon = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', club:'🏛', event:'📅', video:'🎬', study_group:'👥', other:'✨' };
   const typeLabel = { course:'Course', meetup:'Meetup', workshop:'Workshop', seminar:'Seminar', club:'Club', event:'Event', video:'Video', study_group:'Study Group', other:'Activity' };
@@ -273,6 +274,7 @@
   function renderActivity(data) {
     const a = data.activity;
     currentActivity = a;
+    currentActivityData = data;
     if (a.slug) window.history.replaceState({ activityRef: a.slug }, '', activityDetailUrl(a));
 
     document.title = a.title + ' - Alpha One Labs';
@@ -373,19 +375,42 @@
     if (a.status === 'waitlist') {
       if (token) {
         action.innerHTML = data.user_interested
-          ? '<span class="inline-flex items-center gap-2 bg-white/70 dark:bg-gray-800 text-teal-700 dark:text-teal-300 font-bold px-6 py-3 rounded-xl"><i class="fas fa-check"></i>Interest recorded</span>'
-          : '<button id="detail-express-interest" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-hand-paper"></i>Express Interest</button>';
+          ? waitingRoomJoinedHtml()
+          : waitingRoomButtonHtml('Join Waiting Room', 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg');
         const btn = document.getElementById('detail-express-interest');
         if (btn) btn.addEventListener('click', expressInterest);
       } else {
-        action.innerHTML = '<a href="/login" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-right-to-bracket"></i>Login to Express Interest</a>';
+        action.innerHTML = loginWaitingRoomHtml();
       }
       welcome.textContent = 'This activity is in the waiting room. Express interest so Alpha One Labs can prioritize scheduling it.';
       return;
     }
-    action.innerHTML = '<button id="detail-add-to-cart" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-cart-plus"></i>Add to Cart - ' + formatPrice(a.price_cents, a.price_currency) + '</button>';
+    action.innerHTML =
+      '<div class="flex flex-wrap items-center gap-3">' +
+        '<button id="detail-add-to-cart" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-cart-plus"></i>Add to Cart - ' + formatPrice(a.price_cents, a.price_currency) + '</button>' +
+        (data.user_interested ? waitingRoomJoinedHtml() : (token ? waitingRoomButtonHtml('Join Waiting Room', 'bg-white/80 hover:bg-white text-teal-700 dark:bg-gray-900/80 dark:hover:bg-gray-900 dark:text-teal-300 border border-teal-200 dark:border-teal-700') : loginWaitingRoomHtml())) +
+      '</div>';
     document.getElementById('detail-add-to-cart').addEventListener('click', () => addToCart(a.id, true));
+    const waitBtn = document.getElementById('detail-express-interest');
+    if (waitBtn) waitBtn.addEventListener('click', expressInterest);
     welcome.textContent = 'Add this activity to your cart to checkout. Free activities are supported too.';
+  }
+
+  function waitingRoomButtonHtml(label, classes) {
+    return '<button id="detail-express-interest" class="inline-flex items-center gap-2 font-bold px-6 py-3 rounded-xl min-h-11 ' + classes + '"><i class="fas fa-hand-paper"></i>' + esc(label || 'Join Waiting Room') + '</button>';
+  }
+
+  function waitingRoomJoinedHtml() {
+    return '<span class="inline-flex items-center gap-2 bg-white/70 dark:bg-gray-800 text-teal-700 dark:text-teal-300 font-bold px-6 py-3 rounded-xl min-h-11"><i class="fas fa-check"></i>Waiting room joined</span>';
+  }
+
+  function loginWaitingRoomHtml() {
+    return '<a href="/login" onclick="return redirectForWaitingRoomLogin()" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-right-to-bracket"></i>Login to Join Waiting Room</a>';
+  }
+
+  function redirectForWaitingRoomLogin() {
+    if (currentActivity) sessionStorage.setItem('post_login_redirect', activityDetailUrl(currentActivity));
+    return true;
   }
 
   async function addToCart(activityId, goToCart) {
@@ -420,7 +445,14 @@
       alert(data.error || 'Could not record interest');
       return;
     }
-    window.location.reload();
+    const count = data.data && data.data.interest_count ? Number(data.data.interest_count) : Number(currentActivity.interest_count || 0) + 1;
+    currentActivity.interest_count = count;
+    if (currentActivityData) {
+      currentActivityData.user_interested = true;
+      currentActivityData.interest = { status: 'interested', created_at: new Date().toISOString() };
+      currentActivityData.activity.interest_count = count;
+      renderActivity(currentActivityData);
+    }
   }
 
   async function markComplete() {

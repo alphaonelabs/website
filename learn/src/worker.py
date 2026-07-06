@@ -3996,518 +3996,6 @@ async def _legacy_ensure_user_exists(env, enc: str, user_id: str, label: str = "
     ).run()
 
 
-async def _legacy_archive_record(record: Dict[str, Any], env, enc: str):
-    model = _legacy_text(record.get("model"), "unknown")
-    pk = _legacy_text(record.get("pk"), "unknown")
-    fields = record.get("fields") or {}
-    user_id = None
-    activity_id = None
-    if model == "auth.User":
-        user_id = _legacy_id("user", pk)
-    elif fields.get("user") or fields.get("student") or fields.get("teacher") or fields.get("author"):
-        user_id = _legacy_id("user", fields.get("user") or fields.get("student") or fields.get("teacher") or fields.get("author"))
-    if model == "web.Course":
-        activity_id = _legacy_id("course", pk)
-    elif model == "web.EducationalVideo":
-        activity_id = _legacy_id("video", pk)
-    elif fields.get("course"):
-        activity_id = _legacy_id("course", fields.get("course"))
-    await env.DB.prepare(
-        "INSERT INTO legacy_records (id,legacy_model,legacy_pk,user_id,activity_id,payload,updated_at)"
-        " VALUES (?,?,?,?,?,?,datetime('now'))"
-        " ON CONFLICT(legacy_model,legacy_pk) DO UPDATE SET"
-        " user_id=excluded.user_id,activity_id=excluded.activity_id,payload=excluded.payload,updated_at=datetime('now')"
-    ).bind(
-        _legacy_id("record", f"{model}-{pk}"),
-        model,
-        pk,
-        user_id or "",
-        activity_id or "",
-        await _legacy_json(record, enc),
-    ).run()
-
-
-async def _legacy_import_user(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    uid = _legacy_id("user", pk)
-    username = (_legacy_text(f.get("username")) or f"legacy_user_{pk}").strip()
-    email = (_legacy_text(f.get("email")) or f"legacy-{pk}@alphaonelabs.invalid").strip()
-    if "@" not in email:
-        email = f"legacy-{pk}@alphaonelabs.invalid"
-    username_hash = blind_index(username, enc)
-    existing_username = await env.DB.prepare(
-        "SELECT id FROM users WHERE username_hash=?"
-    ).bind(username_hash).first()
-    if existing_username and existing_username.id != uid:
-        username = f"{username}-{pk}"
-        username_hash = blind_index(username, enc)
-    email_hash = blind_index(email, enc)
-    existing_email = await env.DB.prepare(
-        "SELECT id FROM users WHERE email_hash=?"
-    ).bind(email_hash).first()
-    if existing_email and existing_email.id != uid:
-        email = f"legacy-{pk}@alphaonelabs.invalid"
-        email_hash = blind_index(email, enc)
-    first = _legacy_text(f.get("first_name")).strip()
-    last = _legacy_text(f.get("last_name")).strip()
-    name = (f"{first} {last}".strip() or username)
-    role = "host" if _legacy_bool(f.get("is_staff")) or _legacy_bool(f.get("is_superuser")) else "member"
-    await env.DB.prepare(
-        "INSERT INTO users"
-        " (id,legacy_user_id,username_hash,email_hash,name,username,email,password_hash,role,email_verified,is_active,is_staff,last_login,created_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(id) DO UPDATE SET"
-        " username_hash=excluded.username_hash,email_hash=excluded.email_hash,name=excluded.name,"
-        " username=excluded.username,email=excluded.email,password_hash=excluded.password_hash,role=excluded.role,"
-        " email_verified=excluded.email_verified,is_active=excluded.is_active,is_staff=excluded.is_staff,"
-        " last_login=excluded.last_login,created_at=excluded.created_at"
-    ).bind(
-        uid,
-        _legacy_text(pk),
-        username_hash,
-        email_hash,
-        await encrypt_aes(name, enc),
-        await encrypt_aes(username, enc),
-        await encrypt_aes(email, enc),
-        _legacy_text(f.get("password")),
-        await encrypt_aes(role, enc),
-        1,
-        _legacy_bool(f.get("is_active")),
-        _legacy_bool(f.get("is_staff")),
-        f.get("last_login") or "",
-        f.get("date_joined") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    ).run()
-    await _seed_notification_preferences(env, uid)
-
-
-async def _legacy_import_email_address(record, env):
-    f = record.get("fields") or {}
-    if f.get("user") and _legacy_bool(f.get("verified")):
-        await env.DB.prepare(
-            "UPDATE users SET email_verified=1 WHERE legacy_user_id=?"
-        ).bind(_legacy_text(f.get("user"))).run()
-
-
-async def _legacy_import_profile(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    user_id = _legacy_id("user", f.get("user"))
-    avatar_url, avatar_key = _legacy_media(f.get("avatar"))
-    referred_by = _legacy_id("user", f.get("referred_by")) if f.get("referred_by") else ""
-    await env.DB.prepare(
-        "INSERT INTO user_profiles"
-        " (user_id,legacy_profile_id,bio,expertise,avatar_url,avatar_r2_key,discord_username,slack_username,"
-        " github_username,referral_code,referral_code_hash,referred_by_user_id,referral_earnings_cents,stripe_account_id,"
-        " stripe_account_status,commission_rate,is_teacher,is_social_media_manager,is_profile_public,"
-        " how_did_you_hear_about_us,created_at,updated_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(user_id) DO UPDATE SET"
-        " bio=excluded.bio,expertise=excluded.expertise,avatar_url=excluded.avatar_url,avatar_r2_key=excluded.avatar_r2_key,"
-        " discord_username=excluded.discord_username,slack_username=excluded.slack_username,github_username=excluded.github_username,"
-        " referral_code=excluded.referral_code,referral_code_hash=excluded.referral_code_hash,referred_by_user_id=excluded.referred_by_user_id,"
-        " referral_earnings_cents=excluded.referral_earnings_cents,stripe_account_id=excluded.stripe_account_id,"
-        " stripe_account_status=excluded.stripe_account_status,commission_rate=excluded.commission_rate,"
-        " is_teacher=excluded.is_teacher,is_social_media_manager=excluded.is_social_media_manager,"
-        " is_profile_public=excluded.is_profile_public,how_did_you_hear_about_us=excluded.how_did_you_hear_about_us,"
-        " updated_at=excluded.updated_at"
-    ).bind(
-        user_id,
-        _legacy_text(pk),
-        await encrypt_aes(_legacy_text(f.get("bio")), enc),
-        await encrypt_aes(_legacy_text(f.get("expertise")), enc),
-        avatar_url,
-        avatar_key,
-        await encrypt_aes(_legacy_text(f.get("discord_username")), enc),
-        await encrypt_aes(_legacy_text(f.get("slack_username")), enc),
-        await encrypt_aes(_legacy_text(f.get("github_username")), enc),
-        await encrypt_aes(_legacy_text(f.get("referral_code")), enc),
-        _referral_code_hash(_legacy_text(f.get("referral_code")), enc) if _legacy_text(f.get("referral_code")).strip() else "",
-        referred_by,
-        _legacy_money_cents(f.get("referral_earnings")),
-        await encrypt_aes(_legacy_text(f.get("stripe_account_id")), enc),
-        _legacy_text(f.get("stripe_account_status")),
-        _legacy_text(f.get("commission_rate")),
-        _legacy_bool(f.get("is_teacher")),
-        _legacy_bool(f.get("is_social_media_manager")),
-        _legacy_bool(f.get("is_profile_public")),
-        await encrypt_aes(_legacy_text(f.get("how_did_you_hear_about_us")), enc),
-        f.get("created_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        f.get("updated_at") or "",
-    ).run()
-    if _legacy_bool(f.get("is_teacher")):
-        await env.DB.prepare("UPDATE users SET role=? WHERE id=?").bind(
-            await encrypt_aes("host", enc), user_id
-        ).run()
-
-
-async def _legacy_import_subject(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    subject_id = _legacy_id("subject", pk)
-    await env.DB.prepare(
-        "INSERT INTO subjects"
-        " (id,legacy_subject_id,name,slug,description,icon,display_order,created_at,updated_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(id) DO UPDATE SET"
-        " name=excluded.name,slug=excluded.slug,description=excluded.description,icon=excluded.icon,"
-        " display_order=excluded.display_order,updated_at=excluded.updated_at"
-    ).bind(
-        subject_id,
-        _legacy_text(pk),
-        _legacy_text(f.get("name")),
-        _legacy_text(f.get("slug")),
-        await encrypt_aes(_legacy_text(f.get("description")), enc),
-        _legacy_text(f.get("icon")),
-        int(f.get("order") or 0),
-        f.get("created_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        f.get("updated_at") or "",
-    ).run()
-    await _legacy_ensure_tag(env, _legacy_text(f.get("name")))
-
-
-async def _legacy_import_course(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    activity_id = _legacy_id("course", pk)
-    image_url, image_key = _legacy_media(f.get("image"))
-    metadata = {
-        "legacy_model": record.get("model"),
-        "legacy_pk": pk,
-        "tags": f.get("tags"),
-        "subject": f.get("subject"),
-    }
-    await env.DB.prepare(
-        "INSERT INTO activities"
-        " (id,legacy_course_id,title,slug,description,image_url,image_r2_key,learning_objectives,prerequisites,"
-        " price_cents,price_currency,max_students,invite_only,allow_individual_sessions,status,subject_id,level,"
-        " is_featured,legacy_metadata,type,format,schedule_type,host_id,created_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(id) DO UPDATE SET"
-        " title=excluded.title,slug=excluded.slug,description=excluded.description,image_url=excluded.image_url,"
-        " image_r2_key=excluded.image_r2_key,learning_objectives=excluded.learning_objectives,"
-        " prerequisites=excluded.prerequisites,price_cents=excluded.price_cents,price_currency=excluded.price_currency,"
-        " max_students=excluded.max_students,invite_only=excluded.invite_only,"
-        " allow_individual_sessions=excluded.allow_individual_sessions,status=excluded.status,subject_id=excluded.subject_id,"
-        " level=excluded.level,is_featured=excluded.is_featured,legacy_metadata=excluded.legacy_metadata,"
-        " type=excluded.type,host_id=excluded.host_id,created_at=excluded.created_at"
-    ).bind(
-        activity_id,
-        _legacy_text(pk),
-        _legacy_text(f.get("title"), "Untitled course"),
-        _legacy_text(f.get("slug")),
-        await encrypt_aes(_legacy_text(f.get("description")), enc),
-        image_url,
-        image_key,
-        await encrypt_aes(_legacy_text(f.get("learning_objectives")), enc),
-        await encrypt_aes(_legacy_text(f.get("prerequisites")), enc),
-        _legacy_money_cents(f.get("price")),
-        "USD",
-        int(f.get("max_students") or 0),
-        _legacy_bool(f.get("invite_only")),
-        _legacy_bool(f.get("allow_individual_sessions")),
-        _legacy_text(f.get("status"), "published"),
-        _legacy_id("subject", f.get("subject")) if f.get("subject") else "",
-        _legacy_text(f.get("level")),
-        _legacy_bool(f.get("is_featured")),
-        await _legacy_json(metadata, enc),
-        "course",
-        "self_paced",
-        "ongoing",
-        _legacy_id("user", f.get("teacher")),
-        f.get("created_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    ).run()
-    raw_tags = _legacy_text(f.get("tags"))
-    for tag_name in [part.strip() for part in raw_tags.split(",") if part.strip()]:
-        tag_id = await _legacy_ensure_tag(env, tag_name)
-        if tag_id:
-            await env.DB.prepare(
-                "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(activity_id, tag_id).run()
-    if f.get("subject"):
-        subject = await env.DB.prepare("SELECT name FROM subjects WHERE id=?").bind(_legacy_id("subject", f.get("subject"))).first()
-        if subject:
-            tag_id = await _legacy_ensure_tag(env, subject.name)
-            if tag_id:
-                await env.DB.prepare(
-                    "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-                ).bind(activity_id, tag_id).run()
-
-
-async def _legacy_import_educational_video(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    activity_id = _legacy_id("video", pk)
-    title = _legacy_text(f.get("title"), "Educational video")
-    uploader = f.get("uploader")
-    host_id = _legacy_id("user", uploader) if uploader else _legacy_id("user", "video-library")
-    await _legacy_ensure_user_exists(env, enc, host_id, "Legacy Video Library")
-    metadata = {
-        "legacy_model": record.get("model"),
-        "legacy_pk": pk,
-        "video_url": f.get("video_url"),
-        "category": f.get("category"),
-        "uploader": uploader,
-    }
-    slug = await _unique_activity_slug(env, title, activity_id)
-    await env.DB.prepare(
-        "INSERT INTO activities"
-        " (id,title,slug,description,price_cents,price_currency,status,level,is_featured,"
-        " legacy_metadata,type,format,schedule_type,host_id,created_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(id) DO UPDATE SET"
-        " title=excluded.title,slug=excluded.slug,description=excluded.description,"
-        " price_cents=excluded.price_cents,price_currency=excluded.price_currency,status=excluded.status,"
-        " legacy_metadata=excluded.legacy_metadata,type=excluded.type,format=excluded.format,"
-        " schedule_type=excluded.schedule_type,host_id=excluded.host_id"
-    ).bind(
-        activity_id,
-        title,
-        slug,
-        await encrypt_aes(_legacy_text(f.get("description")), enc),
-        0,
-        "USD",
-        "published",
-        _legacy_text(f.get("category")),
-        0,
-        await _legacy_json(metadata, enc),
-        "video",
-        "self_paced",
-        "ongoing",
-        host_id,
-        f.get("uploaded_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    ).run()
-    category = _legacy_text(f.get("category")).strip()
-    if category:
-        tag_id = await _legacy_ensure_tag(env, category)
-        if tag_id:
-            await env.DB.prepare(
-                "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
-            ).bind(activity_id, tag_id).run()
-
-
-async def _legacy_import_session(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    activity_id = _legacy_id("course", f.get("course"))
-    location = _legacy_text(f.get("location")) or ("Virtual" if _legacy_bool(f.get("is_virtual")) else "")
-    metadata = {k: f.get(k) for k in (
-        "is_virtual", "meeting_link", "meeting_id", "price", "enable_rollover",
-        "rollover_pattern", "original_start_time", "original_end_time", "is_rolled_over",
-        "teacher_confirmed", "latitude", "longitude", "teaching_style",
-    )}
-    await env.DB.prepare(
-        "INSERT INTO sessions"
-        " (id,legacy_session_id,activity_id,title,description,start_time,end_time,location,legacy_metadata,created_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(id) DO UPDATE SET"
-        " title=excluded.title,description=excluded.description,start_time=excluded.start_time,end_time=excluded.end_time,"
-        " location=excluded.location,legacy_metadata=excluded.legacy_metadata"
-    ).bind(
-        _legacy_id("session", pk),
-        _legacy_text(pk),
-        activity_id,
-        _legacy_text(f.get("title"), "Session"),
-        await encrypt_aes(_legacy_text(f.get("description")), enc),
-        f.get("start_time") or "",
-        f.get("end_time") or "",
-        await encrypt_aes(location, enc),
-        await _legacy_json(metadata, enc),
-        f.get("created_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    ).run()
-    await env.DB.prepare("UPDATE activities SET schedule_type='multi_session', format='live' WHERE id=?").bind(activity_id).run()
-
-
-async def _legacy_import_material(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    file_url, file_key = _legacy_media(f.get("file"))
-    base_values = (
-        _legacy_id("material", pk),
-        _legacy_text(pk),
-        _legacy_id("course", f.get("course")),
-        _legacy_text(f.get("title"), "Material"),
-        await encrypt_aes(_legacy_text(f.get("description")), enc),
-        _legacy_text(f.get("material_type")),
-        file_url,
-        file_key,
-        await encrypt_aes(_legacy_text(f.get("external_url")), enc),
-        int(f.get("order") or 0),
-        _legacy_bool(f.get("is_downloadable")),
-        _legacy_bool(f.get("requires_enrollment")),
-        f.get("due_date") or "",
-        f.get("created_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        f.get("updated_at") or "",
-        await _legacy_json(f, enc),
-    )
-    if f.get("session"):
-        await env.DB.prepare(
-            "INSERT INTO activity_materials"
-            " (id,legacy_material_id,activity_id,session_id,title,description,material_type,file_url,file_r2_key,"
-            " external_url,display_order,is_downloadable,requires_enrollment,due_date,created_at,updated_at,legacy_metadata)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            " ON CONFLICT(id) DO UPDATE SET"
-            " session_id=excluded.session_id,title=excluded.title,description=excluded.description,"
-            " material_type=excluded.material_type,file_url=excluded.file_url,file_r2_key=excluded.file_r2_key,"
-            " external_url=excluded.external_url,display_order=excluded.display_order,"
-            " is_downloadable=excluded.is_downloadable,requires_enrollment=excluded.requires_enrollment,"
-            " due_date=excluded.due_date,updated_at=excluded.updated_at,legacy_metadata=excluded.legacy_metadata"
-        ).bind(
-            base_values[0], base_values[1], base_values[2], _legacy_id("session", f.get("session")),
-            *base_values[3:],
-        ).run()
-    else:
-        await env.DB.prepare(
-            "INSERT INTO activity_materials"
-            " (id,legacy_material_id,activity_id,session_id,title,description,material_type,file_url,file_r2_key,"
-            " external_url,display_order,is_downloadable,requires_enrollment,due_date,created_at,updated_at,legacy_metadata)"
-            " VALUES (?,?,?,NULL,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            " ON CONFLICT(id) DO UPDATE SET"
-            " session_id=NULL,title=excluded.title,description=excluded.description,"
-            " material_type=excluded.material_type,file_url=excluded.file_url,file_r2_key=excluded.file_r2_key,"
-            " external_url=excluded.external_url,display_order=excluded.display_order,"
-            " is_downloadable=excluded.is_downloadable,requires_enrollment=excluded.requires_enrollment,"
-            " due_date=excluded.due_date,updated_at=excluded.updated_at,legacy_metadata=excluded.legacy_metadata"
-        ).bind(*base_values).run()
-
-
-async def _legacy_import_enrollment(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    await env.DB.prepare(
-        "INSERT INTO enrollments"
-        " (id,legacy_enrollment_id,activity_id,user_id,role,status,completion_date,legacy_metadata,created_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(activity_id,user_id) DO UPDATE SET"
-        " status=excluded.status,completion_date=excluded.completion_date,legacy_metadata=excluded.legacy_metadata"
-    ).bind(
-        _legacy_id("enrollment", pk),
-        _legacy_text(pk),
-        _legacy_id("course", f.get("course")),
-        _legacy_id("user", f.get("student")),
-        "participant",
-        _legacy_text(f.get("status"), "active"),
-        f.get("completion_date") or "",
-        await _legacy_json({"payment_intent_id": f.get("payment_intent_id")}, enc),
-        f.get("enrollment_date") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    ).run()
-
-
-async def _legacy_import_attendance(record, env, enc: str):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    await env.DB.prepare(
-        "INSERT INTO session_attendance"
-        " (id,legacy_attendance_id,session_id,user_id,status,notes,legacy_metadata,created_at,updated_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(session_id,user_id) DO UPDATE SET"
-        " status=excluded.status,notes=excluded.notes,legacy_metadata=excluded.legacy_metadata,updated_at=excluded.updated_at"
-    ).bind(
-        _legacy_id("attendance", pk),
-        _legacy_text(pk),
-        _legacy_id("session", f.get("session")),
-        _legacy_id("user", f.get("student")),
-        _legacy_text(f.get("status"), "registered"),
-        await encrypt_aes(_legacy_text(f.get("notes")), enc),
-        await _legacy_json(f, enc),
-        f.get("created_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        f.get("updated_at") or "",
-    ).run()
-
-
-async def _legacy_import_notification(record, env):
-    pk = record.get("pk")
-    f = record.get("fields") or {}
-    await env.DB.prepare(
-        "INSERT INTO notifications"
-        " (id,legacy_notification_id,user_id,type,title,message,is_read,related_id,created_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?)"
-        " ON CONFLICT(id) DO UPDATE SET"
-        " type=excluded.type,title=excluded.title,message=excluded.message,is_read=excluded.is_read,created_at=excluded.created_at"
-    ).bind(
-        _legacy_id("notification", pk),
-        _legacy_text(pk),
-        _legacy_id("user", f.get("user")),
-        _legacy_text(f.get("notification_type"), "info"),
-        _legacy_text(f.get("title"), "Notification"),
-        _legacy_text(f.get("message")),
-        _legacy_bool(f.get("read")),
-        "",
-        f.get("created_at") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    ).run()
-
-
-async def _legacy_import_notification_preference(record, env):
-    f = record.get("fields") or {}
-    user_id = _legacy_id("user", f.get("user"))
-    enabled = 1 if _legacy_bool(f.get("email_notifications")) or _legacy_bool(f.get("in_app_notifications")) else 0
-    await env.DB.prepare(
-        "INSERT INTO notification_preferences"
-        " (user_id,enrollment_notify,session_notify,system_notify,updated_at)"
-        " VALUES (?,?,?,?,datetime('now'))"
-        " ON CONFLICT(user_id) DO UPDATE SET"
-        " enrollment_notify=excluded.enrollment_notify,session_notify=excluded.session_notify,"
-        " system_notify=excluded.system_notify,updated_at=datetime('now')"
-    ).bind(user_id, enabled, enabled, enabled).run()
-
-
-async def import_legacy_record(record: Dict[str, Any], env, enc: str):
-    model = record.get("model")
-    await _legacy_archive_record(record, env, enc)
-    if model == "auth.User":
-        await _legacy_import_user(record, env, enc)
-    elif model == "account.EmailAddress":
-        await _legacy_import_email_address(record, env)
-    elif model == "web.Profile":
-        await _legacy_import_profile(record, env, enc)
-    elif model == "web.Subject":
-        await _legacy_import_subject(record, env, enc)
-    elif model == "web.Course":
-        await _legacy_import_course(record, env, enc)
-    elif model == "web.EducationalVideo":
-        await _legacy_import_educational_video(record, env, enc)
-    elif model == "web.Session":
-        await _legacy_import_session(record, env, enc)
-    elif model == "web.CourseMaterial":
-        await _legacy_import_material(record, env, enc)
-    elif model == "web.Enrollment":
-        await _legacy_import_enrollment(record, env, enc)
-    elif model == "web.SessionAttendance":
-        await _legacy_import_attendance(record, env, enc)
-    elif model == "web.Notification":
-        await _legacy_import_notification(record, env)
-    elif model == "web.NotificationPreference":
-        await _legacy_import_notification_preference(record, env)
-
-
-async def api_admin_legacy_import(req, env):
-    if not _is_basic_auth_valid(req, env):
-        return _unauthorized_basic()
-    body, bad_resp = await parse_json_object(req)
-    if bad_resp:
-        return bad_resp
-    records = body.get("records")
-    if not isinstance(records, list):
-        return err("records must be a list")
-    await init_db(env)
-    enc = env.ENCRYPTION_KEY
-    counts: Dict[str, int] = {}
-    failures = []
-    for idx, record in enumerate(records):
-        if not isinstance(record, dict):
-            failures.append({"index": idx, "error": "record must be an object"})
-            continue
-        model = _legacy_text(record.get("model"), "unknown")
-        try:
-            await import_legacy_record(record, env, enc)
-            counts[model] = counts.get(model, 0) + 1
-        except Exception as exc:
-            await capture_exception(exc, req, env, f"api_admin_legacy_import.{model}")
-            failures.append({"index": idx, "model": model, "pk": record.get("pk"), "error": str(exc)})
-    status = 207 if failures else 200
-    return json_resp({"success": not failures, "counts": counts, "failures": failures[:25]}, status)
-
-
 def _guest_cart_token(req) -> str:
     token = (req.headers.get("X-Guest-Cart") or "").strip()
     if not re.fullmatch(r"gct_[A-Za-z0-9._:-]{24,180}", token):
@@ -4572,7 +4060,7 @@ def _cart_owner(req, env, body: Optional[Dict[str, Any]] = None, require_human: 
         if not ok_human:
             return None, err(message or "Cart request did not pass the human check", 429)
 
-    return {"kind": "guest", "user_id": None, "guest_id": guest_id, "user": None}, None
+    return {"kind": "guest", "user_id": "", "guest_id": guest_id, "user": None}, None
 
 
 async def _active_cart_id(env, owner: Dict[str, Any], create: bool = True) -> str:
@@ -4589,16 +4077,27 @@ async def _active_cart_id(env, owner: Dict[str, Any], create: bool = True) -> st
     if not create:
         return ""
     cart_id = new_id()
-    await env.DB.prepare(
-        "INSERT INTO activity_carts (id,user_id,guest_id,owner_kind,status,currency) VALUES (?,?,?,?,?,?)"
-    ).bind(
-        cart_id,
-        owner["user_id"],
-        owner["guest_id"],
-        owner["kind"],
-        "open",
-        "USD",
-    ).run()
+    if owner["kind"] == "user":
+        await env.DB.prepare(
+            "INSERT INTO activity_carts (id,user_id,guest_id,owner_kind,status,currency) VALUES (?,?,?,?,?,?)"
+        ).bind(
+            cart_id,
+            owner["user_id"],
+            "",
+            "user",
+            "open",
+            "USD",
+        ).run()
+    else:
+        await env.DB.prepare(
+            "INSERT INTO activity_carts (id,user_id,guest_id,owner_kind,status,currency) VALUES (?,NULL,?,?,?,?)"
+        ).bind(
+            cart_id,
+            owner["guest_id"],
+            "guest",
+            "open",
+            "USD",
+        ).run()
     return cart_id
 
 
@@ -4802,21 +4301,37 @@ async def api_create_checkout(req, env):
                 except Exception as exc:
                     await capture_exception(exc, req, env, "api_create_checkout.free_enroll")
         free_session_id = "free_" + new_id()
-        await env.DB.prepare(
-            "INSERT INTO activity_checkout_sessions"
-            " (id,user_id,guest_id,owner_kind,cart_id,stripe_session_id,status,amount_total,currency,completed_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))"
-        ).bind(
-            new_id(),
-            owner["user_id"],
-            owner["guest_id"],
-            owner["kind"],
-            cart_id,
-            free_session_id,
-            "paid",
-            0,
-            "USD",
-        ).run()
+        if owner["kind"] == "user":
+            await env.DB.prepare(
+                "INSERT INTO activity_checkout_sessions"
+                " (id,user_id,guest_id,owner_kind,cart_id,stripe_session_id,status,amount_total,currency,completed_at)"
+                " VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))"
+            ).bind(
+                new_id(),
+                owner["user_id"],
+                "",
+                "user",
+                cart_id,
+                free_session_id,
+                "paid",
+                0,
+                "USD",
+            ).run()
+        else:
+            await env.DB.prepare(
+                "INSERT INTO activity_checkout_sessions"
+                " (id,user_id,guest_id,owner_kind,cart_id,stripe_session_id,status,amount_total,currency,completed_at)"
+                " VALUES (?,NULL,?,?,?,?,?,?,?,datetime('now'))"
+            ).bind(
+                new_id(),
+                owner["guest_id"],
+                "guest",
+                cart_id,
+                free_session_id,
+                "paid",
+                0,
+                "USD",
+            ).run()
         if owner["kind"] == "user":
             await env.DB.prepare(
                 "UPDATE activity_carts SET status='checked_out', updated_at=datetime('now') WHERE id=? AND user_id=? AND owner_kind='user'"
@@ -4851,22 +4366,39 @@ async def api_create_checkout(req, env):
 
     try:
         session = await _stripe_form_request(env, "/checkout/sessions", fields)
-        await env.DB.prepare(
-            "INSERT INTO activity_checkout_sessions"
-            " (id,user_id,guest_id,owner_kind,cart_id,stripe_session_id,status,amount_total,currency)"
-            " VALUES (?,?,?,?,?,?,?,?,?)"
-            " ON CONFLICT(stripe_session_id) DO UPDATE SET status=excluded.status,amount_total=excluded.amount_total"
-        ).bind(
-            new_id(),
-            owner["user_id"],
-            owner["guest_id"],
-            owner["kind"],
-            cart_id,
-            session.get("id", ""),
-            session.get("payment_status", "pending"),
-            int(session.get("amount_total") or cart.get("subtotal_cents") or 0),
-            (session.get("currency") or "usd").upper(),
-        ).run()
+        if owner["kind"] == "user":
+            await env.DB.prepare(
+                "INSERT INTO activity_checkout_sessions"
+                " (id,user_id,guest_id,owner_kind,cart_id,stripe_session_id,status,amount_total,currency)"
+                " VALUES (?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(stripe_session_id) DO UPDATE SET status=excluded.status,amount_total=excluded.amount_total"
+            ).bind(
+                new_id(),
+                owner["user_id"],
+                "",
+                "user",
+                cart_id,
+                session.get("id", ""),
+                session.get("payment_status", "pending"),
+                int(session.get("amount_total") or cart.get("subtotal_cents") or 0),
+                (session.get("currency") or "usd").upper(),
+            ).run()
+        else:
+            await env.DB.prepare(
+                "INSERT INTO activity_checkout_sessions"
+                " (id,user_id,guest_id,owner_kind,cart_id,stripe_session_id,status,amount_total,currency)"
+                " VALUES (?,NULL,?,?,?,?,?,?,?)"
+                " ON CONFLICT(stripe_session_id) DO UPDATE SET status=excluded.status,amount_total=excluded.amount_total"
+            ).bind(
+                new_id(),
+                owner["guest_id"],
+                "guest",
+                cart_id,
+                session.get("id", ""),
+                session.get("payment_status", "pending"),
+                int(session.get("amount_total") or cart.get("subtotal_cents") or 0),
+                (session.get("currency") or "usd").upper(),
+            ).run()
         return ok({"checkout_url": session.get("url"), "session_id": session.get("id")}, "Checkout created")
     except Exception as exc:
         await capture_exception(exc, req, env, "api_create_checkout")
@@ -6733,9 +6265,6 @@ async def _dispatch(request, env):
         if path == "/api/admin/table-counts" and method == "GET":
             return await api_admin_table_counts(request, env)
 
-        if path == "/api/admin/legacy-import" and method == "POST":
-            return await api_admin_legacy_import(request, env)
-
         if path.rstrip("/") == "/api/error" and method == "GET":
             exc = RuntimeError("Sentry test error from /api/error")
             await capture_exception(exc, request, env, "api_error_test")
@@ -7162,7 +6691,7 @@ async def run_scheduled_reminders(env):
         raise
 
     sent = 0
-    frontend_url = (getattr(env, "FRONTEND_URL", "") or "https://learn.alphaonelabs.com").rstrip("/")
+    frontend_url = _frontend_url(env, request)
     for row in rows.results or []:
         try:
             existing = await env.DB.prepare(
