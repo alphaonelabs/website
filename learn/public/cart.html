@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Activity Cart - Alpha One Labs{% endblock %}
-{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block title %}Cart - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300{% endblock %}
 {% block content %}
 <main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-12">
     <div class="mb-8">
       <p class="text-sm font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400 mb-2">Checkout</p>
-      <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white">Activity Cart</h1>
-      <p class="text-gray-600 dark:text-gray-300 mt-3">Select multiple paid activities, then checkout securely with Stripe.</p>
+      <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white">Cart</h1>
+      <p class="text-gray-600 dark:text-gray-300 mt-3">Select multiple activities, then checkout once. Paid activities use Stripe; free activities can be joined from the cart.</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -30,9 +30,9 @@
           <span class="text-gray-600 dark:text-gray-300">Subtotal</span>
           <span id="subtotal" class="font-bold">$0.00</span>
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">No account required for guest checkout. Free activities can be joined directly from the activity page.</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">No account required for paid guest checkout. Free guest checkout records your selection; sign in to attach activities to your dashboard.</p>
         <button id="checkout-btn" class="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-5 py-3 rounded-xl shadow-lg">
-          <i class="fas fa-credit-card mr-2"></i>Checkout with Stripe
+          <i class="fas fa-credit-card mr-2"></i>Checkout
         </button>
         <a href="/activity" class="mt-3 w-full inline-flex justify-center text-sm text-teal-600 dark:text-teal-400 hover:underline">Browse more activities</a>
         <div id="cart-message" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
@@ -89,16 +89,22 @@
     function renderCart(body) {
       const items = body.items || [];
       const holder = document.getElementById('cart-items');
+      const checkoutBtn = document.getElementById('checkout-btn');
+      const subtotal = Number(body.subtotal_cents || 0);
       document.getElementById('subtotal').textContent = money(body.subtotal_cents, body.currency);
       document.getElementById('clear-cart').classList.toggle('hidden', !items.length);
-      document.getElementById('checkout-btn').disabled = !items.some(item => Number(item.unit_price_cents || 0) > 0);
+      checkoutBtn.disabled = !items.length;
+      checkoutBtn.dataset.subtotalCents = String(subtotal);
+      checkoutBtn.innerHTML = subtotal > 0
+        ? '<i class="fas fa-credit-card mr-2"></i>Checkout with Stripe'
+        : '<i class="fas fa-check mr-2"></i>Join free activities';
       if (!items.length) {
         holder.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-shopping-cart text-4xl mb-3 opacity-50"></i><p>Your cart is empty.</p></div>';
         return;
       }
       holder.innerHTML = items.map(item => `
         <div class="p-5 flex gap-4">
-          <img src="${esc(item.image_url || '/images/logo.png')}" alt="${esc(item.title)}" class="w-24 h-24 rounded-xl object-cover bg-gray-100 dark:bg-gray-700">
+          ${item.image_url ? `<img src="${esc(item.image_url)}" alt="${esc(item.title)}" class="w-24 h-24 rounded-xl object-cover bg-gray-100 dark:bg-gray-700" onerror="this.remove();">` : `<div class="w-24 h-24 rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900 dark:to-cyan-900 flex items-center justify-center text-teal-700 dark:text-teal-200"><i class="fas fa-graduation-cap"></i></div>`}
           <div class="flex-1 min-w-0">
             <a href="/activity/${encodeURIComponent(item.slug || item.activity_id)}" class="font-bold text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400">${esc(item.title)}</a>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${esc(item.status || 'activity')}</p>
@@ -126,15 +132,21 @@
     });
     document.getElementById('checkout-btn').addEventListener('click', async () => {
       const btn = document.getElementById('checkout-btn');
+      const subtotal = Number(btn.dataset.subtotalCents || 0);
       btn.disabled = true;
-      btn.textContent = 'Creating checkout...';
+      btn.textContent = subtotal > 0 ? 'Creating checkout...' : 'Joining activities...';
       try {
         const body = await api('/api/checkout', { method: 'POST', body: JSON.stringify(cartHumanProof()) });
-        window.location.href = body.data.checkout_url;
+        if (body.data && body.data.checkout_url) {
+          window.location.href = body.data.checkout_url;
+          return;
+        }
+        showMessage(body.message || 'Free activities joined', false);
+        await loadCart();
       } catch (err) {
         showMessage(err.message, true);
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Checkout with Stripe';
+        btn.innerHTML = subtotal > 0 ? '<i class="fas fa-credit-card mr-2"></i>Checkout with Stripe' : '<i class="fas fa-check mr-2"></i>Join free activities';
       }
     });
     loadCart().catch(err => showMessage(err.message, true));

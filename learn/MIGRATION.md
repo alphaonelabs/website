@@ -30,6 +30,7 @@ This document is the human-readable migration summary. `audit.md` remains the de
 - Restored activity list/detail routes and switched detail pages to `/activity/<slug>`.
 - Added homepage server-rendered featured activity cards so the top classes appear immediately.
 - Added activity images and square image presentation around activity cards/detail surfaces.
+- Uploaded generated activity images to the production R2 bucket, linked matching activity rows to `/media/activities/generated/...`, and removed the local generated image assets.
 - Added admin routing through `ADMIN_URL` with basic auth handling.
 - Restored current header/footer navigation and moved the dropdown-heavy nav inventory into an organized footer.
 - Added `base.html` and converted public pages to extend it.

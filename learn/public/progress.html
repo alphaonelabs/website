@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Progress - Alpha One Labs{% endblock %}
-{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
 {% block content %}
 <main class="flex-1 w-full max-w-[90rem] mx-auto px-0 md:px-0">
@@ -21,20 +21,20 @@
           <a href="/calendar" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-calendar-days text-teal-500 mr-2"></i>Calendar</a>
         </nav>
       </aside>
-      <section class="flex-1 bg-gray-50 dark:bg-gray-900 p-4 lg:p-6" data-records-page data-server-rendered="true" data-auth-required="false" data-group="progress" data-models="web.CourseProgress,web.LearningStreak,web.Points,web.ProgressTracker" data-title="Progress" data-noun="progress records">
+      <section class="flex-1 bg-gray-50 dark:bg-gray-900 p-4 lg:p-6" data-records-page data-server-rendered="false" data-auth-required="true" data-group="progress" data-models="web.CourseProgress,web.LearningStreak,web.Points,web.ProgressTracker" data-title="Progress" data-noun="progress records">
         <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
           <div>
             <p class="text-sm uppercase tracking-wide text-teal-600 dark:text-teal-300 font-bold">Learning activity</p>
             <h2 class="text-3xl font-bold mt-1 text-gray-900 dark:text-gray-100">Progress</h2>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 max-w-3xl">Track course progress, learning streaks, points, and progress trackers.</p>
+            <p class="text-gray-600 dark:text-gray-400 mt-2 max-w-3xl">Track your course progress, learning streaks, points, and progress trackers.</p>
           </div>
           <div class="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-            <span id="records-count" class="text-2xl font-black text-teal-600 dark:text-teal-300">{% records_count models="web.CourseProgress,web.LearningStreak,web.Points,web.ProgressTracker" auth_required="false" %} progress records
+            <span id="records-count" class="text-2xl font-black text-teal-600 dark:text-teal-300">{% records_count models="web.CourseProgress,web.LearningStreak,web.Points,web.ProgressTracker" auth_required="true" %}  progress records
           </div>
         </div>
         <div id="records-status" class="hidden mb-4"></div>
         <div id="records-list" class="space-y-4">
-          {% records_list models="web.CourseProgress,web.LearningStreak,web.Points,web.ProgressTracker" noun="progress records" auth_required="false" %}
+          {% records_list models="web.CourseProgress,web.LearningStreak,web.Points,web.ProgressTracker" noun="progress records" auth_required="true" %}
         </div>
       </section>
     </div>

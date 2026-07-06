@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Login / Register - Alpha One Labs{% endblock %}
-{% block meta_description %}Alpha One Labs - Login / Register{% endblock %}
+{% block title %}Login / Register{% endblock %}
+{% block meta_description %}Login or register for your account{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
 {% block head %}
-<meta name="keywords" content="education, login, register, courses, Alpha One Labs">
+<meta name="keywords" content="education, login, register, activities">
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -68,14 +68,8 @@
 <!-- ===== MAIN CONTENT ===== -->
   <main class="flex-1 w-full flex items-center justify-center py-12 px-4">
     <div class="w-full max-w-md">
-      <!-- Brand Header -->
+      <!-- Security Note -->
       <div class="text-center mb-8">
-        <a href="/" class="inline-flex items-center justify-center gap-3 mb-4 group">
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-            <img src="https://alphaonelabs.com/static/images/logo.png" alt="Alpha One Labs Logo" class="w-6 h-6">
-          </div>
-          <span class="font-bold text-2xl bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Alpha One Labs</span>
-        </a>
         <p class="text-gray-500 dark:text-gray-400 text-sm">
           <i class="fas fa-shield-alt mr-1"></i>All user data encrypted at rest - zero plaintext PII stored
         </p>
@@ -98,7 +92,7 @@
         <!-- LOGIN PANEL -->
         <div id="panel-login" class="p-8">
           <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Welcome back!</h2>
-          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in to your Alpha One Labs account</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in to your account</p>
           
           <form id="form-login" class="space-y-4" novalidate>
             <div>
@@ -140,7 +134,7 @@
         <!-- REGISTER PANEL -->
         <div id="panel-register" class="p-8 hidden">
           <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Create your account</h2>
-          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Join Alpha One Labs and start learning today</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Create an account and start learning today</p>
           
           <form id="form-register" class="space-y-4" novalidate>
             <div>

@@ -164,8 +164,12 @@ function updateAuthSection() {
 
         const badge = document.getElementById('notif-unread-badge');
         if (badge) badge.classList.add('hidden');
+        const notifLink = document.getElementById('notif-bell-link');
+        if (notifLink) notifLink.classList.add('hidden');
         const cartBadge = document.getElementById('cart-count-badge');
         if (cartBadge) cartBadge.classList.add('hidden');
+        const cartLink = document.getElementById('cart-nav-link');
+        if (cartLink) cartLink.classList.add('hidden');
         stopUnreadPolling();
         refreshCartBadge();
     }
@@ -175,12 +179,15 @@ window.updateAuthSection = updateAuthSection;
 
 async function refreshUnreadBadge() {
     const badge = document.getElementById('notif-unread-badge');
+    const link = document.getElementById('notif-bell-link');
     const { token } = getAuth();
     if (!badge) return;
     if (!token) {
         badge.classList.add('hidden');
+        if (link) link.classList.add('hidden');
         return;
     }
+    if (link) link.classList.remove('hidden');
     try {
         const res = await fetch('/api/notifications/unread-count', {
             headers: { Authorization: `Bearer ${token}` },
@@ -191,8 +198,10 @@ async function refreshUnreadBadge() {
         if (count > 0) {
             badge.textContent = count > 99 ? '99+' : String(count);
             badge.classList.remove('hidden');
+            if (link) link.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
+            if (link) link.classList.add('hidden');
         }
     } catch (_) {
         /* ignore */
@@ -222,10 +231,12 @@ window.stopUnreadPolling = stopUnreadPolling;
 
 async function refreshCartBadge() {
     const badge = document.getElementById('cart-count-badge');
+    const link = document.getElementById('cart-nav-link');
     const { token } = getAuth();
     if (!badge) return;
     if (!token && !localStorage.getItem('guest_cart_token')) {
         badge.classList.add('hidden');
+        if (link) link.classList.add('hidden');
         return;
     }
     try {
@@ -265,17 +276,6 @@ window.toggleAccordion = function (accordionId) {
     icon.classList.toggle('rotate-180', !accordion.classList.contains('hidden'));
 };
 
-// ── Language dropdown ─────────────────────────────────────────────────
-window.toggleLanguageDropdown = function () {
-    document.getElementById('language-dropdown')?.classList.toggle('hidden');
-};
-
-window.setLanguage = function (lang) {
-    localStorage.setItem('language', lang);
-    console.log('Language set to:', lang);
-    window.toggleLanguageDropdown();
-};
-
 // ── Click outside handlers ────────────────────────────────────────────
 document.addEventListener('click', (event) => {
     const menu = document.getElementById('mobile-menu');
@@ -283,15 +283,6 @@ document.addEventListener('click', (event) => {
     const menuContent = event.target.closest('.mobile-menu-content');
     if (menu && !menu.classList.contains('hidden') && !menuBtn && !menuContent) {
         window.toggleMobileMenu();
-    }
-
-    const langDropdown = document.getElementById('language-dropdown');
-    if (
-        langDropdown &&
-        !event.target.closest('[onclick="toggleLanguageDropdown()"]') &&
-        !langDropdown.contains(event.target)
-    ) {
-        langDropdown.classList.add('hidden');
     }
 
     // Close profile dropdown when clicking outside

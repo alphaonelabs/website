@@ -63,20 +63,29 @@
       const date = record.created_at ? String(record.created_at).slice(0, 10) : '';
       const label = modelLabel(record.model);
       const icon = iconFor(record.model);
-      return '<article class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">' +
-        '<div class="flex items-start gap-4">' +
-          '<div class="hidden sm:flex w-11 h-11 rounded-full bg-teal-100 dark:bg-teal-900 items-center justify-center text-teal-600 dark:text-teal-300 shrink-0"><i class="fa-solid ' + icon + '"></i></div>' +
+      const routeUrl = record.route_url || '';
+      const imageUrl = record.image_url || '';
+      const titleHtml = routeUrl
+        ? '<a href="' + esc(routeUrl) + '" class="hover:text-teal-700 dark:hover:text-teal-300">' + esc(record.title) + '</a>'
+        : esc(record.title);
+      const imageHtml = imageUrl
+        ? '<a href="' + esc(routeUrl || record.url || '#') + '" class="block sm:w-44 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 border border-gray-100 dark:border-gray-700"><img src="' + esc(imageUrl) + '" alt="' + esc(record.title) + '" class="w-full aspect-video sm:aspect-square object-cover" loading="lazy" onerror="this.closest(\'a\').remove();"></a>'
+        : '<div class="hidden sm:flex w-11 h-11 rounded-full bg-teal-100 dark:bg-teal-900 items-center justify-center text-teal-600 dark:text-teal-300 shrink-0"><i class="fa-solid ' + icon + '"></i></div>';
+      return '<article class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">' +
+        '<div class="flex flex-col sm:flex-row items-start gap-4">' +
+          imageHtml +
           '<div class="min-w-0 flex-1">' +
             '<div class="flex flex-wrap items-center justify-between gap-2 mb-1 text-xs text-gray-500 dark:text-gray-400">' +
               '<span class="font-medium text-teal-600 dark:text-teal-300">' + esc(label) + '</span>' +
               (date ? '<span>' + esc(date) + '</span>' : '') +
             '</div>' +
-            '<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">' + esc(record.title) + '</h2>' +
+            '<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">' + titleHtml + '</h2>' +
             (record.description ? '<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">' + esc(record.description) + '</p>' : '') +
             '<div class="mt-3 flex flex-wrap gap-2 text-xs">' +
               (record.status ? '<span class="rounded-full bg-gray-100 dark:bg-gray-900 px-3 py-1 text-gray-600 dark:text-gray-300">' + esc(record.status) + '</span>' : '') +
               (record.amount ? '<span class="rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-amber-700 dark:text-amber-300">' + esc(record.amount) + '</span>' : '') +
               (record.url ? '<a href="' + esc(record.url) + '" target="_blank" rel="noopener" class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300 hover:underline">Open link</a>' : '') +
+              (routeUrl ? '<a href="' + esc(routeUrl) + '" class="rounded-full bg-cyan-100 dark:bg-cyan-900/30 px-3 py-1 text-cyan-700 dark:text-cyan-300 hover:underline">Open page</a>' : '') +
             '</div>' +
           '</div>' +
         '</div>' +

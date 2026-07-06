@@ -1,10 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Real-time virtual classroom POC — ClassroomDO WebSocket MVP" />
     <title>Virtual Classroom</title>
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@0.263.1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
@@ -27,9 +31,92 @@
         };
     </script>
     <style>
+        :root {
+            color-scheme: light;
+            --vc-page: #f8fafc;
+            --vc-panel: rgba(255, 255, 255, .94);
+            --vc-muted-panel: #f1f5f9;
+            --vc-border: #dbe3ea;
+            --vc-text: #0f172a;
+            --vc-muted: #475569;
+            --vc-soft: #64748b;
+            --vc-accent: #0f766e;
+        }
+        .dark {
+            color-scheme: dark;
+            --vc-page: #020617;
+            --vc-panel: rgba(15, 23, 42, .88);
+            --vc-muted-panel: #111827;
+            --vc-border: #1f2937;
+            --vc-text: #f8fafc;
+            --vc-muted: #cbd5e1;
+            --vc-soft: #94a3b8;
+            --vc-accent: #2dd4bf;
+        }
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(20, 184, 166, .16), transparent 32rem),
+                radial-gradient(circle at top right, rgba(249, 115, 22, .12), transparent 30rem),
+                var(--vc-page);
+            color: var(--vc-text);
+        }
+        html:not(.dark) .vc-theme .bg-gray-950 { background-color: transparent !important; }
+        html:not(.dark) .vc-theme .bg-gray-900,
+        html:not(.dark) .vc-theme .bg-gray-900\/90,
+        html:not(.dark) .vc-theme .bg-gray-900\/80,
+        html:not(.dark) .vc-theme .bg-gray-900\/70,
+        html:not(.dark) .vc-theme .bg-gray-900\/60 {
+            background-color: var(--vc-panel) !important;
+        }
+        html:not(.dark) .vc-theme .bg-gray-800,
+        html:not(.dark) .vc-theme .bg-gray-800\/80,
+        html:not(.dark) .vc-theme .bg-gray-800\/70 {
+            background-color: var(--vc-muted-panel) !important;
+        }
+        html:not(.dark) .vc-theme .border-gray-800,
+        html:not(.dark) .vc-theme .border-gray-700 {
+            border-color: var(--vc-border) !important;
+        }
+        html:not(.dark) .vc-theme .text-gray-100,
+        html:not(.dark) .vc-theme .text-gray-200,
+        html:not(.dark) .vc-theme .text-gray-300 {
+            color: var(--vc-text) !important;
+        }
+        html:not(.dark) .vc-theme .text-gray-400,
+        html:not(.dark) .vc-theme .text-gray-500 {
+            color: var(--vc-muted) !important;
+        }
+        html:not(.dark) .vc-theme input,
+        html:not(.dark) .vc-theme textarea {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            border-color: var(--vc-border) !important;
+        }
+        html:not(.dark) .vc-theme input::placeholder,
+        html:not(.dark) .vc-theme textarea::placeholder { color: #94a3b8 !important; }
+        html:not(.dark) .vc-theme kbd {
+            background: #ffffff !important;
+            border-color: var(--vc-border) !important;
+            color: #334155 !important;
+        }
+        html:not(.dark) .vc-theme #myNameLabel,
+        html:not(.dark) .vc-theme #myCharacter .bg-gray-900\/90,
+        html:not(.dark) .vc-theme #avatarLayer .bg-gray-900\/90 {
+            color: #0f172a !important;
+        }
+        html:not(.dark) .vc-theme #myCharacter .bg-gray-900\/90,
+        html:not(.dark) .vc-theme #avatarLayer .bg-gray-900\/90 {
+            border: 1px solid var(--vc-border);
+        }
+        html:not(.dark) .vc-theme #viewerBanner {
+            background: #fff7ed !important;
+            border-color: #fed7aa !important;
+            color: #9a3412 !important;
+        }
+        html:not(.dark) .vc-theme #viewerBanner a { color: #0f766e !important; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb { background: #14b8a6; border-radius: 999px; }
         @keyframes dotPulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
         .dot-pulse { animation: dotPulse 1.5s ease-in-out infinite; }
         @keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -39,7 +126,7 @@
     </style>
 </head>
 
-<body class="min-h-screen bg-gray-950 font-sans text-gray-100 flex flex-col">
+<body class="vc-theme min-h-screen bg-slate-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 flex flex-col transition-colors duration-300">
 
 <!-- LOBBY SCREEN-->
 <div id="lobby" class="flex-1 flex items-center justify-center p-4">

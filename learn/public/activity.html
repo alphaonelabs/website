@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Activities - Alpha One Labs{% endblock %}
-{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
 {% block head %}
 <script>
@@ -19,6 +19,9 @@
     }
 
     initializeDarkMode();
+    if (/^\/activity\/[^\/?#]+\/?$/.test(location.pathname)) {
+      document.documentElement.classList.add('activity-detail-route');
+    }
     document.addEventListener('DOMContentLoaded', initializeDarkMode);
   </script>
 
@@ -71,6 +74,8 @@
     .view-detail { display: none; }
     .view-browser.hidden { display: none; }
     .view-detail.active { display: block; }
+    .activity-detail-route .view-browser { display: none; }
+    .activity-detail-route .view-detail { display: block; }
   </style>
 {% endblock %}
 {% block content %}
@@ -114,6 +119,7 @@
             <option value="club" class="bg-gray-800">🏛 Club</option>
             <option value="event" class="bg-gray-800">📅 Event</option>
             <option value="video" class="bg-gray-800">🎬 Video</option>
+            <option value="study_group" class="bg-gray-800">👥 Study Group</option>
           </select>
           <select id="filter-format"
             class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
@@ -202,6 +208,7 @@
             <p id="act-description" class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">
               Loading description...
             </p>
+            <div id="act-video" class="mb-4"></div>
             <div id="act-tags" class="flex flex-wrap gap-2"></div>
           </div>
 
@@ -318,8 +325,9 @@
       return { human_started_at: cartHumanStartedAt, human_confirmed_at: Date.now(), company_website: '' };
     }
 
-    const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', club:'🏛', event:'📅', video:'🎬', other:'✨' };
-    const typeColor = { course:'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300', meetup:'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300', workshop:'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', seminar:'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300', club:'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300', event:'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300', video:'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300', other:'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300' };
+    const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', club:'🏛', event:'📅', video:'🎬', study_group:'👥', other:'✨' };
+    const typeColor = { course:'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300', meetup:'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300', workshop:'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', seminar:'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300', club:'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300', event:'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300', video:'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300', study_group:'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', other:'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300' };
+    const typeLabel = { course:'Course', meetup:'Meetup', workshop:'Workshop', seminar:'Seminar', club:'Club', event:'Event', video:'Video', study_group:'Study Group', other:'Activity' };
     const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
     const fmtColor  = { live:'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', self_paced:'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', hybrid:'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' };
     const schedLabel = { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
@@ -330,14 +338,30 @@
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount / 100);
     }
 
+    function videoEmbedUrl(url) {
+      try {
+        const parsed = new URL(url);
+        let videoId = '';
+        if (parsed.hostname.includes('youtu.be')) videoId = parsed.pathname.replace('/', '');
+        if (parsed.hostname.includes('youtube.com')) videoId = parsed.searchParams.get('v') || '';
+        if (!videoId && parsed.pathname.includes('/embed/')) videoId = parsed.pathname.split('/embed/')[1].split('/')[0];
+        return videoId ? 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) : '';
+      } catch (_) {
+        return '';
+      }
+    }
+
     let allActivities = [];
     let currentActivity = null;
     let activeTag = null;
     let currentPage = 1;
     const activitiesPerPage = 12;
+    const loadedActivityTypes = new Set();
+    const typeFetchesInFlight = new Set();
 
     // ==================== VIEW SWITCHING ====================
     function showBrowser() {
+      document.documentElement.classList.remove('activity-detail-route');
       document.getElementById('browser-view').classList.remove('hidden');
       document.getElementById('detail-view').classList.remove('active');
       window.history.pushState(null, '', '/activity');
@@ -350,6 +374,7 @@
     }
 
     function showDetail(activityId, slug) {
+      document.documentElement.classList.add('activity-detail-route');
       document.getElementById('browser-view').classList.add('hidden');
       document.getElementById('detail-view').classList.add('active');
       const ref = slug || activityId;
@@ -370,24 +395,20 @@
       const desc = descText.length > 110 ? descText.slice(0, 110) + '…' : descText;
       const tags = (a.tags || []).slice(0, 3).map(t =>
         `<span class="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">${esc(t)}</span>`).join('');
-      const imageUrl = a.image_url || '/images/logo.png';
+      const imageUrl = a.image_url || '';
       const image = `<div class="w-full aspect-square overflow-hidden rounded-xl mb-3 bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-gray-900 dark:to-gray-700">
-        <img src="${esc(imageUrl)}" alt="${esc(a.title)}" loading="lazy" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='/images/logo.png';">
+        <img src="${esc(imageUrl)}" alt="${esc(a.title)}" loading="lazy" class="w-full h-full object-cover" onerror="this.remove();">
       </div>`;
       const price = formatPrice(a.price_cents, a.price_currency);
-      const actionHtml = a.status === 'waitlist'
-        ? `<span class="px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-bold">Waiting room</span>`
-        : Number(a.price_cents || 0) > 0
-          ? `<button onclick="event.stopPropagation(); addToCart('${esc(a.id)}', false, '${esc(a.slug || '')}')" class="px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold">
-              <i class="fas fa-cart-plus mr-1"></i>Add
-            </button>`
-          : `<span class="px-3 py-2 rounded-lg bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 text-xs font-bold">Free</span>`;
+      const actionHtml = `<button onclick="event.stopPropagation(); showDetail('${esc(a.id)}', '${esc(a.slug || '')}')" class="px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold">
+              <i class="fas fa-circle-info mr-1"></i>View More Info
+            </button>`;
       return `
         <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 card-hover flex flex-col gap-3 cursor-pointer" onclick="showDetail('${esc(a.id)}', '${esc(a.slug || '')}')">
           ${image}
           <div class="flex items-start justify-between gap-2">
             <h3 class="font-bold text-gray-800 dark:text-gray-200 text-base leading-snug">${ic} ${esc(a.title)}</h3>
-            <span class="badge ${tc} shrink-0">${esc(a.type)}</span>
+            <span class="badge ${tc} shrink-0">${esc(typeLabel[a.type] || a.type)}</span>
           </div>
           <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed flex-1">${esc(desc)}</p>
           <div class="flex flex-wrap gap-1.5">${tags}</div>
@@ -395,8 +416,8 @@
             <div class="flex gap-2 flex-wrap">
               <span class="badge ${fc}">${fmtLabel[a.format] || a.format}</span>
               <span>${schedLabel[a.schedule_type] || a.schedule_type}</span>
-              <span>👥 ${a.participant_count}</span>
-              ${a.status === 'waitlist' ? `<span>🙋 ${a.interest_count || 0} interested</span>` : ''}
+              ${Number(a.participant_count || 0) > 0 ? `<span>👥 ${a.participant_count} enrolled</span>` : ''}
+              ${Number(a.interest_count || 0) > 0 ? `<span>🙋 ${a.interest_count} interested</span>` : ''}
               ${a.session_count ? `<span>🗓 ${a.session_count} sessions</span>` : ''}
             </div>
           </div>
@@ -437,19 +458,33 @@
       }
       const startItem = startIndex + 1;
       const endItem = startIndex + visibleCount;
-      const from = Math.max(1, currentPage - 2);
-      const to = Math.min(totalPages, currentPage + 2);
-      let buttons = '';
-      for (let page = from; page <= to; page += 1) {
+      const pageSet = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1].filter(page => page >= 1 && page <= totalPages));
+      const pages = Array.from(pageSet).sort((a, b) => a - b);
+      let lastPage = 0;
+      let buttons = pages.map(page => {
+        const gap = page - lastPage > 1
+          ? '<span class="px-2 text-sm font-bold text-gray-400 dark:text-gray-500">...</span>'
+          : '';
+        lastPage = page;
         const active = page === currentPage;
-        buttons += `<button type="button" onclick="setActivityPage(${page})" class="min-w-10 h-10 px-3 rounded-xl text-sm font-bold border transition ${active ? 'bg-teal-600 text-white border-teal-600' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-teal-500'}" ${active ? 'aria-current="page"' : ''}>${page}</button>`;
-      }
+        return gap + `<button type="button" onclick="setActivityPage(${page})" class="min-w-11 h-11 px-4 rounded-2xl text-sm font-black border shadow-sm transition-all duration-200 ${active ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white border-transparent shadow-teal-500/25 scale-105' : 'bg-white/90 dark:bg-gray-900/90 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:-translate-y-0.5'}" ${active ? 'aria-current="page"' : ''} aria-label="Page ${page}">${page}</button>`;
+      }).join('');
+
+      const navButton = (page, label, icon, disabled, extraClass = '') =>
+        `<button type="button" onclick="setActivityPage(${page})" class="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-900/90 px-4 text-sm font-black text-gray-700 dark:text-gray-200 shadow-sm transition-all duration-200 hover:border-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 ${extraClass}" ${disabled ? 'disabled' : ''} aria-label="${label}"><i class="${icon}"></i><span class="hidden sm:inline">${label}</span></button>`;
+
+      pager.className = 'mt-10 rounded-3xl border border-gray-200 dark:border-gray-700 bg-white/85 dark:bg-gray-900/85 p-4 shadow-lg shadow-gray-900/5 backdrop-blur flex flex-col lg:flex-row items-center justify-between gap-4';
       pager.innerHTML = `
-        <p class="text-sm text-gray-500 dark:text-gray-400">Showing ${startItem}-${endItem} of ${total} activities</p>
-        <div class="flex items-center gap-2">
-          <button type="button" onclick="setActivityPage(${currentPage - 1})" class="px-4 h-10 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed" ${currentPage <= 1 ? 'disabled' : ''}>Previous</button>
+        <div class="text-center lg:text-left">
+          <p class="text-xs font-bold uppercase tracking-[0.22em] text-teal-700 dark:text-teal-300">Activity Catalog</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Showing <span class="font-bold text-gray-900 dark:text-white">${startItem}-${endItem}</span> of <span class="font-bold text-gray-900 dark:text-white">${total}</span> activities</p>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          ${navButton(1, 'First', 'fas fa-angles-left', currentPage <= 1, 'px-3')}
+          ${navButton(currentPage - 1, 'Previous', 'fas fa-chevron-left', currentPage <= 1)}
           ${buttons}
-          <button type="button" onclick="setActivityPage(${currentPage + 1})" class="px-4 h-10 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+          ${navButton(currentPage + 1, 'Next', 'fas fa-chevron-right', currentPage >= totalPages)}
+          ${navButton(totalPages, 'Last', 'fas fa-angles-right', currentPage >= totalPages, 'px-3')}
         </div>`;
     }
 
@@ -495,6 +530,34 @@
         </button>`).join('');
     }
 
+    function mergeActivities(activities) {
+      const byId = new Map(allActivities.map(a => [a.id, a]));
+      (activities || []).forEach(a => {
+        if (a && a.id) byId.set(a.id, a);
+      });
+      allActivities = Array.from(byId.values());
+      loadedActivityTypes.clear();
+      allActivities.forEach(a => {
+        if (a.type) loadedActivityTypes.add(a.type);
+      });
+    }
+
+    async function ensureActivityTypeLoaded(type) {
+      if (!type || loadedActivityTypes.has(type) || typeFetchesInFlight.has(type)) return;
+      typeFetchesInFlight.add(type);
+      try {
+        const res = await fetch(`${API}/api/activities?type=${encodeURIComponent(type)}`);
+        const data = await res.json();
+        mergeActivities(data.activities || []);
+        buildTagCloud(allActivities);
+        renderGrid();
+      } catch (e) {
+        console.error('Failed to load activity type:', type, e);
+      } finally {
+        typeFetchesInFlight.delete(type);
+      }
+    }
+
     function toggleTag(name) {
       if (activeTag === name) {
         activeTag = null;
@@ -525,15 +588,18 @@
       const serverData = readServerActivitiesPayload();
       if (serverData) {
         allActivities = serverData.activities || [];
+        mergeActivities([]);
         currentPage = 1;
         buildTagCloud(allActivities);
         renderGrid();
+        if (initialType && !loadedActivityTypes.has(initialType)) ensureActivityTypeLoaded(initialType);
         return;
       }
       try {
         const res  = await fetch(`${API}/api/activities`);
         const data = await res.json();
         allActivities = data.activities || [];
+        mergeActivities([]);
         currentPage = 1;
         buildTagCloud(allActivities);
         renderGrid();
@@ -617,6 +683,17 @@
       document.getElementById('crumb-title').textContent = a.title;
       document.getElementById('act-title').textContent = a.title;
       document.getElementById('act-description').textContent = a.description;
+      const videoPanel = document.getElementById('act-video');
+      if (videoPanel) {
+        const embed = a.type === 'video' && a.external_url ? videoEmbedUrl(a.external_url) : '';
+        if (a.type === 'video' && a.external_url) {
+          videoPanel.innerHTML = embed
+            ? '<div class="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-black aspect-video"><iframe src="' + esc(embed) + '" title="' + esc(a.title) + '" class="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Sign in or join to track progress and mark this video watched.</p>'
+            : '<a href="' + esc(a.external_url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-3"><i class="fas fa-play"></i>Watch video</a><p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Sign in or join to track progress and mark this video watched.</p>';
+        } else {
+          videoPanel.innerHTML = '';
+        }
+      }
       document.getElementById('act-meta').textContent =
         'by ' + a.host_name + '  ·  ' + a.participant_count + ' participants  ·  ' +
         (data.sessions.length) + ' sessions' +
@@ -626,11 +703,11 @@
       const fc = fmtColor[a.format] || 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300';
       const ic = typeIcon[a.type] || '✨';
       document.getElementById('act-badges').innerHTML =
-        '<span class="badge ' + tc + '">' + ic + ' ' + esc(a.type) + '</span>' +
+        '<span class="badge ' + tc + '">' + ic + ' ' + esc(typeLabel[a.type] || a.type) + '</span>' +
         '<span class="badge ' + fc + '">' + fmtLabel[a.format] + '</span>' +
         '<span class="badge bg-white/20 text-white">' + schedLabel[a.schedule_type] + '</span>';
 
-      const detailImageUrl = a.image_url || '/images/logo.png';
+      const detailImageUrl = a.image_url || '';
       document.getElementById('act-details').innerHTML =
         '<div class="md:col-span-2 lg:col-span-3 mb-2">' +
           '<div class="max-w-sm rounded-lg shadow-md overflow-hidden bg-white/10 border border-white/20">' +
@@ -642,7 +719,7 @@
         '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-tag"></i><strong>Price</strong></span><span class="text-xl font-bold text-white">' + formatPrice(a.price_cents, a.price_currency) + '</span></div>' +
         '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-signal"></i><strong>Level</strong></span><span>' + esc(a.level || 'All levels') + '</span></div>' +
         '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-users"></i><strong>Students</strong></span><span>' + a.participant_count + (a.max_students ? ' / ' + a.max_students : '') + '</span></div>' +
-        '<div class="flex items-center gap-2 text-teal-100"><span>📋</span><span><strong>Type:</strong> ' + esc(a.type) + '</span></div>' +
+        '<div class="flex items-center gap-2 text-teal-100"><span>📋</span><span><strong>Type:</strong> ' + esc(typeLabel[a.type] || a.type) + '</span></div>' +
         '<div class="flex items-center gap-2 text-teal-100"><span>📡</span><span><strong>Format:</strong> ' + fmtLabel[a.format] + '</span></div>' +
         '<div class="flex items-center gap-2 text-teal-100"><span>🗓</span><span><strong>Schedule:</strong> ' + schedLabel[a.schedule_type] + '</span></div>' +
         (a.level ? '<div class="flex items-center gap-2 text-teal-100"><span>📈</span><span><strong>Level:</strong> ' + esc(a.level) + '</span></div>' : '') +
@@ -738,7 +815,7 @@
               '<i class="fas fa-cart-plus"></i>Add to Cart - ' + formatPrice(a.price_cents, a.price_currency) + '</button>';
             document.getElementById('detail-add-to-cart').addEventListener('click', () => addToCart(a.id, true, a.slug || ''));
           } else {
-            document.getElementById('btn-join').innerHTML = a.type === 'video' ? '<i class="fas fa-play mr-2"></i>Join to Watch - Free' : '<i class="fas fa-user-plus mr-2"></i>Join Activity - Free';
+            document.getElementById('btn-join').innerHTML = '<i class="fas fa-cart-plus mr-2"></i>Add to Cart - Free';
             document.getElementById('join-cta').classList.remove('hidden');
           }
         } else {
@@ -843,6 +920,7 @@
     ['search','filter-type','filter-format'].forEach(id =>
       document.getElementById(id).addEventListener(id === 'search' ? 'input' : 'change', () => {
         currentPage = 1;
+        if (id === 'filter-type') ensureActivityTypeLoaded(document.getElementById('filter-type').value);
         renderGrid();
       }));
 
@@ -859,7 +937,7 @@
     
     if (pathRef || actSlug || actId) {
       const ref = pathRef || actSlug || actId;
-      loadAllActivities().then(() => showDetail(ref, ref));
+      showDetail(ref, ref);
     } else {
       loadAllActivities();
     }

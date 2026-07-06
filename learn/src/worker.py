@@ -431,6 +431,56 @@ def json_resp(data, status: int = 200):
     )
 
 
+_US_ZIP_RE = re.compile(r"\b\d{5}(?:-\d{4})?\b")
+_CA_POSTAL_RE = re.compile(r"\b[A-Z]\d[A-Z][ -]?\d[A-Z]\d\b", re.I)
+
+
+def _extract_location_zip_codes(location: str) -> list:
+    """Return ZIP/postal codes found in a decrypted location string."""
+    if not location:
+        return []
+    found = []
+    for match in _US_ZIP_RE.findall(location):
+        found.append(match)
+    for match in _CA_POSTAL_RE.findall(location):
+        found.append(re.sub(r"\s+", "", match.upper()))
+    deduped = []
+    for code in found:
+        if code not in deduped:
+            deduped.append(code)
+    return deduped
+
+
+def _normalize_location_code(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]", "", str(value or "").upper())
+
+
+def _location_codes_match(query: str, codes: list) -> bool:
+    normalized_query = _normalize_location_code(query)
+    if not normalized_query:
+        return True
+
+    for code in codes or []:
+        normalized_code = _normalize_location_code(code)
+        if normalized_code == normalized_query:
+            return True
+        if normalized_query.isdigit() and len(normalized_query) == 5 and normalized_code.startswith(normalized_query):
+            return True
+        if normalized_code.isdigit() and len(normalized_code) == 5 and normalized_query.startswith(normalized_code):
+            return True
+
+    return False
+
+
+def _get_request_postal_code(req) -> str:
+    cf = getattr(req, "cf", None)
+    if not cf:
+        return ""
+    if isinstance(cf, dict):
+        return cf.get("postalCode") or cf.get("postal_code") or ""
+    return getattr(cf, "postalCode", "") or getattr(cf, "postal_code", "") or ""
+
+
 def ok(data=None, msg: str = "OK"):
     body = {"success": True, "message": msg}
     if data is not None:
@@ -1319,7 +1369,7 @@ async def seed_db(env, enc_key: str):
             "act-ml-study", "Machine Learning Study Group",
             "Collaborative study group working through ML concepts, "
             "reading papers, and implementing algorithms together.",
-            "course", "hybrid", "recurring", bid,
+            "study_group", "hybrid", "recurring", bid,
             ["tag-ml", "tag-python"],
         ),
         (
@@ -1812,6 +1862,9 @@ async def api_list_activities(req, env):
     fmt    = (params.get("format") or [None])[0]
     search = (params.get("q")      or [None])[0]
     tag    = (params.get("tag")    or [None])[0]
+    status = (params.get("status") or ["published"])[0]
+    if status not in {"published", "waitlist", "draft", "archived", "all"}:
+        status = "published"
     enc    = env.ENCRYPTION_KEY
     page_raw = (params.get("page") or [None])[0]
     page_size_raw = (params.get("page_size") or [None])[0]
@@ -1837,32 +1890,30 @@ async def api_list_activities(req, env):
     )
 
     async def fetch_activities():
+        join = ""
+        clauses = []
+        binds = []
         if tag:
             tag_row = await env.DB.prepare(
                 "SELECT id FROM tags WHERE name=?"
             ).bind(tag).first()
             if not tag_row:
                 return _empty_d1_result()
-            return await env.DB.prepare(
-                base_q
-                + " JOIN activity_tags at2 ON at2.activity_id=a.id"
-                  " WHERE at2.tag_id=? ORDER BY a.created_at DESC"
-            ).bind(tag_row.id).all()
-        if atype and fmt:
-            return await env.DB.prepare(
-                base_q + " WHERE a.type=? AND a.format=? ORDER BY a.created_at DESC"
-            ).bind(atype, fmt).all()
+            join = " JOIN activity_tags at2 ON at2.activity_id=a.id"
+            clauses.append("at2.tag_id=?")
+            binds.append(tag_row.id)
+        if status != "all":
+            clauses.append("a.status=?")
+            binds.append(status)
         if atype:
-            return await env.DB.prepare(
-                base_q + " WHERE a.type=? ORDER BY a.created_at DESC"
-            ).bind(atype).all()
+            clauses.append("a.type=?")
+            binds.append(atype)
         if fmt:
-            return await env.DB.prepare(
-                base_q + " WHERE a.format=? ORDER BY a.created_at DESC"
-            ).bind(fmt).all()
-        return await env.DB.prepare(
-            base_q + " ORDER BY a.created_at DESC"
-        ).all()
+            clauses.append("a.format=?")
+            binds.append(fmt)
+        where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        stmt = env.DB.prepare(base_q + join + where + " ORDER BY a.created_at DESC")
+        return await stmt.bind(*binds).all() if binds else await stmt.all()
 
     try:
         res = await fetch_activities()
@@ -1872,21 +1923,31 @@ async def api_list_activities(req, env):
         await init_db(env)
         res = await fetch_activities()
 
+    rows = list(res.results or [])
+    tag_map = {}
+    if rows:
+        try:
+            placeholders = ",".join(["?"] * len(rows))
+            tag_res = await env.DB.prepare(
+                "SELECT at2.activity_id,t.name FROM tags t"
+                " JOIN activity_tags at2 ON at2.tag_id=t.id"
+                f" WHERE at2.activity_id IN ({placeholders})"
+            ).bind(*[row.id for row in rows]).all()
+            for tag_row in tag_res.results or []:
+                tag_map.setdefault(tag_row.activity_id, []).append(tag_row.name)
+        except Exception:
+            tag_map = {}
+
     activities = []
-    for row in res.results or []:
+    search_l = (search or "").lower()
+    for row in rows:
         desc      = await decrypt_aes(row.description or "", enc)
         host_name = await decrypt_aes(row.host_name_enc or "", enc)
-        if search and (
-            search.lower() not in row.title.lower()
-            and search.lower() not in desc.lower()
+        if search_l and (
+            search_l not in (row.title or "").lower()
+            and search_l not in (desc or "").lower()
         ):
             continue
-
-        t_res = await env.DB.prepare(
-            "SELECT t.name FROM tags t"
-            " JOIN activity_tags at2 ON at2.tag_id=t.id"
-            " WHERE at2.activity_id=?"
-        ).bind(row.id).all()
 
         activities.append({
             "id":                row.id,
@@ -1907,7 +1968,7 @@ async def api_list_activities(req, env):
             "participant_count": row.participant_count,
             "interest_count":    int(getattr(row, "interest_count", 0) or 0),
             "session_count":     row.session_count,
-            "tags":              [t.name for t in (t_res.results or [])],
+            "tags":              tag_map.get(row.id, []),
             "created_at":        row.created_at,
         })
 
@@ -1949,7 +2010,7 @@ async def api_create_activity(req, env):
 
     if not title:
         return err("title is required")
-    if atype not in ("course", "meetup", "workshop", "seminar", "club", "event", "video", "other"):
+    if atype not in ("course", "meetup", "workshop", "seminar", "club", "event", "video", "study_group", "other"):
         atype = "course"
     if fmt not in ("live", "self_paced", "hybrid"):
         fmt = "self_paced"
@@ -2004,6 +2065,81 @@ async def api_create_activity(req, env):
     })
 
     return ok({"id": act_id, "slug": slug, "title": title}, "Activity created")
+
+
+async def api_classes_near_me(req, env):
+    params = parse_qs(urlparse(req.url).query)
+    requested_zip = ((params.get("zip") or [""])[0] or "").strip()[:32]
+    near_requested = ((params.get("near") or [""])[0] or "").strip().lower() in ("1", "true", "yes", "on")
+    detected_zip = _get_request_postal_code(req) if near_requested and not requested_zip else ""
+    zip_filter = requested_zip or detected_zip
+
+    if near_requested and not zip_filter:
+        return json_resp({
+            "classes": [],
+            "zip": "",
+            "detected_zip": "",
+            "location_lookup_failed": True,
+        })
+
+    res = await env.DB.prepare(
+        "SELECT a.id AS activity_id,a.title,a.type,a.format AS activity_format,"
+        " a.schedule_type,a.slug,a.image_url,a.price_cents,a.price_currency,"
+        " a.level,a.created_at,s.id AS session_id,s.location AS session_location"
+        " FROM activities a"
+        " JOIN sessions s ON s.activity_id=a.id"
+        " WHERE COALESCE(a.status,'published')='published'"
+        " AND s.location IS NOT NULL AND trim(s.location)<>''"
+        " ORDER BY a.created_at DESC,s.start_time"
+    ).all()
+
+    classes_by_id = {}
+    class_order = []
+    for row in res.results or []:
+        encrypted_location = getattr(row, "session_location", "") or ""
+        try:
+            location = await decrypt_aes(encrypted_location, env.ENCRYPTION_KEY)
+        except Exception:
+            location = encrypted_location if not str(encrypted_location).startswith("v1:") else ""
+
+        zip_codes = _extract_location_zip_codes(location)
+        if not zip_codes or not _location_codes_match(zip_filter, zip_codes):
+            continue
+
+        activity_id = getattr(row, "activity_id", "") or ""
+        if not activity_id:
+            continue
+
+        if activity_id not in classes_by_id:
+            class_order.append(activity_id)
+            classes_by_id[activity_id] = {
+                "id": activity_id,
+                "title": getattr(row, "title", "") or "",
+                "type": getattr(row, "type", "") or "",
+                "format": getattr(row, "activity_format", "") or "",
+                "schedule_type": getattr(row, "schedule_type", "") or "",
+                "slug": getattr(row, "slug", "") or "",
+                "image_url": getattr(row, "image_url", "") or "",
+                "price_cents": int(getattr(row, "price_cents", 0) or 0),
+                "price_currency": getattr(row, "price_currency", "USD") or "USD",
+                "level": getattr(row, "level", "") or "",
+                "created_at": getattr(row, "created_at", "") or "",
+                "zip_codes": [],
+                "session_count": 0,
+            }
+
+        activity = classes_by_id[activity_id]
+        activity["session_count"] += 1
+        for code in zip_codes:
+            if code not in activity["zip_codes"]:
+                activity["zip_codes"].append(code)
+
+    return json_resp({
+        "classes": [classes_by_id[activity_id] for activity_id in class_order],
+        "zip": zip_filter,
+        "detected_zip": detected_zip,
+        "location_lookup_failed": False,
+    })
 
 
 async def api_get_activity(activity_ref: str, req, env):
@@ -2759,7 +2895,7 @@ SSR_RECORD_PAGES = {
         "description": "Join discussions, ask questions, and share knowledge across Alpha One Labs.",
         "group": "community",
         "models": ["web.ForumCategory", "web.ForumTopic", "web.ForumReply", "web.ForumVote"],
-        "noun": "records",
+        "noun": "topics",
         "private": False,
     },
     "/blog": {
@@ -2767,7 +2903,7 @@ SSR_RECORD_PAGES = {
         "kicker": "Community writing",
         "description": "Read posts, updates, and learning notes from the Alpha One Labs community.",
         "group": "community",
-        "models": ["web.BlogPost", "web.BlogComment"],
+        "models": ["web.BlogPost"],
         "noun": "posts",
         "private": False,
     },
@@ -2787,7 +2923,7 @@ SSR_RECORD_PAGES = {
         "group": "assessment",
         "models": ["web.Quiz", "web.QuizQuestion", "web.QuizOption", "web.UserQuiz"],
         "noun": "quiz records",
-        "private": False,
+        "private": True,
     },
     "/surveys": {
         "title": "Surveys",
@@ -2796,7 +2932,7 @@ SSR_RECORD_PAGES = {
         "group": "assessment",
         "models": ["web.Survey", "web.Question", "web.Choice", "web.Response"],
         "noun": "survey records",
-        "private": False,
+        "private": True,
     },
     "/challenges": {
         "title": "Challenges",
@@ -2814,7 +2950,7 @@ SSR_RECORD_PAGES = {
         "group": "progress",
         "models": ["web.CourseProgress", "web.LearningStreak", "web.Points", "web.ProgressTracker"],
         "noun": "progress records",
-        "private": False,
+        "private": True,
     },
     "/grade-links": {
         "title": "Grade Links",
@@ -2832,7 +2968,7 @@ SSR_RECORD_PAGES = {
         "group": "calendar",
         "models": ["web.EventCalendar", "web.TimeSlot"],
         "noun": "calendar records",
-        "private": False,
+        "private": True,
     },
     "/memes": {
         "title": "Edu Memes",
@@ -2872,6 +3008,17 @@ SSR_RECORD_PAGES = {
     },
 }
 
+SENSITIVE_RECORD_MODELS = {
+    "web.PeerMessage", "web.Donation",
+    "web.EventCalendar", "web.TimeSlot",
+    "web.CourseProgress", "web.LearningStreak", "web.Points", "web.ProgressTracker",
+    "web.Quiz", "web.QuizQuestion", "web.QuizOption", "web.UserQuiz",
+    "web.Survey", "web.Question", "web.Choice", "web.Response",
+}
+FORUM_RECORD_MODELS = {"web.ForumCategory", "web.ForumTopic", "web.ForumReply", "web.ForumVote"}
+BLOG_RECORD_MODELS = {"web.BlogPost"}
+
+
 STATIC_CLEAN_ROUTES = {
     "/activity": "/activity.html",
     "/classes-map": "/classes-map.html",
@@ -2881,6 +3028,7 @@ STATIC_CLEAN_ROUTES = {
     "/checkout-success": "/checkout-success.html",
     "/dashboard": "/dashboard.html",
     "/donate": "/donate.html",
+    "/feedack": "/feedback.html",
     "/feedback": "/feedback.html",
     "/forgot-password": "/forgot-password.html",
     "/login": "/login.html",
@@ -2890,7 +3038,6 @@ STATIC_CLEAN_ROUTES = {
     "/referral-leaderboard": "/referral-leaderboard.html",
     "/reset-password": "/reset-password.html",
     "/status": "/status.html",
-    "/sitemap": "/sitemap.html",
     "/teach": "/teach.html",
     "/verify-email": "/verify-email.html",
     "/virtual-classroom": "/virtual-classroom.html",
@@ -2940,6 +3087,7 @@ LEGACY_LANGUAGE_ROUTE_ALIASES = {
     "/account/password_reset": "/forgot-password",
     "/password_reset": "/forgot-password",
     "/forgot_password": "/forgot-password",
+    "/feedack": "/feedback",
     "/donation": "/donate",
     "/donations": "/donate",
     "/graphing_calculator": "/calculator",
@@ -2988,6 +3136,8 @@ def _language_prefixed_target(path: str) -> Optional[str]:
     if route in ("/features", "/legacy-features"):
         return "/feature-votes"
     if re.fullmatch(r"/activity/[^/]+", route):
+        return route
+    if re.fullmatch(r"/memes/[^/]+", route):
         return route
     return ""
 
@@ -3049,13 +3199,53 @@ def _legacy_pick(fields: Dict[str, Any], names) -> str:
     return ""
 
 
+def _legacy_public_media_url(value: Any) -> str:
+    if value is None:
+        return ""
+    raw = str(value).strip()
+    if not raw:
+        return ""
+    if raw.startswith(("http://", "https://", "/media/")):
+        return raw
+    if raw.startswith("/"):
+        raw = raw.lstrip("/")
+    return "/media/" + raw
+
+
+def _legacy_route_for_record(model: str, pk: str, fields: Dict[str, Any], title: str) -> str:
+    slug = _legacy_pick(fields, ("slug",))
+    if model == "web.BlogPost":
+        return "/blog/" + quote(slug or _slugify(title, pk or "post"))
+    if model == "web.ForumCategory":
+        return "/forum/" + quote(slug or _slugify(title, pk or "category"))
+    if model == "web.ForumTopic":
+        return "/forum/topic/" + quote(pk or _slugify(title, "topic"))
+    if model == "web.Meme":
+        return "/memes/" + quote(slug or _slugify(title, pk or "meme"))
+    return _legacy_pick(fields, ("url", "video_url"))
+
+
+def _legacy_vote_value(fields: Dict[str, Any]) -> int:
+    raw = _legacy_pick(fields, ("vote_type", "value", "vote", "score"))
+    low = str(raw).strip().lower()
+    if low in {"up", "upvote", "+", "+1", "1", "true"}:
+        return 1
+    if low in {"down", "downvote", "-", "-1"}:
+        return -1
+    try:
+        value = int(float(low))
+        return 1 if value > 0 else (-1 if value < 0 else 0)
+    except Exception:
+        return 0
+
+
 def _legacy_feature_summary(record: Dict[str, Any]) -> Dict[str, Any]:
     model = _legacy_text(record.get("model"), "unknown")
     pk = _legacy_text(record.get("pk"), "")
     fields = record.get("fields") or {}
-    title = _legacy_pick(fields, ("title", "name", "caption", "question_text", "text", "link_type"))
+    title = _legacy_pick(fields, ("title", "name", "caption", "question_text", "text", "link_type", "subject"))
     description = _legacy_pick(fields, (
-        "description", "excerpt", "content", "message", "notes", "submission_text",
+        "caption", "description", "excerpt", "summary", "content", "body", "message", "notes", "submission_text",
         "comment", "url", "video_url",
     ))
     if not title:
@@ -3063,21 +3253,52 @@ def _legacy_feature_summary(record: Dict[str, Any]) -> Dict[str, Any]:
     if len(description) > 700:
         description = description[:697] + "..."
     amount = _legacy_pick(fields, (
-        "amount", "grade", "score", "points_awarded", "current_streak", "longest_streak",
+        "amount", "grade", "score", "points_awarded", "points", "current_streak", "longest_streak",
     ))
+    image_url = _legacy_public_media_url(_legacy_pick(fields, (
+        "featured_image", "image", "thumbnail", "cover_image", "photo", "picture",
+    )))
+    created_at = _legacy_pick(fields, (
+        "published_at", "created_at", "updated_at", "uploaded_at", "awarded_at",
+        "submitted_at", "start_date", "joined_at",
+    ))
+    parent_ref = _legacy_pick(fields, (
+        "topic", "post", "blog_post", "category", "calendar", "quiz", "survey", "question", "enrollment", "user", "creator", "author", "student",
+    ))
+    category_ref = _legacy_pick(fields, ("category", "forum_category"))
     return {
         "model": model,
         "legacy_pk": pk,
         "title": title,
         "description": description,
         "status": _legacy_pick(fields, ("status", "challenge_type", "donation_type", "link_type", "category")),
-        "created_at": _legacy_pick(fields, (
-            "created_at", "updated_at", "uploaded_at", "published_at", "awarded_at",
-            "submitted_at", "start_date", "joined_at",
-        )),
+        "created_at": created_at,
         "url": _legacy_pick(fields, ("url", "video_url")),
+        "route_url": _legacy_route_for_record(model, pk, fields, title),
+        "image_url": image_url,
         "amount": amount,
+        "parent_ref": parent_ref,
+        "category_ref": category_ref,
+        "slug": _legacy_pick(fields, ("slug",)),
+        "author_ref": _legacy_pick(fields, ("author", "creator", "user", "student")),
+        "subject_ref": _legacy_pick(fields, ("subject",)),
+        "uploader_ref": _legacy_pick(fields, ("uploader",)),
+        "vote_value": _legacy_vote_value(fields) if model == "web.ForumVote" else 0,
     }
+
+
+def _is_test_success_story_record(record: Dict[str, Any]) -> bool:
+    if (record.get("model") or "") != "web.SuccessStory":
+        return False
+    title = _legacy_text(record.get("title"), "").strip().lower()
+    slug = _legacy_text(record.get("slug"), "").strip().lower()
+    description = _legacy_text(record.get("description"), "").strip().lower()
+    exact_test_names = {"test success story", "success story test", "test story"}
+    if title in exact_test_names or slug in {"test-success-story", "success-story-test", "test-story"}:
+        return True
+    if title.startswith("test ") and "success" in title and "story" in title:
+        return True
+    return "test success story" in description[:240]
 
 
 def _ssr_nav() -> str:
@@ -3118,7 +3339,6 @@ def _ssr_footer() -> str:
         '<a href="/about" class="hover:text-teal-600">About</a>'
         '<a href="/status" class="hover:text-teal-600">Status</a>'
         '<a href="/feedback" class="hover:text-teal-600">Feedback</a>'
-        '<a href="/sitemap" class="hover:text-teal-600">Site Map</a>'
         '<a href="/terms" class="hover:text-teal-600">Terms</a>'
         '<a href="/privacy" class="hover:text-teal-600">Privacy</a>'
         '</div></div></footer>'
@@ -3170,6 +3390,8 @@ def _ssr_record_card(record: Dict[str, Any]) -> str:
     status = _html_escape(record.get("status", ""))
     amount = _html_escape(record.get("amount", ""))
     url = _html_escape(record.get("url", ""))
+    route_url = _html_escape(record.get("route_url", ""))
+    image_url = _html_escape(record.get("image_url", ""))
     pills = ""
     if status:
         pills += f'<span class="rounded-full bg-gray-100 dark:bg-gray-900 px-3 py-1 text-gray-600 dark:text-gray-300">{status}</span>'
@@ -3177,23 +3399,125 @@ def _ssr_record_card(record: Dict[str, Any]) -> str:
         pills += f'<span class="rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-amber-700 dark:text-amber-300">{amount}</span>'
     if url:
         pills += f'<a href="{url}" target="_blank" rel="noopener" class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300 hover:underline">Open link</a>'
+    if route_url:
+        pills += f'<a href="{route_url}" class="rounded-full bg-cyan-100 dark:bg-cyan-900/30 px-3 py-1 text-cyan-700 dark:text-cyan-300 hover:underline">Open page</a>'
     date_html = f"<span>{date}</span>" if date else ""
     desc_html = f'<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{desc}</p>' if desc else ""
     pills_html = f'<div class="mt-3 flex flex-wrap gap-2 text-xs">{pills}</div>' if pills else ""
-    return (
-        '<article class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">'
-        '<div class="flex items-start gap-4">'
+    image_html = (
+        f'<a href="{route_url or url or "#"}" class="block sm:w-44 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 border border-gray-100 dark:border-gray-700">'
+        f'<img src="{image_url}" alt="{title}" class="w-full aspect-video sm:aspect-square object-cover" loading="lazy" onerror="this.closest(\'a\').remove();"></a>'
+        if image_url else
         f'<div class="hidden sm:flex w-11 h-11 rounded-full bg-teal-100 dark:bg-teal-900 items-center justify-center text-teal-600 dark:text-teal-300 shrink-0"><i class="fa-solid {icon}"></i></div>'
+    )
+    title_html = f'<a href="{route_url}" class="hover:text-teal-700 dark:hover:text-teal-300">{title}</a>' if route_url else title
+    return (
+        '<article class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">'
+        '<div class="flex flex-col sm:flex-row items-start gap-4">'
+        f'{image_html}'
         '<div class="min-w-0 flex-1">'
         '<div class="flex flex-wrap items-center justify-between gap-2 mb-1 text-xs text-gray-500 dark:text-gray-400">'
         f'<span class="font-medium text-teal-600 dark:text-teal-300">{model}</span>'
         f'{date_html}'
         '</div>'
-        f'<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">{title}</h2>'
+        f'<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">{title_html}</h2>'
         f'{desc_html}'
         f'{pills_html}'
         '</div></div></article>'
     )
+
+
+def _ssr_meme_grid_html(records: list) -> str:
+    if not records:
+        return '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No memes found yet.</div>'
+    cards = []
+    for record in records:
+        title = _html_escape(record.get("title") or "Educational meme")
+        caption = _html_escape(record.get("description") or "")
+        image_url = _html_escape(record.get("image_url") or "")
+        href = _html_escape(record.get("route_url") or record.get("url") or image_url or "/memes")
+        date = _html_escape((record.get("created_at") or "")[:10])
+        image_html = (
+            '<div class="w-full h-56 bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden">'
+            f'<img src="{image_url}" alt="{title}" class="max-w-full max-h-full object-contain" loading="lazy" onerror="this.closest(\'a\').classList.add(\'hidden\');">'
+            '</div>'
+            if image_url else
+            '<div class="w-full h-56 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900 dark:to-cyan-900 flex items-center justify-center text-teal-700 dark:text-teal-200"><i class="fa-solid fa-face-smile text-4xl"></i></div>'
+        )
+        cards.append(
+            f'<a href="{href}" class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">'
+            f'{image_html}'
+            '<div class="p-4">'
+            f'<h3 class="text-lg font-black text-gray-900 dark:text-white group-hover:text-teal-700 dark:group-hover:text-teal-300">{title}</h3>'
+            + (f'<p class="text-sm text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">{caption}</p>' if caption else '') +
+            '<div class="mt-4 flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">'
+            '<span class="inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 font-bold"><i class="fa-solid fa-face-smile mr-1"></i>Edu Meme</span>'
+            + (f'<span>{date}</span>' if date else '') +
+            '</div></div></a>'
+        )
+    return '<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">' + "".join(cards) + '</div>'
+
+
+def _legacy_record_matches_ref(record: Dict[str, Any], ref: str) -> bool:
+    target = (ref or "").strip().lower()
+    if not target:
+        return False
+    candidates = {
+        str(record.get("legacy_pk") or "").strip().lower(),
+        str(record.get("slug") or "").strip().lower(),
+        _slugify(record.get("title") or "", record.get("legacy_pk") or "").strip().lower(),
+    }
+    return target in candidates
+
+
+async def render_meme_detail(req, env, ref: str):
+    records = await _server_records_for_models(env, ["web.Meme"], limit=500)
+    meme = next((record for record in records if _legacy_record_matches_ref(record, ref)), None)
+    if not meme:
+        return await render_404(req, env, urlparse(req.url).path)
+    title = _html_escape(meme.get("title") or "Educational meme")
+    caption = _html_escape(meme.get("description") or "")
+    image_url = _html_escape(meme.get("image_url") or "")
+    date = _html_escape((meme.get("created_at") or "")[:10])
+    image_html = (
+        '<div class="bg-gray-100 dark:bg-gray-950 rounded-2xl p-4 md:p-6 flex items-center justify-center">'
+        f'<img src="{image_url}" alt="{title}" class="max-w-full max-h-[75vh] object-contain rounded-xl" loading="eager">'
+        '</div>'
+        if image_url else
+        '<div class="bg-gray-100 dark:bg-gray-950 rounded-2xl p-16 text-center text-teal-600 dark:text-teal-300"><i class="fa-solid fa-face-smile text-6xl"></i></div>'
+    )
+    html = (
+        '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head>'
+        '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        f'<title>{title} - Edu Meme</title>'
+        '<link rel="icon" type="image/png" href="/images/logo.png">'
+        '<script src="https://cdn.tailwindcss.com"></script>'
+        '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
+        '<script>tailwind.config={darkMode:"class",theme:{extend:{}}};if(localStorage.getItem("darkMode")==="true"){document.documentElement.classList.add("dark");}</script>'
+        '</head><body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">'
+        f'{_ssr_nav()}'
+        '<main class="flex-1 w-full max-w-5xl mx-auto px-4 py-8 md:py-12">'
+        '<article class="bg-white dark:bg-gray-800 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">'
+        '<div class="p-5 md:p-8">'
+        '<div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">'
+        '<div>'
+        f'<h1 class="text-3xl font-black text-gray-900 dark:text-white">{title}</h1>'
+        '<div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">'
+        '<span class="rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 font-bold"><i class="fa-solid fa-face-smile mr-1"></i>Edu Meme</span>'
+        + (f'<span>{date}</span>' if date else '') +
+        '</div></div>'
+        '<a href="/memes" class="inline-flex items-center text-teal-700 dark:text-teal-300 hover:underline font-semibold"><i class="fa-solid fa-arrow-left mr-2"></i>Back to memes</a>'
+        '</div>'
+        f'{image_html}'
+        + (f'<section class="mt-6"><h2 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Caption</h2><p class="text-gray-700 dark:text-gray-300 leading-relaxed">{caption}</p></section>' if caption else '') +
+        '<div class="mt-6 flex flex-wrap gap-3">'
+        '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(location.href)" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold"><i class="fa-solid fa-share-alt mr-2"></i>Share</button>'
+        + (f'<a href="{image_url}" download class="inline-flex items-center px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-bold"><i class="fa-solid fa-download mr-2"></i>Save</a>' if image_url else '') +
+        '</div></div></article></main>'
+        f'{_ssr_footer()}'
+        '</body></html>'
+    )
+    return Response(html, headers={"Content-Type": "text/html; charset=utf-8", **_CORS})
 
 
 def _ssr_side_nav(active_path: str) -> str:
@@ -3222,38 +3546,155 @@ def _ssr_side_nav(active_path: str) -> str:
     return "".join(html)
 
 
-async def render_ssr_record_page(req, env, clean_path: str, config: Dict[str, Any]):
-    if config.get("private"):
-        body = (
-            '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">'
-            '<p class="text-gray-600 dark:text-gray-300 mb-4">Sign in to view this private section.</p>'
-            '<a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">'
-            '<i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a></div>'
+async def _private_records_signin_html() -> str:
+    return (
+        '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">'
+        '<p class="text-gray-600 dark:text-gray-300 mb-4">Sign in to view this private section.</p>'
+        '<a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold">'
+        '<i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a></div>'
+    )
+
+
+async def _server_forum_payload(env) -> Dict[str, Any]:
+    records = await _server_records_for_models(env, list(FORUM_RECORD_MODELS), limit=500)
+    categories = [r for r in records if r.get("model") == "web.ForumCategory"]
+    topics = [r for r in records if r.get("model") == "web.ForumTopic"]
+    replies = [r for r in records if r.get("model") == "web.ForumReply"]
+    votes = [r for r in records if r.get("model") == "web.ForumVote"]
+    reply_counts = {}
+    vote_scores = {}
+    for reply in replies:
+        ref = str(reply.get("parent_ref") or "")
+        if ref:
+            reply_counts[ref] = reply_counts.get(ref, 0) + 1
+    for vote in votes:
+        ref = str(vote.get("parent_ref") or vote.get("category_ref") or "")
+        if ref:
+            vote_scores[ref] = vote_scores.get(ref, 0) + int(vote.get("vote_value") or 0)
+    return {"records": records, "categories": categories, "topics": topics, "replies": replies, "votes": votes, "reply_counts": reply_counts, "vote_scores": vote_scores}
+
+
+async def _server_forum_records_html(env) -> str:
+    payload = await _server_forum_payload(env)
+    categories = payload["categories"]
+    topics = payload["topics"]
+    reply_counts = payload["reply_counts"]
+    vote_scores = payload["vote_scores"]
+    cat_by_pk = {str(c.get("legacy_pk") or ""): c for c in categories}
+    rows = []
+    if categories:
+        rows.append('<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">')
+        for cat in categories:
+            href = _html_escape(cat.get("route_url") or "/forum")
+            title = _html_escape(cat.get("title") or "Forum category")
+            desc = _html_escape(cat.get("description") or "")
+            count = sum(1 for t in topics if str(t.get("category_ref") or "") == str(cat.get("legacy_pk") or ""))
+            rows.append(
+                '<a href="' + href + '" class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm hover:border-teal-400 hover:-translate-y-0.5 transition">'
+                '<p class="text-xs font-bold uppercase tracking-[0.22em] text-teal-600 dark:text-teal-300">Category</p>'
+                '<h3 class="mt-2 text-lg font-black text-gray-900 dark:text-white">' + title + '</h3>'
+                + (('<p class="mt-2 text-sm text-gray-600 dark:text-gray-300">' + desc + '</p>') if desc else '') +
+                '<p class="mt-4 text-xs font-bold text-gray-500 dark:text-gray-400">' + str(count) + ' topics</p></a>'
+            )
+        rows.append('</section>')
+    if not topics:
+        rows.append('<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No forum topics found yet.</div>')
+        return "".join(rows)
+    rows.append('<section class="space-y-4">')
+    for topic in topics:
+        pk = str(topic.get("legacy_pk") or "")
+        category = cat_by_pk.get(str(topic.get("category_ref") or ""), {})
+        href = _html_escape(topic.get("route_url") or "/forum")
+        title = _html_escape(topic.get("title") or "Forum topic")
+        desc = _html_escape(topic.get("description") or "")
+        date = _html_escape((topic.get("created_at") or "")[:10])
+        cat_title = _html_escape(category.get("title") or "Forum")
+        replies = int(reply_counts.get(pk, 0))
+        score = int(vote_scores.get(pk, 0))
+        rows.append(
+            '<article class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">'
+            '<div class="flex flex-col md:flex-row md:items-start justify-between gap-4">'
+            '<div class="min-w-0 flex-1">'
+            '<div class="flex flex-wrap gap-2 text-xs mb-2"><span class="rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 font-bold">' + cat_title + '</span>' + (('<span class="text-gray-500 dark:text-gray-400 px-2 py-1">' + date + '</span>') if date else '') + '</div>'
+            '<h3 class="text-xl font-black text-gray-900 dark:text-white"><a href="' + href + '" class="hover:text-teal-700 dark:hover:text-teal-300">' + title + '</a></h3>'
+            + (('<p class="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">' + desc + '</p>') if desc else '') +
+            '</div><div class="flex md:flex-col gap-2 shrink-0 text-sm">'
+            '<span class="rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-3 py-2 font-black"><i class="fa-solid fa-arrow-up mr-1"></i>' + str(score) + ' votes</span>'
+            '<span class="rounded-xl bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 px-3 py-2 font-black"><i class="fa-solid fa-reply mr-1"></i>' + str(replies) + ' replies</span>'
+            '</div></div></article>'
         )
-        records = []
+    rows.append('</section>')
+    return "".join(rows)
+
+
+async def render_blog_detail(req, env, slug: str):
+    posts = await _server_records_for_models(env, ["web.BlogPost"], limit=250)
+    target = None
+    for post in posts:
+        post_slug = post.get("slug") or _slugify(post.get("title") or "post", post.get("legacy_pk") or "post")
+        if slug in {post_slug, str(post.get("legacy_pk") or "")}:
+            target = post
+            break
+    if not target:
+        return await render_404(req, env, "/blog/" + slug)
+    comments = [c for c in await _server_records_for_models(env, ["web.BlogComment"], limit=250) if str(c.get("parent_ref") or "") == str(target.get("legacy_pk") or "")]
+    title = _html_escape(target.get("title") or "Blog post")
+    desc = _html_escape(target.get("description") or "")
+    date = _html_escape((target.get("created_at") or "")[:10])
+    image = _html_escape(target.get("image_url") or "")
+    comments_html = "".join(_ssr_record_card(c) for c in comments) or '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-gray-500 dark:text-gray-400">No comments yet.</div>'
+    image_html = f'<img src="{image}" alt="{title}" class="w-full max-h-[32rem] object-cover rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg mb-8" onerror="this.remove();">' if image else ""
+    html = (
+        '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        f'<title>{title} - Alpha One Labs</title><link rel="icon" type="image/png" href="/images/logo.png"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
+        '<script>tailwind.config={darkMode:"class",theme:{extend:{}}};if(localStorage.getItem("darkMode")==="true"){document.documentElement.classList.add("dark");}</script></head>'
+        '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">' + _ssr_nav() +
+        '<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-10"><a href="/blog" class="inline-flex items-center text-sm font-bold text-teal-700 dark:text-teal-300 hover:underline mb-6"><i class="fa-solid fa-arrow-left mr-2"></i>Back to blog</a>'
+        f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm">{image_html}<p class="text-xs font-bold uppercase tracking-[0.24em] text-teal-700 dark:text-teal-300">Blog</p><h1 class="mt-3 text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1>'
+        + (f'<p class="mt-3 text-sm text-gray-500 dark:text-gray-400">{date}</p>' if date else '') +
+        f'<div class="mt-8 prose prose-lg dark:prose-invert max-w-none text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{desc}</div></article>'
+        '<section class="mt-8"><h2 class="text-2xl font-black mb-4">Comments</h2><div class="space-y-4">' + comments_html + '</div></section></main>' + _ssr_footer() + '</body></html>'
+    )
+    return Response(html, headers={"Content-Type": "text/html; charset=utf-8", **_CORS})
+
+
+async def render_forum_topic_detail(req, env, topic_ref: str):
+    payload = await _server_forum_payload(env)
+    topic = next((t for t in payload["topics"] if str(t.get("legacy_pk") or "") == str(topic_ref)), None)
+    if not topic:
+        return await render_404(req, env, "/forum/topic/" + topic_ref)
+    pk = str(topic.get("legacy_pk") or "")
+    replies = [r for r in payload["replies"] if str(r.get("parent_ref") or "") == pk]
+    votes = int(payload["vote_scores"].get(pk, 0))
+    title = _html_escape(topic.get("title") or "Forum topic")
+    desc = _html_escape(topic.get("description") or "")
+    date = _html_escape((topic.get("created_at") or "")[:10])
+    replies_html = "".join(_ssr_record_card(r) for r in replies) or '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-gray-500 dark:text-gray-400">No replies yet.</div>'
+    html = (
+        '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        f'<title>{title} - Alpha One Labs Forum</title><link rel="icon" type="image/png" href="/images/logo.png"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
+        '<script>tailwind.config={darkMode:"class",theme:{extend:{}}};if(localStorage.getItem("darkMode")==="true"){document.documentElement.classList.add("dark");}</script></head>'
+        '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">' + _ssr_nav() +
+        '<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-10"><a href="/forum" class="inline-flex items-center text-sm font-bold text-teal-700 dark:text-teal-300 hover:underline mb-6"><i class="fa-solid fa-arrow-left mr-2"></i>Back to forum</a>'
+        f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm"><div class="flex flex-wrap gap-2 mb-4"><span class="rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-3 py-1 text-xs font-black"><i class="fa-solid fa-arrow-up mr-1"></i>{votes} votes</span>' + (f'<span class="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">{date}</span>' if date else '') + f'</div><h1 class="text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1><div class="mt-8 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{desc}</div></article>'
+        '<section class="mt-8"><h2 class="text-2xl font-black mb-4">Replies</h2><div class="space-y-4">' + replies_html + '</div></section></main>' + _ssr_footer() + '</body></html>'
+    )
+    return Response(html, headers={"Content-Type": "text/html; charset=utf-8", **_CORS})
+
+
+async def render_ssr_record_page(req, env, clean_path: str, config: Dict[str, Any]):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    records = []
+    if clean_path == "/forum":
+        body = await _server_forum_records_html(env)
+        count = str(len((await _server_forum_payload(env))["topics"]))
+    elif config.get("private") and not user:
+        body = await _private_records_signin_html()
+        count = "0"
     else:
-        models = config["models"]
-        placeholders = ",".join(["?"] * len(models))
-        try:
-            res = await env.DB.prepare(
-                "SELECT legacy_model,legacy_pk,payload,created_at,updated_at FROM legacy_records"
-                f" WHERE legacy_model IN ({placeholders})"
-                " ORDER BY updated_at DESC LIMIT 250"
-            ).bind(*models).all()
-        except Exception as exc:
-            if _is_no_such_table_error(exc):
-                res = _empty_d1_result()
-            else:
-                raise
-        records = []
-        for row in res.results or []:
-            try:
-                payload = await decrypt_aes(row.payload or "", env.ENCRYPTION_KEY)
-                record = json.loads(payload) if payload else {}
-                if isinstance(record, dict):
-                    records.append(_legacy_feature_summary(record))
-            except Exception as exc:
-                await capture_exception(exc, req, env, "render_ssr_record_page.decrypt")
+        owner_user_id = user["id"] if config.get("private") and user else None
+        records = await _server_records_for_models(env, config["models"], owner_user_id=owner_user_id, limit=250)
+        count = str(len(records))
         body = "".join(_ssr_record_card(record) for record in records) or (
             f'<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No {_html_escape(config["noun"])} found yet.</div>'
         )
@@ -3262,7 +3703,6 @@ async def render_ssr_record_page(req, env, clean_path: str, config: Dict[str, An
     kicker = _html_escape(config["kicker"])
     desc = _html_escape(config["description"])
     noun = _html_escape(config["noun"])
-    count = str(len(records))
     html = (
         '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head>'
         '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
@@ -3318,26 +3758,15 @@ async def api_features(req, env):
         filtered_models = [model for model in requested_models if model in models]
         if filtered_models:
             models = filtered_models
-    private_models = {"web.PeerMessage", "web.Donation"}
-    if not user and (not requested_models or any(model in private_models for model in models)):
+    requires_owner = any(model in SENSITIVE_RECORD_MODELS for model in models)
+    if requires_owner and not user:
         return err("Authentication required", 401)
-    placeholders = ",".join(["?"] * len(models))
-    res = await env.DB.prepare(
-        "SELECT legacy_model,legacy_pk,payload,created_at,updated_at FROM legacy_records"
-        f" WHERE legacy_model IN ({placeholders})"
-        " ORDER BY updated_at DESC LIMIT ?"
-    ).bind(*models, limit).all()
-
-    records = []
-    enc = env.ENCRYPTION_KEY
-    for row in res.results or []:
-        try:
-            payload = await decrypt_aes(row.payload or "", enc)
-            record = json.loads(payload) if payload else {}
-            if isinstance(record, dict):
-                records.append(_legacy_feature_summary(record))
-        except Exception as exc:
-            await capture_exception(exc, req, env, "api_features.decrypt")
+    records = await _server_records_for_models(
+        env,
+        models,
+        owner_user_id=(user["id"] if requires_owner and user else None),
+        limit=limit,
+    )
 
     groups = [
         {"id": key, "title": value["title"], "count_models": len(value["models"])}
@@ -4235,8 +4664,6 @@ async def api_add_cart_item(req, env):
         return err("Activity not found", 404)
     if getattr(act, "status", "") == "waitlist":
         return err("This class is in the waiting room. Express interest instead.", 400)
-    if int(getattr(act, "price_cents", 0) or 0) <= 0:
-        return err("Free activities can be joined directly from the activity page.", 400)
     cart_id = await _active_cart_id(env, owner, create=True)
     if owner["kind"] == "guest":
         count_row = await env.DB.prepare(
@@ -4355,8 +4782,51 @@ async def api_create_checkout(req, env):
     cart_id = (cart.get("cart") or {}).get("id") or ""
     items = cart.get("items") or []
     paid_items = [i for i in items if int(i.get("unit_price_cents") or 0) > 0]
-    if not cart_id or not paid_items:
-        return err("Add at least one paid activity to your cart before checkout", 400)
+    if not cart_id or not items:
+        return err("Add at least one activity to your cart before checkout", 400)
+
+    if not paid_items:
+        enrolled = 0
+        if owner["kind"] == "user":
+            for item in items:
+                try:
+                    insert_res = await env.DB.prepare(
+                        "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status) VALUES (?,?,?,?,?)"
+                    ).bind(new_id(), item.get("activity_id", ""), owner["user_id"], "participant", "active").run()
+                    meta = getattr(insert_res, "meta", None)
+                    changes = meta.get("changes") if isinstance(meta, dict) else getattr(meta, "changes", None)
+                    if changes != 0:
+                        enrolled += 1
+                except Exception as exc:
+                    await capture_exception(exc, req, env, "api_create_checkout.free_enroll")
+        free_session_id = "free_" + new_id()
+        await env.DB.prepare(
+            "INSERT INTO activity_checkout_sessions"
+            " (id,user_id,guest_id,owner_kind,cart_id,stripe_session_id,status,amount_total,currency,completed_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))"
+        ).bind(
+            new_id(),
+            owner["user_id"],
+            owner["guest_id"],
+            owner["kind"],
+            cart_id,
+            free_session_id,
+            "paid",
+            0,
+            "USD",
+        ).run()
+        if owner["kind"] == "user":
+            await env.DB.prepare(
+                "UPDATE activity_carts SET status='checked_out', updated_at=datetime('now') WHERE id=? AND user_id=? AND owner_kind='user'"
+            ).bind(cart_id, owner["user_id"]).run()
+            return ok({"free_checkout": True, "enrolled": enrolled, "guest": False, "session_id": free_session_id}, "Free activities joined")
+        await env.DB.prepare(
+            "UPDATE activity_carts SET status='checked_out', updated_at=datetime('now') WHERE id=? AND guest_id=? AND owner_kind='guest'"
+        ).bind(cart_id, owner["guest_id"]).run()
+        return ok(
+            {"free_checkout": True, "enrolled": 0, "guest": True, "session_id": free_session_id},
+            "Free activities selected. Create or sign in to attach them to your dashboard.",
+        )
 
     origin = f"{urlparse(req.url).scheme}://{urlparse(req.url).netloc}"
     fields: Dict[str, Any] = {
@@ -4624,6 +5094,22 @@ def _activity_href(activity: Dict[str, Any]) -> str:
     return "/activity/" + quote(str(ref), safe="") if ref else "/activity"
 
 
+def _activity_type_label(value: Any) -> str:
+    labels = {
+        "course": "Course",
+        "meetup": "Meetup",
+        "workshop": "Workshop",
+        "seminar": "Seminar",
+        "club": "Club",
+        "event": "Event",
+        "video": "Video",
+        "study_group": "Study Group",
+        "other": "Activity",
+    }
+    raw = str(value or "").strip()
+    return labels.get(raw, raw.replace("_", " ").title() if raw else "Activity")
+
+
 def _activity_score(activity: Dict[str, Any]) -> int:
     return (
         (100000 if activity.get("is_featured") else 0)
@@ -4634,8 +5120,10 @@ def _activity_score(activity: Dict[str, Any]) -> int:
     )
 
 
-async def _server_list_activities(env, *, limit: int = 250, atype: str = "", fmt: str = "", search: str = "", tag: str = "") -> Dict[str, Any]:
+async def _server_list_activities(env, *, limit: int = 250, atype: str = "", fmt: str = "", search: str = "", tag: str = "", status: str = "published") -> Dict[str, Any]:
     limit = max(1, min(250, int(limit or 250)))
+    if status not in {"published", "waitlist", "draft", "archived", "all"}:
+        status = "published"
     enc = env.ENCRYPTION_KEY
     base_q = (
         "SELECT a.id,a.title,a.description,a.type,a.format,a.schedule_type,"
@@ -4649,15 +5137,19 @@ async def _server_list_activities(env, *, limit: int = 250, atype: str = "", fmt
 
     async def fetch_rows():
         order = " ORDER BY a.is_featured DESC, a.created_at DESC LIMIT " + str(limit)
+        join = ""
+        clauses = []
+        binds = []
         if tag:
             tag_row = await env.DB.prepare("SELECT id FROM tags WHERE name=?").bind(tag).first()
             if not tag_row:
                 return _empty_d1_result()
-            return await env.DB.prepare(
-                base_q + " JOIN activity_tags at2 ON at2.activity_id=a.id WHERE at2.tag_id=?" + order
-            ).bind(tag_row.id).all()
-        clauses = []
-        binds = []
+            join = " JOIN activity_tags at2 ON at2.activity_id=a.id"
+            clauses.append("at2.tag_id=?")
+            binds.append(tag_row.id)
+        if status != "all":
+            clauses.append("a.status=?")
+            binds.append(status)
         if atype:
             clauses.append("a.type=?")
             binds.append(atype)
@@ -4665,7 +5157,8 @@ async def _server_list_activities(env, *, limit: int = 250, atype: str = "", fmt
             clauses.append("a.format=?")
             binds.append(fmt)
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
-        return await env.DB.prepare(base_q + where + order).bind(*binds).all() if binds else await env.DB.prepare(base_q + where + order).all()
+        stmt = env.DB.prepare(base_q + join + where + order)
+        return await stmt.bind(*binds).all() if binds else await stmt.all()
 
     try:
         res = await fetch_rows()
@@ -4674,20 +5167,28 @@ async def _server_list_activities(env, *, limit: int = 250, atype: str = "", fmt
             return {"activities": [], "pagination": {"page": 1, "page_size": limit, "total": 0, "total_pages": 1}}
         raise
 
+    rows = list(res.results or [])
+    tag_map = {}
+    if rows:
+        try:
+            placeholders = ",".join(["?"] * len(rows))
+            tag_res = await env.DB.prepare(
+                "SELECT at2.activity_id,t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
+                f" WHERE at2.activity_id IN ({placeholders})"
+            ).bind(*[row.id for row in rows]).all()
+            for tag_row in tag_res.results or []:
+                tag_map.setdefault(tag_row.activity_id, []).append(tag_row.name)
+        except Exception:
+            tag_map = {}
+
     activities = []
     search_l = (search or "").lower()
-    for row in res.results or []:
+    for row in rows:
         desc = await decrypt_aes(row.description or "", enc)
         host_name = await decrypt_aes(row.host_name_enc or "", enc)
         if search_l and search_l not in (row.title or "").lower() and search_l not in (desc or "").lower():
             continue
-        try:
-            t_res = await env.DB.prepare(
-                "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id WHERE at2.activity_id=?"
-            ).bind(row.id).all()
-            tags = [t.name for t in (t_res.results or [])]
-        except Exception:
-            tags = []
+        tags = tag_map.get(row.id, [])
         activities.append({
             "id": row.id,
             "title": row.title,
@@ -4723,7 +5224,7 @@ def _server_activity_card_html(activity: Dict[str, Any], *, home: bool = False) 
     title = _html_escape(activity.get("title", "Untitled activity"))
     desc = _html_escape((activity.get("description") or "")[:180])
     host = _html_escape(activity.get("host_name") or "Alpha One Labs")
-    image = _html_escape(activity.get("image_url") or "/images/logo.png")
+    image = _html_escape(activity.get("image_url") or "")
     href = _html_escape(_activity_href(activity))
     price = _html_escape(_money_label(activity.get("price_cents"), activity.get("price_currency") or "USD"))
     level = _html_escape(activity.get("level") or "All levels")
@@ -4734,12 +5235,26 @@ def _server_activity_card_html(activity: Dict[str, Any], *, home: bool = False) 
         f'<span class="rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-2.5 py-1 text-xs font-semibold">{_html_escape(tag)}</span>'
         for tag in (activity.get("tags") or [])[:3]
     )
-    badge = "Featured" if activity.get("is_featured") else _html_escape(activity.get("type") or "Activity")
+    badge = "Featured" if activity.get("is_featured") else _html_escape(_activity_type_label(activity.get("type")))
+    metrics = []
+    if count > 0:
+        metrics.append(f'<span><i class="fas fa-users mr-1 text-teal-500"></i>{count} enrolled</span>')
+    if interest > 0:
+        metrics.append(f'<span><i class="fas fa-hand-paper mr-1 text-orange-500"></i>{interest} interested</span>')
+    metrics_html = ""
+    if metrics:
+        metrics_html = '<div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">' + "".join(metrics) + '</div>'
+    action_html = (
+        '<div class="px-5 pb-5">'
+        f'<span class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">'
+        '<i class="fas fa-circle-info mr-2"></i>View More Info</span>'
+        '</div>'
+    )
     return (
         '<article class="group bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">'
         f'<a href="{href}" class="block">'
         '<div class="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">'
-        f'<img src="{image}" alt="{title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src=\'/images/logo.png\';">'
+        f'<img src="{image}" alt="{title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" onerror="this.remove();">'
         '</div>'
         '<div class="p-5">'
         '<div class="flex items-center justify-between gap-3 mb-3">'
@@ -4750,11 +5265,8 @@ def _server_activity_card_html(activity: Dict[str, Any], *, home: bool = False) 
         f'<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 mb-4">{desc}</p>'
         f'<div class="text-xs text-gray-500 dark:text-gray-400 mb-3">by {host} · {fmt} · {level}</div>'
         f'<div class="flex flex-wrap gap-2 mb-4">{tags}</div>'
-        '<div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">'
-        f'<span><i class="fas fa-users mr-1 text-teal-500"></i>{count} enrolled</span>'
-        f'<span><i class="fas fa-hand-paper mr-1 text-orange-500"></i>{interest} interested</span>'
-        '</div>'
-        '</div></a></article>'
+        f'{metrics_html}'
+        f'</div></a><a href="{href}" class="block">{action_html}</a></article>'
     )
 
 
@@ -4905,15 +5417,22 @@ async def _server_waiting_rooms_html(env, kind: str = "learn") -> str:
     return marker + "".join(rows)
 
 
-async def _server_records_for_models(env, models: list) -> list:
+async def _server_records_for_models(env, models: list, owner_user_id: Optional[str] = None, limit: int = 250) -> list:
     if not models:
         return []
     placeholders = ",".join(["?"] * len(models))
+    binds = list(models)
+    owner_clause = ""
+    if owner_user_id is not None:
+        owner_clause = " AND user_id=?"
+        binds.append(owner_user_id)
+    binds.append(max(1, min(500, int(limit or 250))))
     try:
         res = await env.DB.prepare(
             "SELECT legacy_model,legacy_pk,payload,created_at,updated_at FROM legacy_records"
-            f" WHERE legacy_model IN ({placeholders}) ORDER BY updated_at DESC LIMIT 250"
-        ).bind(*models).all()
+            f" WHERE legacy_model IN ({placeholders})" + owner_clause +
+            " ORDER BY updated_at DESC LIMIT ?"
+        ).bind(*binds).all()
     except Exception as exc:
         if _is_no_such_table_error(exc):
             return []
@@ -4924,21 +5443,38 @@ async def _server_records_for_models(env, models: list) -> list:
             payload = await decrypt_aes(row.payload or "", env.ENCRYPTION_KEY)
             record = json.loads(payload) if payload else {}
             if isinstance(record, dict):
-                records.append(_legacy_feature_summary(record))
+                summary = _legacy_feature_summary(record)
+                if _is_test_success_story_record(summary):
+                    continue
+                records.append(summary)
         except Exception as exc:
             await capture_exception(exc, where="template_records.decrypt")
     return records
 
 
-async def _template_records(context: Dict[str, Any], env, models: list) -> list:
+async def _template_records(context: Dict[str, Any], env, models: list, owner_user_id: Optional[str] = None) -> list:
     cache = context.setdefault("_records_cache", {})
-    key = ",".join(models)
+    key = ",".join(models) + "|" + (owner_user_id or "public")
     if key not in cache:
-        cache[key] = await _server_records_for_models(env, models)
+        cache[key] = await _server_records_for_models(env, models, owner_user_id=owner_user_id)
     return cache[key]
 
 
 async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: Dict[str, Any]) -> str:
+    activity_ref = _template_activity_ref(req)
+
+    parsed_query = parse_qs(urlparse(req.url).query) if req else {}
+
+    def requested_activity_filter(name: str) -> str:
+        return (attrs.get(name) or (parsed_query.get(name) or [""])[0] or "").strip()
+
+    async def cached_activity_list(limit: int, atype: str = "", fmt: str = "", search: str = "", tag: str = "") -> Dict[str, Any]:
+        cache = context.setdefault("_activity_list_cache", {})
+        key = "|".join([str(limit), atype or "", fmt or "", search or "", tag or ""])
+        if key not in cache:
+            cache[key] = await _server_list_activities(env, limit=limit, atype=atype, fmt=fmt, search=search, tag=tag)
+        return cache[key]
+
     if name == "featured_activities_json":
         limit = _template_attr_int(attrs, "limit", 3, 1, 12)
         return _json_for_html(await _server_featured_activities(env, limit))
@@ -4949,12 +5485,28 @@ async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: 
             return '<div class="col-span-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No featured classes found yet.</div>'
         return "".join(_server_activity_card_html(a, home=True) for a in activities)
     if name == "activities_json":
+        if activity_ref:
+            return '<script id="server-activities-data" type="application/json">' + _json_for_html({"activities": [], "pagination": {"page": 1, "page_size": 0, "total": 0, "total_pages": 1}}) + '</script>'
         limit = _template_attr_int(attrs, "limit", 250, 1, 250)
-        payload = await _server_list_activities(env, limit=limit)
+        payload = await cached_activity_list(
+            limit,
+            requested_activity_filter("type"),
+            requested_activity_filter("format"),
+            requested_activity_filter("q"),
+            requested_activity_filter("tag"),
+        )
         return '<script id="server-activities-data" type="application/json">' + _json_for_html(payload) + '</script>'
     if name == "activity_cards":
+        if activity_ref:
+            return ""
         limit = _template_attr_int(attrs, "limit", 12, 1, 250)
-        payload = await _server_list_activities(env, limit=limit)
+        payload = await cached_activity_list(
+            max(limit, 250),
+            requested_activity_filter("type"),
+            requested_activity_filter("format"),
+            requested_activity_filter("q"),
+            requested_activity_filter("tag"),
+        )
         activities = payload.get("activities", [])[:limit]
         if not activities:
             return '<div class="col-span-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No activities found yet.</div>'
@@ -4972,16 +5524,25 @@ async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: 
     if name in {"records_list", "records_count"}:
         models = [m.strip() for m in (attrs.get("models") or "").split(",") if m.strip()]
         auth_required = _template_attr_bool(attrs.get("auth_required"), False)
-        if auth_required:
+        model_set = set(models)
+        if model_set == FORUM_RECORD_MODELS:
             if name == "records_count":
-                return "0"
-            return (
-                '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">'
-                '<p class="text-gray-600 dark:text-gray-300 mb-4">Sign in to view this private section.</p>'
-                '<a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a>'
-                '</div>'
-            )
-        records = await _template_records(context, env, models)
+                return str(len((await _server_forum_payload(env))["topics"]))
+            return await _server_forum_records_html(env)
+        if model_set == {"web.Meme"}:
+            records = await _template_records(context, env, models, owner_user_id=None)
+            if name == "records_count":
+                return str(len(records))
+            return _ssr_meme_grid_html(records)
+        owner_user_id = None
+        if auth_required or any(model in SENSITIVE_RECORD_MODELS for model in models):
+            user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET) if req else None
+            if not user:
+                if name == "records_count":
+                    return "0"
+                return await _private_records_signin_html()
+            owner_user_id = user["id"]
+        records = await _template_records(context, env, models, owner_user_id=owner_user_id)
         if name == "records_count":
             return str(len(records))
         noun = attrs.get("noun") or "records"
@@ -5287,7 +5848,7 @@ class ClassroomDO(DurableObject):
     async def on_webSocketMessage(self, ws, message):
         try:
             raw_message = message if isinstance(message, str) else message.decode("utf-8")
-            if len(raw_message) > 4096:
+            if len(raw_message) > 8192:
                 return
             data = json.loads(raw_message)
         except Exception as exc:
@@ -5396,6 +5957,26 @@ class ClassroomDO(DurableObject):
                 "participant_id": info["participant_id"],
                 "display_name": info["display_name"],
             }))
+
+        elif msg_type == "whiteboard_undo":
+            try:
+                events = await self.ctx.storage.get("whiteboard_events")
+                if not isinstance(events, list):
+                    events = []
+                for idx in range(len(events) - 1, -1, -1):
+                    event = events[idx]
+                    if isinstance(event, dict) and event.get("participant_id") == info["participant_id"]:
+                        events.pop(idx)
+                        break
+                await self.ctx.storage.put("whiteboard_events", events)
+                self._broadcast(json.dumps({
+                    "type": "whiteboard_state",
+                    "events": events[-1000:],
+                    "participant_id": info["participant_id"],
+                    "display_name": info["display_name"],
+                }))
+            except Exception as exc:
+                await capture_exception(exc, None, self.env, "classroom.whiteboard_undo")
 
         
         elif msg_type == "update_seat":
@@ -5523,21 +6104,44 @@ class ClassroomDO(DurableObject):
         if not isinstance(value, dict):
             return None
         start = self._whiteboard_point(value.get("from"))
-        end = self._whiteboard_point(value.get("to"))
-        if not start or not end:
+        end = self._whiteboard_point(value.get("to")) or start
+        if not start:
+            return None
+        kind = value.get("kind") or value.get("tool") or "stroke"
+        if kind not in {"stroke", "line", "rectangle", "circle", "arrow", "text"}:
+            kind = "stroke"
+        if kind != "text" and not end:
             return None
         color = value.get("color", "#0f766e")
         if not isinstance(color, str) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
             color = "#0f766e"
+        mode = value.get("mode") or ("text" if kind == "text" else "pen")
+        if mode not in {"pen", "highlighter", "eraser", "shape", "text"}:
+            mode = "pen"
         try:
             size = int(value.get("size", 4))
         except (TypeError, ValueError):
             size = 4
+        try:
+            alpha = float(value.get("alpha", 0.3 if mode == "highlighter" else 1))
+        except (TypeError, ValueError):
+            alpha = 1
+        text = value.get("text", "")
+        if not isinstance(text, str):
+            text = ""
+        event_id = value.get("event_id", "")
+        if not isinstance(event_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", event_id):
+            event_id = str(uuid.uuid4())
         return {
+            "event_id": event_id,
+            "kind": kind,
             "from": start,
             "to": end,
             "color": color,
             "size": max(1, min(32, size)),
+            "mode": mode,
+            "alpha": max(0.05, min(1.0, alpha)),
+            "text": text[:240],
         }
 
     def _broadcast(self, msg, exclude_session_id=None):
@@ -5943,6 +6547,21 @@ async def _dispatch(request, env):
         route_path = route_path.rstrip("/")
     if method == "GET" and re.fullmatch(r"/activity/[^/]+", route_path):
         return await serve_static("/activity.html", env, request)
+    m_blog_detail = re.fullmatch(r"/blog/([^/]+)", route_path)
+    if method == "GET" and m_blog_detail:
+        return await render_blog_detail(request, env, unquote(m_blog_detail.group(1)))
+    m_forum_topic = re.fullmatch(r"/forum/topic/([^/]+)", route_path)
+    if method == "GET" and m_forum_topic:
+        return await render_forum_topic_detail(request, env, unquote(m_forum_topic.group(1)))
+    m_forum_old_topic = re.fullmatch(r"/forum/[^/]+/([^/]+)", route_path)
+    if method == "GET" and m_forum_old_topic:
+        return await render_forum_topic_detail(request, env, unquote(m_forum_old_topic.group(1)))
+    m_forum_category = re.fullmatch(r"/forum/([^/]+)", route_path)
+    if method == "GET" and m_forum_category:
+        return await serve_static("/forum.html", env, request)
+    m_meme_detail = re.fullmatch(r"/memes/([^/]+)", route_path)
+    if method == "GET" and m_meme_detail:
+        return await render_meme_detail(request, env, unquote(m_meme_detail.group(1)))
     if method == "GET" and route_path in SSR_RECORD_PAGES:
         static_page = STATIC_CLEAN_ROUTES.get(route_path)
         if static_page:
@@ -6016,6 +6635,9 @@ async def _dispatch(request, env):
 
         if path == "/api/login" and method == "POST":
             return await api_login(request, env)
+
+        if path == "/api/classes-near-me" and method == "GET":
+            return await api_classes_near_me(request, env)
 
         if path == "/api/activities" and method == "GET":
             return await api_list_activities(request, env)

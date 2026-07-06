@@ -1,11 +1,164 @@
 {% extends "base.html" %}
-{% block title %}Classes Map - Alpha One Labs{% endblock %}
-{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block title %}Classes Near Me - Alpha One Labs{% endblock %}
+{% block meta_description %}Find Alpha One Labs activities with ZIP-coded class locations.{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
 {% block content %}
-<main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full"><div class="mb-8"><h1 class="text-3xl font-bold">Classes Near Me</h1><p class="text-gray-600 dark:text-gray-300 mt-2">A restored classes map surface. Activities with session/location data will appear here as the scheduling migration is completed.</p></div><div id="map-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div class="text-gray-500">Loading classes...</div></div></main>
+<main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+  <section class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 md:p-6 mb-8 shadow-sm">
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Location search</p>
+        <h1 class="text-3xl font-bold mt-1">Classes Near Me</h1>
+        <p class="text-gray-600 dark:text-gray-300 mt-2 max-w-2xl">
+          Browse activities that have real ZIP/postal-coded session locations. Full class addresses stay private until the appropriate activity access rules allow them.
+        </p>
+      </div>
+      <form id="zip-form" class="flex flex-col sm:flex-row gap-3 lg:min-w-[34rem]">
+        <label class="sr-only" for="zip-input">ZIP or postal code</label>
+        <input id="zip-input" name="zip" type="text" inputmode="text" autocomplete="postal-code" placeholder="ZIP or postal code" class="flex-1 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        <button type="submit" class="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-3">Search</button>
+        <button type="button" id="near-button" class="rounded-xl border border-gray-300 dark:border-gray-700 px-5 py-3 font-semibold hover:bg-gray-50 dark:hover:bg-gray-900">Use my location</button>
+      </form>
+    </div>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+      <p id="location-status" class="text-sm text-gray-500 dark:text-gray-400" aria-live="polite">Only activities with ZIP/postal-coded session locations are shown.</p>
+      <button type="button" id="clear-button" class="text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:underline self-start sm:self-auto">Show all ZIP-coded classes</button>
+    </div>
+  </section>
+
+  <section id="map-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="rounded-xl border border-gray-200 dark:border-gray-800 p-5 text-gray-500 dark:text-gray-400">Loading ZIP-coded classes...</div>
+  </section>
+</main>
+
 <script>
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-fetch('/api/activities').then(r=>r.json()).then(body=>{const list=document.getElementById('map-list'); const acts=body.activities||[]; if(!acts.length){list.innerHTML='<div class="text-gray-500">No classes found.</div>';return;} list.innerHTML=acts.map(a=>'<a href="/activity?'+(a.slug?'slug='+encodeURIComponent(a.slug):'id='+encodeURIComponent(a.id))+'" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow p-4 hover:shadow-md transition"><div class="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 mb-3"><img src="'+esc(a.image_url||'/images/logo.png')+'" onerror="this.onerror=null;this.src=\'/images/logo.png\';" class="w-full h-full object-cover" alt="'+esc(a.title)+'"></div><h2 class="font-bold text-lg">'+esc(a.title)+'</h2><p class="text-sm text-gray-600 dark:text-gray-300 mt-1">'+esc(a.type)+' · '+esc(a.format)+' · '+Number(a.session_count||0)+' sessions</p></a>').join('');});
+(function () {
+  const list = document.getElementById('map-list');
+  const form = document.getElementById('zip-form');
+  const input = document.getElementById('zip-input');
+  const status = document.getElementById('location-status');
+  const nearButton = document.getElementById('near-button');
+  const clearButton = document.getElementById('clear-button');
+
+  function esc(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function priceLabel(activity) {
+    const cents = Number(activity.price_cents || 0);
+    if (!cents) return 'Free';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: activity.price_currency || 'USD'
+    }).format(cents / 100);
+  }
+
+  function activityUrl(activity) {
+    return '/activity/' + encodeURIComponent(activity.slug || activity.id);
+  }
+
+  function renderLoading(message) {
+    list.innerHTML = '<div class="rounded-xl border border-gray-200 dark:border-gray-800 p-5 text-gray-500 dark:text-gray-400">' + esc(message) + '</div>';
+  }
+
+  function renderEmpty(zip, lookupFailed) {
+    const title = lookupFailed
+      ? 'We could not detect your postal code from this connection.'
+      : zip
+        ? 'No ZIP-coded classes found for ' + zip + '.'
+        : 'No classes with ZIP/postal-coded locations are available yet.';
+    const detail = lookupFailed
+      ? 'Enter a ZIP or postal code to search manually.'
+      : 'Classes will appear here only after their session location includes a ZIP or postal code.';
+    list.innerHTML = '<div class="md:col-span-2 lg:col-span-3 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center"><h2 class="text-xl font-bold">' + esc(title) + '</h2><p class="text-gray-600 dark:text-gray-300 mt-2">' + esc(detail) + '</p></div>';
+  }
+
+  function render(classes, zip, lookupFailed) {
+    if (!classes.length) {
+      renderEmpty(zip, lookupFailed);
+      return;
+    }
+
+    list.innerHTML = classes.map(function (activity) {
+      const meta = [activity.type, activity.format, activity.level].filter(Boolean).join(' / ');
+      const zips = (activity.zip_codes || []).map(function (code) {
+        return '<span class="inline-flex rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 px-2.5 py-1 text-xs font-semibold">' + esc(code) + '</span>';
+      }).join('');
+      const image = activity.image_url
+        ? '<img src="' + esc(activity.image_url) + '" class="w-full h-full object-cover" alt="' + esc(activity.title) + '">'
+        : '';
+
+      return '<a href="' + esc(activityUrl(activity)) + '" class="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm hover:shadow-lg transition overflow-hidden">'
+        + '<div class="aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden">' + image + '</div>'
+        + '<div class="p-5">'
+        + '<div class="flex items-center justify-between gap-3 text-xs font-semibold text-gray-500 dark:text-gray-400"><span>' + esc(priceLabel(activity)) + '</span><span>' + Number(activity.session_count || 0) + ' ZIP-coded session' + (Number(activity.session_count || 0) === 1 ? '' : 's') + '</span></div>'
+        + '<h2 class="text-lg font-bold mt-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">' + esc(activity.title) + '</h2>'
+        + (meta ? '<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">' + esc(meta) + '</p>' : '')
+        + '<div class="flex flex-wrap gap-2 mt-4">' + zips + '</div>'
+        + '</div>'
+        + '</a>';
+    }).join('');
+  }
+
+  async function loadClasses(options) {
+    const opts = options || {};
+    const zip = (opts.zip || '').trim();
+    const near = Boolean(opts.near);
+    const params = new URLSearchParams();
+    if (zip) params.set('zip', zip);
+    if (near) params.set('near', '1');
+
+    status.textContent = near
+      ? 'Looking up your approximate postal code...'
+      : zip
+        ? 'Searching ZIP/postal code ' + zip + '...'
+        : 'Showing classes with ZIP/postal-coded locations.';
+    renderLoading('Loading ZIP-coded classes...');
+
+    try {
+      const query = params.toString();
+      const response = await fetch('/api/classes-near-me' + (query ? '?' + query : ''));
+      const body = await response.json().catch(function () { return {}; });
+      if (!response.ok) {
+        throw new Error(body.error || body.message || 'Could not load nearby classes.');
+      }
+
+      const effectiveZip = body.zip || zip || '';
+      const lookupFailed = Boolean(body.location_lookup_failed);
+      if (lookupFailed) {
+        status.textContent = 'Could not detect a postal code from your connection. Enter one manually to search.';
+      } else if (effectiveZip) {
+        status.textContent = 'Showing classes matching ' + effectiveZip + '.';
+      } else {
+        status.textContent = 'Showing all classes that have ZIP/postal-coded session locations.';
+      }
+      render(body.classes || [], effectiveZip, lookupFailed);
+    } catch (error) {
+      status.textContent = error.message || 'Could not load nearby classes.';
+      renderEmpty(zip, false);
+    }
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    loadClasses({ zip: input.value });
+  });
+
+  nearButton.addEventListener('click', function () {
+    input.value = '';
+    loadClasses({ near: true });
+  });
+
+  clearButton.addEventListener('click', function () {
+    input.value = '';
+    loadClasses();
+  });
+
+  loadClasses();
+})();
 </script>
 {% endblock %}

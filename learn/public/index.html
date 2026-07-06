@@ -1,65 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Alpha One Labs - Open Source Education Platform{% endblock %}
-{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block title %}Alpha One Labs - Activity Platform{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
 {% block head %}
 <meta name="keywords" content="education, open source, courses, learning, Alpha One Labs">
     <!-- Favicon -->
     <!-- Tailwind CSS CDN -->
     <!-- Font Awesome -->
-    <script>
-        // Dark Mode Configuration
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {}
-            }
-        }
-
-        const DEBUG = false;
-        function log(message) {
-            if (DEBUG) console.log(`[DarkMode] ${message}`);
-        }
-
-        function initializeDarkMode() {
-            log('Initializing dark mode');
-            const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
-            if (darkModeEnabled) {
-                document.documentElement.classList.add('dark');
-                log('Added dark class');
-            } else if (localStorage.getItem('darkMode') === null) {
-                localStorage.setItem('darkMode', 'false');
-                log('Defaulting to light mode');
-            }
-            updateDarkModeIcon();
-        }
-
-        function toggleDarkMode() {
-            log('Toggle dark mode called');
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('darkMode', isDark.toString());
-            log(`Dark mode toggled to: ${isDark}`);
-            updateDarkModeIcon();
-        }
-
-        function updateDarkModeIcon() {
-            const isDark = document.documentElement.classList.contains('dark');
-            const icon = document.getElementById('darkModeIcon');
-            const iconMobile = document.getElementById('darkModeIconMobile');
-            
-            if (icon) {
-                icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-                icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
-            }
-            if (iconMobile) {
-                iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
-            }
-        }
-
-        initializeDarkMode();
-        document.addEventListener('DOMContentLoaded', initializeDarkMode);
-    </script>
-
     <style>
         html, body {
             overflow-x: hidden;
@@ -101,25 +48,22 @@
             <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
                 <div class="flex flex-col lg:flex-row items-center gap-10">
                     <div class="lg:w-3/5 text-center lg:text-left">
-                        <span class="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-semibold bg-white/20 text-white backdrop-blur-sm border border-white/30">
-                            🚀 Open Source Education Platform
-                        </span>
                         <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
-                            Where <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Curiosity</span>
-                            Meets <span class="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">Knowledge</span>
+                            Activities, <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Classes</span>, and
+                            <span class="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">Community</span> in One Place
                         </h1>
                         <p class="text-lg md:text-xl text-teal-50 max-w-2xl mb-8 leading-relaxed">
-                            Alpha One Labs connects passionate teachers with curious learners. Explore courses, join study groups, and transform your learning journey.
+                            Alpha One Labs is an activity platform for classes, workshops, study groups, classrooms, events, and community projects. Browse what is live, request what you want next, or offer something you can teach.
                         </p>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                             <a href="/activity" class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
                                 <i class="fas fa-graduation-cap text-xl"></i>
-                                Start Learning
+                                Browse Activities
                                 <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"></i>
                             </a>
                             <a href="/teach" class="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
                                 <i class="fas fa-chalkboard-user text-xl"></i>
-                                Start Teaching
+                                Offer an Activity
                             </a>
                         </div>
                     </div>
@@ -185,15 +129,22 @@
 
             <!-- ===== SECTION 2: RECENT COURSES ===== -->
             <section>
-                <div class="relative flex py-5 items-center mb-8">
-                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
-                    <div class="flex-shrink mx-4 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
-                            <i class="fas fa-graduation-cap text-white text-lg"></i>
+                <div class="mb-6 rounded-2xl border border-teal-100 dark:border-teal-900/70 bg-white/85 dark:bg-gray-900/85 px-4 py-3 shadow-sm">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 flex items-center justify-center">
+                                <i class="fas fa-graduation-cap text-base"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.22em] text-teal-700 dark:text-teal-300">Discover</p>
+                                <h2 class="text-lg sm:text-xl font-extrabold text-gray-950 dark:text-white">Featured Activities</h2>
+                            </div>
                         </div>
-                        <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Featured Classes</span>
+                        <a href="/activity" class="text-sm font-semibold text-teal-700 hover:text-teal-900 dark:text-teal-300 dark:hover:text-teal-100 transition-colors">
+                            Browse all
+                            <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
                     </div>
-                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
                 </div>
                 <div id="recent-courses-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                     {% featured_activity_cards limit=3 %}
@@ -297,7 +248,7 @@
                             </div>
                         </div>
                         <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
-                            "Alpha One Labs changed my learning journey completely. The courses are well-structured and the instructors are incredibly supportive. Highly recommended!"
+                            "Alpha One Labs helped me find useful activities, supportive instructors, and a community that made it easier to keep going. Highly recommended!"
                         </p>
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
@@ -360,7 +311,7 @@
             <section>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- View Waiting Rooms -->
-                    <a href="#"
+                    <a href="/waiting-rooms"
                        class="group block rounded-2xl p-10 bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
                         <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
                             <i class="fas fa-door-open text-4xl"></i>
@@ -371,21 +322,6 @@
                         </p>
                         <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
                             Browse Waiting Rooms <i class="fas fa-arrow-right"></i>
-                        </span>
-                    </a>
-
-                    <!-- View Contributions -->
-                    <a href="#"
-                       class="group block rounded-2xl p-10 bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-800 dark:to-black text-white shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 text-center">
-                        <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300">
-                            <i class="fab fa-github text-4xl"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold mb-3">View Contributions</h3>
-                        <p class="text-gray-300 text-sm mb-6 max-w-sm mx-auto">
-                            Explore contributions from our open source community. See top contributors and recently merged pull requests.
-                        </p>
-                        <span class="inline-flex items-center gap-2 bg-white/20 group-hover:bg-white/30 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
-                            View Contributors <i class="fas fa-arrow-right"></i>
                         </span>
                     </a>
                 </div>
@@ -509,118 +445,6 @@
       function homeEsc(value) {
         return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
-      function homePrice(cents, currency) {
-        const amount = Number(cents || 0);
-        if (!amount) return 'Free';
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount / 100);
-      }
-      function homeActivityUrl(course) {
-        if (course && course.url) return course.url;
-        const ref = course && (course.slug || course.id) ? (course.slug || course.id) : '';
-        return '/activity/' + encodeURIComponent(ref);
-      }
-      function homeActivityUrlByParts(activityId, slug) {
-        return '/activity/' + encodeURIComponent(slug || activityId);
-      }
-      const homeCartHumanStartedAt = Date.now();
-      function getHomeGuestCartToken() {
-        try {
-          let value = localStorage.getItem('guest_cart_token');
-          if (!value) {
-            const bytes = new Uint8Array(32);
-            crypto.getRandomValues(bytes);
-            value = 'gct_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-            localStorage.setItem('guest_cart_token', value);
-          }
-          return value;
-        } catch (_) {
-          return 'gct_' + String(Date.now()) + Math.random().toString(16).slice(2);
-        }
-      }
-      function homeCartHeaders() {
-        const token = localStorage.getItem('edu_token');
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers.Authorization = 'Bearer ' + token;
-        else headers['X-Guest-Cart'] = getHomeGuestCartToken();
-        return headers;
-      }
-      function homeCartHumanProof() {
-        return { human_started_at: homeCartHumanStartedAt, human_confirmed_at: Date.now(), company_website: '' };
-      }
-      const FEATURED_HOME_CLASSES = {% featured_activities_json limit=3 %};
-      async function addHomeCourseToCart(activityId, slug) {
-        const res = await fetch('/api/cart/items', {
-          method: 'POST',
-          headers: homeCartHeaders(),
-          body: JSON.stringify({ activity_id: activityId, ...homeCartHumanProof() })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          alert(data.error || 'Could not add this course to your cart.');
-          return;
-        }
-        if (window.refreshCartBadge) window.refreshCartBadge();
-        window.location.href = '/cart';
-      }
-      function renderHomeCourse(course) {
-        const img = course.image_url || '/images/logo.png';
-        const tags = (course.tags || []).slice(0, 1).join(', ') || course.level || 'Course';
-        const url = homeActivityUrl(course);
-        const isWaitlist = course.status === 'waitlist';
-        const hasCartTarget = Boolean(course.id) && !isWaitlist && Number(course.price_cents || 0) > 0;
-        const action = hasCartTarget
-          ? `<button onclick="addHomeCourseToCart('${homeEsc(course.id)}', '${homeEsc(course.slug || '')}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
-              <i class="fas fa-cart-plus mr-2"></i>Add to Cart
-            </button>`
-          : `<a href="${url}" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
-              <i class="fas fa-arrow-right mr-2"></i>${isWaitlist ? 'Join Waiting Room' : 'View Class'}
-            </a>`;
-        return `
-          <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
-            <a href="${url}" class="aspect-square w-full relative overflow-hidden rounded-xl mb-4 bg-gray-100 dark:bg-gray-700 block">
-              <img src="${homeEsc(img)}" alt="${homeEsc(course.title)}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='/images/logo.png';">
-            </a>
-            <div class="mb-3">
-              <h3 class="text-lg font-semibold min-h-[3.5rem] flex items-start">
-                <a href="${url}" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">${homeEsc(course.title)}</a>
-              </h3>
-              <div class="flex items-center justify-between text-sm gap-3">
-                <span class="font-medium text-teal-600 dark:text-teal-400 truncate">${homeEsc(tags)}</span>
-                <span class="text-orange-600 dark:text-orange-500 font-bold whitespace-nowrap">${homePrice(course.price_cents, course.price_currency)}</span>
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
-              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-users mr-2"></i><span>${Number(course.participant_count || 0)} joined</span></div>
-              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-calendar-alt mr-2"></i><span>${Number(course.session_count || 0)} sessions</span></div>
-              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-signal mr-2"></i><span>${homeEsc(course.level || 'All levels')}</span></div>
-              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-book mr-2"></i><span>${homeEsc(course.format || 'course')}</span></div>
-            </div>
-            <div class="flex items-center mb-3 mt-auto">
-              <div class="h-10 w-10 rounded-full mr-3 bg-teal-100 dark:bg-teal-900 flex items-center justify-center text-teal-700 dark:text-teal-300 font-bold">${homeEsc((course.host_name || 'A').slice(0,1).toUpperCase())}</div>
-              <div><span class="text-sm font-medium">${homeEsc(course.host_name || 'Alpha One Labs')}</span><p class="text-xs text-gray-600 dark:text-gray-400">Instructor</p></div>
-            </div>
-            ${action}
-          </div>`;
-      }
-      function homeCourseRank(course) {
-        const featuredBoost = course.featured || course.is_featured ? 100000 : 0;
-        const interest = Number(course.interest_count || 0) * 20;
-        const participants = Number(course.participant_count || 0) * 10;
-        const sessions = Number(course.session_count || 0) * 2;
-        const availableBoost = course.status === 'open' ? 5 : 0;
-        return featuredBoost + interest + participants + sessions + availableBoost;
-      }
-      function pickHomeCourses(courses) {
-        return (courses || [])
-          .filter(course => course && (course.type === 'course' || !course.type))
-          .sort((a, b) => homeCourseRank(b) - homeCourseRank(a))
-          .slice(0, 3);
-      }
-      async function loadRecentCourses() {
-        const grid = document.getElementById('recent-courses-grid');
-        if (!grid) return;
-        grid.innerHTML = FEATURED_HOME_CLASSES.map(renderHomeCourse).join('');
-      }
       function homeMoney(cents) {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(cents || 0) / 100);
       }
@@ -682,8 +506,15 @@
           holder.innerHTML = '<div class="p-4 text-xs text-red-600 dark:text-red-300">' + homeEsc(err.message) + '</div>';
         }
       }
-      document.addEventListener('DOMContentLoaded', loadRecentCourses);
-      document.addEventListener('DOMContentLoaded', loadReferralProgram);
-      document.addEventListener('DOMContentLoaded', loadReferralLeaderboard);
+      function runHomeIdle(fn) {
+        const schedule = () => {
+          if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 2500 });
+          else setTimeout(fn, 350);
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule, { once: true });
+        else schedule();
+      }
+      runHomeIdle(loadReferralProgram);
+      runHomeIdle(loadReferralLeaderboard);
     </script>
 {% endblock %}

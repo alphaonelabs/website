@@ -7,9 +7,9 @@
     </a>
 
     <nav class="hidden xl:flex items-center gap-1" aria-label="Primary navigation">
-      <a href="/activity" class="px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-book-open mr-1"></i>Browse Classes</a>
+      <a href="/activity" class="px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-book-open mr-1"></i>Browse</a>
       <a href="/requests?kind=learn" class="px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-graduation-cap mr-1"></i>I Want to Learn</a>
-      <a href="/teach" class="px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-chalkboard-user mr-1"></i>Teach</a>
+      <a href="/requests?kind=teach" class="px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-chalkboard-user mr-1"></i>Teach</a>
       <a href="/waiting-rooms" class="px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-door-open mr-1"></i>Waiting Rooms</a>
       <a href="/virtual-classroom" class="px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-flask mr-1"></i>Classroom</a>
     </nav>
@@ -25,29 +25,14 @@
     </div>
 
     <div class="hidden md:flex items-center gap-1">
-      <a href="/messages" title="Messages" class="flex items-center p-2 hover:bg-teal-700 rounded-lg" aria-label="Messages">
-        <i class="fas fa-comments text-lg"></i>
-      </a>
-      <a href="/cart" class="relative flex items-center p-2 hover:bg-teal-700 rounded-lg" aria-label="Activity cart" title="Activity cart">
+      <a href="/cart" id="cart-nav-link" class="hidden relative items-center p-2 hover:bg-teal-700 rounded-lg" aria-label="Cart" title="Cart">
         <i class="fa-solid fa-shopping-cart"></i>
         <span id="cart-count-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold"></span>
       </a>
-      <a href="/notifications" id="notif-bell-link" class="relative flex items-center p-2 hover:bg-teal-700 rounded-lg" aria-label="Notifications" title="Notifications">
+      <a href="/notifications" id="notif-bell-link" class="hidden relative items-center p-2 hover:bg-teal-700 rounded-lg" aria-label="Notifications" title="Notifications">
         <i class="fas fa-bell"></i>
         <span id="notif-unread-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold"></span>
       </a>
-      <div class="relative">
-        <button class="focus:outline-none flex items-center p-2 hover:bg-teal-700 rounded-lg" onclick="toggleLanguageDropdown()" aria-label="Language">
-          <i class="fa-solid fa-globe"></i>
-        </button>
-        <div id="language-dropdown" class="hidden absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 shadow-lg rounded-md py-2 z-50">
-          <button onclick="setLanguage('en')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">English</button>
-          <button onclick="setLanguage('es')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Spanish</button>
-          <button onclick="setLanguage('fr')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">French</button>
-          <button onclick="setLanguage('de')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">German</button>
-          <button onclick="setLanguage('zh')" class="w-full text-left block px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Chinese</button>
-        </div>
-      </div>
       <button class="focus:outline-none flex items-center p-2 rounded-lg hover:bg-teal-700 transition-colors" title="Switch dark mode" onclick="toggleDarkMode()">
         <i id="darkModeIcon" class="fas fa-moon"></i>
       </button>
@@ -98,12 +83,12 @@
         <button type="submit" class="absolute right-3 top-2 text-gray-500" aria-label="Search"><i class="fas fa-search"></i></button>
       </form>
       <div class="grid grid-cols-1 gap-1 text-sm font-semibold">
-        <a href="/activity" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-book-open mr-2"></i>Browse Classes</a>
+        <a href="/activity" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-book-open mr-2"></i>Browse</a>
         <a href="/requests?kind=learn" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-graduation-cap mr-2"></i>I Want to Learn</a>
-        <a href="/teach" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-chalkboard-user mr-2"></i>Teach</a>
+        <a href="/requests?kind=teach" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-chalkboard-user mr-2"></i>Teach</a>
         <a href="/waiting-rooms" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-door-open mr-2"></i>Waiting Rooms</a>
         <a href="/virtual-classroom" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-flask mr-2"></i>Classroom</a>
-        <a href="/cart" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-shopping-cart mr-2"></i>Activity Cart</a>
+        <a href="/cart" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-shopping-cart mr-2"></i>Cart</a>
         <a href="#site-footer" class="px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-compass mr-2"></i>All Site Links</a>
       </div>
       <div id="mobile-auth-not-logged-in" class="flex gap-2 pt-3 border-t border-teal-500/40">
