@@ -137,13 +137,28 @@
   <link rel="icon" type="image/png" href="/images/logo.png" />
   <link rel="preconnect" href="https://cdn.tailwindcss.com" />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'" />
-  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" /></noscript>
   <script>
     tailwind.config = { darkMode: 'class', theme: { extend: {} } };
     if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
   </script>
+  <script src="https://cdn.tailwindcss.com/3.4.17" defer></script>
+  <script>
+    (function () {
+      function loadFontAwesome() {
+        if (document.querySelector('link[data-font-awesome="true"]')) return;
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+        link.dataset.fontAwesome = 'true';
+        document.head.appendChild(link);
+      }
+      window.addEventListener('load', function () {
+        if ('requestIdleCallback' in window) requestIdleCallback(loadFontAwesome, { timeout: 1200 });
+        else setTimeout(loadFontAwesome, 300);
+      }, { once: true });
+    })();
+  </script>
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" /></noscript>
   <style>
     html, body { overflow-x: hidden; box-sizing: border-box; }
     html.auth-redirecting body { visibility: hidden; }
