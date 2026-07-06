@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Alpha One Labs - Activity Platform{% endblock %}
 {% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
-{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 overflow-x-hidden{% endblock %}
 {% block head %}
 <meta name="keywords" content="education, open source, courses, learning, Alpha One Labs">
     <!-- Favicon -->
@@ -15,6 +15,28 @@
         
         .dark { color-scheme: dark; }
         :root { color-scheme: light; }
+        html { background: #fff; }
+        html.dark { background: #000; }
+        body { background: inherit; }
+
+        .home-auth-only { display: none !important; }
+        .home-guest-only { display: flex !important; }
+        html.is-authenticated .home-auth-only { display: flex !important; }
+        html.is-authenticated .home-guest-only { display: none !important; }
+
+        .home-below-fold {
+            content-visibility: auto;
+            contain-intrinsic-size: 1800px;
+        }
+
+        @view-transition {
+            navigation: auto;
+        }
+
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation-duration: 120ms;
+        }
 
         .delay-\[1500ms\] {
             animation-delay: 1500ms;
@@ -85,10 +107,10 @@
                                 <span>21 learners inside</span>
                             </div>
                             <div id="classroom-join-container">
-                                <a href="/classroom_poc?autojoin=1&room=lobby" class="w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg flex items-center justify-center gap-2" id="join-logged-in" style="display: none;">
+                                <a href="/classroom_poc?autojoin=1&room=lobby" class="home-auth-only w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg items-center justify-center gap-2" id="join-logged-in">
                                     <i class="fas fa-door-open"></i> Join Lobby Classroom
                                 </a>
-                                <a href="/classroom_poc?autojoin=1&room=lobby" class="w-full bg-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white hover:text-black transition-all shadow-lg flex items-center justify-center gap-2" id="join-not-logged-in" style="display: none;">
+                                <a href="/classroom_poc?autojoin=1&room=lobby" class="home-guest-only w-full bg-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white hover:text-black transition-all shadow-lg items-center justify-center gap-2" id="join-not-logged-in">
                                     <i class="fas fa-eye"></i> View Lobby Classroom
                                 </a>
                             </div>
@@ -99,7 +121,7 @@
         </section>
 
         <!-- ===== PAGE SECTIONS ===== -->
-        <div class="max-w-[90rem] mx-auto px-4 md:px-6 mt-10 pb-12 space-y-14">
+        <div class="home-below-fold max-w-[90rem] mx-auto px-4 md:px-6 mt-10 pb-12 space-y-14">
 
             <!-- ===== SECTION 1: WHAT WOULD YOU LIKE TO DO? ===== -->
             <section>

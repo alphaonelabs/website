@@ -7,6 +7,12 @@
   <title>{% block title %}Alpha One Labs{% endblock %}</title>
   <script>
     (function () {
+      try {
+        if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+      } catch (_) {
+        /* Ignore storage failures. */
+      }
+
       const protectedPaths = new Set([
         '/calendar',
         '/dashboard',
@@ -45,6 +51,12 @@
       }
 
       window.redirectToLogin = redirectToLogin;
+
+      if (storedAuthExists()) {
+        document.documentElement.classList.add('is-authenticated');
+      } else {
+        document.documentElement.classList.add('is-anonymous');
+      }
 
       if (protectedPaths.has(cleanPath(location.pathname)) && !storedAuthExists()) {
         redirectToLogin();
