@@ -5008,10 +5008,37 @@ async def render_500(req, env):
 
 
 async def _load_static_text(env, key: str) -> Optional[str]:
+    normalized = (key or "").lstrip("/")
+    if not normalized:
+        normalized = "index.html"
+
+    # Older Workers Sites binding used by the first Worker version.
     try:
-        return await env.__STATIC_CONTENT.get(key, "text")
+        static_content = getattr(env, "__STATIC_CONTENT", None)
+        if static_content is not None:
+            value = await static_content.get(normalized, "text")
+            if value is not None:
+                return value
     except Exception:
-        return None
+        pass
+
+    # Current Cloudflare Assets binding from wrangler.toml: [assets] binding = "ASSETS".
+    try:
+        assets = getattr(env, "ASSETS", None)
+        if assets is not None:
+            asset_url = "https://assets.local/" + normalized
+            try:
+                asset_req = js.Request.new(asset_url)
+                resp = await assets.fetch(asset_req)
+            except Exception:
+                resp = await assets.fetch(asset_url)
+            status = int(getattr(resp, "status", 0) or 0)
+            if 200 <= status < 300:
+                return await resp.text()
+    except Exception:
+        pass
+
+    return None
 
 
 async def _render_template_source(source: str, env, req=None, context: Optional[Dict[str, Any]] = None) -> str:
