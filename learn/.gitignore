@@ -32,3 +32,10 @@ Thumbs.db
 _django_ref/
 todo.md
 migration.md
+
+# Local legacy migration backups (contains secrets/data dumps)
+legacy-backups/
+legacy-site-source/
+.env.production
+.secrets/
+*447605*.json

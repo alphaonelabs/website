@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Referral Leaderboard - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1">
+    <section class="bg-gradient-to-br from-purple-700 via-indigo-700 to-cyan-700 text-white py-16">
+      <div class="max-w-5xl mx-auto px-4 md:px-6">
+        <p class="text-sm font-bold uppercase tracking-[0.2em] text-purple-100 mb-3">Referral program</p>
+        <h1 class="text-4xl md:text-6xl font-extrabold mb-4">Referral Leaderboard</h1>
+        <p class="max-w-2xl text-purple-50 text-lg">
+          Top referrers ranked by successful signups, enrollments, and referral earnings.
+        </p>
+      </div>
+    </section>
+
+    <section class="max-w-5xl mx-auto px-4 md:px-6 py-10">
+      <div class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 class="text-xl font-extrabold">Top referrers</h2>
+          <a href="/" class="text-sm font-bold text-purple-700 dark:text-purple-300 hover:underline">Back home</a>
+        </div>
+        <div id="leaderboard" class="divide-y divide-gray-200 dark:divide-gray-700">
+          <div class="p-10 text-center text-gray-500 dark:text-gray-400">
+            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+            <p>Loading referral leaderboard...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+<script>
+    function esc(value) {
+      return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function money(cents) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(cents || 0) / 100);
+    }
+    async function loadLeaderboard() {
+      const holder = document.getElementById('leaderboard');
+      try {
+        const res = await fetch('/api/referral/leaderboard?limit=25');
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Could not load leaderboard');
+        const leaders = body.leaders || [];
+        if (!leaders.length) {
+          holder.innerHTML = '<div class="p-10 text-center text-gray-500 dark:text-gray-400">No referral leaders yet.</div>';
+          return;
+        }
+        holder.innerHTML = leaders.map(item => `
+          <article class="p-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4 min-w-0">
+              <div class="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-extrabold">${item.rank}</div>
+              <div class="min-w-0">
+                <h3 class="font-extrabold text-lg truncate">${esc(item.name)}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  ${Number(item.referred_count || 0)} signups · ${Number(item.referred_enrollment_count || 0)} enrollments
+                </p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-bold">Earnings</p>
+              <p class="font-extrabold text-purple-700 dark:text-purple-300">${money(item.referral_earnings_cents)}</p>
+            </div>
+          </article>
+        `).join('');
+      } catch (err) {
+        holder.innerHTML = '<div class="p-10 text-center text-red-600 dark:text-red-300">' + esc(err.message) + '</div>';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadLeaderboard);
+  </script>
+{% endblock %}

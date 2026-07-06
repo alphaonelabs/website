@@ -1,0 +1,104 @@
+repos:
+  - repo: local
+    hooks:
+      - id: poetry-check
+        name: Poetry Environment Check
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then poetry install && poetry run pip list | grep -q django || (echo "Django not found in Poetry environment. Run poetry install." && exit 1); fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+
+  # Critical formatting checks that must pass before tests run
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit]
+        fail_fast: true
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+        fail_fast: true
+
+  # Auto-fixing formatting hooks (won't fail the commit, will just fix issues)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        stages: [pre-commit]
+
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        args: ["--line-length=120"]
+        stages: [pre-commit]
+        fail_fast: true
+
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+        args: ["--profile=black", "--line-length=120"]
+        stages: [pre-commit]
+        fail_fast: true
+
+  - repo: https://github.com/Riverside-Healthcare/djLint
+    rev: v1.36.4
+    hooks:
+      - id: djlint-django
+        args: ["--reformat", "--max-line-length=120"]
+        files: '\.(html|djhtml)$'
+        stages: [pre-commit]
+        fail_fast: true
+  # Analysis hooks that need manual intervention
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.2
+    hooks:
+      - id: flake8
+        args: ["--max-line-length=120"]
+        additional_dependencies: [flake8-django]
+        stages: [pre-commit, manual]
+        fail_fast: true
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        stages: [pre-commit, manual]
+      - id: check-added-large-files
+        stages: [pre-commit, manual]
+      - id: check-json
+        stages: [pre-commit, manual]
+      - id: check-toml
+        stages: [pre-commit, manual]
+      - id: check-xml
+        stages: [pre-commit, manual]
+      - id: check-merge-conflict
+        stages: [pre-commit, manual]
+      - id: detect-private-key
+        stages: [pre-commit, manual]
+        fail_fast: true
+  - repo: local
+    hooks:
+      - id: django-collectstatic
+        name: Django Collect Static
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && poetry run python manage.py collectstatic --noinput; fi'
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [pre-commit]
+      - id: django-test
+        name: Django Tests
+        entry: bash -c 'if [ -z "$GITHUB_ACTIONS" ]; then cd "$(git rev-parse --show-toplevel)" && poetry run python manage.py test --verbosity=2 --timing --parallel=4 --failfast; fi'
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [pre-commit]
+
+default_stages: [pre-commit]
+fail_fast: false

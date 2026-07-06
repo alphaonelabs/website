@@ -72,7 +72,7 @@
                 <button id="btnJoin" type="button"
                         class="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-lg shadow-lg shadow-teal-600/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[.98]">
                     <i data-lucide="log-in" class="w-4 h-4"></i>
-                    Join Classroom
+                    <span id="btnJoinLabel">Join Classroom</span>
                 </button>
             </div>
         </div>
@@ -111,6 +111,10 @@
             </button>
         </div>
     </header>
+
+    <div id="viewerBanner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-xs sm:text-sm text-amber-100">
+        You are viewing this classroom. <a id="viewerLoginLink" href="/login" class="font-semibold text-white underline underline-offset-2">Sign in to chat, move, sit, react, or use the whiteboard.</a>
+    </div>
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
@@ -224,6 +228,7 @@
     const lobbyRoomId         = document.getElementById('lobbyRoomId');
     const lobbyDisplayName    = document.getElementById('lobbyDisplayName');
     const btnJoin             = document.getElementById('btnJoin');
+    const btnJoinLabel        = document.getElementById('btnJoinLabel');
     const btnLeave            = document.getElementById('btnLeave');
     const connDot             = document.getElementById('connDot');
     const connText            = document.getElementById('connText');
@@ -238,6 +243,7 @@
     const chatMessages        = document.getElementById('chatMessages');
     const chatForm            = document.getElementById('chatForm');
     const chatInput           = document.getElementById('chatInput');
+    const chatSubmit          = chatForm.querySelector('button[type="submit"]');
     const btnParticipants     = document.getElementById('btnParticipants');
     const participantsSidebar = document.getElementById('participantsSidebar');
     const btnCloseParticipants= document.getElementById('btnCloseParticipants');
@@ -246,6 +252,8 @@
     const toastContainer      = document.getElementById('toastContainer');
     const btnThumbsUp         = document.getElementById('btnThumbsUp');
     const btnRaiseHand        = document.getElementById('btnRaiseHand');
+    const viewerBanner        = document.getElementById('viewerBanner');
+    const viewerLoginLink     = document.getElementById('viewerLoginLink');
 
     // Authentication utils
     function getAuth() {
@@ -291,6 +299,7 @@
     let reconnectAttempts = 0;
     let presenceReconnectAttempts = 0;
     let intentionalDisconnect = false;
+    let canInteract = false;
     const MAX_RECONNECT = 10;
     const BASE_DELAY = 1000;
     let reconnectTimer = null;
@@ -460,23 +469,65 @@
 
     function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
 
+    function preserveClassroomRedirect() {
+        const returnTo = window.location.pathname + window.location.search;
+        sessionStorage.setItem('post_login_redirect', returnTo);
+    }
+
+    function loginForInteraction() {
+        preserveClassroomRedirect();
+        showToast('Please sign in to interact with the virtual classroom.', 'warning');
+        setTimeout(() => { window.location.href = '/login'; }, 700);
+    }
+
+    function applyDisabledStyle(button, disabled) {
+        if (!button) return;
+        button.disabled = disabled;
+        button.classList.toggle('opacity-50', disabled);
+        button.classList.toggle('cursor-not-allowed', disabled);
+        button.classList.toggle('hover:bg-gray-700', !disabled);
+    }
+
+    function setInteractionMode(allowed) {
+        canInteract = Boolean(allowed);
+        viewerBanner.classList.toggle('hidden', canInteract);
+        if (!canInteract) {
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+            keysPressed = {};
+            myVel.x = 0;
+            myVel.y = 0;
+            myIsMoving = false;
+            myCharacter.style.display = 'none';
+        }
+        chatInput.disabled = !canInteract;
+        chatInput.placeholder = canInteract ? 'Type a message…' : 'Sign in to chat';
+        if (chatSubmit) {
+            chatSubmit.disabled = !canInteract;
+            chatSubmit.classList.toggle('opacity-50', !canInteract);
+            chatSubmit.classList.toggle('cursor-not-allowed', !canInteract);
+        }
+        applyDisabledStyle(btnThumbsUp, !canInteract);
+        applyDisabledStyle(btnRaiseHand, !canInteract);
+    }
+
+    function updateLobbyActionCopy() {
+        if (!btnJoinLabel) return;
+        btnJoinLabel.textContent = isAuthenticated() ? 'Join Classroom' : 'View Classroom';
+    }
+
     // Join / Leave
     function joinClassroom() {
-        if (!isAuthenticated()) {
-            showToast('Please sign in to join the virtual classroom.', 'warning');
-            // Preserve the user's intended destination so login.html can send
-            // them back here after authentication.
-            const returnTo = window.location.pathname + window.location.search;
-            sessionStorage.setItem('post_login_redirect', returnTo);
-            setTimeout(() => { window.location.href = '/login.html'; }, 800);
-            return;
-        }
+        const authenticated = Boolean(isAuthenticated());
+        setInteractionMode(authenticated);
         intentionalDisconnect = false;
         reconnectAttempts = 0;
         isSeated = false;
         currentSeat = null;
         roomId = sanitizeRoomId(lobbyRoomId.value) || 'demo-room';
-        myDisplayName = sanitizeDisplayName(lobbyDisplayName.value) || `User-${Math.random().toString(36).slice(2,6)}`;
+        myDisplayName = sanitizeDisplayName(lobbyDisplayName.value) || (authenticated ? `User-${Math.random().toString(36).slice(2,6)}` : 'Viewer');
         lobbyRoomId.value = roomId;
         lobbyDisplayName.value = myDisplayName;
         myParticipantId = resolveParticipantId();
@@ -491,7 +542,7 @@
 
         renderDesks();
         connectWS();
-        startGameLoop();
+        if (canInteract) startGameLoop();
         updatePresenceControls();
         refreshIcons();
     }
@@ -514,6 +565,7 @@
         avatarLayer.innerHTML = '';
         chatMessages.innerHTML = '<div class="text-center text-xs text-gray-600 py-6">No messages yet</div>';
         chatFirstMessage = true;
+        updateLobbyActionCopy();
     });
 
     // WebSocket
@@ -536,7 +588,7 @@
             reconnectAttempts = 0;
             setConnStatus(true);
             connectPresenceWS();
-            showToast('Connected to classroom', 'success');
+            showToast(canInteract ? 'Connected to classroom' : 'Viewing classroom', 'success');
         };
 
         ws.onclose = () => {
@@ -583,6 +635,10 @@
     }
 
     function wsSend(obj) {
+        if (!canInteract) {
+            loginForInteraction();
+            return;
+        }
         if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
     }
 
@@ -627,6 +683,7 @@
     }
 
     function presenceSend(obj) {
+        if (!canInteract) return;
         if (presenceWs && presenceWs.readyState === WebSocket.OPEN) {
             presenceWs.send(JSON.stringify(obj));
             return;
@@ -635,6 +692,7 @@
     }
 
     function replaySelfPresence() {
+        if (!canInteract) return;
         const self = presenceByUser[myParticipantId];
         if (!self || !pendingSelfPresenceReplay) return;
         if (!presenceWs || presenceWs.readyState !== WebSocket.OPEN) return;
@@ -713,6 +771,12 @@
                 mySessionId     = data.session_id;
                 myParticipantId = data.participant_id;
                 myDisplayName   = data.display_name;
+                setInteractionMode(data.can_interact !== false && Boolean(isAuthenticated()));
+                if (!canInteract) {
+                    myCharacter.style.display = 'none';
+                    renderParticipantsList();
+                    break;
+                }
                 if (!presenceByUser[myParticipantId]) {
                     presenceByUser[myParticipantId] = {
                         x: 0.5, y: 0.5, emoji: '', hand_raised: false, display_name: myDisplayName,
@@ -836,11 +900,11 @@
 
             // Incoming positions may be:
             //   (a) normalized 0–1  ← new format
-            //   (b) old pixel values from a legacy backend  ← handle gracefully
-            // We detect legacy by checking if x > 2 (normalized values are ≤ 1.0).
+            //   (b) non-normalized pixel values from older clients  ← handle gracefully
+            // We detect non-normalized values by checking if x > 2 (normalized values are ≤ 1.0).
             let normPos = p.position || { x: 0.5, y: 0.5 };
             if (normPos.x > 2 || normPos.y > 2) {
-                // Legacy pixel coords — convert on first receipt
+                // Pixel coords — convert on first receipt
                 const r = classroomCanvas.getBoundingClientRect();
                 normPos = {
                     x: r.width  > 0 ? normPos.x / r.width  : 0.5,
@@ -859,17 +923,24 @@
         });
 
         // Restore own seat if server knows about it
-        const selfP = (data.participants || []).find(p => p.participant_id === myParticipantId);
+        const selfP = canInteract ? (data.participants || []).find(p => p.participant_id === myParticipantId) : null;
         if (selfP && selfP.seat_id) {
             updateSeatLabel(selfP.seat_id, myDisplayName, myParticipantId);
             isSeated = true;
             currentSeat = selfP.seat_id;
             myCharacter.style.display = 'none';
+        } else if (!canInteract) {
+            isSeated = false;
+            currentSeat = null;
+            myCharacter.style.display = 'none';
         } else {
             myCharacter.style.display = '';
         }
 
-        participantCount.textContent = data.count || (Object.keys(participants).length + 1);
+        const serverCount = Number(data.count);
+        participantCount.textContent = Number.isFinite(serverCount)
+            ? serverCount
+            : (Object.keys(participants).length + (canInteract ? 1 : 0));
         renderOtherAvatars();
         renderParticipantsList();
     }
@@ -917,7 +988,14 @@
     // Participants list sidebar
     function renderParticipantsList() {
         participantsList.innerHTML = '';
-        participantsList.appendChild(makeParticipantCard(myParticipantId, myDisplayName, currentSeat, true));
+        if (canInteract) {
+            participantsList.appendChild(makeParticipantCard(myParticipantId, myDisplayName, currentSeat, true));
+        } else {
+            const viewerCard = document.createElement('div');
+            viewerCard.className = 'p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs text-amber-100';
+            viewerCard.textContent = 'Viewing only. Sign in to appear in the room and interact.';
+            participantsList.appendChild(viewerCard);
+        }
         Object.entries(participants).forEach(([pid, p]) => {
             participantsList.appendChild(makeParticipantCard(pid, p.display_name, p.seat_id, false));
         });
@@ -962,6 +1040,7 @@
     }
 
     btnThumbsUp.addEventListener('click', () => {
+        if (!canInteract) { loginForInteraction(); return; }
         const current = presenceByUser[myParticipantId] || {};
         const nextEmoji = current.emoji === '👍' ? '' : '👍';
         pendingSelfPresenceReplay = true;
@@ -980,6 +1059,7 @@
     });
 
     btnRaiseHand.addEventListener('click', () => {
+        if (!canInteract) { loginForInteraction(); return; }
         const current = presenceByUser[myParticipantId] || {};
         const nextHandRaised = current.hand_raised !== true;
         pendingSelfPresenceReplay = true;
@@ -1000,6 +1080,7 @@
     // Chat
     chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
+        if (!canInteract) { loginForInteraction(); return; }
         const text = chatInput.value.trim();
         if (!text) return;
         wsSend({ type: 'chat_message', text, timestamp: new Date().toISOString() });
@@ -1053,6 +1134,11 @@
 
     window.addEventListener('keydown', (e) => {
         if (isTypingInInput(e.target)) return;
+        if (!canInteract) {
+            if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+            if (e.key.toLowerCase() === 'e') { e.preventDefault(); loginForInteraction(); }
+            return;
+        }
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             if (!isSeated) { keysPressed[e.key] = true; e.preventDefault(); }
         }
@@ -1067,6 +1153,7 @@
     });
 
     function handleSeatInteraction() {
+        if (!canInteract) { loginForInteraction(); return; }
         if (isSeated) {
             wsSend({ type: 'leave_seat', seat_id: currentSeat });
             return;
@@ -1089,6 +1176,7 @@
     }
 
     function startGameLoop() {
+        if (!canInteract) return;
         function tick() {
             const accel    = 0.8;
             const friction = 0.85;
@@ -1119,7 +1207,7 @@
             // IMPORTANT: normalize to 0–1 before sending so every peer renders
             // at the same relative position regardless of their canvas pixel size.
             const now        = Date.now();
-            const shouldSend = (myIsMoving || wasMoving) && !isSeated;
+            const shouldSend = canInteract && (myIsMoving || wasMoving) && !isSeated;
             if (shouldSend && now - lastPositionSend > THROTTLE_MS) {
                 lastPositionSend = now;
                 const norm = toNorm(myPos.x, myPos.y);
@@ -1157,6 +1245,8 @@
 
     // Init Lucide icons and entry behavior
     refreshIcons();
+    updateLobbyActionCopy();
+    viewerLoginLink.addEventListener('click', preserveClassroomRedirect);
     const preferredName = getPreferredDisplayName();
     if (preferredName) lobbyDisplayName.value = preferredName;
 

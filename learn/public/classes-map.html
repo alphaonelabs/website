@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Classes Map - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full"><div class="mb-8"><h1 class="text-3xl font-bold">Classes Near Me</h1><p class="text-gray-600 dark:text-gray-300 mt-2">A restored classes map surface. Activities with session/location data will appear here as the scheduling migration is completed.</p></div><div id="map-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div class="text-gray-500">Loading classes...</div></div></main>
+<script>
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+fetch('/api/activities').then(r=>r.json()).then(body=>{const list=document.getElementById('map-list'); const acts=body.activities||[]; if(!acts.length){list.innerHTML='<div class="text-gray-500">No classes found.</div>';return;} list.innerHTML=acts.map(a=>'<a href="/activity?'+(a.slug?'slug='+encodeURIComponent(a.slug):'id='+encodeURIComponent(a.id))+'" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow p-4 hover:shadow-md transition"><div class="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 mb-3"><img src="'+esc(a.image_url||'/images/logo.png')+'" onerror="this.onerror=null;this.src=\'/images/logo.png\';" class="w-full h-full object-cover" alt="'+esc(a.title)+'"></div><h2 class="font-bold text-lg">'+esc(a.title)+'</h2><p class="text-sm text-gray-600 dark:text-gray-300 mt-1">'+esc(a.type)+' · '+esc(a.format)+' · '+Number(a.session_count||0)+' sessions</p></a>').join('');});
+</script>
+{% endblock %}

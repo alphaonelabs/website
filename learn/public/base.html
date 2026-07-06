@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}" />
+  <title>{% block title %}Alpha One Labs{% endblock %}</title>
+  <link rel="icon" type="image/png" href="/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
+    if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+  </script>
+  <style>
+    html, body { overflow-x: hidden; box-sizing: border-box; }
+    .dark { color-scheme: dark; }
+    :root { color-scheme: light; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}">
+  <div id="site-navbar" data-inline="true">{% include "partials/navbar.html" %}</div>
+  {% block content %}{% endblock %}
+  <div id="site-footer" data-inline="true">{% include "partials/footer.html" %}</div>
+
+  <script>
+    function installPasswordToggles() {
+      document.querySelectorAll('input[type="password"], input[data-password-toggle="true"]').forEach((input) => {
+        if (input.dataset.passwordToggleInstalled === 'true') return;
+        input.dataset.passwordToggleInstalled = 'true';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+        input.classList.add('pr-12');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'absolute inset-y-0 right-0 px-3 text-gray-500 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-300';
+        button.setAttribute('aria-label', 'Show password');
+        button.innerHTML = '<i class="fas fa-eye"></i>';
+        button.addEventListener('click', () => {
+          const showing = input.type === 'text';
+          input.type = showing ? 'password' : 'text';
+          button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+          button.innerHTML = showing ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        });
+        wrapper.appendChild(button);
+      });
+    }
+    document.addEventListener('DOMContentLoaded', installPasswordToggles);
+  </script>
+  <script src="/js/layout.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

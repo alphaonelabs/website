@@ -1,14 +1,9 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Activities - Alpha One Labs</title>
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  
-  <script>
+{% extends "base.html" %}
+{% block title %}Activities - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block head %}
+<script>
     tailwind.config = {
       darkMode: 'class',
       theme: { extend: {} }
@@ -77,11 +72,10 @@
     .view-browser.hidden { display: none; }
     .view-detail.active { display: block; }
   </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-  <div id="site-navbar"></div>
+{% endblock %}
+{% block content %}
+{% activities_json limit=250 %}
+  {% activity_detail_json %}
 
   <!-- ==================== BROWSER VIEW ==================== -->
   <div id="browser-view" class="view-browser">
@@ -117,6 +111,9 @@
             <option value="meetup" class="bg-gray-800">🤝 Meetup</option>
             <option value="workshop" class="bg-gray-800">🔧 Workshop</option>
             <option value="seminar" class="bg-gray-800">🎤 Seminar</option>
+            <option value="club" class="bg-gray-800">🏛 Club</option>
+            <option value="event" class="bg-gray-800">📅 Event</option>
+            <option value="video" class="bg-gray-800">🎬 Video</option>
           </select>
           <select id="filter-format"
             class="px-4 py-2.5 rounded-xl border border-white/20 bg-white/10 text-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-white/40 backdrop-blur">
@@ -137,7 +134,7 @@
 
       <!-- Activity grid -->
       <div id="activity-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Populated by JS -->
+        {% activity_cards limit=12 %}
       </div>
 
       <p id="no-results" class="hidden text-center text-gray-400 dark:text-gray-500 py-16 text-lg">
@@ -289,40 +286,75 @@
     </main>
 
   </div>
-
-  <div id="site-footer"></div>
-
-  <script src="/js/layout.js" defer></script>
-  <script>
+<script>
     const API = '';
     const token = localStorage.getItem('edu_token');
     const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+    const cartHumanStartedAt = Date.now();
     
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+    function logout() { localStorage.clear(); window.location.href = '/login'; }
+    function getGuestCartToken() {
+      try {
+        let value = localStorage.getItem('guest_cart_token');
+        if (!value) {
+          const bytes = new Uint8Array(32);
+          crypto.getRandomValues(bytes);
+          value = 'gct_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+          localStorage.setItem('guest_cart_token', value);
+        }
+        return value;
+      } catch (_) {
+        return 'gct_' + String(Date.now()) + Math.random().toString(16).slice(2);
+      }
+    }
+    function cartHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      else headers['X-Guest-Cart'] = getGuestCartToken();
+      return headers;
+    }
+    function cartHumanProof() {
+      return { human_started_at: cartHumanStartedAt, human_confirmed_at: Date.now(), company_website: '' };
+    }
 
-    const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', other:'✨' };
-    const typeColor = { course:'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300', meetup:'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300', workshop:'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', seminar:'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300', other:'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300' };
+    const typeIcon  = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', club:'🏛', event:'📅', video:'🎬', other:'✨' };
+    const typeColor = { course:'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300', meetup:'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300', workshop:'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', seminar:'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300', club:'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300', event:'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300', video:'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300', other:'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300' };
     const fmtLabel  = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
     const fmtColor  = { live:'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', self_paced:'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', hybrid:'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' };
     const schedLabel = { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
 
+    function formatPrice(cents, currency) {
+      const amount = Number(cents || 0);
+      if (!amount) return 'Free';
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount / 100);
+    }
+
     let allActivities = [];
     let currentActivity = null;
     let activeTag = null;
+    let currentPage = 1;
+    const activitiesPerPage = 12;
 
     // ==================== VIEW SWITCHING ====================
     function showBrowser() {
       document.getElementById('browser-view').classList.remove('hidden');
       document.getElementById('detail-view').classList.remove('active');
-      window.history.pushState(null, '', '/activity.html');
+      window.history.pushState(null, '', '/activity');
     }
 
-    function showDetail(activityId) {
+    function activityDetailUrl(activity) {
+      const slug = activity && activity.slug ? String(activity.slug) : '';
+      const id = activity && activity.id ? String(activity.id) : '';
+      return '/activity/' + encodeURIComponent(slug || id);
+    }
+
+    function showDetail(activityId, slug) {
       document.getElementById('browser-view').classList.add('hidden');
       document.getElementById('detail-view').classList.add('active');
-      window.history.pushState({activityId}, '', `/activity.html?id=${activityId}`);
-      loadActivityDetail(activityId);
+      const ref = slug || activityId;
+      window.history.pushState({activityRef: ref}, '', `/activity/${encodeURIComponent(ref)}`);
+      loadActivityDetail(ref);
     }
 
     function backToBrowser() {
@@ -334,11 +366,25 @@
       const tc = typeColor[a.type] || 'bg-slate-100 text-slate-600';
       const fc = fmtColor[a.format]  || 'bg-slate-100 text-slate-600';
       const ic = typeIcon[a.type] || '✨';
-      const desc = a.description.length > 110 ? a.description.slice(0, 110) + '…' : a.description;
+      const descText = a.description || '';
+      const desc = descText.length > 110 ? descText.slice(0, 110) + '…' : descText;
       const tags = (a.tags || []).slice(0, 3).map(t =>
         `<span class="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">${esc(t)}</span>`).join('');
+      const imageUrl = a.image_url || '/images/logo.png';
+      const image = `<div class="w-full aspect-square overflow-hidden rounded-xl mb-3 bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-gray-900 dark:to-gray-700">
+        <img src="${esc(imageUrl)}" alt="${esc(a.title)}" loading="lazy" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='/images/logo.png';">
+      </div>`;
+      const price = formatPrice(a.price_cents, a.price_currency);
+      const actionHtml = a.status === 'waitlist'
+        ? `<span class="px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-bold">Waiting room</span>`
+        : Number(a.price_cents || 0) > 0
+          ? `<button onclick="event.stopPropagation(); addToCart('${esc(a.id)}', false, '${esc(a.slug || '')}')" class="px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold">
+              <i class="fas fa-cart-plus mr-1"></i>Add
+            </button>`
+          : `<span class="px-3 py-2 rounded-lg bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 text-xs font-bold">Free</span>`;
       return `
-        <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 card-hover flex flex-col gap-3 cursor-pointer" onclick="showDetail('${esc(a.id)}')">
+        <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 card-hover flex flex-col gap-3 cursor-pointer" onclick="showDetail('${esc(a.id)}', '${esc(a.slug || '')}')">
+          ${image}
           <div class="flex items-start justify-between gap-2">
             <h3 class="font-bold text-gray-800 dark:text-gray-200 text-base leading-snug">${ic} ${esc(a.title)}</h3>
             <span class="badge ${tc} shrink-0">${esc(a.type)}</span>
@@ -350,14 +396,63 @@
               <span class="badge ${fc}">${fmtLabel[a.format] || a.format}</span>
               <span>${schedLabel[a.schedule_type] || a.schedule_type}</span>
               <span>👥 ${a.participant_count}</span>
+              ${a.status === 'waitlist' ? `<span>🙋 ${a.interest_count || 0} interested</span>` : ''}
               ${a.session_count ? `<span>🗓 ${a.session_count} sessions</span>` : ''}
             </div>
+          </div>
+          <div class="flex items-center justify-between gap-3 pt-1">
+            <span class="font-bold text-orange-600 dark:text-orange-400">${price}</span>
+            ${actionHtml}
           </div>
           <p class="text-xs text-gray-400 dark:text-gray-500">by <span class="font-medium text-gray-600 dark:text-gray-300">${esc(a.host_name)}</span></p>
         </article>`;
     }
 
     // ==================== BROWSER VIEW FUNCTIONS ====================
+    function ensurePaginationEl(grid) {
+      let pager = document.getElementById('activity-pagination');
+      if (!pager) {
+        pager = document.createElement('nav');
+        pager.id = 'activity-pagination';
+        pager.className = 'mt-8 flex flex-col sm:flex-row items-center justify-between gap-4';
+        pager.setAttribute('aria-label', 'Activity list pagination');
+        grid.parentNode.insertBefore(pager, grid.nextSibling);
+      }
+      return pager;
+    }
+
+    function setActivityPage(page) {
+      currentPage = Math.max(1, Number(page || 1));
+      renderGrid();
+      document.getElementById('activity-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    window.setActivityPage = setActivityPage;
+
+    function renderPagination(total, totalPages, startIndex, visibleCount, grid) {
+      const pager = ensurePaginationEl(grid);
+      if (!total) {
+        pager.innerHTML = '';
+        return;
+      }
+      const startItem = startIndex + 1;
+      const endItem = startIndex + visibleCount;
+      const from = Math.max(1, currentPage - 2);
+      const to = Math.min(totalPages, currentPage + 2);
+      let buttons = '';
+      for (let page = from; page <= to; page += 1) {
+        const active = page === currentPage;
+        buttons += `<button type="button" onclick="setActivityPage(${page})" class="min-w-10 h-10 px-3 rounded-xl text-sm font-bold border transition ${active ? 'bg-teal-600 text-white border-teal-600' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-teal-500'}" ${active ? 'aria-current="page"' : ''}>${page}</button>`;
+      }
+      pager.innerHTML = `
+        <p class="text-sm text-gray-500 dark:text-gray-400">Showing ${startItem}-${endItem} of ${total} activities</p>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="setActivityPage(${currentPage - 1})" class="px-4 h-10 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed" ${currentPage <= 1 ? 'disabled' : ''}>Previous</button>
+          ${buttons}
+          <button type="button" onclick="setActivityPage(${currentPage + 1})" class="px-4 h-10 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-teal-500 disabled:opacity-40 disabled:cursor-not-allowed" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+        </div>`;
+    }
+
     function renderGrid() {
       const q    = document.getElementById('search').value.toLowerCase();
       const type = document.getElementById('filter-type').value;
@@ -373,12 +468,18 @@
 
       const grid = document.getElementById('activity-grid');
       const none = document.getElementById('no-results');
+      const totalPages = Math.max(1, Math.ceil(filtered.length / activitiesPerPage));
+      if (currentPage > totalPages) currentPage = totalPages;
+      const startIndex = (currentPage - 1) * activitiesPerPage;
+      const pageItems = filtered.slice(startIndex, startIndex + activitiesPerPage);
       if (!filtered.length) { 
         grid.innerHTML = ''; 
-        none.classList.remove('hidden'); 
+        none.classList.remove('hidden');
+        renderPagination(0, 1, 0, 0, grid);
       } else { 
         none.classList.add('hidden'); 
-        grid.innerHTML = filtered.map(renderActivityCard).join(''); 
+        grid.innerHTML = pageItems.map(renderActivityCard).join('');
+        renderPagination(filtered.length, totalPages, startIndex, pageItems.length, grid);
       }
     }
 
@@ -404,14 +505,36 @@
         const el = document.getElementById(`tag-${name}`);
         if (el) el.classList.add('active');
       }
+      currentPage = 1;
       renderGrid();
     }
 
+    let serverActivitiesPayloadRead = false;
+    let serverActivitiesPayload = null;
+    function readServerActivitiesPayload() {
+      if (serverActivitiesPayloadRead) return serverActivitiesPayload;
+      serverActivitiesPayloadRead = true;
+      const el = document.getElementById('server-activities-data');
+      if (!el) return null;
+      try { serverActivitiesPayload = JSON.parse(el.textContent || '{}'); }
+      catch (_) { serverActivitiesPayload = null; }
+      return serverActivitiesPayload;
+    }
+
     async function loadAllActivities() {
+      const serverData = readServerActivitiesPayload();
+      if (serverData) {
+        allActivities = serverData.activities || [];
+        currentPage = 1;
+        buildTagCloud(allActivities);
+        renderGrid();
+        return;
+      }
       try {
         const res  = await fetch(`${API}/api/activities`);
         const data = await res.json();
         allActivities = data.activities || [];
+        currentPage = 1;
         buildTagCloud(allActivities);
         renderGrid();
       } catch (e) {
@@ -447,7 +570,7 @@
       ul.innerHTML = similar.map(s => {
         const ic = typeIcon[s.type] || '✨';
         return `
-          <li class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" onclick="showDetail('${esc(s.id)}')">
+          <li class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer" onclick="showDetail('${esc(s.id)}', '${esc(s.slug || '')}')">
             <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${ic} ${esc(s.title)}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">by ${esc(s.host_name)}</p>
             <p class="text-xs text-teal-600 dark:text-teal-400 mt-1">👥 ${s.participant_count} participants</p>
@@ -456,14 +579,39 @@
       }).join('');
     }
 
-    async function loadActivityDetail(activityId) {
-      const headers = token ? { Authorization: 'Bearer ' + token } : {};
-      const res = await fetch('/api/activities/' + activityId, { headers });
-      const data = await res.json();
-      if (!res.ok) { document.getElementById('act-title').textContent = 'Activity not found'; return; }
+    let serverActivityDetailPayloadRead = false;
+    let serverActivityDetailPayload = null;
+    function readServerActivityDetail(activityRef) {
+      if (token) return null;
+      if (!serverActivityDetailPayloadRead) {
+        serverActivityDetailPayloadRead = true;
+        const el = document.getElementById('server-activity-detail-data');
+        if (el) {
+          try { serverActivityDetailPayload = JSON.parse(el.textContent || '{}'); }
+          catch (_) { serverActivityDetailPayload = null; }
+        }
+      }
+      const a = serverActivityDetailPayload && serverActivityDetailPayload.activity;
+      if (!a) return null;
+      const ref = String(activityRef || '');
+      if (String(a.slug || '') !== ref && String(a.id || '') !== ref) return null;
+      return serverActivityDetailPayload;
+    }
+
+    async function loadActivityDetail(activityRef) {
+      let data = readServerActivityDetail(activityRef);
+      if (!data) {
+        const headers = token ? { Authorization: 'Bearer ' + token } : {};
+        const res = await fetch('/api/activities/' + encodeURIComponent(activityRef), { headers });
+        data = await res.json();
+        if (!res.ok) { document.getElementById('act-title').textContent = 'Activity not found'; return; }
+      }
 
       const a = data.activity;
       currentActivity = a;
+      if (a.slug && !new URLSearchParams(location.search).get('slug')) {
+        window.history.replaceState({activityRef: a.slug}, '', activityDetailUrl(a));
+      }
       
       document.title = a.title + ' - Alpha One Labs';
       document.getElementById('crumb-title').textContent = a.title;
@@ -471,7 +619,8 @@
       document.getElementById('act-description').textContent = a.description;
       document.getElementById('act-meta').textContent =
         'by ' + a.host_name + '  ·  ' + a.participant_count + ' participants  ·  ' +
-        (data.sessions.length) + ' sessions';
+        (data.sessions.length) + ' sessions' +
+        (a.status === 'waitlist' ? '  ·  ' + (a.interest_count || 0) + ' interested' : '');
 
       const tc = typeColor[a.type] || 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300';
       const fc = fmtColor[a.format] || 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-300';
@@ -481,10 +630,23 @@
         '<span class="badge ' + fc + '">' + fmtLabel[a.format] + '</span>' +
         '<span class="badge bg-white/20 text-white">' + schedLabel[a.schedule_type] + '</span>';
 
+      const detailImageUrl = a.image_url || '/images/logo.png';
       document.getElementById('act-details').innerHTML =
+        '<div class="md:col-span-2 lg:col-span-3 mb-2">' +
+          '<div class="max-w-sm rounded-lg shadow-md overflow-hidden bg-white/10 border border-white/20">' +
+            '<div class="aspect-square w-full bg-white/10">' +
+              '<img src="' + esc(detailImageUrl) + '" alt="' + esc(a.title) + '" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=\\'/images/logo.png\\';">' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-tag"></i><strong>Price</strong></span><span class="text-xl font-bold text-white">' + formatPrice(a.price_cents, a.price_currency) + '</span></div>' +
+        '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-signal"></i><strong>Level</strong></span><span>' + esc(a.level || 'All levels') + '</span></div>' +
+        '<div class="flex items-center justify-between gap-3 rounded-lg bg-white/10 p-3 text-teal-100"><span class="flex items-center gap-2"><i class="fas fa-users"></i><strong>Students</strong></span><span>' + a.participant_count + (a.max_students ? ' / ' + a.max_students : '') + '</span></div>' +
         '<div class="flex items-center gap-2 text-teal-100"><span>📋</span><span><strong>Type:</strong> ' + esc(a.type) + '</span></div>' +
         '<div class="flex items-center gap-2 text-teal-100"><span>📡</span><span><strong>Format:</strong> ' + fmtLabel[a.format] + '</span></div>' +
         '<div class="flex items-center gap-2 text-teal-100"><span>🗓</span><span><strong>Schedule:</strong> ' + schedLabel[a.schedule_type] + '</span></div>' +
+        (a.level ? '<div class="flex items-center gap-2 text-teal-100"><span>📈</span><span><strong>Level:</strong> ' + esc(a.level) + '</span></div>' : '') +
+        (a.status === 'waitlist' ? '<div class="flex items-center gap-2 text-teal-100"><span>🙋</span><span><strong>Waiting room:</strong> ' + (a.interest_count || 0) + ' interested</span></div>' : '') +
         '<div class="flex items-center gap-2 text-teal-100"><span>👥</span><span><strong>Participants:</strong> ' + a.participant_count + '</span></div>';
 
       if (a.tags && a.tags.length) {
@@ -530,7 +692,7 @@
       // Actions
       if (data.is_host) {
         document.getElementById('act-action').innerHTML =
-          '<a href="/teach.html?activity_id=' + esc(a.id) + '" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
+          '<a href="/teach?activity_id=' + esc(a.id) + '" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
           '<i class="fas fa-cog"></i>Manage Activity</a>';
         document.getElementById('welcome-card').querySelector('#welcome-text').textContent =
           'You are the host of this activity. Use the Manage button to add sessions and update details.';
@@ -543,23 +705,108 @@
         document.getElementById('enr-details').innerHTML =
           '<span class="badge ' + (rc[enr.role]||'bg-gray-100 text-gray-600') + '">' + esc(enr.role) + '</span>' +
           '<span class="badge ' + (sc[enr.status]||'bg-gray-100 text-gray-600') + '">' + esc(enr.status) + '</span>' +
-          '<span class="text-green-700 dark:text-green-300">✅ You have full access to session details.</span>';
-        document.getElementById('act-action').innerHTML = '<span class="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm font-semibold">✅ Joined</span>';
+          '<span class="text-green-700 dark:text-green-300">✅ You have full access to session details.</span>' +
+          (data.is_completed ? '<span class="badge bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">' + (a.type === 'video' ? 'Watched' : 'Completed') + '</span>' : '');
+        const watchLink = a.type === 'video' && a.external_url
+          ? '<a href="' + esc(a.external_url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-rose-600 dark:text-rose-300 font-bold px-5 py-3 rounded-xl shadow-lg"><i class="fas fa-play"></i>Watch video</a>'
+          : '';
+        const completeControl = data.is_completed
+          ? '<span class="inline-flex items-center gap-2 text-blue-600 dark:text-blue-300 text-sm font-semibold">✅ ' + (a.type === 'video' ? 'Watched' : 'Completed') + '</span>'
+          : '<button onclick="markComplete()" class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-3 rounded-xl shadow-lg"><i class="fas fa-check"></i>' + (a.type === 'video' ? 'Mark watched' : 'Mark complete') + '</button>';
+        document.getElementById('act-action').innerHTML = '<div class="flex flex-wrap items-center gap-3"><span class="inline-flex items-center gap-2 text-teal-100 text-sm font-semibold">✅ Joined</span>' + watchLink + completeControl + '</div>';
         document.getElementById('welcome-card').querySelector('#welcome-text').textContent =
           'You are participating in this activity. Session locations and details are visible above.';
       } else {
         if (token) {
-          document.getElementById('join-cta').classList.remove('hidden');
+          if (a.status === 'waitlist') {
+            document.getElementById('join-cta').classList.add('hidden');
+            if (data.user_interested) {
+              document.getElementById('act-action').innerHTML =
+                '<span class="inline-flex items-center gap-2 bg-white/15 text-white font-bold px-6 py-3 rounded-xl"><i class="fas fa-check"></i>Interest recorded</span>';
+            } else {
+              document.getElementById('act-action').innerHTML =
+                '<button id="detail-express-interest" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
+                '<i class="fas fa-hand-paper"></i>Express Interest</button>';
+              document.getElementById('detail-express-interest').addEventListener('click', expressInterest);
+            }
+            document.getElementById('welcome-card').querySelector('#welcome-text').textContent =
+              'This activity is in the waiting room. Express interest so Alpha One Labs can prioritize scheduling it.';
+          } else if (Number(a.price_cents || 0) > 0) {
+            document.getElementById('join-cta').classList.add('hidden');
+            document.getElementById('act-action').innerHTML =
+              '<button id="detail-add-to-cart" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
+              '<i class="fas fa-cart-plus"></i>Add to Cart - ' + formatPrice(a.price_cents, a.price_currency) + '</button>';
+            document.getElementById('detail-add-to-cart').addEventListener('click', () => addToCart(a.id, true, a.slug || ''));
+          } else {
+            document.getElementById('btn-join').innerHTML = a.type === 'video' ? '<i class="fas fa-play mr-2"></i>Join to Watch - Free' : '<i class="fas fa-user-plus mr-2"></i>Join Activity - Free';
+            document.getElementById('join-cta').classList.remove('hidden');
+          }
         } else {
-          document.getElementById('act-action').innerHTML =
-            '<a href="/login.html" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
-            '<i class="fas fa-right-to-bracket"></i>Login to Join</a>';
+          if (Number(a.price_cents || 0) > 0 && a.status !== 'waitlist') {
+            document.getElementById('act-action').innerHTML =
+              '<button id="detail-add-to-cart" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
+              '<i class="fas fa-cart-plus"></i>Add to Cart - ' + formatPrice(a.price_cents, a.price_currency) + '</button>';
+            document.getElementById('detail-add-to-cart').addEventListener('click', () => addToCart(a.id, true, a.slug || ''));
+          } else {
+            document.getElementById('act-action').innerHTML =
+              '<a href="/login" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">' +
+              '<i class="fas fa-right-to-bracket"></i>' + (a.status === 'waitlist' ? 'Login to Express Interest' : 'Login to Join') + '</a>';
+          }
         }
       }
     }
 
+    async function expressInterest() {
+      if (!token || !currentActivity) {
+        sessionStorage.setItem('post_login_redirect', activityDetailUrl(currentActivity || {}));
+        window.location.href = '/login';
+        return;
+      }
+      const btn = document.getElementById('detail-express-interest');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Recording interest...';
+      }
+      try {
+        const ref = currentActivity.slug || currentActivity.id;
+        const message = window.prompt('Optional: what would you like to learn in this class?', '') || '';
+        const res = await fetch('/api/activities/' + encodeURIComponent(ref) + '/interest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not record interest');
+        currentActivity.interest_count = data.data && data.data.interest_count ? data.data.interest_count : currentActivity.interest_count;
+        window.location.reload();
+      } catch (e) {
+        alert(e.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-hand-paper"></i>Express Interest';
+        }
+      }
+    }
+
+    async function markComplete() {
+      if (!token || !currentActivity) { window.location.href = '/login'; return; }
+      try {
+        const ref = currentActivity.slug || currentActivity.id;
+        const res = await fetch('/api/activities/' + encodeURIComponent(ref) + '/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: '{}'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not update activity progress');
+        window.location.reload();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
     async function joinActivity() {
-      if (!token) { window.location.href = '/login.html'; return; }
+      if (!token) { window.location.href = '/login'; return; }
       const btn = document.getElementById('btn-join');
       btn.textContent = 'Joining...'; btn.disabled = true;
       try {
@@ -576,19 +823,45 @@
       }
     }
 
+    async function addToCart(activityId, goToCart, slug) {
+      const res = await fetch('/api/cart/items', {
+        method: 'POST',
+        headers: cartHeaders(),
+        body: JSON.stringify({ activity_id: activityId, ...cartHumanProof() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Could not add to cart');
+        return;
+      }
+      if (window.refreshCartBadge) window.refreshCartBadge();
+      if (goToCart) window.location.href = '/cart';
+      else alert('Added to cart');
+    }
+
     // ==================== INITIALIZATION ====================
     ['search','filter-type','filter-format'].forEach(id =>
-      document.getElementById(id).addEventListener(id === 'search' ? 'input' : 'change', renderGrid));
+      document.getElementById(id).addEventListener(id === 'search' ? 'input' : 'change', () => {
+        currentPage = 1;
+        renderGrid();
+      }));
 
-    // Check if coming from URL with ?id=
+    // Check if coming from /activity/:slug, falling back to old ?slug= or ?id= compatibility.
     const params = new URLSearchParams(location.search);
+    const pathMatch = location.pathname.match(/^\/activity\/([^\/?#]+)\/?$/);
+    const pathRef = pathMatch ? decodeURIComponent(pathMatch[1]) : '';
+    const actSlug = params.get('slug');
     const actId = params.get('id');
+    const initialType = params.get('type');
+    const initialQ = params.get('q');
+    if (initialType) document.getElementById('filter-type').value = initialType;
+    if (initialQ) document.getElementById('search').value = initialQ;
     
-    if (actId) {
-      loadAllActivities().then(() => showDetail(actId));
+    if (pathRef || actSlug || actId) {
+      const ref = pathRef || actSlug || actId;
+      loadAllActivities().then(() => showDetail(ref, ref));
     } else {
       loadAllActivities();
     }
   </script>
-</body>
-</html>
+{% endblock %}

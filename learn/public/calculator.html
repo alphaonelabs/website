@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Graphing Calculator - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-12">
+    <h1 class="text-4xl font-extrabold mb-3">Graphing Calculator</h1>
+    <p class="text-gray-600 dark:text-gray-300 mb-6">Plot simple functions of x. Examples: <code>x*x</code>, <code>Math.sin(x)</code>, <code>x*x - 4</code>.</p>
+    <div class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-6">
+      <form id="plot-form" class="flex flex-col md:flex-row gap-3 mb-5">
+        <input id="expr" value="Math.sin(x)" class="flex-1 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3" />
+        <button class="rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-3" type="submit">Plot</button>
+      </form>
+      <canvas id="graph" width="1000" height="520" class="w-full rounded-2xl bg-white border border-gray-200"></canvas>
+      <p id="plot-error" class="hidden mt-4 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 text-sm"></p>
+    </div>
+  </main>
+<script>
+    const canvas = document.getElementById('graph');
+    const ctx = canvas.getContext('2d');
+    const err = document.getElementById('plot-error');
+    function safeEval(expr, x) {
+      const fn = Function('x', '"use strict"; return (' + expr + ');');
+      return Number(fn(x));
+    }
+    function draw() {
+      err.classList.add('hidden');
+      const expr = document.getElementById('expr').value.trim() || 'x';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+      ctx.strokeStyle = '#0f766e';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      let started = false;
+      try {
+        for (let px = 0; px <= canvas.width; px++) {
+          const x = (px / canvas.width) * 20 - 10;
+          const y = safeEval(expr, x);
+          if (!Number.isFinite(y)) { started = false; continue; }
+          const py = canvas.height / 2 - y * 24;
+          if (!started) { ctx.moveTo(px, py); started = true; }
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      } catch (e) {
+        err.textContent = 'Could not plot that expression.';
+        err.classList.remove('hidden');
+      }
+    }
+    document.getElementById('plot-form').addEventListener('submit', event => { event.preventDefault(); draw(); });
+    draw();
+  </script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Donate - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1">
+    <section class="bg-gradient-to-br from-amber-500 via-orange-600 to-rose-700 text-white py-16">
+      <div class="max-w-5xl mx-auto px-4 md:px-6">
+        <p class="text-sm font-bold uppercase tracking-[0.2em] text-orange-100 mb-3">Support Alpha One Labs</p>
+        <h1 class="text-4xl md:text-6xl font-extrabold mb-4">Fund accessible learning.</h1>
+        <p class="max-w-2xl text-orange-50 text-lg">
+          Donations use the same Stripe-backed payment system as activity checkout and help us keep learning programs available.
+        </p>
+      </div>
+    </section>
+
+    <section class="max-w-5xl mx-auto px-4 md:px-6 py-12 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <form id="donation-form" class="lg:col-span-2 rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-6 space-y-5">
+        <div>
+          <label class="block text-sm font-bold mb-2" for="amount">Donation amount</label>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+            <button type="button" data-amount="1000" class="preset rounded-xl border border-orange-200 dark:border-orange-800 px-4 py-3 font-bold hover:bg-orange-50 dark:hover:bg-orange-900/20">$10</button>
+            <button type="button" data-amount="2500" class="preset rounded-xl border border-orange-200 dark:border-orange-800 px-4 py-3 font-bold hover:bg-orange-50 dark:hover:bg-orange-900/20">$25</button>
+            <button type="button" data-amount="5000" class="preset rounded-xl border border-orange-200 dark:border-orange-800 px-4 py-3 font-bold hover:bg-orange-50 dark:hover:bg-orange-900/20">$50</button>
+            <button type="button" data-amount="10000" class="preset rounded-xl border border-orange-200 dark:border-orange-800 px-4 py-3 font-bold hover:bg-orange-50 dark:hover:bg-orange-900/20">$100</button>
+          </div>
+          <input id="amount" type="number" min="1" step="1" value="25" required class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold mb-2" for="email">Email for Stripe receipt</label>
+          <input id="email" type="email" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="you@example.com" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold mb-2" for="message">Message</label>
+          <textarea id="message-text" rows="4" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="Optional note for the team"></textarea>
+        </div>
+
+        <button id="donate-btn" type="submit" class="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-4 shadow-lg">
+          <i class="fas fa-credit-card mr-2"></i>Donate with Stripe
+        </button>
+        <p id="donation-message" class="hidden rounded-xl p-3 text-sm"></p>
+      </form>
+
+      <aside class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-orange-50 dark:bg-orange-900/20 p-6 h-fit">
+        <h2 class="text-xl font-extrabold mb-3">Donation records</h2>
+        <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+          Donation records are available in the feature hub for authenticated users.
+        </p>
+        <a href="/features?group=donations" class="inline-flex items-center gap-2 text-orange-700 dark:text-orange-300 font-bold hover:underline">
+          View donations <i class="fas fa-arrow-right"></i>
+        </a>
+      </aside>
+    </section>
+  </main>
+<script>
+    const token = localStorage.getItem('edu_token');
+    function showMessage(message, isError) {
+      const el = document.getElementById('donation-message');
+      el.textContent = message;
+      el.className = 'rounded-xl p-3 text-sm ' + (isError ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300');
+      el.classList.remove('hidden');
+    }
+    document.querySelectorAll('.preset').forEach(button => {
+      button.addEventListener('click', () => {
+        document.getElementById('amount').value = String(Number(button.dataset.amount || 0) / 100);
+      });
+    });
+    document.getElementById('donation-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const btn = document.getElementById('donate-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating checkout...';
+      const amount = Math.round(Number(document.getElementById('amount').value || 0) * 100);
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = 'Bearer ' + token;
+        const res = await fetch('/api/donations/checkout', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            amount_cents: amount,
+            email: document.getElementById('email').value,
+            message: document.getElementById('message-text').value
+          })
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Could not create donation checkout');
+        window.location.href = body.data.checkout_url;
+      } catch (err) {
+        showMessage(err.message, true);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Donate with Stripe';
+      }
+    });
+  </script>
+{% endblock %}

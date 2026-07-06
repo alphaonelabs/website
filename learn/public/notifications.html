@@ -1,25 +1,17 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Notifications - Alpha One Labs">
-  <title>Notifications - Alpha One Labs</title>
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <script>
+{% extends "base.html" %}
+{% block title %}Notifications - Alpha One Labs{% endblock %}
+{% block meta_description %}Notifications - Alpha One Labs{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block head %}
+<script>
     tailwind.config = { darkMode: 'class', theme: { extend: {} } };
     (function () {
       if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
     })();
   </script>
-</head>
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-  <div id="site-navbar"></div>
-
-  <section class="border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-black/40 backdrop-blur">
+{% endblock %}
+{% block content %}
+<section class="border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-black/40 backdrop-blur">
     <div class="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between gap-4">
       <div>
         
@@ -29,7 +21,7 @@
         </h1>
        
       </div>
-      <a href="/notification-preferences.html"
+      <a href="/notification-preferences"
         class="shrink-0 hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
         <i class="fas fa-sliders-h"></i> Preferences
       </a>
@@ -45,7 +37,7 @@
           class="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">Unread</button>
       </div>
       <div class="flex gap-2 flex-wrap">
-        <a href="/notification-preferences.html"
+        <a href="/notification-preferences"
           class="sm:hidden px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
           <i class="fas fa-sliders-h mr-1"></i> Preferences
         </a>
@@ -67,11 +59,7 @@
       </button>
     </div>
   </main>
-
-  <div id="site-footer"></div>
-
-  <script src="/js/layout.js" defer></script>
-  <script>
+<script>
     const API = '';
     const token = localStorage.getItem('edu_token');
     const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
@@ -80,7 +68,7 @@
       ? window.CSS.escape
       : (s) => String(s || '').replace(/["\\]/g, '\\$&');
 
-    if (!token || !user) window.location.href = '/login.html';
+    if (!token || !user) window.location.href = '/login';
     let unreadOnly = false;
     let offset = 0;
     const limit = 20;
@@ -205,7 +193,7 @@
       if (res.status === 401) {
         localStorage.removeItem('edu_token');
         localStorage.removeItem('edu_user');
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return null;
       }
       if (!res.ok) throw new Error('Failed to load notifications');
@@ -391,5 +379,4 @@
 
     document.addEventListener('DOMContentLoaded', initPage);
   </script>
-</body>
-</html>
+{% endblock %}

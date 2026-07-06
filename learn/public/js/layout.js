@@ -14,12 +14,49 @@ function isAuthenticated() {
 function logout() {
     localStorage.removeItem('edu_token');
     localStorage.removeItem('edu_user');
-    window.location.href = '/login.html';
+    window.location.href = '/login';
 }
 
 window.esc = window.esc || function (s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 };
+
+window.cartHumanStartedAt = window.cartHumanStartedAt || Date.now();
+
+function getGuestCartToken() {
+    try {
+        let token = localStorage.getItem('guest_cart_token');
+        if (!token) {
+            const bytes = new Uint8Array(32);
+            window.crypto.getRandomValues(bytes);
+            token = 'gct_' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+            localStorage.setItem('guest_cart_token', token);
+        }
+        return token;
+    } catch (_) {
+        return 'gct_' + String(Date.now()) + Math.random().toString(16).slice(2);
+    }
+}
+
+function cartHumanProof() {
+    return {
+        human_started_at: window.cartHumanStartedAt,
+        human_confirmed_at: Date.now(),
+        company_website: '',
+    };
+}
+
+function cartRequestHeaders() {
+    const { token } = getAuth();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    else headers['X-Guest-Cart'] = getGuestCartToken();
+    return headers;
+}
+
+window.getGuestCartToken = getGuestCartToken;
+window.cartHumanProof = cartHumanProof;
+window.cartRequestHeaders = cartRequestHeaders;
 
 // ── Dark mode utilities ───────────────────────────────────────────────
 window.toggleDarkMode = function () {
@@ -56,6 +93,12 @@ function initializeDarkMode() {
 async function inject(id, file, callback) {
     const el = document.getElementById(id);
     if (!el) return;
+    if (el.dataset.inline === 'true') {
+        if (callback && typeof callback === 'function') {
+            callback();
+        }
+        return;
+    }
     try {
         const res = await fetch(file);
         el.innerHTML = await res.text();
@@ -111,6 +154,7 @@ function updateAuthSection() {
         if (mobileGreetingEl) mobileGreetingEl.textContent = `Hi, ${firstName}`;
 
         startUnreadPolling();
+        refreshCartBadge();
     } else {
         // User is not logged in
         if (notLoggedInDiv) notLoggedInDiv.classList.remove('hidden');
@@ -120,7 +164,10 @@ function updateAuthSection() {
 
         const badge = document.getElementById('notif-unread-badge');
         if (badge) badge.classList.add('hidden');
+        const cartBadge = document.getElementById('cart-count-badge');
+        if (cartBadge) cartBadge.classList.add('hidden');
         stopUnreadPolling();
+        refreshCartBadge();
     }
 }
 
@@ -172,6 +219,34 @@ function stopUnreadPolling() {
 
 window.startUnreadPolling = startUnreadPolling;
 window.stopUnreadPolling = stopUnreadPolling;
+
+async function refreshCartBadge() {
+    const badge = document.getElementById('cart-count-badge');
+    const { token } = getAuth();
+    if (!badge) return;
+    if (!token && !localStorage.getItem('guest_cart_token')) {
+        badge.classList.add('hidden');
+        return;
+    }
+    try {
+        const res = await fetch('/api/cart', {
+            headers: cartRequestHeaders(),
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        const count = (body.items || []).reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    } catch (_) {
+        /* ignore */
+    }
+}
+
+window.refreshCartBadge = refreshCartBadge;
 
 // ── Mobile menu toggle ────────────────────────────────────────────────
 window.toggleMobileMenu = function () {

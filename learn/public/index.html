@@ -1,21 +1,12 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Alpha One Labs - Open Source Education Platform">
-    <meta name="keywords" content="education, open source, courses, learning, Alpha One Labs">
-    <title>Alpha One Labs - Open Source Education Platform</title>
-
-     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png">
-    
+{% extends "base.html" %}
+{% block title %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block head %}
+<meta name="keywords" content="education, open source, courses, learning, Alpha One Labs">
+    <!-- Favicon -->
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <script>
         // Dark Mode Configuration
         tailwind.config = {
@@ -91,13 +82,9 @@
             animation-delay: 4000ms;
         }
     </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-  <div id="site-navbar"></div>
-
-    <!-- ===== MAIN CONTENT ===== -->
+{% endblock %}
+{% block content %}
+<!-- ===== MAIN CONTENT ===== -->
     <main class="flex-1 w-full">
         <!-- ===== 3D HERO SECTION ===== -->
         <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 relative overflow-hidden py-20 md:py-28">
@@ -125,12 +112,12 @@
                             Alpha One Labs connects passionate teachers with curious learners. Explore courses, join study groups, and transform your learning journey.
                         </p>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                            <a href="/dashboard.html" class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
+                            <a href="/activity" class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
                                 <i class="fas fa-graduation-cap text-xl"></i>
                                 Start Learning
                                 <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"></i>
                             </a>
-                            <a href="/teach.html" class="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
+                            <a href="/teach" class="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
                                 <i class="fas fa-chalkboard-user text-xl"></i>
                                 Start Teaching
                             </a>
@@ -154,11 +141,11 @@
                                 <span>21 learners inside</span>
                             </div>
                             <div id="classroom-join-container">
-                                <a href="/classroom_poc.html?autojoin=1&room=lobby" class="w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg flex items-center justify-center gap-2" id="join-logged-in" style="display: none;">
+                                <a href="/classroom_poc?autojoin=1&room=lobby" class="w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg flex items-center justify-center gap-2" id="join-logged-in" style="display: none;">
                                     <i class="fas fa-door-open"></i> Join Lobby Classroom
                                 </a>
-                                <a href="/login.html?next=%2Fclassroom_poc.html%3Fautojoin%3D1%26room%3Dlobby" class="w-full bg-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white hover:text-black transition-all shadow-lg flex items-center justify-center gap-2" id="join-not-logged-in" style="display: none;">
-                                    <i class="fas fa-sign-in-alt"></i> Login to Join Classroom
+                                <a href="/classroom_poc?autojoin=1&room=lobby" class="w-full bg-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white hover:text-black transition-all shadow-lg flex items-center justify-center gap-2" id="join-not-logged-in" style="display: none;">
+                                    <i class="fas fa-eye"></i> View Lobby Classroom
                                 </a>
                             </div>
                         </div>
@@ -183,12 +170,12 @@
                     <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <a href="dashboard.html" class="group flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
+                    <a href="/requests?kind=learn" class="group flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
                         <i class="fa-solid fa-graduation-cap text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
                         <span class="text-2xl font-bold mb-2">I Want to Learn</span>
                         <span class="text-sm font-normal opacity-90">Discover new skills and expand your knowledge</span>
                     </a>
-                    <a href="teach.html" class="group flex flex-col items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
+                    <a href="/requests?kind=teach" class="group flex flex-col items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
                         <i class="fa-solid fa-chalkboard-user text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
                         <span class="text-2xl font-bold mb-2">I Want to Teach</span>
                         <span class="text-sm font-normal opacity-90">Share your knowledge with others</span>
@@ -204,171 +191,15 @@
                         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
                             <i class="fas fa-graduation-cap text-white text-lg"></i>
                         </div>
-                        <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Recent Courses</span>
+                        <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">Featured Classes</span>
                     </div>
                     <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                    <!-- Course Card 1 -->
-                    <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <div class="aspect-video w-full relative overflow-hidden rounded-xl mb-4">
-                          <img src="https://alphaonelabs.com/media/course_images/course_images/aoc.png" alt="Course Image" class="w-full h-full object-cover">
-                        </div>
-                        <div class="mb-3">
-                            <h3 class="text-lg font-semibold h-14 flex items-start">
-                                <a href="#" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">OSL - Advent of Code Study Group</a>
-                            </h3>
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="font-medium text-teal-600 dark:text-teal-400">Business</span>
-                                <span class="text-orange-600 dark:text-orange-500">Free</span>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-eye mr-2"></i>
-                                <span>1240 views</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-users mr-2"></i>
-                                <span>8/12</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-calendar-alt mr-2"></i>
-                                <span>8 sessions</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-star text-yellow-400 mr-2"></i>
-                                <span>4.9/5</span>
-                            </div>
-                        </div>
-                        <div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
-                            <div class="flex items-center mb-1">
-                                <i class="fas fa-calendar-day mr-2"></i>
-                                <span>Starts: Apr 20, 2024</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center mb-3">
-                            <div class="h-12 w-12 rounded-full mr-3">
-                              <img src="https://alphaonelabs.com/static/images/default_teacher.png" alt="Instructor Avatar" class="w-full h-full object-cover rounded-full">
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium">Xmnlab</span>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">Web Expert</p>
-                            </div>
-                        </div>
-                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-cart-plus mr-2"></i>
-                            Add to Cart
-                        </button>
-                    </div>
-
-                    <!-- Course Card 2 -->
-                    <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <div class="aspect-video w-full relative overflow-hidden rounded-xl mb-4">
-                          <img src="https://alphaonelabs.com/media/course_images/86fc6a52-7346-466d-80f9-019629928c22.png" alt="Course Image" class="w-full h-full object-cover">
-                        </div>
-                        <div class="mb-3">
-                            <h3 class="text-lg font-semibold h-14 flex items-start">
-                                <a href="#" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">Crash Test Coding 101 - build a website in 1 hour</a>
-                            </h3>
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="font-medium text-teal-600 dark:text-teal-400">Coding</span>
-                                <span class="text-orange-600 dark:text-orange-500">$20.00</span>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-eye mr-2"></i>
-                                <span>2.1K views</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-users mr-2"></i>
-                                <span>45/60</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-calendar-alt mr-2"></i>
-                                <span>12 sessions</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-star text-yellow-400 mr-2"></i>
-                                <span>4.8/5</span>
-                            </div>
-                        </div>
-                        <div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
-                            <div class="flex items-center mb-1">
-                                <i class="fas fa-calendar-day mr-2"></i>
-                                <span>Starts: Apr 15, 2024</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center mb-3">
-                            <div class="h-12 w-12 rounded-full mr-3">
-                                <img src="https://alphaonelabs.com/static/images/default_teacher.png" alt="Instructor Avatar" class="w-full h-full object-cover rounded-full">
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium">Daniel</span>
-                            </div>
-                        </div>
-                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-cart-plus mr-2"></i>
-                            Add to Cart
-                        </button>
-                    </div>
-
-                    <!-- Course Card 3 -->
-                    <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <div class="aspect-video w-full relative overflow-hidden rounded-xl mb-4">
-                            <img src="https://alphaonelabs.com/media/course_images/course_images/the-thinker-2-354906847.jpg" alt="Course Image" class="w-full h-full object-cover">
-                        </div>
-                        <div class="mb-3">
-                            <h3 class="text-lg font-semibold h-14 flex items-start">
-                                <a href="#" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">Poetry Circle</a>
-                            </h3>
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="font-medium text-teal-600 dark:text-teal-400">Business</span>
-                                <span class="text-orange-600 dark:text-orange-500">Free</span>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-eye mr-2"></i>
-                                <span>3.5K views</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-users mr-2"></i>
-                                <span>120/100</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-calendar-alt mr-2"></i>
-                                <span>6 sessions</span>
-                            </div>
-                            <div class="flex items-center text-gray-600 dark:text-gray-300">
-                                <i class="fas fa-star text-yellow-400 mr-2"></i>
-                                <span>5.0/5</span>
-                            </div>
-                        </div>
-                        <div class="mb-3 text-sm text-gray-600 dark:text-gray-300">
-                            <div class="flex items-center mb-1">
-                                <i class="fas fa-calendar-day mr-2"></i>
-                                <span>Starts: Apr 18, 2024</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center mb-3">
-                            <div class="h-12 w-12 rounded-full mr-3">
-                                <img src="https://alphaonelabs.com/static/images/default_teacher.png" alt="Instructor Avatar" class="w-full h-full object-cover rounded-full">
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium">tea</span>
-                                <p class="text-xs text-gray-600 dark:text-gray-400">UI Designer</p>
-                            </div>
-                        </div>
-                        <button class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-cart-plus mr-2"></i>
-                            Add to Cart
-                        </button>
-                    </div>
+                <div id="recent-courses-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                    {% featured_activity_cards limit=3 %}
                 </div>
                 <div class="text-center mt-6">
-                    <a href="/activity.html" class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                    <a href="/activity" class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
                         View All Activity
                         <i class="fas fa-arrow-right"></i>
                     </a>
@@ -380,26 +211,39 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <!-- Referral Program -->
-                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-purple-500">
+                    <div id="referral-program-card" class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-purple-500">
                         <h2 class="text-lg font-bold mb-4 flex items-center">
                             <i class="fa-solid fa-gift text-purple-600 dark:text-purple-400 mr-2"></i>
                             Referral Program
                         </h2>
                         <div class="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-purple-100 dark:border-purple-800 mb-4">
-                            <h3 class="font-medium mb-2 text-purple-800 dark:text-purple-200">Share and Earn!</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                            <h3 id="referral-title" class="font-medium mb-2 text-purple-800 dark:text-purple-200">Share and Earn!</h3>
+                            <p id="referral-copy" class="text-sm text-gray-600 dark:text-gray-300 mb-3">
                                 Get $5 when someone you refer enrolls in their first course!
                             </p>
                             <div class="flex items-center space-x-2 mb-3">
-                                <input type="text" value="https://alphaonelabs.com/ref/user123456" readonly class="text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 flex-1 min-w-0" />
-                                <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs whitespace-nowrap flex-shrink-0">
+                                <input id="referral-link-input" type="text" value="Sign in to get your referral link" readonly class="text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 flex-1 min-w-0" />
+                                <button id="referral-copy-button" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs whitespace-nowrap flex-shrink-0">
                                     <i class="fas fa-copy mr-1"></i>Copy
                                 </button>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                            <p id="referral-stats" class="text-xs text-gray-500 dark:text-gray-400">
                                 <i class="fas fa-info-circle mr-1"></i>
-                                Total referral earnings: $284.50
+                                Sign in to see your referral earnings and signup totals.
                             </p>
+                        </div>
+                        <div class="rounded-lg border border-purple-100 dark:border-purple-800 overflow-hidden">
+                            <div class="px-4 py-3 bg-purple-50 dark:bg-purple-900/30 flex items-center justify-between">
+                                <h3 class="font-semibold text-purple-800 dark:text-purple-200 text-sm">
+                                    <i class="fas fa-ranking-star mr-1"></i>Referral Leaderboard
+                                </h3>
+                                <a href="/referral-leaderboard" class="text-xs font-bold text-purple-700 dark:text-purple-300 hover:underline">View all</a>
+                            </div>
+                            <div id="referral-leaderboard-list" class="divide-y divide-purple-100 dark:divide-purple-900/50">
+                                <div class="p-4 text-xs text-gray-500 dark:text-gray-400">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>Loading leaderboard...
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -652,10 +496,194 @@
             </section>
 
         </div>
+    
+        <section class="max-w-[90rem] mx-auto px-4 md:px-6 pb-10 text-center">
+          <a href="https://gsoc.alphaonelabs.com" target="_blank" rel="noopener" class="inline-flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-sm font-bold text-gray-700 dark:text-gray-200 hover:border-teal-500 hover:text-teal-600 dark:hover:text-teal-300 transition">
+            <img src="/images/gsoc-logo.png" alt="Google Summer of Code" class="h-8 w-auto" onerror="this.style.display='none'">
+            <span>GSOC 2027 opportunities</span>
+            <i class="fas fa-arrow-up-right-from-square text-xs"></i>
+          </a>
+        </section>
     </main>
-
-    <div id="site-footer"></div>
-
-    <script src="/js/layout.js" defer></script>
-</body>
-</html>
+<script>
+      function homeEsc(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+      function homePrice(cents, currency) {
+        const amount = Number(cents || 0);
+        if (!amount) return 'Free';
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount / 100);
+      }
+      function homeActivityUrl(course) {
+        if (course && course.url) return course.url;
+        const ref = course && (course.slug || course.id) ? (course.slug || course.id) : '';
+        return '/activity/' + encodeURIComponent(ref);
+      }
+      function homeActivityUrlByParts(activityId, slug) {
+        return '/activity/' + encodeURIComponent(slug || activityId);
+      }
+      const homeCartHumanStartedAt = Date.now();
+      function getHomeGuestCartToken() {
+        try {
+          let value = localStorage.getItem('guest_cart_token');
+          if (!value) {
+            const bytes = new Uint8Array(32);
+            crypto.getRandomValues(bytes);
+            value = 'gct_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            localStorage.setItem('guest_cart_token', value);
+          }
+          return value;
+        } catch (_) {
+          return 'gct_' + String(Date.now()) + Math.random().toString(16).slice(2);
+        }
+      }
+      function homeCartHeaders() {
+        const token = localStorage.getItem('edu_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = 'Bearer ' + token;
+        else headers['X-Guest-Cart'] = getHomeGuestCartToken();
+        return headers;
+      }
+      function homeCartHumanProof() {
+        return { human_started_at: homeCartHumanStartedAt, human_confirmed_at: Date.now(), company_website: '' };
+      }
+      const FEATURED_HOME_CLASSES = {% featured_activities_json limit=3 %};
+      async function addHomeCourseToCart(activityId, slug) {
+        const res = await fetch('/api/cart/items', {
+          method: 'POST',
+          headers: homeCartHeaders(),
+          body: JSON.stringify({ activity_id: activityId, ...homeCartHumanProof() })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'Could not add this course to your cart.');
+          return;
+        }
+        if (window.refreshCartBadge) window.refreshCartBadge();
+        window.location.href = '/cart';
+      }
+      function renderHomeCourse(course) {
+        const img = course.image_url || '/images/logo.png';
+        const tags = (course.tags || []).slice(0, 1).join(', ') || course.level || 'Course';
+        const url = homeActivityUrl(course);
+        const isWaitlist = course.status === 'waitlist';
+        const hasCartTarget = Boolean(course.id) && !isWaitlist && Number(course.price_cents || 0) > 0;
+        const action = hasCartTarget
+          ? `<button onclick="addHomeCourseToCart('${homeEsc(course.id)}', '${homeEsc(course.slug || '')}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
+              <i class="fas fa-cart-plus mr-2"></i>Add to Cart
+            </button>`
+          : `<a href="${url}" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">
+              <i class="fas fa-arrow-right mr-2"></i>${isWaitlist ? 'Join Waiting Room' : 'View Class'}
+            </a>`;
+        return `
+          <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+            <a href="${url}" class="aspect-square w-full relative overflow-hidden rounded-xl mb-4 bg-gray-100 dark:bg-gray-700 block">
+              <img src="${homeEsc(img)}" alt="${homeEsc(course.title)}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='/images/logo.png';">
+            </a>
+            <div class="mb-3">
+              <h3 class="text-lg font-semibold min-h-[3.5rem] flex items-start">
+                <a href="${url}" class="hover:text-orange-500 transition-colors duration-200 line-clamp-2">${homeEsc(course.title)}</a>
+              </h3>
+              <div class="flex items-center justify-between text-sm gap-3">
+                <span class="font-medium text-teal-600 dark:text-teal-400 truncate">${homeEsc(tags)}</span>
+                <span class="text-orange-600 dark:text-orange-500 font-bold whitespace-nowrap">${homePrice(course.price_cents, course.price_currency)}</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
+              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-users mr-2"></i><span>${Number(course.participant_count || 0)} joined</span></div>
+              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-calendar-alt mr-2"></i><span>${Number(course.session_count || 0)} sessions</span></div>
+              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-signal mr-2"></i><span>${homeEsc(course.level || 'All levels')}</span></div>
+              <div class="flex items-center text-gray-600 dark:text-gray-300"><i class="fas fa-book mr-2"></i><span>${homeEsc(course.format || 'course')}</span></div>
+            </div>
+            <div class="flex items-center mb-3 mt-auto">
+              <div class="h-10 w-10 rounded-full mr-3 bg-teal-100 dark:bg-teal-900 flex items-center justify-center text-teal-700 dark:text-teal-300 font-bold">${homeEsc((course.host_name || 'A').slice(0,1).toUpperCase())}</div>
+              <div><span class="text-sm font-medium">${homeEsc(course.host_name || 'Alpha One Labs')}</span><p class="text-xs text-gray-600 dark:text-gray-400">Instructor</p></div>
+            </div>
+            ${action}
+          </div>`;
+      }
+      function homeCourseRank(course) {
+        const featuredBoost = course.featured || course.is_featured ? 100000 : 0;
+        const interest = Number(course.interest_count || 0) * 20;
+        const participants = Number(course.participant_count || 0) * 10;
+        const sessions = Number(course.session_count || 0) * 2;
+        const availableBoost = course.status === 'open' ? 5 : 0;
+        return featuredBoost + interest + participants + sessions + availableBoost;
+      }
+      function pickHomeCourses(courses) {
+        return (courses || [])
+          .filter(course => course && (course.type === 'course' || !course.type))
+          .sort((a, b) => homeCourseRank(b) - homeCourseRank(a))
+          .slice(0, 3);
+      }
+      async function loadRecentCourses() {
+        const grid = document.getElementById('recent-courses-grid');
+        if (!grid) return;
+        grid.innerHTML = FEATURED_HOME_CLASSES.map(renderHomeCourse).join('');
+      }
+      function homeMoney(cents) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(cents || 0) / 100);
+      }
+      async function loadReferralProgram() {
+        const token = localStorage.getItem('edu_token');
+        const input = document.getElementById('referral-link-input');
+        const stats = document.getElementById('referral-stats');
+        const copy = document.getElementById('referral-copy-button');
+        if (!input || !stats || !copy) return;
+        copy.addEventListener('click', async () => {
+          if (!input.value || input.value.startsWith('Sign in')) {
+            window.location.href = '/login';
+            return;
+          }
+          await navigator.clipboard.writeText(input.value);
+          copy.innerHTML = '<i class="fas fa-check mr-1"></i>Copied';
+          setTimeout(() => copy.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy', 1500);
+        });
+        if (!token) return;
+        try {
+          const res = await fetch('/api/referral', { headers: { Authorization: 'Bearer ' + token } });
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error || 'Could not load referral data');
+          const data = body.data || {};
+          input.value = data.referral_link || '';
+          stats.innerHTML = '<i class="fas fa-info-circle mr-1"></i>' +
+            'Total referral earnings: ' + homeMoney(data.referral_earnings_cents) +
+            ' · Signups: ' + Number(data.referred_count || 0) +
+            ' · Enrollments: ' + Number(data.referred_enrollment_count || 0);
+        } catch (err) {
+          stats.innerHTML = '<i class="fas fa-triangle-exclamation mr-1"></i>' + homeEsc(err.message);
+        }
+      }
+      async function loadReferralLeaderboard() {
+        const holder = document.getElementById('referral-leaderboard-list');
+        if (!holder) return;
+        try {
+          const res = await fetch('/api/referral/leaderboard?limit=5');
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error || 'Could not load referral leaderboard');
+          const leaders = body.leaders || [];
+          if (!leaders.length) {
+            holder.innerHTML = '<div class="p-4 text-xs text-gray-500 dark:text-gray-400">No referral leaders yet. Share your link to get started.</div>';
+            return;
+          }
+          holder.innerHTML = leaders.map(item => `
+            <div class="px-4 py-3 flex items-center justify-between gap-3 text-sm">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold">${item.rank}</span>
+                <div class="min-w-0">
+                  <p class="font-semibold text-gray-800 dark:text-gray-100 truncate">${homeEsc(item.name)}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">${Number(item.referred_count || 0)} signups · ${Number(item.referred_enrollment_count || 0)} enrollments</p>
+                </div>
+              </div>
+              <span class="text-xs font-bold text-purple-700 dark:text-purple-300">${homeMoney(item.referral_earnings_cents)}</span>
+            </div>
+          `).join('');
+        } catch (err) {
+          holder.innerHTML = '<div class="p-4 text-xs text-red-600 dark:text-red-300">' + homeEsc(err.message) + '</div>';
+        }
+      }
+      document.addEventListener('DOMContentLoaded', loadRecentCourses);
+      document.addEventListener('DOMContentLoaded', loadReferralProgram);
+      document.addEventListener('DOMContentLoaded', loadReferralLeaderboard);
+    </script>
+{% endblock %}

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Collaborative Whiteboard - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block head %}
+<style>
+    #board { touch-action: none; cursor: crosshair; }
+  </style>
+{% endblock %}
+{% block content %}
+<main class="flex-1">
+    <section class="bg-gradient-to-br from-teal-700 via-cyan-700 to-sky-800 text-white py-10">
+      <div class="max-w-7xl mx-auto px-4 md:px-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        <div>
+          <p class="text-sm font-bold uppercase tracking-[0.2em] text-cyan-100 mb-3">Live collaboration</p>
+          <h1 class="text-4xl md:text-5xl font-extrabold mb-3">Collaborative Whiteboard</h1>
+          <p class="max-w-2xl text-cyan-50">Draw together in a classroom room. Strokes persist and replay for new participants.</p>
+        </div>
+        <div class="rounded-2xl bg-white/10 border border-white/20 p-4 backdrop-blur">
+          <label for="room" class="block text-xs font-bold uppercase tracking-wide text-cyan-100 mb-1">Room</label>
+          <div class="flex gap-2">
+            <input id="room" class="rounded-xl px-3 py-2 text-gray-900 min-w-0" value="main-whiteboard">
+            <button id="connect" class="rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-2 font-bold">Connect</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+      <div class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="text-sm font-bold">Color <input id="color" type="color" value="#0f766e" class="align-middle ml-2"></label>
+            <label class="text-sm font-bold">Size <input id="size" type="range" min="1" max="32" value="4" class="align-middle ml-2"></label>
+            <button id="clear" class="rounded-xl border border-red-200 dark:border-red-800 px-4 py-2 text-red-600 dark:text-red-300 font-bold hover:bg-red-50 dark:hover:bg-red-900/20">
+              <i class="fas fa-trash mr-1"></i>Clear room
+            </button>
+          </div>
+          <p id="status" class="text-sm text-gray-500 dark:text-gray-400">Disconnected</p>
+        </div>
+        <div id="viewer-note" class="hidden px-4 py-3 border-b border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-sm text-amber-800 dark:text-amber-100">
+          Viewing only. <a id="whiteboard-login" href="/login" class="font-bold underline underline-offset-2">Sign in to draw or clear the board.</a>
+        </div>
+        <canvas id="board" width="1400" height="760" class="block w-full bg-white"></canvas>
+      </div>
+    </section>
+  </main>
+<script>
+    const token = localStorage.getItem('edu_token');
+    const canInteract = Boolean(token);
+
+    function preserveWhiteboardRedirect() {
+      sessionStorage.setItem('post_login_redirect', location.pathname + location.search);
+    }
+
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const viewerNote = document.getElementById('viewer-note');
+    const loginLink = document.getElementById('whiteboard-login');
+    const colorInput = document.getElementById('color');
+    const sizeInput = document.getElementById('size');
+    const clearButton = document.getElementById('clear');
+    let ws = null;
+    let drawing = false;
+    let last = null;
+
+    function viewerId() {
+      try {
+        let id = localStorage.getItem('classroom_participant_id');
+        if (!id) {
+          id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+          localStorage.setItem('classroom_participant_id', id);
+        }
+        return id;
+      } catch (_err) {
+        return String(Date.now()) + Math.random().toString(16).slice(2);
+      }
+    }
+
+    function loginForWhiteboard() {
+      preserveWhiteboardRedirect();
+      window.location.href = '/login';
+    }
+
+    if (!canInteract) {
+      viewerNote.classList.remove('hidden');
+      canvas.style.cursor = 'not-allowed';
+      colorInput.disabled = true;
+      sizeInput.disabled = true;
+      clearButton.classList.add('opacity-60');
+      clearButton.title = 'Sign in to clear the board';
+    }
+    loginLink.addEventListener('click', preserveWhiteboardRedirect);
+
+    function setStatus(text, ok) {
+      statusEl.textContent = text;
+      statusEl.className = 'text-sm ' + (ok ? 'text-green-600 dark:text-green-300' : 'text-gray-500 dark:text-gray-400');
+    }
+
+    function pointFromEvent(event) {
+      const rect = canvas.getBoundingClientRect();
+      const touch = event.touches && event.touches[0] ? event.touches[0] : event;
+      return {
+        x: Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width)),
+        y: Math.max(0, Math.min(1, (touch.clientY - rect.top) / rect.height))
+      };
+    }
+
+    function drawEvent(event) {
+      const from = event.from;
+      const to = event.to;
+      if (!from || !to) return;
+      ctx.strokeStyle = event.color || '#0f766e';
+      ctx.lineWidth = Number(event.size || 4);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(from.x * canvas.width, from.y * canvas.height);
+      ctx.lineTo(to.x * canvas.width, to.y * canvas.height);
+      ctx.stroke();
+    }
+
+    function clearBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function sendStroke(from, to) {
+      if (!canInteract) { loginForWhiteboard(); return; }
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const event = {
+        from,
+        to,
+        color: document.getElementById('color').value,
+        size: Number(document.getElementById('size').value || 4)
+      };
+      drawEvent(event);
+      ws.send(JSON.stringify({ type: 'whiteboard_event', event }));
+    }
+
+    function connect() {
+      if (ws) ws.close();
+      clearBoard();
+      const room = encodeURIComponent(document.getElementById('room').value || 'main-whiteboard');
+      const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const params = new URLSearchParams();
+      if (token) {
+        params.set('token', token);
+      } else {
+        params.set('participant_id', viewerId());
+        params.set('display_name', 'Viewer');
+      }
+      ws = new WebSocket(scheme + '//' + location.host + '/api/classroom/' + room + '?' + params.toString());
+      setStatus('Connecting...', false);
+      ws.addEventListener('open', () => setStatus(canInteract ? 'Connected' : 'Viewing live board', true));
+      ws.addEventListener('close', () => setStatus('Disconnected', false));
+      ws.addEventListener('message', event => {
+        let data = null;
+        try { data = JSON.parse(event.data); } catch (_err) { return; }
+        if (data.type === 'whiteboard_state') {
+          clearBoard();
+          (data.events || []).forEach(drawEvent);
+        } else if (data.type === 'whiteboard_event') {
+          drawEvent(data.event || {});
+        } else if (data.type === 'whiteboard_clear') {
+          clearBoard();
+        }
+      });
+    }
+
+    function start(event) {
+      event.preventDefault();
+      if (!canInteract) { loginForWhiteboard(); return; }
+      drawing = true;
+      last = pointFromEvent(event);
+    }
+    function move(event) {
+      if (!drawing || !last) return;
+      event.preventDefault();
+      const next = pointFromEvent(event);
+      sendStroke(last, next);
+      last = next;
+    }
+    function stop() {
+      drawing = false;
+      last = null;
+    }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', stop);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', stop);
+    document.getElementById('connect').addEventListener('click', connect);
+    document.getElementById('clear').addEventListener('click', () => {
+      if (!canInteract) { loginForWhiteboard(); return; }
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'whiteboard_clear' }));
+      clearBoard();
+    });
+    connect();
+  </script>
+{% endblock %}

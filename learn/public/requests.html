@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}Learning Requests - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300{% endblock %}
+{% block content %}
+<main class="flex-1">
+    <section class="relative overflow-hidden bg-gradient-to-br from-teal-700 via-cyan-700 to-blue-800 text-white py-16 md:py-20">
+      <div class="absolute inset-0 opacity-10 pointer-events-none" aria-hidden="true">
+        <i class="fas fa-chalkboard-teacher absolute top-10 left-10 text-7xl"></i>
+        <i class="fas fa-lightbulb absolute bottom-10 right-12 text-8xl"></i>
+        <i class="fas fa-users absolute top-1/3 right-1/4 text-6xl"></i>
+      </div>
+      <div class="relative max-w-6xl mx-auto px-4 md:px-6">
+        <p class="text-sm font-bold uppercase tracking-[0.2em] text-cyan-100 mb-3">Community demand board</p>
+        <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-5">Say what you want to learn or teach.</h1>
+        <p class="max-w-2xl text-lg text-cyan-50">
+          This replaces the current waiting-room workflow with an activity-first request board. Learners can request a subject, and teachers can offer to run one.
+        </p>
+      </div>
+    </section>
+
+    <section class="max-w-6xl mx-auto px-4 md:px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <aside class="lg:col-span-1">
+        <div class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-6 sticky top-6">
+          <div class="flex rounded-2xl bg-gray-100 dark:bg-gray-900 p-1 mb-5">
+            <button id="tab-learn" class="flex-1 rounded-xl px-4 py-2 text-sm font-bold transition" type="button" onclick="setKind('learn')">
+              I want to learn
+            </button>
+            <button id="tab-teach" class="flex-1 rounded-xl px-4 py-2 text-sm font-bold transition" type="button" onclick="setKind('teach')">
+              I want to teach
+            </button>
+          </div>
+
+          <form id="intent-form" class="space-y-4">
+            <input type="hidden" id="kind" value="learn">
+            <div>
+              <label class="block text-sm font-semibold mb-1" for="title">Title</label>
+              <input id="title" required maxlength="160" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Intro to Python, Algebra help, Robotics club...">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1" for="subject">Subject</label>
+              <input id="subject" list="subject-options" maxlength="80" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Programming, math, art, science...">
+              <datalist id="subject-options"></datalist>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1" for="description">Details</label>
+              <textarea id="description" rows="5" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Describe the topic, level, schedule, location, or format."></textarea>
+            </div>
+            <button id="submit-intent" class="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-3 shadow-lg" type="submit">
+              Post request
+            </button>
+            <p id="form-message" class="hidden rounded-xl p-3 text-sm"></p>
+          </form>
+
+          <div class="mt-6 rounded-2xl bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 text-sm text-teal-900 dark:text-teal-100">
+            <p class="font-bold mb-1">Teaching a full course?</p>
+            <p class="mb-3">Use this board for discovery, then create the full activity when you are ready.</p>
+            <a href="/teach" class="inline-flex items-center gap-2 font-bold text-teal-700 dark:text-teal-300 hover:underline">
+              Create activity <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      <section class="lg:col-span-2 space-y-5">
+        <div class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md p-5">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-extrabold">Open requests and offers</h2>
+              <p class="text-gray-600 dark:text-gray-300 text-sm">Browse learners looking for help and teachers offering classes.</p>
+            </div>
+            <div class="flex rounded-2xl bg-gray-100 dark:bg-gray-900 p-1">
+              <button id="filter-all" class="rounded-xl px-4 py-2 text-sm font-bold transition" type="button" onclick="setFilter('')">All</button>
+              <button id="filter-learn" class="rounded-xl px-4 py-2 text-sm font-bold transition" type="button" onclick="setFilter('learn')">Learn</button>
+              <button id="filter-teach" class="rounded-xl px-4 py-2 text-sm font-bold transition" type="button" onclick="setFilter('teach')">Teach</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="intent-list" class="space-y-4">
+          <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">
+            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+            <p>Loading requests...</p>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+<script>
+    const state = { kind: 'learn', filter: '' };
+    const params = new URLSearchParams(location.search);
+
+    function esc(value) {
+      return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function setMessage(message, isError) {
+      const el = document.getElementById('form-message');
+      el.textContent = message;
+      el.className = 'rounded-xl p-3 text-sm ' + (isError ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300');
+      el.classList.remove('hidden');
+    }
+
+    function syncButtons() {
+      const active = 'bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-200 shadow';
+      const inactive = 'text-gray-600 dark:text-gray-300 hover:text-teal-700 dark:hover:text-teal-200';
+      document.getElementById('tab-learn').className = 'flex-1 rounded-xl px-4 py-2 text-sm font-bold transition ' + (state.kind === 'learn' ? active : inactive);
+      document.getElementById('tab-teach').className = 'flex-1 rounded-xl px-4 py-2 text-sm font-bold transition ' + (state.kind === 'teach' ? active : inactive);
+      document.getElementById('kind').value = state.kind;
+      document.getElementById('submit-intent').textContent = state.kind === 'teach' ? 'Post teaching offer' : 'Post learning request';
+
+      for (const key of ['', 'learn', 'teach']) {
+        const id = key ? 'filter-' + key : 'filter-all';
+        document.getElementById(id).className = 'rounded-xl px-4 py-2 text-sm font-bold transition ' + (state.filter === key ? active : inactive);
+      }
+    }
+
+    function setKind(kind) {
+      state.kind = kind === 'teach' ? 'teach' : 'learn';
+      syncButtons();
+    }
+
+    function setFilter(kind) {
+      state.filter = kind === 'learn' || kind === 'teach' ? kind : '';
+      syncButtons();
+      loadIntents();
+    }
+
+    function renderIntents(intents) {
+      const holder = document.getElementById('intent-list');
+      if (!intents.length) {
+        holder.innerHTML = '<div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-10 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-inbox text-4xl mb-3 opacity-50"></i><p>No open requests yet.</p></div>';
+        return;
+      }
+      holder.innerHTML = intents.map(item => {
+        const isTeach = item.kind === 'teach';
+        const badge = isTeach ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+        const icon = isTeach ? 'fa-chalkboard-user' : 'fa-graduation-cap';
+        const label = isTeach ? 'Teaching offer' : 'Learning request';
+        return `
+          <article class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md p-6">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+              <div>
+                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${badge}">
+                  <i class="fas ${icon}"></i>${label}
+                </span>
+                <h3 class="text-xl font-extrabold mt-3">${esc(item.title)}</h3>
+              </div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">${esc((item.created_at || '').slice(0, 10))}</span>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-4 text-sm">
+              ${item.subject ? `<span class="rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 font-semibold">${esc(item.subject)}</span>` : ''}
+              <span class="rounded-full bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 px-3 py-1">Posted by ${esc(item.user_name || 'Alpha One Labs member')}</span>
+            </div>
+            <p class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">${esc(item.description || 'No extra details yet.')}</p>
+          </article>
+        `;
+      }).join('');
+    }
+
+    async function loadIntents() {
+      const query = state.filter ? '?kind=' + encodeURIComponent(state.filter) : '';
+      const res = await fetch('/api/intents' + query);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not load requests');
+      renderIntents(body.intents || []);
+    }
+
+    async function loadSubjects() {
+      const res = await fetch('/api/subjects');
+      const body = await res.json();
+      if (!res.ok) return;
+      document.getElementById('subject-options').innerHTML = (body.subjects || [])
+        .map(subject => '<option value="' + esc(subject.name) + '"></option>')
+        .join('');
+    }
+
+    document.getElementById('intent-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const token = localStorage.getItem('edu_token');
+      if (!token) {
+        sessionStorage.setItem('post_login_redirect', location.pathname + location.search);
+        window.location.href = '/login';
+        return;
+      }
+      const button = document.getElementById('submit-intent');
+      button.disabled = true;
+      button.textContent = 'Posting...';
+      try {
+        const res = await fetch('/api/intents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({
+            kind: state.kind,
+            title: document.getElementById('title').value,
+            subject: document.getElementById('subject').value,
+            description: document.getElementById('description').value
+          })
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Could not post request');
+        document.getElementById('intent-form').reset();
+        setKind(state.kind);
+        setMessage(body.message || 'Request posted', false);
+        await loadIntents();
+      } catch (err) {
+        setMessage(err.message, true);
+      } finally {
+        button.disabled = false;
+        syncButtons();
+      }
+    });
+
+    if (params.get('kind') === 'teach') setKind('teach');
+    if (params.get('kind') === 'learn') setKind('learn');
+    if (params.get('filter') === 'learn' || params.get('filter') === 'teach') state.filter = params.get('filter');
+    syncButtons();
+    loadSubjects().catch(() => {});
+    loadIntents().catch(err => {
+      document.getElementById('intent-list').innerHTML = '<div class="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-6 text-red-700 dark:text-red-300">' + esc(err.message) + '</div>';
+    });
+  </script>
+{% endblock %}

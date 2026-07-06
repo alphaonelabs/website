@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Edu Memes - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Open Source Education Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 w-full max-w-[90rem] mx-auto px-0 md:px-0">
+    <div class="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)]">
+      <aside class="w-full lg:w-64 xl:w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 lg:p-6">
+        <div class="mb-6">
+          <h1 class="text-xl font-bold flex items-center text-gray-800 dark:text-gray-100"><i class="fa-solid fa-layer-group text-teal-500 mr-2"></i>Edu Memes</h1>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Community gallery</p>
+        </div>
+        <nav class="space-y-2 text-sm">
+          <a href="/forum" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-comments text-teal-500 mr-2"></i>Forum</a>
+          <a href="/blog" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-blog text-teal-500 mr-2"></i>Blog</a>
+          <a href="/study-groups" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-users text-teal-500 mr-2"></i>Study Groups</a>
+          <a href="/quizzes" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-circle-question text-teal-500 mr-2"></i>Quizzes</a>
+          <a href="/surveys" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-square-poll-vertical text-teal-500 mr-2"></i>Surveys</a>
+          <a href="/challenges" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-trophy text-teal-500 mr-2"></i>Challenges</a>
+          <a href="/progress" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-chart-line text-teal-500 mr-2"></i>Progress</a>
+          <a href="/calendar" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-calendar-days text-teal-500 mr-2"></i>Calendar</a>
+        </nav>
+      </aside>
+      <section class="flex-1 bg-gray-50 dark:bg-gray-900 p-4 lg:p-6" data-records-page data-server-rendered="true" data-auth-required="false" data-group="community" data-models="web.Meme" data-title="Edu Memes" data-noun="memes">
+        <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
+          <div>
+            <p class="text-sm uppercase tracking-wide text-teal-600 dark:text-teal-300 font-bold">Community gallery</p>
+            <h2 class="text-3xl font-bold mt-1 text-gray-900 dark:text-gray-100">Edu Memes</h2>
+            <p class="text-gray-600 dark:text-gray-400 mt-2 max-w-3xl">Browse educational memes from the Alpha One Labs community.</p>
+          </div>
+          <div class="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+            <span id="records-count" class="text-2xl font-black text-teal-600 dark:text-teal-300">{% records_count models="web.Meme" auth_required="false" %} memes
+          </div>
+        </div>
+        <div id="records-status" class="hidden mb-4"></div>
+        <div id="records-list" class="space-y-4">
+          {% records_list models="web.Meme" noun="memes" auth_required="false" %}
+        </div>
+      </section>
+    </div>
+  </main>
+<script src="/js/current-records.js" defer></script>
+{% endblock %}
