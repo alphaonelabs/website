@@ -5,6 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}" />
   <title>{% block title %}Alpha One Labs{% endblock %}</title>
+  <script>
+    (function () {
+      const protectedPaths = new Set([
+        '/calendar',
+        '/dashboard',
+        '/features',
+        '/messages',
+        '/notification-preferences',
+        '/notifications',
+        '/profile',
+        '/progress',
+        '/quizzes',
+        '/surveys',
+        '/teach'
+      ]);
+
+      function cleanPath(path) {
+        const trimmed = (path || '/').replace(/\/+$/, '') || '/';
+        return trimmed.replace(/^\/en(?=\/|$)/, '') || '/';
+      }
+
+      function storedAuthExists() {
+        try {
+          return !!localStorage.getItem('edu_token') && !!localStorage.getItem('edu_user');
+        } catch (_) {
+          return false;
+        }
+      }
+
+      function redirectToLogin(returnTo) {
+        document.documentElement.classList.add('auth-redirecting');
+        try {
+          sessionStorage.setItem('post_login_redirect', returnTo || location.pathname + location.search + location.hash);
+        } catch (_) {
+          /* Ignore private browsing storage failures. */
+        }
+        location.replace('/login');
+      }
+
+      window.redirectToLogin = redirectToLogin;
+
+      if (protectedPaths.has(cleanPath(location.pathname)) && !storedAuthExists()) {
+        redirectToLogin();
+      }
+    })();
+  </script>
   <link rel="icon" type="image/png" href="/images/logo.png" />
   <link rel="preconnect" href="https://cdn.tailwindcss.com" />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
@@ -17,6 +63,7 @@
   </script>
   <style>
     html, body { overflow-x: hidden; box-sizing: border-box; }
+    html.auth-redirecting body { visibility: hidden; }
     .dark { color-scheme: dark; }
     :root { color-scheme: light; }
   </style>
