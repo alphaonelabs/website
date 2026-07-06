@@ -423,7 +423,7 @@
                 </h2>
                 <div class="flex flex-wrap items-center justify-center gap-6">
                     <a href="https://opensciencelabs.org/" target="_blank" rel="noopener" class="block">
-                        <img src="./images/logo-osl.svg" alt="Open Science Lab" >
+                        <img src="./images/logo-osl.svg" alt="Open Science Lab" loading="lazy" decoding="async">
                     </a>
                 </div>
                 <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
@@ -435,7 +435,7 @@
     
         <section class="max-w-[90rem] mx-auto px-4 md:px-6 pb-10 text-center">
           <a href="https://gsoc.alphaonelabs.com" target="_blank" rel="noopener" class="inline-flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-sm font-bold text-gray-700 dark:text-gray-200 hover:border-teal-500 hover:text-teal-600 dark:hover:text-teal-300 transition">
-            <img src="/images/gsoc-logo.png" alt="Google Summer of Code" class="h-8 w-auto" onerror="this.style.display='none'">
+            <img src="/images/gsoc-logo.png" alt="Google Summer of Code" class="h-8 w-auto" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <span>GSOC 2027 opportunities</span>
             <i class="fas fa-arrow-up-right-from-square text-xs"></i>
           </a>
@@ -508,8 +508,7 @@
       }
       function runHomeIdle(fn) {
         const schedule = () => {
-          if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 2500 });
-          else setTimeout(fn, 350);
+          setTimeout(fn, 1800);
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule, { once: true });
         else schedule();

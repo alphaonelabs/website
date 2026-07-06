@@ -5254,7 +5254,7 @@ def _server_activity_card_html(activity: Dict[str, Any], *, home: bool = False) 
         '<article class="group bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">'
         f'<a href="{href}" class="block">'
         '<div class="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">'
-        f'<img src="{image}" alt="{title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" onerror="this.remove();">'
+        f'<img src="{image}" alt="{title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" fetchpriority="low" onerror="this.remove();">'
         '</div>'
         '<div class="p-5">'
         '<div class="flex items-center justify-between gap-3 mb-3">'

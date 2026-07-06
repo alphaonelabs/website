@@ -58,6 +58,15 @@ window.getGuestCartToken = getGuestCartToken;
 window.cartHumanProof = cartHumanProof;
 window.cartRequestHeaders = cartRequestHeaders;
 
+function runLayoutIdle(fn, delay) {
+    const run = () => setTimeout(fn, delay || 900);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run, { once: true });
+    } else {
+        run();
+    }
+}
+
 // ── Dark mode utilities ───────────────────────────────────────────────
 window.toggleDarkMode = function () {
     const isDark = document.documentElement.classList.toggle('dark');
@@ -153,8 +162,8 @@ function updateAuthSection() {
         if (mobileAvatarEl) mobileAvatarEl.textContent = firstLetter;
         if (mobileGreetingEl) mobileGreetingEl.textContent = `Hi, ${firstName}`;
 
-        startUnreadPolling();
-        refreshCartBadge();
+        runLayoutIdle(startUnreadPolling, 1200);
+        runLayoutIdle(refreshCartBadge, 1200);
     } else {
         // User is not logged in
         if (notLoggedInDiv) notLoggedInDiv.classList.remove('hidden');
@@ -171,7 +180,7 @@ function updateAuthSection() {
         const cartLink = document.getElementById('cart-nav-link');
         if (cartLink) cartLink.classList.add('hidden');
         stopUnreadPolling();
-        refreshCartBadge();
+        runLayoutIdle(refreshCartBadge, 1200);
     }
 }
 
