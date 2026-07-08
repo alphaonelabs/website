@@ -2909,15 +2909,6 @@ SSR_RECORD_PAGES = {
         "noun": "posts",
         "private": False,
     },
-    "/study-groups": {
-        "title": "Study Groups",
-        "kicker": "Learn together",
-        "description": "Browse study groups and group invitations from the learning community.",
-        "group": "community",
-        "models": ["web.StudyGroup", "web.StudyGroupInvite"],
-        "noun": "groups",
-        "private": False,
-    },
     "/quizzes": {
         "title": "Quizzes",
         "kicker": "Assessments",
@@ -3129,7 +3120,7 @@ def _language_prefixed_target(path: str) -> Optional[str]:
 
     if route in LEGACY_LANGUAGE_ROUTE_ALIASES:
         return LEGACY_LANGUAGE_ROUTE_ALIASES[route]
-    for old_prefix, new_prefix in (("/courses/", "/activity/"), ("/course/", "/activity/"), ("/classes/", "/activity/")):
+    for old_prefix, new_prefix in (("/courses/", "/activity/"), ("/course/", "/activity/"), ("/classes/", "/activity/"), ("/study-groups/", "/activity/"), ("/study-group/", "/activity/")):
         if route.startswith(old_prefix):
             return new_prefix + route[len(old_prefix):]
 
@@ -6092,6 +6083,9 @@ async def _dispatch(request, env):
     route_path = path[:-5] if path.endswith(".html") else path
     if len(route_path) > 1 and route_path.endswith("/"):
         route_path = route_path.rstrip("/")
+    m_study_group = re.fullmatch(r"/study-groups?/([^/]+)", route_path)
+    if method == "GET" and m_study_group:
+        return _redirect_to_current_route(request, f"/activity/{m_study_group.group(1)}")
     if method == "GET" and route_path in ("/activity", "/activity.html"):
         activity_query = parse_qs(urlparse(request.url).query)
         if activity_query.get("slug") or activity_query.get("id"):
