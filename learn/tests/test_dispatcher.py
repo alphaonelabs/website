@@ -280,3 +280,10 @@ class TestStudyGroupRedirection:
         r = await worker._dispatch(req, env)
         assert r.status == 302
         assert r.headers.get("Location") == "http://localhost/activity/my-awesome-group"
+
+    async def test_study_group_singular_slug_redirects_to_activity_slug(self):
+        env = make_env()
+        req = MockRequest(method="GET", url="http://localhost/study-group/my-awesome-group")
+        r = await worker._dispatch(req, env)
+        assert r.status == 302
+        assert r.headers.get("Location") == "http://localhost/activity/my-awesome-group"
