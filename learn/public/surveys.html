@@ -136,7 +136,7 @@
       const needsScale = q.type === 'scale';
       return '<div class="question bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600" data-q="' + idx + '">' +
         '<div class="flex justify-between items-center mb-3 gap-2">' +
-          '<select data-field="type" class="question-type-selector p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600">' +
+          '<select data-field="type" aria-label="Question type" class="question-type-selector p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600">' +
             ['mcq', 'checkbox', 'text', 'true_false', 'scale'].map(function (t) {
               return '<option value="' + t + '"' + (q.type === t ? ' selected' : '') + '>' + esc(typeLabel(t)) + '</option>';
             }).join('') +
@@ -144,7 +144,7 @@
           '<label class="flex items-center text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" data-field="required" class="mr-2"' + (q.required ? ' checked' : '') + '>Required</label>' +
           (questions.length > 1 ? '<button type="button" data-remove="' + idx + '" class="text-red-500 hover:text-red-700 text-xl leading-none">&times;</button>' : '') +
         '</div>' +
-        '<input type="text" data-field="text" value="' + esc(q.text) + '" placeholder="Question text" class="w-full p-2 mb-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800" />' +
+        '<input type="text" data-field="text" aria-label="Question text" value="' + esc(q.text) + '" placeholder="Question text" class="w-full p-2 mb-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800" />' +
         (needsChoices ? '<textarea data-field="choices" placeholder="Enter choices (one per line)" rows="4" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800">' + esc(q.choices) + '</textarea>' : '') +
         (needsScale ? '<div class="flex gap-3"><input type="number" data-field="scale_min" value="' + esc(q.scale_min) + '" placeholder="Min" min="1" max="99" class="w-1/2 p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" /><input type="number" data-field="scale_max" value="' + esc(q.scale_max) + '" placeholder="Max" min="2" max="100" class="w-1/2 p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" /></div>' : '') +
       '</div>';
@@ -317,6 +317,10 @@
 
   // Results view
   async function renderResults(id) {
+    if (!token) {
+      app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center"><p class="text-gray-600 dark:text-gray-300 mb-4">Sign in to view survey results.</p><a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a></div>';
+      return;
+    }
     app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">Loading results&hellip;</div>';
     let r;
     try {
@@ -347,9 +351,13 @@
     const questionCards = r.results.map(function (res, i) {
       let body;
       if (res.type === 'text') {
-        body = res.text_answers.length
-          ? '<ul class="space-y-2 max-h-64 overflow-y-auto">' + res.text_answers.map(function (t) { return '<li class="p-2 rounded bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-300">' + esc(t) + '</li>'; }).join('') + '</ul>'
-          : '<div class="p-6 text-center text-gray-500"><i class="fa-solid fa-chart-simple text-2xl mb-2"></i><p>No responses for this question yet</p></div>';
+        if (res.text_answers.length) {
+          body = '<ul class="space-y-2 max-h-64 overflow-y-auto">' + res.text_answers.map(function (t) { return '<li class="p-2 rounded bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-300">' + esc(t) + '</li>'; }).join('') + '</ul>';
+        } else if (res.total > 0 && !r.is_creator) {
+          body = '<div class="p-6 text-center text-gray-500"><i class="fa-solid fa-lock text-2xl mb-2"></i><p>Only the survey creator can view text responses</p></div>';
+        } else {
+          body = '<div class="p-6 text-center text-gray-500"><i class="fa-solid fa-chart-simple text-2xl mb-2"></i><p>No responses for this question yet</p></div>';
+        }
       } else if (res.total > 0) {
         const total = res.data.reduce(function (a, b) { return a + b; }, 0) || 1;
         body = res.labels.map(function (label, idx) {
@@ -393,6 +401,11 @@
       '</div>';
 
     document.getElementById('export-data').addEventListener('click', function () {
+      function csvCell(value) {
+        const str = String(value == null ? '' : value);
+        const safe = /^[=+\-@\t\r]/.test(str) ? "'" + str : str;
+        return '"' + safe.replace(/"/g, '""') + '"';
+      }
       const BOM = '﻿';
       let csv = BOM + 'Question,Option,Responses,Percentage\n';
       r.results.forEach(function (res) {
@@ -400,7 +413,7 @@
         res.labels.forEach(function (label, idx) {
           const count = res.data[idx];
           const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-          csv += '"' + res.text.replace(/"/g, '""') + '","' + label.replace(/"/g, '""') + '",' + count + ',' + pct + '%\n';
+          csv += csvCell(res.text) + ',' + csvCell(label) + ',' + count + ',' + pct + '%\n';
         });
       });
       const link = document.createElement('a');

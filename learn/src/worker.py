@@ -3010,19 +3010,27 @@ async def api_create_survey(req, env):
 
     survey_id = new_id()
 
-    async def run():
-        await env.DB.prepare(
+    stmts = [
+        env.DB.prepare(
             "INSERT INTO surveys (id,user_id,title,description) VALUES (?,?,?,?)"
-        ).bind(survey_id, user["id"], title, description).run()
-        for pos, q in enumerate(prepared_questions):
-            question_id = new_id()
-            await env.DB.prepare(
+        ).bind(survey_id, user["id"], title, description)
+    ]
+    for pos, q in enumerate(prepared_questions):
+        question_id = new_id()
+        stmts.append(
+            env.DB.prepare(
                 "INSERT INTO survey_questions (id,survey_id,text,type,required,position) VALUES (?,?,?,?,?,?)"
-            ).bind(question_id, survey_id, q["text"], q["type"], 1 if q["required"] else 0, pos).run()
-            for cpos, choice_text in enumerate(q["choices"]):
-                await env.DB.prepare(
+            ).bind(question_id, survey_id, q["text"], q["type"], 1 if q["required"] else 0, pos)
+        )
+        for cpos, choice_text in enumerate(q["choices"]):
+            stmts.append(
+                env.DB.prepare(
                     "INSERT INTO survey_choices (id,question_id,text,position) VALUES (?,?,?,?)"
-                ).bind(new_id(), question_id, choice_text, cpos).run()
+                ).bind(new_id(), question_id, choice_text, cpos)
+            )
+
+    async def run():
+        await env.DB.batch(stmts)
 
     try:
         await _survey_db(env, run)
@@ -3144,15 +3152,21 @@ async def api_submit_survey(req, env, survey_id: str):
 
     response_id = new_id()
 
-    async def run():
-        await env.DB.prepare(
+    stmts = [
+        env.DB.prepare(
             "INSERT INTO survey_responses (id,survey_id,user_id) VALUES (?,?,?)"
-        ).bind(response_id, survey_id, user["id"]).run()
-        for question_id, choice_id, text_value in to_insert:
-            enc_text = await encrypt_aes(text_value, env.ENCRYPTION_KEY) if text_value is not None else None
-            await env.DB.prepare(
+        ).bind(response_id, survey_id, user["id"])
+    ]
+    for question_id, choice_id, text_value in to_insert:
+        enc_text = await encrypt_aes(text_value, env.ENCRYPTION_KEY) if text_value is not None else None
+        stmts.append(
+            env.DB.prepare(
                 "INSERT INTO survey_answers (id,response_id,question_id,choice_id,text_value) VALUES (?,?,?,?,?)"
-            ).bind(new_id(), response_id, question_id, choice_id, enc_text).run()
+            ).bind(new_id(), response_id, question_id, choice_id, enc_text)
+        )
+
+    async def run():
+        await env.DB.batch(stmts)
 
     try:
         await run()
@@ -3204,12 +3218,17 @@ async def api_delete_survey(req, env, survey_id: str):
 
 
 async def api_survey_results(req, env, survey_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
     async def run():
         survey = await env.DB.prepare(
-            "SELECT id,title FROM surveys WHERE id=?"
+            "SELECT id,title,user_id FROM surveys WHERE id=?"
         ).bind(survey_id).first()
         if not survey:
             return None
+        is_creator = user["id"] == survey.user_id
 
         q_res = await env.DB.prepare(
             "SELECT id,text,type,required,position FROM survey_questions WHERE survey_id=? ORDER BY position ASC"
@@ -3264,10 +3283,11 @@ async def api_survey_results(req, env, survey_id: str):
                 "text_answers": [],
             }
             if q.type == "text":
-                for a in qanswers:
-                    val = await decrypt_aes(a.text_value or "", env.ENCRYPTION_KEY)
-                    if val:
-                        entry["text_answers"].append(val)
+                if is_creator:
+                    for a in qanswers:
+                        val = await decrypt_aes(a.text_value or "", env.ENCRYPTION_KEY)
+                        if val:
+                            entry["text_answers"].append(val)
             else:
                 choice_list = choices_by_question.get(q.id, [])
                 counts = {c.id: 0 for c in choice_list}
@@ -3313,6 +3333,7 @@ async def api_survey_results(req, env, survey_id: str):
         return {
             "id": survey.id,
             "title": survey.title,
+            "is_creator": is_creator,
             "total_participants": total_participants,
             "response_rate": response_rate,
             "engagement_score": engagement_score,
