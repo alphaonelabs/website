@@ -79,7 +79,7 @@
                     Create & Manage Your Activities
                 </h1>
                 <p class="text-lg md:text-xl text-orange-50 max-w-2xl mx-auto mb-8">
-                    Host courses, workshops, meetups, clubs, events, videos, and seminars. Reach learners worldwide and build your teaching community.
+                    Host courses, study groups, workshops, meetups, clubs, events, videos, and seminars. Reach learners worldwide and build your teaching community.
                 </p>
                 <a href="#host-content" class="inline-flex items-center gap-2 bg-white text-orange-600 font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     <i class="fas fa-arrow-down"></i>
@@ -128,6 +128,7 @@
                                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Type</label>
                                 <select id="a-type" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm">
                                     <option value="course">📚 Course</option>
+                                    <option value="study_group">👥 Study Group</option>
                                     <option value="workshop">🔧 Workshop</option>
                                     <option value="meetup">🤝 Meetup</option>
                                     <option value="seminar">🎤 Seminar</option>
@@ -278,9 +279,10 @@ function logout() {
 }
 
 // Type icons and colors
-const typeIcon = { course: '📚', meetup: '🤝', workshop: '🔧', seminar: '🎤', club: '🏛', event: '📅', video: '🎬', other: '✨' };
+const typeIcon = { course: '📚', study_group: '👥', meetup: '🤝', workshop: '🔧', seminar: '🎤', club: '🏛', event: '📅', video: '🎬', other: '✨' };
 const typeColor = {
     course: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+    study_group: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
     meetup: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
     workshop: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
     seminar: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
