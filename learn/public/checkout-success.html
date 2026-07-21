@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Checkout Complete - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 flex items-center justify-center px-4 py-16">
+    <section class="max-w-xl w-full rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl p-8 text-center">
+      <div id="status-icon" class="w-16 h-16 mx-auto mb-5 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+        <i class="fas fa-spinner fa-spin text-3xl text-teal-600 dark:text-teal-400"></i>
+      </div>
+      <h1 id="status-title" class="text-3xl font-extrabold mb-3">Confirming payment...</h1>
+      <p id="status-copy" class="text-gray-600 dark:text-gray-300 mb-6">We are confirming your Stripe payment and unlocking your activities.</p>
+      <a id="primary-link" href="/dashboard" class="inline-flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-3 rounded-xl">
+        <i class="fas fa-chart-line"></i>Go to Dashboard
+      </a>
+    </section>
+  </main>
+<script>
+    const token = localStorage.getItem('edu_token');
+    function getGuestCartToken() {
+      try {
+        return localStorage.getItem('guest_cart_token') || '';
+      } catch (_) {
+        return '';
+      }
+    }
+    function cartHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      else headers['X-Guest-Cart'] = getGuestCartToken();
+      return headers;
+    }
+    async function completeCheckout() {
+      const params = new URLSearchParams(location.search);
+      const sessionId = params.get('session_id');
+      if (!sessionId) throw new Error('Missing checkout session.');
+      if (!token && !getGuestCartToken()) throw new Error('Missing guest cart session. Please contact support with your Stripe receipt.');
+      const res = await fetch('/api/checkout/complete', {
+        method: 'POST',
+        headers: cartHeaders(),
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not confirm checkout.');
+      document.getElementById('status-icon').innerHTML = '<i class="fas fa-check text-3xl text-teal-600 dark:text-teal-400"></i>';
+      document.getElementById('status-title').textContent = 'Payment confirmed';
+      document.getElementById('status-copy').textContent = body.message || 'Your activities are now available on your dashboard.';
+      if (!token) {
+        const link = document.getElementById('primary-link');
+        link.href = '/login?tab=register';
+        link.innerHTML = '<i class="fas fa-user-plus"></i>Create Account';
+      }
+      if (window.refreshCartBadge) window.refreshCartBadge();
+    }
+    completeCheckout().catch(err => {
+      document.getElementById('status-icon').className = 'w-16 h-16 mx-auto mb-5 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center';
+      document.getElementById('status-icon').innerHTML = '<i class="fas fa-triangle-exclamation text-3xl text-red-600 dark:text-red-400"></i>';
+      document.getElementById('status-title').textContent = 'Checkout needs attention';
+      document.getElementById('status-copy').textContent = err.message;
+    });
+  </script>
+{% endblock %}

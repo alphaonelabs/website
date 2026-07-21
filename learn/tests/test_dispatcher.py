@@ -257,3 +257,33 @@ class TestInitAndSeedRouting:
         req = MockRequest(method="GET", url="http://localhost/api/init")
         r = await worker._dispatch(req, env)
         assert r.status == 404
+
+# Study groups redirection
+class TestStudyGroupRedirection:
+    async def test_study_groups_serves_static_page(self):
+        env = make_env()
+        set_static_content(env, "<html>study groups</html>")
+        req = MockRequest(method="GET", url="http://localhost/study-groups")
+        r = await worker._dispatch(req, env)
+        assert r.status == 200
+
+    async def test_study_groups_html_serves_static_page(self):
+        env = make_env()
+        set_static_content(env, "<html>study groups</html>")
+        req = MockRequest(method="GET", url="http://localhost/study-groups.html")
+        r = await worker._dispatch(req, env)
+        assert r.status == 200
+
+    async def test_study_group_slug_redirects_to_activity_slug(self):
+        env = make_env()
+        req = MockRequest(method="GET", url="http://localhost/study-groups/my-awesome-group")
+        r = await worker._dispatch(req, env)
+        assert r.status == 302
+        assert r.headers.get("Location") == "http://localhost/activity/my-awesome-group"
+
+    async def test_study_group_singular_slug_redirects_to_activity_slug(self):
+        env = make_env()
+        req = MockRequest(method="GET", url="http://localhost/study-group/my-awesome-group")
+        r = await worker._dispatch(req, env)
+        assert r.status == 302
+        assert r.headers.get("Location") == "http://localhost/activity/my-awesome-group"

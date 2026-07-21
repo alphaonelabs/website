@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found - Alpha One Labs{% endblock %}
+{% block meta_description %}This Alpha One Labs page could not be found.{% endblock %}
+{% block content %}
+<main class="flex-1 bg-gradient-to-br from-teal-50 via-white to-cyan-50 dark:from-gray-950 dark:via-black dark:to-teal-950">
+  <section class="max-w-4xl mx-auto px-4 md:px-6 py-20 text-center">
+    <div class="mx-auto mb-8 h-20 w-20 rounded-3xl bg-teal-600 text-white flex items-center justify-center shadow-xl shadow-teal-600/20">
+      <i class="fas fa-map-signs text-3xl"></i>
+    </div>
+    <p class="text-sm font-black uppercase tracking-[0.3em] text-teal-700 dark:text-teal-300 mb-3">404</p>
+    <h1 class="text-4xl md:text-6xl font-black text-gray-950 dark:text-white mb-5">This page moved or retired</h1>
+    <p class="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">
+      The link you opened may be an old language-prefixed URL or a page from a feature that is no longer active.
+    </p>
+    <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Requested path: <code class="rounded bg-white dark:bg-gray-900 px-2 py-1">{{ requested_path }}</code></p>
+    <div class="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+      <a href="/" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-3 shadow-lg">
+        <i class="fas fa-home"></i>Go home
+      </a>
+      <a href="/activity" class="inline-flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 font-bold px-6 py-3 border border-teal-200 dark:border-teal-800 shadow-lg">
+        <i class="fas fa-graduation-cap"></i>Browse activities
+      </a>
+    </div>
+  </section>
+</main>
+{% endblock %}

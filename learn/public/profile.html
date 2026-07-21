@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Profile - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 container mx-auto px-4 py-6"><div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <aside class="lg:col-span-1"><div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700"><div class="flex items-center justify-between mb-6"><h1 class="text-2xl font-bold">Profile</h1><span id="teacher-badge" class="hidden bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 text-sm font-medium px-3 py-1 rounded-full">Teacher</span></div><div class="mb-6 flex flex-col items-center"><div id="avatar" class="w-32 h-32 rounded-full bg-orange-500 flex items-center justify-center text-white text-4xl mb-4">A</div><h2 id="profile-username" class="text-lg font-medium">Account</h2><p id="profile-email" class="text-sm text-gray-500 dark:text-gray-400"></p></div><a href="/notification-preferences" class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded text-sm"><i class="fas fa-bell mr-2"></i>Edit Notification Preferences</a></div></aside>
+  <section class="lg:col-span-2"><form id="profile-form" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700 space-y-5"><div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"><div class="flex items-center mb-2"><i class="fas fa-shield-alt text-teal-600 dark:text-teal-400 mr-2"></i><h3 class="text-sm font-medium">Profile Visibility</h3></div><label class="inline-flex items-center gap-2"><input id="is_profile_public" name="is_profile_public" type="checkbox" class="h-4 w-4 text-teal-600"><span class="text-sm">Public profile visible</span></label><p class="text-xs text-gray-600 dark:text-gray-300 italic mt-2">Public profiles share your bio, expertise, and username. Real name and email remain private.</p></div>
+    <div><label class="block text-sm font-medium mb-1">Display Name</label><input id="name" name="name" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div>
+    <div><label class="block text-sm font-medium mb-1">Areas of Expertise</label><input id="expertise" name="expertise" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div>
+    <div><label class="block text-sm font-medium mb-1">Bio</label><textarea id="bio" name="bio" rows="6" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></textarea></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="block text-sm font-medium mb-1">Discord</label><input id="discord_username" name="discord_username" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div><div><label class="block text-sm font-medium mb-1">Slack</label><input id="slack_username" name="slack_username" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div><div><label class="block text-sm font-medium mb-1">GitHub</label><input id="github_username" name="github_username" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div></div>
+    <div><label class="block text-sm font-medium mb-1">How did you hear about us?</label><input id="how_did_you_hear_about_us" name="how_did_you_hear_about_us" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div>
+    <label class="inline-flex items-center gap-2"><input id="is_teacher" name="is_teacher" type="checkbox" class="h-4 w-4 text-teal-600"><span class="text-sm">I teach or host activities</span></label>
+    <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded"><i class="fas fa-save mr-2"></i>Update Profile</button><p id="profile-status" class="text-sm text-gray-500 dark:text-gray-400"></p>
+  </form>
+    <section id="delete-account-card" class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-red-200 dark:border-red-900">
+      <h2 class="text-xl font-bold text-red-700 dark:text-red-300 mb-2"><i class="fas fa-user-slash mr-2"></i>Delete Account</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">This anonymizes your login, removes profile data, preferences, notifications, enrollments, carts, and learning requests, and archives activities you hosted.</p>
+      <label class="block text-sm font-medium mb-1" for="delete-confirmation">Type DELETE to confirm</label>
+      <input id="delete-confirmation" class="w-full rounded-lg border border-red-300 dark:border-red-800 bg-white dark:bg-gray-900 px-3 py-2 mb-3" autocomplete="off">
+      <button id="delete-account-button" type="button" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded"><i class="fas fa-trash mr-2"></i>Delete my account</button>
+      <p id="delete-account-status" class="text-sm text-gray-500 dark:text-gray-400 mt-3"></p>
+    </section>
+  </section>
+</div></main>
+<script>
+const token = localStorage.getItem('edu_token');
+if (!token) { sessionStorage.setItem('post_login_redirect', '/profile'); window.location.href = '/login'; }
+const fields = ['name','expertise','bio','discord_username','slack_username','github_username','how_did_you_hear_about_us'];
+function setVal(id, value){ const el=document.getElementById(id); if(el) el.value=value||''; }
+function initials(name){ return String(name || 'A').trim().slice(0,1).toUpperCase() || 'A'; }
+async function loadProfile(){ const res=await fetch('/api/profile',{headers:{Authorization:'Bearer '+token}}); const body=await res.json(); if(!res.ok) throw new Error(body.error||'Could not load profile'); const p=body.profile||{}; fields.forEach(id=>setVal(id,p[id])); document.getElementById('is_teacher').checked=!!p.is_teacher; document.getElementById('is_profile_public').checked=!!p.is_profile_public; document.getElementById('teacher-badge').classList.toggle('hidden', !p.is_teacher); document.getElementById('profile-username').textContent=p.username||p.name||'Account'; document.getElementById('profile-email').textContent=p.email||''; document.getElementById('avatar').textContent=initials(p.name||p.username); }
+document.getElementById('profile-form').addEventListener('submit', async e=>{ e.preventDefault(); const status=document.getElementById('profile-status'); status.textContent='Saving profile...'; const body=Object.fromEntries(new FormData(e.currentTarget).entries()); body.is_teacher=document.getElementById('is_teacher').checked; body.is_profile_public=document.getElementById('is_profile_public').checked; try{ const res=await fetch('/api/profile',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)}); const data=await res.json(); if(!res.ok) throw new Error(data.error||'Could not update profile'); status.textContent=data.message||'Profile updated.'; }catch(err){ status.textContent=err.message; }});
+document.getElementById('delete-account-button').addEventListener('click', async () => {
+  const status = document.getElementById('delete-account-status');
+  const confirmation = document.getElementById('delete-confirmation').value.trim();
+  if (confirmation !== 'DELETE') { status.textContent = 'Type DELETE to confirm.'; return; }
+  if (!window.confirm('Delete this account? This cannot be undone.')) return;
+  status.textContent = 'Deleting account...';
+  try {
+    const res = await fetch('/api/profile', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ confirmation }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not delete account');
+    localStorage.removeItem('edu_token');
+    localStorage.removeItem('edu_user');
+    sessionStorage.clear();
+    window.location.href = '/';
+  } catch (err) {
+    status.textContent = err.message;
+  }
+});
+loadProfile().catch(err=>{ document.getElementById('profile-status').textContent=err.message; });
+</script>
+{% endblock %}

@@ -70,9 +70,9 @@ class TestApiRegister:
         assert r.status == 200
         data = _parse(r)
         assert data["success"] is True
-        assert "token" in data["data"]
-        assert data["data"]["user"]["username"] == "alice"
-        assert data["data"]["user"]["role"] == "member"
+        # Registration no longer returns a token — user must verify email first.
+        assert data.get("data") is None
+        assert "email" in data["message"].lower()
 
     async def test_name_defaults_to_username(self):
         env = make_env(db=MockDB([make_stmt()]))
@@ -80,7 +80,7 @@ class TestApiRegister:
             self._req({"username": "bob", "email": "bob@example.com", "password": "password123"}), env
         )
         data = _parse(r)
-        assert data["data"]["user"]["name"] == "bob"
+        assert data["success"] is True  # name is stored in DB, not returned in response
 
     async def test_custom_name_preserved(self):
         env = make_env(db=MockDB([make_stmt()]))
@@ -89,7 +89,7 @@ class TestApiRegister:
             env,
         )
         data = _parse(r)
-        assert data["data"]["user"]["name"] == "Robert"
+        assert data["success"] is True  # name is stored in DB, not returned in response
 
     async def test_duplicate_user_returns_409(self):
         # Simulate UNIQUE constraint violation from D1
@@ -112,15 +112,16 @@ class TestApiRegister:
         )
         assert r.status == 500
 
-    async def test_token_is_verifiable(self):
+    async def test_registration_sends_verification_message(self):
+        # Registration no longer issues a token; user must verify email first.
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
             self._req({"username": "alice", "email": "a@b.com", "password": "password123"}), env
         )
-        token = _parse(r)["data"]["token"]
-        payload = worker.verify_token(token, JWT)
-        assert payload is not None
-        assert payload["username"] == "alice"
+        assert r.status == 200
+        data = _parse(r)
+        assert data["success"] is True
+        assert "email" in data["message"].lower()
 
     async def test_invalid_json_returns_400(self):
         req = MockRequest(method="POST", url="http://localhost/api/register",
@@ -145,6 +146,7 @@ class TestApiLogin:
             role=_enc(role),
             name=_enc(name),
             username=_enc(username),
+            email_verified=1,
         )
 
     async def test_missing_username_returns_400(self):

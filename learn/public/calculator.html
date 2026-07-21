@@ -1,0 +1,638 @@
+{% extends "base.html" %}
+
+{% block title %}Graphing Calculator{% endblock %}
+{% block content %}
+  <div class="flex flex-col md:flex-row h-screen bg-gray-100 dark:bg-gray-900">
+    <!-- Sidebar -->
+    <div class="w-full md:w-80 bg-white dark:bg-gray-800 shadow-lg p-4 overflow-y-auto">
+      <h1 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">Graphing Calculator</h1>
+      <!-- Input and Add Function -->
+      <div class="mb-6">
+        <label for="equationInput"
+               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enter Equation</label>
+        <div class="flex space-x-2">
+          <input type="text"
+                 id="equationInput"
+                 placeholder="e.g., y = sin(x)"
+                 class="flex-grow p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:text-white text-sm" />
+          <button onclick="addEquation()"
+                  class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none">Add</button>
+        </div>
+      </div>
+      <!-- Function List -->
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Functions</h2>
+        <div id="functionList" class="space-y-2 max-h-40 overflow-y-auto">
+          <!-- Functions will be added here dynamically -->
+        </div>
+        <button onclick="clearAll()"
+                class="mt-2 w-full px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none text-sm">
+          Clear All
+        </button>
+      </div>
+      <!-- Quick Examples -->
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Examples</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="addExample('y = x^2')"
+                  class="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
+            Parabola
+          </button>
+          <button onclick="addExample('y = sin(x)')"
+                  class="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
+            Sine Wave
+          </button>
+          <button onclick="addExample('x^2 + y^2 = 25')"
+                  class="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
+            Circle
+          </button>
+          <button onclick="addExample('y = tan(x)')"
+                  class="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
+            Tangent
+          </button>
+          <button onclick="addExample('y = log(x)')"
+                  class="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
+            Logarithm
+          </button>
+          <button onclick="addExample('y = e^x')"
+                  class="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
+            Exponential
+          </button>
+        </div>
+      </div>
+      <!-- Zoom and Navigation Controls -->
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Controls</h2>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+          <button onclick="zoomIn()"
+                  class="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none text-sm">
+            Zoom In
+          </button>
+          <button onclick="resetView()"
+                  class="p-2 bg-gray-500 text-white rounded hover:bg-gray-600 focus:outline-none text-sm">
+            Reset
+          </button>
+          <button onclick="zoomOut()"
+                  class="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none text-sm">
+            Zoom Out
+          </button>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="panLeft()"
+                  class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
+            ← Pan
+          </button>
+          <button onclick="panUp()"
+                  class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
+            ↑ Pan
+          </button>
+          <button onclick="panRight()"
+                  class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
+            Pan →
+          </button>
+          <button onclick="toggleGridLines()"
+                  class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
+            Toggle Grid
+          </button>
+          <button onclick="panDown()"
+                  class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
+            ↓ Pan
+          </button>
+          <button onclick="exportImage()"
+                  class="p-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Export</button>
+        </div>
+      </div>
+      <!-- Settings -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Settings</h2>
+        <div class="space-y-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grid Size</label>
+            <input type="range"
+                   id="gridSize"
+                   min="20"
+                   max="80"
+                   value="40"
+                   class="w-full"
+                   oninput="updateGridSize(this.value)" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Main Graph Area -->
+    <div class="flex-grow p-4 flex items-center justify-center">
+      <div class="relative w-full h-full max-w-4xl max-h-3xl">
+        <canvas id="graphCanvas"
+                class="border rounded-lg shadow bg-white dark:bg-gray-700 w-full h-full"></canvas>
+        <div id="coordinates"
+             class="absolute bottom-2 right-2 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm text-gray-700 dark:text-gray-300">
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Include math.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+  <script>
+      // Canvas setup
+      const canvas = document.getElementById('graphCanvas');
+      const ctx = canvas.getContext('2d');
+      let equations = [];
+      let colors = ["#3B82F6", "#EF4444", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"];
+
+      // Resize canvas to match container size
+      function resizeCanvas() {
+          const container = canvas.parentElement;
+          canvas.width = container.clientWidth;
+          canvas.height = container.clientHeight;
+          // Reset origin to center if not already set
+          if (!origin.x || !origin.y) {
+              origin.x = canvas.width / 2;
+              origin.y = canvas.height / 2;
+          }
+          redraw();
+      }
+
+      window.addEventListener('load', resizeCanvas);
+      window.addEventListener('resize', resizeCanvas);
+
+      // Coordinate system settings
+      let scale = 40; // pixels per unit
+      let origin = {
+          x: canvas.width / 2,
+          y: canvas.height / 2
+      };
+      let showGrid = true;
+
+      // Function to check if dark mode is currently active
+      function isDarkModeActive() {
+          return document.documentElement.classList.contains('dark');
+      }
+
+      // Mouse interaction for dragging (panning)
+      let isDragging = false;
+      let lastMousePos = {
+          x: 0,
+          y: 0
+      };
+
+      canvas.addEventListener('mousedown', (e) => {
+          isDragging = true;
+          lastMousePos = {
+              x: e.clientX,
+              y: e.clientY
+          };
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const mathCoords = toMathCoords(x, y);
+          document.getElementById('coordinates').textContent = `x: ${mathCoords.x.toFixed(2)}, y: ${mathCoords.y.toFixed(2)}`;
+
+          if (isDragging) {
+              const dx = e.clientX - lastMousePos.x;
+              const dy = e.clientY - lastMousePos.y;
+              origin.x += dx;
+              origin.y += dy;
+              lastMousePos = {
+                  x: e.clientX,
+                  y: e.clientY
+              };
+              redraw();
+          }
+      });
+
+      canvas.addEventListener('mouseup', () => {
+          isDragging = false;
+      });
+      canvas.addEventListener('mouseleave', () => {
+          isDragging = false;
+      });
+
+      // Zoom with mouse wheel
+      canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          const mousePos = toMathCoords(mouseX, mouseY);
+          const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+          const newScale = scale * zoomFactor;
+          origin.x = mouseX - mousePos.x * newScale;
+          origin.y = mouseY + mousePos.y * newScale;
+          scale = newScale;
+          redraw();
+      });
+
+      // Draw grid, axes, and labels
+      function drawGrid() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const darkMode = isDarkModeActive();
+          const backgroundColor = darkMode ? "#1F2937" : "#FFFFFF";
+          const gridColor = darkMode ? "#4B5563" : "#E5E7EB";
+          const axisColor = darkMode ? "#D1D5DB" : "#000000";
+          const textColor = darkMode ? "#D1D5DB" : "#000000";
+          ctx.fillStyle = backgroundColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          const xStart = Math.floor((0 - origin.x) / scale);
+          const xEnd = Math.ceil((canvas.width - origin.x) / scale);
+          const yStart = Math.floor((0 - origin.y) / scale);
+          const yEnd = Math.ceil((canvas.height - origin.y) / scale);
+
+          if (showGrid) {
+              ctx.strokeStyle = gridColor;
+              ctx.lineWidth = 1;
+              for (let x = xStart; x <= xEnd; x++) {
+                  const canvasX = origin.x + x * scale;
+                  ctx.beginPath();
+                  ctx.moveTo(canvasX, 0);
+                  ctx.lineTo(canvasX, canvas.height);
+                  ctx.stroke();
+              }
+              for (let y = yStart; y <= yEnd; y++) {
+                  const canvasY = origin.y - y * scale;
+                  ctx.beginPath();
+                  ctx.moveTo(0, canvasY);
+                  ctx.lineTo(canvas.width, canvasY);
+                  ctx.stroke();
+              }
+          }
+
+          // Draw axes
+          ctx.strokeStyle = axisColor;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, origin.y);
+          ctx.lineTo(canvas.width, origin.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(origin.x, 0);
+          ctx.lineTo(origin.x, canvas.height);
+          ctx.stroke();
+
+          // Draw labels on axes
+          ctx.fillStyle = textColor;
+          ctx.font = '12px Arial';
+          ctx.textAlign = 'center';
+          for (let x = xStart; x <= xEnd; x++) {
+              if (x === 0) continue;
+              const canvasX = origin.x + x * scale;
+              ctx.beginPath();
+              ctx.moveTo(canvasX, origin.y - 5);
+              ctx.lineTo(canvasX, origin.y + 5);
+              ctx.stroke();
+              ctx.fillText(x.toString(), canvasX, origin.y + 20);
+          }
+          ctx.textAlign = 'right';
+          for (let y = yStart; y <= yEnd; y++) {
+              if (y === 0) continue;
+              const canvasY = origin.y - y * scale;
+              ctx.beginPath();
+              ctx.moveTo(origin.x - 5, canvasY);
+              ctx.lineTo(origin.x + 5, canvasY);
+              ctx.stroke();
+              ctx.fillText(y.toString(), origin.x - 10, canvasY + 4);
+          }
+          ctx.fillText("0", origin.x - 10, origin.y + 20);
+      }
+
+      // Coordinate conversion functions
+      function toCanvasCoords(x, y) {
+          return {
+              x: origin.x + x * scale,
+              y: origin.y - y * scale
+          };
+      }
+
+      function toMathCoords(cx, cy) {
+          return {
+              x: (cx - origin.x) / scale,
+              y: (origin.y - cy) / scale
+          };
+      }
+
+      // Plot explicit functions: y = f(x)
+      function plotExplicit(equation, color) {
+          let exprStr = equation.trim();
+          if (exprStr.startsWith("y=")) {
+              exprStr = exprStr.substring(2);
+          }
+          let compiled;
+          try {
+              compiled = math.compile(exprStr);
+          } catch (err) {
+              alert("Error in equation: " + err);
+              return;
+          }
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          let firstPoint = true;
+          const xMin = toMathCoords(0, 0).x;
+          const xMax = toMathCoords(canvas.width, 0).x;
+          const step = (xMax - xMin) / canvas.width;
+          for (let x = xMin; x <= xMax; x += step) {
+              let y;
+              try {
+                  y = compiled.evaluate({
+                      x
+                  });
+                  if (!isFinite(y)) {
+                      firstPoint = true;
+                      continue;
+                  }
+              } catch (err) {
+                  firstPoint = true;
+                  continue;
+              }
+              const {
+                  x: cx,
+                  y: cy
+              } = toCanvasCoords(x, y);
+              if (firstPoint) {
+                  ctx.moveTo(cx, cy);
+                  firstPoint = false;
+              } else {
+                  ctx.lineTo(cx, cy);
+              }
+          }
+          ctx.stroke();
+      }
+
+      // Linear interpolation helper for marching squares
+      function interpolate(p1, p2, v1, v2) {
+          let t = (0 - v1) / (v2 - v1);
+          return {
+              x: p1.x + t * (p2.x - p1.x),
+              y: p1.y + t * (p2.y - p1.y)
+          };
+      }
+
+      // Plot implicit functions using marching squares: f(x,y)=0
+      function plotImplicit(equation, color) {
+          const parts = equation.split("=");
+          if (parts.length !== 2) {
+              alert("Invalid implicit equation format.");
+              return;
+          }
+          const lhs = parts[0].trim();
+          const rhs = parts[1].trim();
+          const lhsCompiled = math.compile(lhs);
+          const rhsCompiled = math.compile(rhs);
+
+          function f(x, y) {
+              try {
+                  return lhsCompiled.evaluate({
+                      x,
+                      y
+                  }) - rhsCompiled.evaluate({
+                      x,
+                      y
+                  });
+              } catch (e) {
+                  return NaN;
+              }
+          }
+          const gridStep = 10;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let j = 0; j < canvas.height - gridStep; j += gridStep) {
+              for (let i = 0; i < canvas.width - gridStep; i += gridStep) {
+                  const topLeft = toMathCoords(i, j);
+                  const topRight = toMathCoords(i + gridStep, j);
+                  const bottomRight = toMathCoords(i + gridStep, j + gridStep);
+                  const bottomLeft = toMathCoords(i, j + gridStep);
+                  const v1 = f(topLeft.x, topLeft.y);
+                  const v2 = f(topRight.x, topRight.y);
+                  const v3 = f(bottomRight.x, bottomRight.y);
+                  const v4 = f(bottomLeft.x, bottomLeft.y);
+                  let index = 0;
+                  if (v1 > 0) index |= 1;
+                  if (v2 > 0) index |= 2;
+                  if (v3 > 0) index |= 4;
+                  if (v4 > 0) index |= 8;
+                  if (index === 0 || index === 15) continue;
+                  let points = [];
+                  if ((index & 1) !== (index & 2)) {
+                      points.push(interpolate({
+                          x: i,
+                          y: j
+                      }, {
+                          x: i + gridStep,
+                          y: j
+                      }, v1, v2));
+                  }
+                  if ((index & 2) !== (index & 4)) {
+                      points.push(interpolate({
+                          x: i + gridStep,
+                          y: j
+                      }, {
+                          x: i + gridStep,
+                          y: j + gridStep
+                      }, v2, v3));
+                  }
+                  if ((index & 8) !== (index & 4)) {
+                      points.push(interpolate({
+                          x: i,
+                          y: j + gridStep
+                      }, {
+                          x: i + gridStep,
+                          y: j + gridStep
+                      }, v4, v3));
+                  }
+                  if ((index & 1) !== (index & 8)) {
+                      points.push(interpolate({
+                          x: i,
+                          y: j
+                      }, {
+                          x: i,
+                          y: j + gridStep
+                      }, v1, v4));
+                  }
+                  if (points.length === 2) {
+                      ctx.moveTo(points[0].x, points[0].y);
+                      ctx.lineTo(points[1].x, points[1].y);
+                  } else if (points.length === 4) {
+                      ctx.moveTo(points[0].x, points[0].y);
+                      ctx.lineTo(points[1].x, points[1].y);
+                      ctx.moveTo(points[2].x, points[2].y);
+                      ctx.lineTo(points[3].x, points[3].y);
+                  }
+              }
+          }
+          ctx.stroke();
+      }
+
+      // Determine whether to plot explicit or implicit based on input format
+      function plotEquation(equation, color) {
+          if (equation.trim().startsWith("y=")) {
+              plotExplicit(equation, color);
+          } else if (equation.includes("=")) {
+              plotImplicit(equation, color);
+          } else {
+              plotExplicit("y=" + equation, color);
+          }
+      }
+
+      // Equation list manipulation
+      function addEquation() {
+          const eqInput = document.getElementById('equationInput');
+          let equation = eqInput.value.trim();
+          if (equation) {
+              const colorIndex = equations.length % colors.length;
+              equations.push({
+                  text: equation,
+                  color: colors[colorIndex],
+                  visible: true
+              });
+              updateFunctionList();
+              redraw();
+              eqInput.value = '';
+          }
+      }
+
+      function removeEquation(index) {
+          equations.splice(index, 1);
+          updateFunctionList();
+          redraw();
+      }
+
+      function toggleEquationVisibility(index) {
+          equations[index].visible = !equations[index].visible;
+          updateFunctionList();
+          redraw();
+      }
+
+      function clearAll() {
+          equations = [];
+          updateFunctionList();
+          redraw();
+      }
+
+      function addExample(equation) {
+          document.getElementById('equationInput').value = equation;
+          addEquation();
+      }
+
+      function updateFunctionList() {
+          const listContainer = document.getElementById('functionList');
+          listContainer.innerHTML = '';
+          equations.forEach((eq, index) => {
+              const item = document.createElement('div');
+              item.className = 'flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded';
+              const leftSection = document.createElement('div');
+              leftSection.className = 'flex items-center space-x-2';
+              const colorIndicator = document.createElement('div');
+              colorIndicator.className = 'w-3 h-3 rounded-full';
+              colorIndicator.style.backgroundColor = eq.color;
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.checked = eq.visible;
+              checkbox.className = 'rounded text-blue-600';
+              checkbox.onclick = () => toggleEquationVisibility(index);
+              const text = document.createElement('span');
+              text.className = 'text-sm text-gray-800 dark:text-gray-200';
+              text.textContent = eq.text;
+              leftSection.appendChild(colorIndicator);
+              leftSection.appendChild(checkbox);
+              leftSection.appendChild(text);
+              const deleteBtn = document.createElement('button');
+              deleteBtn.innerHTML = '&times;';
+              deleteBtn.className = 'text-red-500 hover:text-red-700 font-bold';
+              deleteBtn.onclick = () => removeEquation(index);
+              item.appendChild(leftSection);
+              item.appendChild(deleteBtn);
+              listContainer.appendChild(item);
+          });
+      }
+
+      // Redraw everything
+      function redraw() {
+          drawGrid();
+          equations.forEach(eq => {
+              if (eq.visible) {
+                  plotEquation(eq.text, eq.color);
+              }
+          });
+      }
+
+      // Pan/Zoom and Control functions
+      function zoomIn() {
+          scale *= 1.2;
+          redraw();
+      }
+
+      function zoomOut() {
+          scale *= 0.8;
+          redraw();
+      }
+
+      function resetView() {
+          scale = 40;
+          origin.x = canvas.width / 2;
+          origin.y = canvas.height / 2;
+          redraw();
+      }
+
+      function panLeft() {
+          origin.x += 50;
+          redraw();
+      }
+
+      function panRight() {
+          origin.x -= 50;
+          redraw();
+      }
+
+      function panUp() {
+          origin.y += 50;
+          redraw();
+      }
+
+      function panDown() {
+          origin.y -= 50;
+          redraw();
+      }
+
+      function toggleGridLines() {
+          showGrid = !showGrid;
+          redraw();
+      }
+
+      function updateGridSize(value) {
+          scale = parseInt(value);
+          redraw();
+      }
+
+      function exportImage() {
+          const link = document.createElement('a');
+          link.download = 'graph.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+      }
+
+      // Initialize on page load
+      window.addEventListener('load', () => {
+          resetView();
+      });
+
+      // Listen for changes to the document's dark mode class
+      const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+              if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                  // Redraw when dark mode class changes
+                  redraw();
+              }
+          });
+      });
+
+      // Start observing the document element for class changes
+      observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['class']
+      });
+  </script>
+{% endblock %}

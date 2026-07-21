@@ -1,16 +1,9 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Alpha One Labs - Host & Teach">
-    <meta name="keywords" content="education, host, teach, courses, Alpha One Labs">
-    <title>Host Hub – Alpha One Labs</title>
-
-    <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+{% extends "base.html" %}
+{% block title %}Host Hub – Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Host & Teach{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block head %}
+<meta name="keywords" content="education, host, teach, courses, Alpha One Labs">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -70,13 +63,9 @@
         .dark { color-scheme: dark; }
         :root { color-scheme: light; }
     </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-    <div id="site-navbar"></div>
-
-    <!-- ===== HERO SECTION ===== -->
+{% endblock %}
+{% block content %}
+<!-- ===== HERO SECTION ===== -->
     <section class="bg-gradient-to-br from-orange-600 via-orange-500 to-red-500 dark:from-orange-800 dark:via-orange-700 dark:to-red-800 relative overflow-hidden py-16 md:py-24">
         <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
             <i class="fas fa-chalkboard absolute top-10 left-10 text-6xl"></i>
@@ -90,7 +79,7 @@
                     Create & Manage Your Activities
                 </h1>
                 <p class="text-lg md:text-xl text-orange-50 max-w-2xl mx-auto mb-8">
-                    Host courses, workshops, meetups, and seminars. Reach learners worldwide and build your teaching community.
+                    Host courses, study groups, workshops, meetups, clubs, events, videos, and seminars. Reach learners worldwide and build your teaching community.
                 </p>
                 <a href="#host-content" class="inline-flex items-center gap-2 bg-white text-orange-600 font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     <i class="fas fa-arrow-down"></i>
@@ -139,9 +128,13 @@
                                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Type</label>
                                 <select id="a-type" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm">
                                     <option value="course">📚 Course</option>
+                                    <option value="study_group">👥 Study Group</option>
                                     <option value="workshop">🔧 Workshop</option>
                                     <option value="meetup">🤝 Meetup</option>
                                     <option value="seminar">🎤 Seminar</option>
+                                    <option value="club">🏛 Club</option>
+                                    <option value="event">📅 Event</option>
+                                    <option value="video">🎬 Video</option>
                                     <option value="other">✨ Other</option>
                                 </select>
                             </div>
@@ -266,11 +259,7 @@
 
         </div>
     </main>
-
-    <div id="site-footer"></div>
-
-    <script src="/js/layout.js" defer></script>
-    <script>
+<script>
       const API = '';
 const token = localStorage.getItem('edu_token');
 const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
@@ -286,16 +275,20 @@ function esc(s) {
 function logout() {
     localStorage.removeItem('edu_token');
     localStorage.removeItem('edu_user');
-    window.location.href = '/login.html';
+    window.location.href = '/login';
 }
 
 // Type icons and colors
-const typeIcon = { course: '📚', meetup: '🤝', workshop: '🔧', seminar: '🎤', other: '✨' };
+const typeIcon = { course: '📚', study_group: '👥', meetup: '🤝', workshop: '🔧', seminar: '🎤', club: '🏛', event: '📅', video: '🎬', other: '✨' };
 const typeColor = {
     course: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+    study_group: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
     meetup: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
     workshop: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
     seminar: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
+    club: 'bg-lime-100 dark:bg-lime-900/30 text-lime-700 dark:text-lime-300',
+    event: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300',
+    video: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300',
     other: 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'
 };
 const fmtLabel = { live: 'Live', self_paced: 'Self-paced', hybrid: 'Hybrid' };
@@ -303,7 +296,7 @@ const schedLabel = { one_time: 'One-time', multi_session: 'Multi-session', recur
 
 // Auth check
 if (!token || !user) {
-    window.location.href = '/login.html';
+    window.location.href = '/login';
 }
 
 let hostedActivities = [];
@@ -314,6 +307,10 @@ function showMsg(id, msg, isErr) {
     el.textContent = msg;
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+function activityUrl(a) {
+    return '/activity/' + encodeURIComponent(a && (a.slug || a.id) ? (a.slug || a.id) : '');
 }
 
 // Load hosted activities
@@ -327,7 +324,7 @@ async function loadHostedActivities() {
             if (res.status === 401) {
                 localStorage.removeItem('edu_token');
                 localStorage.removeItem('edu_user');
-                window.location.href = '/login.html';
+                window.location.href = '/login';
                 return;
             }
             throw new Error('Failed to load activities');
@@ -408,10 +405,10 @@ function renderActivityList() {
                     ${tagsList ? `<div class="flex flex-wrap gap-1">${tagsList}</div>` : ''}
                 </div>
                 <div class="flex gap-2 mt-3">
-                    <a href="/activity.html?id=${esc(a.id)}" class="text-xs font-semibold text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors">
+                    <a href="${activityUrl(a)}" class="text-xs font-semibold text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors">
                         <i class="fas fa-eye mr-1"></i>View
                     </a>
-                    <a href="/teach.html?activity_id=${esc(a.id)}" class="text-xs font-semibold text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors">
+                    <a href="/teach?activity_id=${esc(a.id)}" class="text-xs font-semibold text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 px-3 py-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors">
                         <i class="fas fa-sliders-h mr-1"></i>Manage
                     </a>
                 </div>
@@ -522,5 +519,4 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHostedActivities();
 });
     </script>
-</body>
-</html>
+{% endblock %}
