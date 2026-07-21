@@ -4,36 +4,239 @@
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
 {% block content %}
 <main class="flex-1 container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
-      <h1 class="text-3xl font-bold mb-4">Share feedback</h1>
-      <p class="text-gray-600 dark:text-gray-300 mb-8">Tell us what is confusing, broken, missing, or worth improving.</p>
-      <form id="feedback-form" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 space-y-6 border border-gray-100 dark:border-gray-700">
-        <input type="text" name="company_website" class="hidden" tabindex="-1" autocomplete="off" />
-        <div><label class="block text-sm font-medium mb-1">Name (Optional)</label><input name="name" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2" /></div>
-        <div><label class="block text-sm font-medium mb-1">Email (Optional)</label><input name="email" type="email" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2" /></div>
-        <div><label class="block text-sm font-medium mb-1">Your Feedback</label><textarea name="message" rows="7" required class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></textarea></div>
-        <button class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-lg transition" type="submit">Submit Feedback</button>
-        <p id="feedback-status" class="text-sm text-gray-500 dark:text-gray-400"></p>
-      </form>
+      <div class="relative max-w-[90rem] mx-auto px-4 md:px-6 text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-black mb-4">Share Your Feedback</h1>
+        <p class="text-gray-500 max-w-2xl mx-auto text-lg">
+          We value your feedback and are committed to continuously improving our platform. Please share your thoughts, suggestions, or concerns with us.
+        </p>
+      </div>
+    </section>
+
+    <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-16">
+      <div class="flex flex-col lg:flex-row gap-12 items-start">
+
+        <!-- Info sidebar -->
+        <div class="lg:w-80 flex-shrink-0 space-y-6">
+          <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-md">
+            <h2 class="font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+              <i class="fas fa-circle-info text-teal-500"></i> Why Your Feedback Matters
+            </h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              Your feedback directly shapes the future of Alpha One Labs. Every suggestion is reviewed by our team and influences our roadmap.
+            </p>
+          </div>
+
+          <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-md space-y-4">
+            <h2 class="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <i class="fas fa-envelope text-teal-500"></i> Other Ways to Reach Us
+            </h2>
+            <a href="https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg" target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
+              <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i class="fab fa-slack text-indigo-600 dark:text-indigo-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Slack</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Join our community</p>
+              </div>
+            </a>
+            <a href="https://github.com/AlphaOneLabs" target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
+              <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i class="fab fa-github text-gray-700 dark:text-gray-300"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">GitHub</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Open an issue</p>
+              </div>
+            </a>
+            <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener noreferrer"
+               class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
+              <div class="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <i class="fab fa-twitter text-sky-500"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Twitter / X</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">@alphaonelabs</p>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Feedback form -->
+        <div class="flex-1 min-w-0">
+
+          <!-- Success state (hidden by default) -->
+          <div id="success-state" class="hidden text-center py-16">
+            <div class="success-check w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto mb-6">
+              <i class="fas fa-check text-green-600 dark:text-green-400 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-3">Thank You for Your Feedback!</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+              We appreciate your input. Your feedback helps us continuously improve the Alpha One Labs experience.
+            </p>
+            <button type="button" onclick="resetForm()" class="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors">
+              <i class="fas fa-plus mr-2"></i>Submit More Feedback
+            </button>
+          </div>
+
+          <!-- Form -->
+          <form
+  id="feedback-form"
+  class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-3xl p-8 md:p-10 shadow-lg space-y-6"
+>
+            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <i class="fas fa-pen text-teal-500"></i> Your Feedback
+            </h2>
+
+            <!-- Error banner -->
+            <div id="error-banner" class="hidden p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm flex items-start gap-2">
+              <i class="fas fa-circle-exclamation mt-0.5 flex-shrink-0"></i>
+              <span id="error-message"></span>
+            </div>
+
+            <!-- Name -->
+            <div>
+              <label for="feedback-name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Name <span class="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <input
+  type="text"
+  id="feedback-name"
+  name="name"
+  maxlength="100"
+  placeholder="Your name (optional)"
+  class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+/>
+            </div>
+
+            <!-- Email -->
+            <div>
+              <label for="feedback-email" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Email <span class="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="email"
+                id="feedback-email"
+                name="email"
+                placeholder="Your email (optional)"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+              />
+              <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Provide your email if you'd like us to follow up with you.</p>
+            </div>
+
+            <!-- Feedback text -->
+            <div>
+              <label for="feedback-description" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Your Feedback <span class="text-red-500">*</span>
+              </label>
+              <textarea
+                id="feedback-description"
+                name="description"
+                rows="5"
+                required
+                placeholder="Your feedback..."
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none transition"
+              ></textarea>
+              <p id="char-count" class="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">0 / 5000</p>
+            </div>
+
+            <!-- Submit -->
+            <button
+              type="submit"
+              id="submit-btn"
+              class="w-full py-3.5 px-6 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+            >
+              <i class="fas fa-paper-plane"></i>
+              <span id="submit-label">Submit Feedback</span>
+            </button>
+          </form>
+
+        </div>
+      </div>
     </div>
   </main>
 <script>
-    document.getElementById('feedback-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = event.currentTarget;
-      const status = document.getElementById('feedback-status');
-      const token = localStorage.getItem('edu_token');
-      status.textContent = 'Submitting feedback...';
-      const body = Object.fromEntries(new FormData(form).entries());
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers.Authorization = 'Bearer ' + token;
-      try {
-        const res = await fetch('/api/feedback', { method: 'POST', headers, body: JSON.stringify(body) });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Could not submit feedback');
-        status.textContent = data.message || 'Thank you for the feedback.';
-        form.reset();
-      } catch (err) { status.textContent = err.message; }
+  const API = '';
+
+    const textarea = document.getElementById('feedback-description');
+    const charCount = document.getElementById('char-count');
+
+    textarea.addEventListener('input', () => {
+      const len = textarea.value.length;
+      charCount.textContent = `${len} / 5000`;
+      if (len > 5000) textarea.value = textarea.value.slice(0, 5000);
     });
+
+    function showError(msg) {
+      const banner = document.getElementById('error-banner');
+      document.getElementById('error-message').textContent = msg;
+      banner.classList.remove('hidden');
+      banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideError() {
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    function setLoading(loading) {
+      const btn = document.getElementById('submit-btn');
+      const label = document.getElementById('submit-label');
+      btn.disabled = loading;
+      label.textContent = loading ? 'Submitting...' : 'Submit Feedback';
+      btn.querySelector('i').className = loading ? 'fas fa-spinner fa-spin' : 'fas fa-paper-plane';
+    }
+
+    async function submitFeedback(e) {
+      e.preventDefault();
+      hideError();
+
+      const description = document.getElementById('feedback-description').value.trim();
+      if (!description) {
+        showError('Please enter your feedback before submitting.');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const payload = {
+          name: document.getElementById('feedback-name').value.trim() || null,
+          email: document.getElementById('feedback-email').value.trim() || null,
+          description,
+        };
+
+        const res = await fetch(`${API}/api/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to submit feedback. Please try again.');
+        }
+
+        // Show success
+        document.getElementById('feedback-form').classList.add('hidden');
+        const successEl = document.getElementById('success-state');
+        successEl.classList.remove('hidden');
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      } catch (err) {
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('feedback-form').reset();
+      document.getElementById('feedback-form').classList.remove('hidden');
+      document.getElementById('success-state').classList.add('hidden');
+      charCount.textContent = '0 / 5000';
+      hideError();
+    }
   </script>
 {% endblock %}
