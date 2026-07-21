@@ -127,9 +127,10 @@
     async function loadCounts() {
       setLoading();
       try {
-        const res = await fetch('/api/admin/table-counts', { cache: 'no-store' });
+        const adminBase = window.location.pathname.replace(/\/+$/, '');
+        const res = await fetch(adminBase + '/api/table-counts', { cache: 'no-store', credentials: 'same-origin' });
         if (!res.ok) {
-          throw new Error('HTTP ' + res.status + ' while loading admin stats');
+          throw new Error('HTTP ' + res.status + ' while loading admin stats. Open the admin page through the configured ADMIN_URL and sign in with Basic Auth.');
         }
         const data = await res.json();
         render(data.tables || []);

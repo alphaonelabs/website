@@ -6,7 +6,7 @@ compatibility_flags = ["python_workers"]
 [assets]
 directory = "./public"
 binding = "ASSETS"
-run_worker_first = ["/api/*"]
+run_worker_first = ["/api/*", "/media/*", "/admin", "/admin/*", "/admin-*", "/ref/*", "/activity/*", "/blog/*", "/en/*", "/es/*", "/fr/*", "/de/*", "/zh/*", "/*.html", "/", "/activity", "/classes-map", "/requests", "/waiting-rooms", "/cart", "/checkout-success", "/dashboard", "/donate", "/feedback", "/forgot-password", "/login", "/notification-preferences", "/notifications", "/profile", "/referral-leaderboard", "/reset-password", "/status", "/teach", "/verify-email", "/virtual-classroom", "/whiteboard", "/calculator", "/contributors", "/gsoc", "/about", "/terms", "/privacy", "/cookies", "/429", "/500", "/features", "/legacy-features", "/forum", "/blog", "/study-groups", "/quizzes", "/surveys", "/challenges", "/progress", "/grade-links", "/calendar", "/memes", "/success-stories", "/feature-votes", "/messages"]
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
 
@@ -16,6 +16,7 @@ not_found_handling = "404-page"
 binding = "DB"
 database_name = "education_db"
 database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
+migrations_dir = "migrations"
 
 
 # Virtual Classroom Durable Object
@@ -35,6 +36,10 @@ new_sqlite_classes = ["ClassroomDO"]
 tag = "v2"
 new_sqlite_classes = ["PresenceDO"]
 
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "alphaonelabs-production"
+
 
 [observability]
 enabled = false
@@ -50,3 +55,7 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
+
+
+[triggers]
+crons = ["0 13 * * *"]

@@ -170,6 +170,7 @@ class TestApiListActivities:
         env = make_env(db=MockDB(
             [failing_stmt]                      # first list query fails
             + [make_stmt() for _ in range(ddl_count)] # init_db DDL statements
+            + [make_stmt(), make_stmt()]        # init_db migration: ALTER TABLE + UPDATE
             + [
                 make_stmt(all_results=[row]),   # retried list query succeeds
                 make_stmt(all_results=[]),      # tags query
