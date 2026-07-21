@@ -15,29 +15,422 @@
           <a href="/blog" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-blog text-teal-500 mr-2"></i>Blog</a>
           <a href="/study-groups" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-users text-teal-500 mr-2"></i>Study Groups</a>
           <a href="/quizzes" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-circle-question text-teal-500 mr-2"></i>Quizzes</a>
-          <a href="/surveys" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-square-poll-vertical text-teal-500 mr-2"></i>Surveys</a>
+          <a href="/surveys" class="flex items-center py-2 px-3 text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 rounded-lg font-semibold"><i class="fa-solid fa-square-poll-vertical text-teal-500 mr-2"></i>Surveys</a>
           <a href="/challenges" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-trophy text-teal-500 mr-2"></i>Challenges</a>
           <a href="/progress" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-chart-line text-teal-500 mr-2"></i>Progress</a>
           <a href="/calendar" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-calendar-days text-teal-500 mr-2"></i>Calendar</a>
         </nav>
       </aside>
-      <section class="flex-1 bg-gray-50 dark:bg-gray-900 p-4 lg:p-6" data-records-page data-server-rendered="false" data-auth-required="true" data-group="assessment" data-models="web.Survey,web.Question,web.Choice,web.Response" data-title="Surveys" data-noun="survey records">
-        <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
-          <div>
-            <p class="text-sm uppercase tracking-wide text-teal-600 dark:text-teal-300 font-bold">Feedback and polls</p>
-            <h2 class="text-3xl font-bold mt-1 text-gray-900 dark:text-gray-100">Surveys</h2>
-            <p class="text-gray-600 dark:text-gray-400 mt-2 max-w-3xl">Review your surveys, questions, choices, and responses.</p>
-          </div>
-          <div class="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-            <span id="records-count" class="text-2xl font-black text-teal-600 dark:text-teal-300">{% records_count models="web.Survey,web.Question,web.Choice,web.Response" auth_required="true" %}  survey records
-          </div>
-        </div>
-        <div id="records-status" class="hidden mb-4"></div>
-        <div id="records-list" class="space-y-4">
-          {% records_list models="web.Survey,web.Question,web.Choice,web.Response" noun="survey records" auth_required="true" %}
-        </div>
+      <section class="flex-1 bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
+        <div id="survey-app"><div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">Loading surveys&hellip;</div></div>
       </section>
     </div>
   </main>
-<script src="/js/current-records.js" defer></script>
+<script>
+(function () {
+  const app = document.getElementById('survey-app');
+  const params = new URLSearchParams(location.search);
+  const token = localStorage.getItem('edu_token');
+  const authHeaders = token ? { Authorization: 'Bearer ' + token } : {};
+
+  function esc(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    const headers = Object.assign({}, authHeaders, opts.body ? { 'Content-Type': 'application/json' } : {});
+    const res = await fetch(path, Object.assign({}, opts, { headers }));
+    let body = {};
+    try { body = await res.json(); } catch (e) { /* no body */ }
+    if (!res.ok) throw new Error(body.error || 'Request failed');
+    return body;
+  }
+
+  function typeLabel(type) {
+    return { mcq: 'Multiple Choice', checkbox: 'Checkbox', text: 'Text', true_false: 'True / False', scale: 'Scale' }[type] || type;
+  }
+
+  // List view
+  async function renderList() {
+    app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">Loading surveys&hellip;</div>';
+    let surveys;
+    try {
+      const body = await api('/api/surveys');
+      surveys = body.surveys || [];
+    } catch (err) {
+      app.innerHTML = '<div class="rounded-lg border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-6 text-red-700 dark:text-red-300">' + esc(err.message) + '</div>';
+      return;
+    }
+
+    const createBtn = token
+      ? '<a href="/surveys?create=1" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-plus mr-2"></i>Create New Survey</a>'
+      : '<a href="/login" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in to create</a>';
+
+    let listHtml;
+    if (!surveys.length) {
+      listHtml = '<div class="p-8 text-center text-gray-500 dark:text-gray-400"><i class="fa-solid fa-clipboard-list text-4xl mb-4"></i><p class="mb-2">No surveys have been created yet.</p><p class="text-sm">Create your first survey to get started!</p></div>';
+    } else {
+      listHtml = '<ul class="divide-y divide-gray-200 dark:divide-gray-700">' + surveys.map(function (s) {
+        const badge = s.is_own ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"><i class="fa-solid fa-user-pen mr-1"></i>Your survey</span>' : '';
+        const submitted = s.already_submitted ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"><i class="fa-solid fa-check mr-1"></i>Submitted</span>' : '';
+        const deleteBtn = s.is_own
+          ? '<button data-delete-id="' + esc(s.id) + '" class="border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/50 font-medium px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-trash-alt mr-2"></i>Delete</button>'
+          : '';
+        return '<li class="hover:bg-gray-50 dark:hover:bg-gray-700/50">' +
+          '<div class="flex flex-wrap justify-between items-center gap-3 p-4">' +
+            '<div class="flex items-center min-w-0">' +
+              '<i class="fa-solid fa-clipboard-list text-teal-600 dark:text-teal-400 mr-3 text-lg shrink-0"></i>' +
+              '<div class="min-w-0">' +
+                '<a href="/surveys?id=' + esc(s.id) + '" class="text-lg font-medium text-gray-900 dark:text-gray-100 hover:text-teal-600 dark:hover:text-teal-400">' + esc(s.title) + '</a>' +
+                '<div class="flex flex-wrap items-center gap-2 mt-1">' +
+                  '<span class="text-sm text-gray-500 dark:text-gray-400">' + s.question_count + ' question' + (s.question_count === 1 ? '' : 's') + ' &bull; by ' + esc(s.author_name) + '</span>' +
+                  badge + submitted +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flex flex-wrap gap-2">' +
+              '<a href="/surveys?id=' + esc(s.id) + '" class="bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-pencil mr-2"></i>' + (s.already_submitted ? 'View' : 'Take Survey') + '</a>' +
+              '<a href="/surveys?id=' + esc(s.id) + '&results=1" class="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-chart-bar mr-2"></i>Results</a>' +
+              deleteBtn +
+            '</div>' +
+          '</div>' +
+        '</li>';
+      }).join('') + '</ul>';
+    }
+
+    app.innerHTML =
+      '<div class="flex flex-wrap justify-between items-center gap-4 mb-6">' +
+        '<div><p class="text-sm uppercase tracking-wide text-teal-600 dark:text-teal-300 font-bold">Feedback and polls</p><h2 class="text-3xl font-bold mt-1 text-gray-900 dark:text-gray-100">Surveys</h2></div>' +
+        createBtn +
+      '</div>' +
+      '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">' + listHtml + '</div>';
+
+    app.querySelectorAll('[data-delete-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () { deleteSurvey(btn.getAttribute('data-delete-id'), renderList); });
+    });
+  }
+
+  async function deleteSurvey(id, onDone) {
+    if (!confirm('Delete this survey? All responses and data will be permanently removed.')) return;
+    try {
+      await api('/api/surveys/' + encodeURIComponent(id), { method: 'DELETE' });
+      onDone();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // Create view
+  function renderCreate() {
+    if (!token) {
+      app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center"><p class="text-gray-600 dark:text-gray-300 mb-4">Sign in to create a survey.</p><a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a></div>';
+      return;
+    }
+
+    let questions = [{ text: '', type: 'mcq', required: true, choices: '', scale_min: 1, scale_max: 5 }];
+
+    function questionBlock(q, idx) {
+      const needsChoices = q.type === 'mcq' || q.type === 'checkbox';
+      const needsScale = q.type === 'scale';
+      return '<div class="question bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600" data-q="' + idx + '">' +
+        '<div class="flex justify-between items-center mb-3 gap-2">' +
+          '<select data-field="type" aria-label="Question type" class="question-type-selector p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600">' +
+            ['mcq', 'checkbox', 'text', 'true_false', 'scale'].map(function (t) {
+              return '<option value="' + t + '"' + (q.type === t ? ' selected' : '') + '>' + esc(typeLabel(t)) + '</option>';
+            }).join('') +
+          '</select>' +
+          '<label class="flex items-center text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" data-field="required" class="mr-2"' + (q.required ? ' checked' : '') + '>Required</label>' +
+          (questions.length > 1 ? '<button type="button" data-remove="' + idx + '" class="text-red-500 hover:text-red-700 text-xl leading-none">&times;</button>' : '') +
+        '</div>' +
+        '<input type="text" data-field="text" aria-label="Question text" value="' + esc(q.text) + '" placeholder="Question text" class="w-full p-2 mb-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800" />' +
+        (needsChoices ? '<textarea data-field="choices" placeholder="Enter choices (one per line)" rows="4" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800">' + esc(q.choices) + '</textarea>' : '') +
+        (needsScale ? '<div class="flex gap-3"><input type="number" data-field="scale_min" value="' + esc(q.scale_min) + '" placeholder="Min" min="1" max="99" class="w-1/2 p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" /><input type="number" data-field="scale_max" value="' + esc(q.scale_max) + '" placeholder="Max" min="2" max="100" class="w-1/2 p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" /></div>' : '') +
+      '</div>';
+    }
+
+    function draw() {
+      app.innerHTML =
+        '<h2 class="text-2xl font-bold mb-6 flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-clipboard-list text-teal-600 dark:text-teal-400 mr-2"></i>Create Survey</h2>' +
+        '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">' +
+          '<form id="survey-create-form" class="space-y-4">' +
+            '<div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label><input type="text" id="survey-title" required maxlength="200" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800" /></div>' +
+            '<div><label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label><textarea id="survey-description" rows="2" maxlength="2000" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"></textarea></div>' +
+            '<div id="survey-error" class="hidden p-3 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm"></div>' +
+            '<div class="mt-6">' +
+              '<h3 class="text-lg font-semibold mb-4 flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-question-circle text-teal-600 dark:text-teal-400 mr-2"></i>Survey Questions</h3>' +
+              '<div id="questions" class="space-y-4">' + questions.map(questionBlock).join('') + '</div>' +
+            '</div>' +
+            '<div class="flex flex-wrap gap-4 mt-4">' +
+              '<button type="button" id="add-question" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-plus mr-2"></i>Add Question</button>' +
+              '<button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-save mr-2"></i>Create Survey</button>' +
+              '<a href="/surveys" class="text-gray-600 dark:text-gray-400 hover:underline inline-flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i>Cancel</a>' +
+            '</div>' +
+          '</form>' +
+        '</div>';
+
+      document.getElementById('add-question').addEventListener('click', function () {
+        questions.push({ text: '', type: 'mcq', required: false, choices: '', scale_min: 1, scale_max: 5 });
+        draw();
+      });
+      app.querySelectorAll('[data-remove]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          questions.splice(parseInt(btn.getAttribute('data-remove'), 10), 1);
+          draw();
+        });
+      });
+      app.querySelectorAll('.question').forEach(function (block) {
+        const idx = parseInt(block.getAttribute('data-q'), 10);
+        block.querySelectorAll('[data-field]').forEach(function (field) {
+          const key = field.getAttribute('data-field');
+          const evt = field.tagName === 'SELECT' || field.type === 'checkbox' ? 'change' : 'input';
+          field.addEventListener(evt, function () {
+            questions[idx][key] = field.type === 'checkbox' ? field.checked : field.value;
+            if (key === 'type') draw();
+          });
+        });
+      });
+      document.getElementById('survey-create-form').addEventListener('submit', onSubmit);
+    }
+
+    async function onSubmit(e) {
+      e.preventDefault();
+      const errBox = document.getElementById('survey-error');
+      errBox.classList.add('hidden');
+      const payload = {
+        title: document.getElementById('survey-title').value.trim(),
+        description: document.getElementById('survey-description').value.trim(),
+        questions: questions.map(function (q) {
+          const out = { text: q.text.trim(), type: q.type, required: !!q.required };
+          if (q.type === 'mcq' || q.type === 'checkbox') out.choices = (q.choices || '').split('\n').map(function (c) { return c.trim(); }).filter(Boolean);
+          if (q.type === 'scale') { out.scale_min = parseInt(q.scale_min, 10); out.scale_max = parseInt(q.scale_max, 10); }
+          return out;
+        }),
+      };
+      try {
+        const body = await api('/api/surveys', { method: 'POST', body: JSON.stringify(payload) });
+        location.href = '/surveys?id=' + encodeURIComponent(body.data.id);
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    draw();
+  }
+
+  // Take view
+  async function renderDetail(id) {
+    app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">Loading survey&hellip;</div>';
+    let s;
+    try {
+      s = await api('/api/surveys/' + encodeURIComponent(id));
+    } catch (err) {
+      app.innerHTML = '<div class="rounded-lg border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-6 text-red-700 dark:text-red-300">' + esc(err.message) + '</div>';
+      return;
+    }
+
+    const deleteBtn = s.is_creator
+      ? '<button id="survey-delete-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-trash mr-2"></i>Delete</button>'
+      : '';
+
+    let bodyHtml;
+    if (!token) {
+      bodyHtml = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center"><p class="text-gray-600 dark:text-gray-300 mb-4">Sign in to take this survey.</p><a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a></div>';
+    } else if (s.already_submitted) {
+      bodyHtml = '<div class="p-4 mb-6 border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">' +
+        '<p class="font-medium">You&#39;ve already submitted this survey!</p>' +
+        '<a href="/surveys?id=' + esc(id) + '&results=1" class="text-teal-600 dark:text-teal-400 hover:underline mt-2 inline-block">View results</a></div>';
+    } else {
+      bodyHtml = '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">' +
+        '<form id="survey-take-form" class="space-y-6">' +
+          '<div id="survey-take-error" class="hidden p-3 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm"></div>' +
+          s.questions.map(function (q) {
+            const req = q.required ? '<span class="text-red-600 ml-1">*</span>' : '';
+            let field = '';
+            if (q.type === 'text') {
+              field = '<textarea name="q_' + esc(q.id) + '" class="w-full p-2 border rounded-md dark:bg-gray-900 dark:border-gray-600"' + (q.required ? ' required' : '') + '></textarea>';
+            } else if (q.type === 'checkbox') {
+              field = q.choices.map(function (c) {
+                return '<label class="block mb-2"><input type="checkbox" name="q_' + esc(q.id) + '" value="' + esc(c.id) + '" class="mr-2" />' + esc(c.text) + '</label>';
+              }).join('');
+            } else if (q.type === 'scale') {
+              field = '<select name="q_' + esc(q.id) + '" class="w-full p-2 border rounded-md dark:bg-gray-900 dark:border-gray-600"' + (q.required ? ' required' : '') + '>' +
+                '<option value="">Select a value</option>' +
+                q.choices.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.text) + '</option>'; }).join('') +
+              '</select>';
+            } else {
+              field = q.choices.map(function (c) {
+                return '<label class="block mb-2"><input type="radio" name="q_' + esc(q.id) + '" value="' + esc(c.id) + '" class="mr-2"' + (q.required ? ' required' : '') + ' />' + esc(c.text) + '</label>';
+              }).join('');
+            }
+            return '<div class="mb-6"><h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">' + esc(q.text) + req + '</h3>' + field + '</div>';
+          }).join('') +
+          '<div class="flex justify-between items-center mt-8">' +
+            '<a href="/surveys" class="text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i>Back to surveys</a>' +
+            '<button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-paper-plane mr-2"></i>Submit</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+    }
+
+    app.innerHTML =
+      '<div class="flex flex-wrap justify-between items-start gap-4 mb-6">' +
+        '<h2 class="text-2xl font-bold flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-poll text-teal-600 dark:text-teal-400 mr-2"></i>' + esc(s.title) + '</h2>' +
+        deleteBtn +
+      '</div>' +
+      (s.description ? '<p class="text-gray-600 dark:text-gray-400 mb-6 max-w-3xl">' + esc(s.description) + '</p>' : '') +
+      bodyHtml;
+
+    const delBtn = document.getElementById('survey-delete-btn');
+    if (delBtn) delBtn.addEventListener('click', function () { deleteSurvey(id, function () { location.href = '/surveys'; }); });
+
+    const form = document.getElementById('survey-take-form');
+    if (form) form.addEventListener('submit', function (e) { onSubmitTake(e, id, s); });
+  }
+
+  async function onSubmitTake(e, id, s) {
+    e.preventDefault();
+    const errBox = document.getElementById('survey-take-error');
+    errBox.classList.add('hidden');
+    const form = e.target;
+    const answers = {};
+    s.questions.forEach(function (q) {
+      if (q.type === 'checkbox') {
+        answers[q.id] = Array.from(form.querySelectorAll('input[name="q_' + q.id + '"]:checked')).map(function (el) { return el.value; });
+      } else if (q.type === 'text') {
+        answers[q.id] = (form.querySelector('textarea[name="q_' + q.id + '"]') || {}).value || '';
+      } else {
+        const checked = form.querySelector('input[name="q_' + q.id + '"]:checked, select[name="q_' + q.id + '"]');
+        answers[q.id] = checked ? checked.value : '';
+      }
+    });
+    try {
+      await api('/api/surveys/' + encodeURIComponent(id) + '/submit', { method: 'POST', body: JSON.stringify({ answers: answers }) });
+      location.href = '/surveys?id=' + encodeURIComponent(id) + '&results=1';
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove('hidden');
+    }
+  }
+
+  // Results view
+  async function renderResults(id) {
+    if (!token) {
+      app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center"><p class="text-gray-600 dark:text-gray-300 mb-4">Sign in to view survey results.</p><a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a></div>';
+      return;
+    }
+    app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">Loading results&hellip;</div>';
+    let r;
+    try {
+      r = await api('/api/surveys/' + encodeURIComponent(id) + '/results');
+    } catch (err) {
+      app.innerHTML = '<div class="rounded-lg border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-6 text-red-700 dark:text-red-300">' + esc(err.message) + '</div>';
+      return;
+    }
+
+    const header = '<div class="flex flex-wrap justify-between items-center gap-4 mb-6">' +
+      '<h2 class="text-2xl font-bold flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-chart-pie text-teal-600 dark:text-teal-400 mr-2"></i>' + esc(r.title) + ' Results</h2>' +
+      '<a href="/surveys?id=' + esc(id) + '" class="text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i>Back to survey</a>' +
+    '</div>';
+
+    if (!r.total_participants) {
+      app.innerHTML = header + '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center"><i class="fa-solid fa-chart-bar text-4xl text-gray-400 dark:text-gray-500 mb-4"></i><p class="text-gray-700 dark:text-gray-300">No responses have been submitted yet.</p></div>';
+      return;
+    }
+
+    function bar(label, count, pct, color) {
+      return '<div class="mb-3">' +
+        '<div class="flex justify-between text-sm mb-1"><span class="text-gray-700 dark:text-gray-300">' + esc(label) + '</span><span class="text-gray-500 dark:text-gray-400">' + count + ' (' + pct + '%)</span></div>' +
+        '<div class="h-2 rounded bg-gray-200 dark:bg-gray-700 overflow-hidden"><div class="h-full ' + color + '" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+    }
+    const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-red-500', 'bg-violet-500', 'bg-pink-500', 'bg-cyan-500', 'bg-teal-500'];
+
+    const questionCards = r.results.map(function (res, i) {
+      let body;
+      if (res.type === 'text') {
+        if (res.text_answers.length) {
+          body = '<ul class="space-y-2 max-h-64 overflow-y-auto">' + res.text_answers.map(function (t) { return '<li class="p-2 rounded bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-300">' + esc(t) + '</li>'; }).join('') + '</ul>';
+        } else if (res.total > 0 && !r.is_creator) {
+          body = '<div class="p-6 text-center text-gray-500"><i class="fa-solid fa-lock text-2xl mb-2"></i><p>Only the survey creator can view text responses</p></div>';
+        } else {
+          body = '<div class="p-6 text-center text-gray-500"><i class="fa-solid fa-chart-simple text-2xl mb-2"></i><p>No responses for this question yet</p></div>';
+        }
+      } else if (res.total > 0) {
+        const total = res.data.reduce(function (a, b) { return a + b; }, 0) || 1;
+        body = res.labels.map(function (label, idx) {
+          const pct = Math.round((res.data[idx] / total) * 100);
+          return bar(label, res.data[idx], pct, colors[idx % colors.length]);
+        }).join('');
+      } else {
+        body = '<div class="p-6 text-center text-gray-500"><i class="fa-solid fa-chart-simple text-2xl mb-2"></i><p>No responses for this question yet</p></div>';
+      }
+      return '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">' +
+        '<div class="border-b border-gray-200 dark:border-gray-700 p-4"><h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">' + esc(res.text) + '</h3><p class="text-sm text-gray-500 dark:text-gray-400">Total responses: ' + res.total + '</p></div>' +
+        '<div class="p-4">' + body + '</div>' +
+      '</div>';
+    }).join('');
+
+    const summaryParts = [];
+    if (r.top_choice) summaryParts.push('<p>Based on the survey results, <strong>' + esc(r.top_choice.text) + '</strong> was the most popular choice with ' + r.top_choice.percentage + '% of responses.</p>');
+    if (r.bottom_choice && r.bottom_choice.text !== (r.top_choice || {}).text) summaryParts.push('<p>The least chosen option was <strong>' + esc(r.bottom_choice.text) + '</strong> with only ' + r.bottom_choice.percentage + '% of total responses.</p>');
+    let takeaways = '<li>' + r.total_participants + ' people participated in this survey</li><li>' + r.results.length + ' questions were answered</li>';
+    if (r.most_answered_question) takeaways += '<li>The highest engagement was on question &quot;' + esc(r.most_answered_question.text) + '&quot;</li>';
+
+    app.innerHTML = header +
+      '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-8 shadow-sm">' +
+        '<div class="border-b border-gray-200 dark:border-gray-700 p-4"><h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Survey Overview</h3><p class="text-sm text-gray-500 dark:text-gray-400">Total questions: ' + r.results.length + ' &bull; Total participants: ' + r.total_participants + '</p></div>' +
+        '<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">' +
+          '<div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center"><div class="inline-flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-3"><i class="fa-solid fa-users text-blue-600 dark:text-blue-400 text-xl"></i></div><h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Response Rate</h4><p class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">' + r.response_rate + '%</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Required questions completed</p></div>' +
+          '<div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center"><div class="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-3"><i class="fa-solid fa-gauge-high text-green-600 dark:text-green-400 text-xl"></i></div><h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Engagement Score</h4><p class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">' + (r.engagement_score === null ? 'N/A' : r.engagement_score + '%') + '</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Based on question completion rate</p></div>' +
+        '</div>' +
+      '</div>' +
+      '<h3 class="text-xl font-semibold mb-4 flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-list-ol text-teal-600 dark:text-teal-400 mr-2"></i>Question Results</h3>' +
+      '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">' + questionCards + '</div>' +
+      '<div class="mt-8">' +
+        '<h3 class="text-xl font-semibold mb-4 flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-comments text-teal-600 dark:text-teal-400 mr-2"></i>Response Summary' +
+          '<button id="export-data" class="ml-auto px-3 py-1 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-md inline-flex items-center"><i class="fa-solid fa-download mr-1"></i>Export Data</button>' +
+        '</h3>' +
+        '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm text-gray-700 dark:text-gray-300">' +
+          summaryParts.join('') +
+          '<h4 class="font-semibold mt-4 mb-2 text-gray-900 dark:text-gray-100">Key Takeaways</h4>' +
+          '<ul class="list-disc list-inside space-y-1">' + takeaways + '</ul>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('export-data').addEventListener('click', function () {
+      function csvCell(value) {
+        const str = String(value == null ? '' : value);
+        const safe = /^[=+\-@\t\r]/.test(str) ? "'" + str : str;
+        return '"' + safe.replace(/"/g, '""') + '"';
+      }
+      const BOM = '﻿';
+      let csv = BOM + 'Question,Option,Responses,Percentage\n';
+      r.results.forEach(function (res) {
+        const total = res.data.reduce(function (a, b) { return a + b; }, 0);
+        res.labels.forEach(function (label, idx) {
+          const count = res.data[idx];
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          csv += csvCell(res.text) + ',' + csvCell(label) + ',' + count + ',' + pct + '%\n';
+        });
+      });
+      const link = document.createElement('a');
+      link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      link.download = 'survey_results.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  }
+
+  // Router
+  const id = params.get('id');
+  if (id && params.get('results')) renderResults(id);
+  else if (id) renderDetail(id);
+  else if (params.get('create')) renderCreate();
+  else renderList();
+})();
+</script>
 {% endblock %}

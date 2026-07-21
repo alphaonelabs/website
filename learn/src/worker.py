@@ -1259,6 +1259,55 @@ async def init_db(env):
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
         )""",
         "CREATE INDEX IF NOT EXISTS idx_feedback_messages_status ON feedback_messages(status, created_at)",
+        """CREATE TABLE IF NOT EXISTS surveys (
+            id          TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL,
+            title       TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_surveys_user ON surveys(user_id)",
+        """CREATE TABLE IF NOT EXISTS survey_questions (
+            id         TEXT PRIMARY KEY,
+            survey_id  TEXT NOT NULL,
+            text       TEXT NOT NULL,
+            type       TEXT NOT NULL DEFAULT 'mcq',
+            required   INTEGER NOT NULL DEFAULT 0,
+            position   INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_survey_questions_survey ON survey_questions(survey_id)",
+        """CREATE TABLE IF NOT EXISTS survey_choices (
+            id          TEXT PRIMARY KEY,
+            question_id TEXT NOT NULL,
+            text        TEXT NOT NULL,
+            position    INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (question_id) REFERENCES survey_questions(id) ON DELETE CASCADE
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_survey_choices_question ON survey_choices(question_id)",
+        """CREATE TABLE IF NOT EXISTS survey_responses (
+            id         TEXT PRIMARY KEY,
+            survey_id  TEXT NOT NULL,
+            user_id    TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (survey_id, user_id),
+            FOREIGN KEY (survey_id) REFERENCES surveys(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_survey_responses_survey ON survey_responses(survey_id)",
+        """CREATE TABLE IF NOT EXISTS survey_answers (
+            id          TEXT PRIMARY KEY,
+            response_id TEXT NOT NULL,
+            question_id TEXT NOT NULL,
+            choice_id   TEXT,
+            text_value  TEXT,
+            FOREIGN KEY (response_id) REFERENCES survey_responses(id) ON DELETE CASCADE,
+            FOREIGN KEY (question_id) REFERENCES survey_questions(id) ON DELETE CASCADE,
+            FOREIGN KEY (choice_id) REFERENCES survey_choices(id) ON DELETE SET NULL
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_survey_answers_response ON survey_answers(response_id)",
+        "CREATE INDEX IF NOT EXISTS idx_survey_answers_question ON survey_answers(question_id)",
     ]
     for sql in legacy_tables:
         await env.DB.prepare(sql).run()
@@ -2844,6 +2893,461 @@ async def api_list_subjects(_req, env):
             "icon": getattr(row, "icon", "") or "",
         })
     return json_resp({"subjects": subjects})
+
+
+# Surveys API
+
+SURVEY_QUESTION_TYPES = {"mcq", "checkbox", "text", "true_false", "scale"}
+SURVEY_CHOICE_TYPES = {"mcq", "checkbox", "true_false", "scale"}
+
+
+async def _survey_db(env, fn):
+    try:
+        return await fn()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            await init_db(env)
+            return await fn()
+        raise
+
+
+async def api_list_surveys(req, env):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT s.id,s.title,s.description,s.user_id,s.created_at,u.name AS author_name,"
+            " (SELECT COUNT(*) FROM survey_questions q WHERE q.survey_id=s.id) AS question_count,"
+            " (SELECT COUNT(*) FROM survey_responses r WHERE r.survey_id=s.id) AS response_count"
+            " FROM surveys s JOIN users u ON u.id=s.user_id"
+            " ORDER BY s.created_at DESC LIMIT 250"
+        ).all()
+        submitted_ids = set()
+        if user:
+            sub_res = await env.DB.prepare(
+                "SELECT survey_id FROM survey_responses WHERE user_id=?"
+            ).bind(user["id"]).all()
+            submitted_ids = {row.survey_id for row in (sub_res.results or [])}
+        surveys = []
+        for row in res.results or []:
+            author_name = await decrypt_aes(row.author_name or "", env.ENCRYPTION_KEY)
+            surveys.append({
+                "id": row.id,
+                "title": row.title,
+                "description": row.description or "",
+                "question_count": int(row.question_count or 0),
+                "response_count": int(row.response_count or 0),
+                "author_name": author_name or "Someone",
+                "is_own": bool(user and user["id"] == row.user_id),
+                "already_submitted": row.id in submitted_ids,
+                "created_at": row.created_at,
+            })
+        return surveys
+
+    surveys = await _survey_db(env, run)
+    return json_resp({"surveys": surveys})
+
+
+async def api_create_survey(req, env):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    title = str(body.get("title") or "").strip()[:200]
+    description = str(body.get("description") or "").strip()[:2000]
+    questions = body.get("questions") or []
+
+    if not title:
+        return err("Survey title is required")
+    if not isinstance(questions, list) or not questions:
+        return err("At least one question is required")
+    if len(questions) > 50:
+        return err("A survey can have at most 50 questions")
+
+    prepared_questions = []
+    for idx, q in enumerate(questions):
+        if not isinstance(q, dict):
+            return err(f"Question {idx + 1} is invalid")
+        q_text = str(q.get("text") or "").strip()[:500]
+        q_type = str(q.get("type") or "mcq").strip()
+        q_required = bool(q.get("required"))
+        if not q_text:
+            return err(f"Question {idx + 1} needs text")
+        if q_type not in SURVEY_QUESTION_TYPES:
+            return err(f"Question {idx + 1} has an invalid type")
+
+        choice_texts = []
+        if q_type == "true_false":
+            choice_texts = ["True", "False"]
+        elif q_type in ("mcq", "checkbox"):
+            raw_choices = q.get("choices") or []
+            if isinstance(raw_choices, str):
+                raw_choices = raw_choices.splitlines()
+            choice_texts = [str(c).strip()[:200] for c in raw_choices if str(c).strip()]
+            if len(choice_texts) < 2:
+                return err(f"Question {idx + 1} needs at least 2 choices")
+        elif q_type == "scale":
+            try:
+                scale_min = int(q.get("scale_min"))
+                scale_max = int(q.get("scale_max"))
+            except (TypeError, ValueError):
+                return err(f"Question {idx + 1} needs a valid scale range")
+            if scale_min < 1 or scale_max > 100 or scale_min >= scale_max:
+                return err(f"Question {idx + 1} has an invalid scale range")
+            if scale_max - scale_min > 20:
+                return err(f"Question {idx + 1} scale range is too wide (max span 20)")
+            choice_texts = [str(n) for n in range(scale_min, scale_max + 1)]
+
+        prepared_questions.append({
+            "text": q_text,
+            "type": q_type,
+            "required": q_required,
+            "choices": choice_texts,
+        })
+
+    survey_id = new_id()
+
+    stmts = [
+        env.DB.prepare(
+            "INSERT INTO surveys (id,user_id,title,description) VALUES (?,?,?,?)"
+        ).bind(survey_id, user["id"], title, description)
+    ]
+    for pos, q in enumerate(prepared_questions):
+        question_id = new_id()
+        stmts.append(
+            env.DB.prepare(
+                "INSERT INTO survey_questions (id,survey_id,text,type,required,position) VALUES (?,?,?,?,?,?)"
+            ).bind(question_id, survey_id, q["text"], q["type"], 1 if q["required"] else 0, pos)
+        )
+        for cpos, choice_text in enumerate(q["choices"]):
+            stmts.append(
+                env.DB.prepare(
+                    "INSERT INTO survey_choices (id,question_id,text,position) VALUES (?,?,?,?)"
+                ).bind(new_id(), question_id, choice_text, cpos)
+            )
+
+    async def run():
+        await env.DB.batch(stmts)
+
+    try:
+        await _survey_db(env, run)
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_create_survey")
+        return err("Could not create survey", 500)
+
+    return ok({"id": survey_id}, "Survey created")
+
+
+async def _load_survey_detail(env, survey_id: str, user_id: Optional[str]):
+    survey = await env.DB.prepare(
+        "SELECT s.id,s.title,s.description,s.user_id,s.created_at,u.name AS author_name"
+        " FROM surveys s JOIN users u ON u.id=s.user_id WHERE s.id=?"
+    ).bind(survey_id).first()
+    if not survey:
+        return None
+
+    q_res = await env.DB.prepare(
+        "SELECT id,text,type,required,position FROM survey_questions WHERE survey_id=? ORDER BY position ASC"
+    ).bind(survey_id).all()
+    questions = q_res.results or []
+
+    c_res = await env.DB.prepare(
+        "SELECT sc.id,sc.question_id,sc.text,sc.position FROM survey_choices sc"
+        " JOIN survey_questions sq ON sq.id=sc.question_id WHERE sq.survey_id=? ORDER BY sc.position ASC"
+    ).bind(survey_id).all()
+    choices_by_question: Dict[str, list] = {}
+    for c in c_res.results or []:
+        choices_by_question.setdefault(c.question_id, []).append({"id": c.id, "text": c.text})
+
+    already_submitted = False
+    if user_id:
+        resp = await env.DB.prepare(
+            "SELECT id FROM survey_responses WHERE survey_id=? AND user_id=?"
+        ).bind(survey_id, user_id).first()
+        already_submitted = bool(resp)
+
+    author_name = await decrypt_aes(survey.author_name or "", env.ENCRYPTION_KEY)
+    return {
+        "id": survey.id,
+        "title": survey.title,
+        "description": survey.description or "",
+        "author_name": author_name or "Someone",
+        "is_creator": bool(user_id and user_id == survey.user_id),
+        "already_submitted": already_submitted,
+        "created_at": survey.created_at,
+        "questions": [
+            {
+                "id": q.id,
+                "text": q.text,
+                "type": q.type,
+                "required": bool(q.required),
+                "choices": choices_by_question.get(q.id, []),
+            }
+            for q in questions
+        ],
+    }
+
+
+async def api_get_survey(req, env, survey_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+
+    async def run():
+        return await _load_survey_detail(env, survey_id, user["id"] if user else None)
+
+    detail = await _survey_db(env, run)
+    if not detail:
+        return err("Survey not found", 404)
+    return json_resp(detail)
+
+
+async def api_submit_survey(req, env, survey_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+    answers_in = body.get("answers") or {}
+    if not isinstance(answers_in, dict):
+        return err("answers must be an object")
+
+    detail = await _survey_db(env, lambda: _load_survey_detail(env, survey_id, user["id"]))
+    if not detail:
+        return err("Survey not found", 404)
+    if detail["already_submitted"]:
+        return err("You have already submitted this survey", 409)
+
+    to_insert = []  # list of (question_id, choice_id, text_value)
+    for q in detail["questions"]:
+        raw_value = answers_in.get(q["id"])
+        valid_choice_ids = {c["id"] for c in q["choices"]}
+
+        if q["type"] == "checkbox":
+            values = raw_value if isinstance(raw_value, list) else ([] if raw_value in (None, "") else [raw_value])
+            values = [str(v) for v in values if str(v).strip()]
+            if q["required"] and not values:
+                return err(f'"{q["text"]}" is required')
+            for v in values:
+                if v not in valid_choice_ids:
+                    return err(f'"{q["text"]}" has an invalid choice')
+                to_insert.append((q["id"], v, None))
+        elif q["type"] == "text":
+            value = str(raw_value or "").strip()[:5000]
+            if q["required"] and not value:
+                return err(f'"{q["text"]}" is required')
+            if value:
+                to_insert.append((q["id"], None, value))
+        else:  # mcq / true_false / scale
+            value = str(raw_value or "").strip()
+            if q["required"] and not value:
+                return err(f'"{q["text"]}" is required')
+            if value:
+                if value not in valid_choice_ids:
+                    return err(f'"{q["text"]}" has an invalid choice')
+                to_insert.append((q["id"], value, None))
+
+    response_id = new_id()
+
+    stmts = [
+        env.DB.prepare(
+            "INSERT INTO survey_responses (id,survey_id,user_id) VALUES (?,?,?)"
+        ).bind(response_id, survey_id, user["id"])
+    ]
+    for question_id, choice_id, text_value in to_insert:
+        enc_text = await encrypt_aes(text_value, env.ENCRYPTION_KEY) if text_value is not None else None
+        stmts.append(
+            env.DB.prepare(
+                "INSERT INTO survey_answers (id,response_id,question_id,choice_id,text_value) VALUES (?,?,?,?,?)"
+            ).bind(new_id(), response_id, question_id, choice_id, enc_text)
+        )
+
+    async def run():
+        await env.DB.batch(stmts)
+
+    try:
+        await run()
+    except Exception as exc:
+        if "UNIQUE" in str(exc).upper():
+            return err("You have already submitted this survey", 409)
+        await capture_exception(exc, req, env, "api_submit_survey")
+        return err("Could not submit survey", 500)
+
+    return ok(None, "Survey submitted")
+
+
+async def api_delete_survey(req, env, survey_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    async def run():
+        survey = await env.DB.prepare(
+            "SELECT id,user_id FROM surveys WHERE id=?"
+        ).bind(survey_id).first()
+        if not survey:
+            return "not_found"
+        if survey.user_id != user["id"]:
+            return "forbidden"
+        await env.DB.prepare(
+            "DELETE FROM survey_answers WHERE question_id IN (SELECT id FROM survey_questions WHERE survey_id=?)"
+        ).bind(survey_id).run()
+        await env.DB.prepare(
+            "DELETE FROM survey_responses WHERE survey_id=?"
+        ).bind(survey_id).run()
+        await env.DB.prepare(
+            "DELETE FROM survey_choices WHERE question_id IN (SELECT id FROM survey_questions WHERE survey_id=?)"
+        ).bind(survey_id).run()
+        await env.DB.prepare(
+            "DELETE FROM survey_questions WHERE survey_id=?"
+        ).bind(survey_id).run()
+        await env.DB.prepare(
+            "DELETE FROM surveys WHERE id=?"
+        ).bind(survey_id).run()
+        return "ok"
+
+    result = await _survey_db(env, run)
+    if result == "not_found":
+        return err("Survey not found", 404)
+    if result == "forbidden":
+        return err("Only the survey creator can delete it", 403)
+    return ok(None, "Survey deleted")
+
+
+async def api_survey_results(req, env, survey_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    async def run():
+        survey = await env.DB.prepare(
+            "SELECT id,title,user_id FROM surveys WHERE id=?"
+        ).bind(survey_id).first()
+        if not survey:
+            return None
+        is_creator = user["id"] == survey.user_id
+
+        q_res = await env.DB.prepare(
+            "SELECT id,text,type,required,position FROM survey_questions WHERE survey_id=? ORDER BY position ASC"
+        ).bind(survey_id).all()
+        questions = q_res.results or []
+
+        c_res = await env.DB.prepare(
+            "SELECT sc.id,sc.question_id,sc.text,sc.position FROM survey_choices sc"
+            " JOIN survey_questions sq ON sq.id=sc.question_id WHERE sq.survey_id=? ORDER BY sc.position ASC"
+        ).bind(survey_id).all()
+        choices_by_question: Dict[str, list] = {}
+        for c in c_res.results or []:
+            choices_by_question.setdefault(c.question_id, []).append(c)
+
+        resp_res = await env.DB.prepare(
+            "SELECT id FROM survey_responses WHERE survey_id=?"
+        ).bind(survey_id).all()
+        response_ids = [r.id for r in (resp_res.results or [])]
+        total_participants = len(response_ids)
+
+        a_res = await env.DB.prepare(
+            "SELECT sa.question_id,sa.choice_id,sa.text_value,sa.response_id FROM survey_answers sa"
+            " JOIN survey_questions sq ON sq.id=sa.question_id WHERE sq.survey_id=?"
+        ).bind(survey_id).all()
+        answers = a_res.results or []
+        answers_by_question: Dict[str, list] = {}
+        for a in answers:
+            answers_by_question.setdefault(a.question_id, []).append(a)
+
+        results = []
+        all_choice_stats = []
+        answered_per_response: Dict[str, set] = {rid: set() for rid in response_ids}
+        required_answered_per_response: Dict[str, set] = {rid: set() for rid in response_ids}
+        required_ids = {q.id for q in questions if q.required}
+
+        for q in questions:
+            qanswers = answers_by_question.get(q.id, [])
+            respondents = {a.response_id for a in qanswers}
+            for rid in respondents:
+                if rid in answered_per_response:
+                    answered_per_response[rid].add(q.id)
+                    if q.id in required_ids:
+                        required_answered_per_response[rid].add(q.id)
+
+            entry = {
+                "question_id": q.id,
+                "text": q.text,
+                "type": q.type,
+                "total": len(respondents),
+                "labels": [],
+                "data": [],
+                "text_answers": [],
+            }
+            if q.type == "text":
+                if is_creator:
+                    for a in qanswers:
+                        val = await decrypt_aes(a.text_value or "", env.ENCRYPTION_KEY)
+                        if val:
+                            entry["text_answers"].append(val)
+            else:
+                choice_list = choices_by_question.get(q.id, [])
+                counts = {c.id: 0 for c in choice_list}
+                for a in qanswers:
+                    if a.choice_id in counts:
+                        counts[a.choice_id] += 1
+                entry["labels"] = [c.text for c in choice_list]
+                entry["data"] = [counts[c.id] for c in choice_list]
+                choice_total = sum(entry["data"])
+                if choice_total > 0:
+                    for c in choice_list:
+                        pct = round(counts[c.id] / choice_total * 100)
+                        all_choice_stats.append({"text": c.text, "percentage": pct, "count": counts[c.id]})
+            results.append(entry)
+
+        engagement_score = None
+        response_rate = 0
+        if total_participants and questions:
+            engagement_score = round(
+                sum(len(v) / len(questions) for v in answered_per_response.values()) / total_participants * 100
+            )
+            if required_ids:
+                response_rate = round(
+                    sum(len(v) / len(required_ids) for v in required_answered_per_response.values())
+                    / total_participants * 100
+                )
+            else:
+                response_rate = 100
+
+        top_choice = None
+        bottom_choice = None
+        voted = [c for c in all_choice_stats if c["count"] > 0]
+        if voted:
+            top_choice = max(voted, key=lambda c: c["percentage"])
+            bottom_choice = min(voted, key=lambda c: c["percentage"])
+
+        most_answered_question = None
+        if results:
+            best = max(results, key=lambda r: r["total"])
+            if best["total"] > 0:
+                most_answered_question = {"text": best["text"]}
+
+        return {
+            "id": survey.id,
+            "title": survey.title,
+            "is_creator": is_creator,
+            "total_participants": total_participants,
+            "response_rate": response_rate,
+            "engagement_score": engagement_score,
+            "top_choice": top_choice,
+            "bottom_choice": bottom_choice,
+            "most_answered_question": most_answered_question,
+            "results": results,
+        }
+
+    payload = await _survey_db(env, run)
+    if payload is None:
+        return err("Survey not found", 404)
+    return json_resp(payload)
 
 
 LEGACY_FEATURE_GROUPS = {
@@ -6232,6 +6736,22 @@ async def _dispatch(request, env):
 
         if path == "/api/activity-tags" and method == "POST":
             return await api_add_activity_tags(request, env)
+
+        if path == "/api/surveys" and method == "GET":
+            return await api_list_surveys(request, env)
+        if path == "/api/surveys" and method == "POST":
+            return await api_create_survey(request, env)
+        m_survey_results = re.fullmatch(r"/api/surveys/([A-Za-z0-9_-]+)/results", path)
+        if m_survey_results and method == "GET":
+            return await api_survey_results(request, env, m_survey_results.group(1))
+        m_survey_submit = re.fullmatch(r"/api/surveys/([A-Za-z0-9_-]+)/submit", path)
+        if m_survey_submit and method == "POST":
+            return await api_submit_survey(request, env, m_survey_submit.group(1))
+        m_survey_item = re.fullmatch(r"/api/surveys/([A-Za-z0-9_-]+)", path)
+        if m_survey_item and method == "GET":
+            return await api_get_survey(request, env, m_survey_item.group(1))
+        if m_survey_item and method == "DELETE":
+            return await api_delete_survey(request, env, m_survey_item.group(1))
 
         if path == "/api/cart" and method == "GET":
             return await api_get_cart(request, env)
