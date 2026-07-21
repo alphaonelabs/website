@@ -33,6 +33,7 @@ Static HTML pages (public/) are served via Workers Sites (KV binding).
 """
 
 import base64
+import html as _html
 import datetime
 import hashlib
 import hmac as _hmac
@@ -6298,9 +6299,73 @@ async def _dispatch(request, env):
         if path == "/api/notification-preferences" and method == "PATCH":
             return await api_patch_notification_preferences(request, env)
 
+        # Feedback
+        if path == "/api/feedback" and method == "POST":
+            return await api_submit_feedback(request, env)
+
         return err("API endpoint not found", 404)
 
     return await serve_static(path, env, request)
+
+
+# Feedback API
+
+async def api_submit_feedback(request, env):
+    try:
+        body = json.loads(await request.text())
+    except (json.JSONDecodeError, ValueError):
+        return err("Invalid JSON", 400)
+
+    if not isinstance(body, dict):
+        return err("Invalid JSON", 400)
+
+    description = (body.get("description") or "").strip()
+    if not description:
+        return err("Feedback description is required", 400)
+    if len(description) > 5000:
+        return err("Feedback too long (max 5000 characters)", 400)
+
+    name  = (body.get("name")  or "Anonymous").strip() or "Anonymous"
+    email = (body.get("email") or "Not provided").strip() or "Not provided"
+
+    # Send via Mailgun to admin email
+    admin_email = (getattr(env, "ADMIN_EMAIL", "") or getattr(env, "EMAIL_FROM", "") or "").strip()
+    if admin_email:
+        subject = f"[Alpha One Labs] New Feedback from {name}"
+        safe_name = _html.escape(name)
+        safe_email = _html.escape(email)
+        safe_description = _html.escape(description)
+        html = f"""
+        <h2 style="color:#0d9488">New Feedback Received</h2>
+        <table style="border-collapse:collapse;width:100%;max-width:600px">
+          <tr><td style="padding:8px;font-weight:bold;width:120px">From</td><td style="padding:8px">{safe_name}</td></tr>
+          <tr style="background:#f9fafb"><td style="padding:8px;font-weight:bold">Email</td><td style="padding:8px">{safe_email}</td></tr>
+          <tr><td style="padding:8px;font-weight:bold;vertical-align:top">Feedback</td>
+              <td style="padding:8px;white-space:pre-wrap">{safe_description}</td></tr>
+        </table>
+        """
+        await _send_email_via_mailgun(admin_email, subject, html, env)
+
+    # Post to Slack if webhook is configured
+    slack_url = (getattr(env, "SLACK_WEBHOOK_URL", "") or "").strip()
+    if slack_url:
+        message = f"*New Feedback*\nFrom: {name}\nEmail: {email}\n\n{description}"
+        try:
+            options = to_js(
+                {
+                    "method": "POST",
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps({"text": message}),
+                },
+                dict_converter=js.Object.fromEntries,
+            )
+            resp = await js.fetch(slack_url, options)
+            if not resp.ok:
+                print(f"[feedback] Slack webhook returned {resp.status}")
+        except Exception as e:
+            print(f"[feedback] Slack webhook delivery failed: {e}")
+
+    return ok({"message": "Thank you for your feedback! We appreciate your input."})
 
 
 async def on_fetch(request, env):
