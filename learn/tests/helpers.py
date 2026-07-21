@@ -118,6 +118,8 @@ def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret
     env = MagicMock()
     env.ENCRYPTION_KEY = enc_key
     env.JWT_SECRET = jwt_secret
+    env.AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
+    env.AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
     env.ADMIN_BASIC_USER = admin_user
     env.ADMIN_BASIC_PASS = admin_pass
     env.ADMIN_URL = admin_url
@@ -157,7 +159,10 @@ def basic_auth_header(user: str, password: str) -> str:
 # ---------------------------------------------------------------------------
 
 def json_request(path: str, payload: dict, headers=None, method="POST") -> MockRequest:
-    h = {"Content-Type": "application/json"}
+    h = {
+        "Content-Type": "application/json",
+        "CF-Connecting-IP": "127.0.0.1",
+    }
     if headers:
         h.update(headers)
     return MockRequest(method=method, url=f"http://localhost{path}", headers=h,

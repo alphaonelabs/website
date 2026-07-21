@@ -40,6 +40,7 @@ import hmac as _hmac
 import json
 import os
 import re
+import time
 import traceback
 from types import SimpleNamespace
 from typing import Any, Dict, Optional
@@ -54,6 +55,10 @@ import uuid
 
 _SENTRY_INITIALIZED = False
 _SENTRY_DSN: str = ""
+_AUTH_RATE_LIMIT_STATE: Dict[str, Dict[str, int]] = {}
+_AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
+_AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
+_AUTH_RATE_LIMIT_MAX_KEYS = 10000
 _AES_CRYPTO_KEY_CACHE: Dict[str, object] = {}
 
 
@@ -614,6 +619,74 @@ def _unauthorized_basic(realm: str = "Alpha One Labs Admin"):
         status=401,
         headers={"WWW-Authenticate": f'Basic realm="{realm}"', **_CORS},
     )
+
+
+def _too_many_requests(retry_after: int):
+    headers = {"Content-Type": "application/json", **_CORS, "Retry-After": str(retry_after)}
+    return Response(json.dumps({"error": "Too many requests"}), status=429, headers=headers)
+
+
+def _auth_rate_limit_env_value(env, name: str, default: int) -> int:
+    try:
+        env_dict = getattr(env, "__dict__", None)
+        if isinstance(env_dict, dict) and name in env_dict:
+            return int(env_dict[name])
+    except Exception:
+        pass
+
+    try:
+        return int(getattr(env, name))
+    except Exception:
+        return default
+
+
+def _check_auth_rate_limit(req, env, route: str):
+    window_seconds = max(1, _auth_rate_limit_env_value(
+        env, "AUTH_RATE_LIMIT_WINDOW_SECONDS", _AUTH_RATE_LIMIT_WINDOW_SECONDS
+    ))
+    max_attempts = max(1, _auth_rate_limit_env_value(
+        env, "AUTH_RATE_LIMIT_MAX_ATTEMPTS", _AUTH_RATE_LIMIT_MAX_ATTEMPTS
+    ))
+    max_keys = max(1, _auth_rate_limit_env_value(
+        env, "AUTH_RATE_LIMIT_MAX_KEYS", _AUTH_RATE_LIMIT_MAX_KEYS
+    ))
+
+    # Only CF-Connecting-IP is trusted in Cloudflare Workers.
+    client_ip = (req.headers.get("CF-Connecting-IP") or "").strip()
+    if not client_ip:
+        print(json.dumps({"level": "warn", "where": "auth_rate_limit", "error": "missing_cf_connecting_ip"}))
+        return _too_many_requests(1)
+
+    key = f"{route}:{client_ip}"
+    now = int(time.time())
+
+    # Keep in-memory state bounded by pruning expired entries and evicting oldest keys.
+    stale_before = now - window_seconds
+    for stale_key, stale_state in list(_AUTH_RATE_LIMIT_STATE.items()):
+        if int(stale_state.get("window_start", 0)) < stale_before:
+            _AUTH_RATE_LIMIT_STATE.pop(stale_key, None)
+
+    if len(_AUTH_RATE_LIMIT_STATE) > max_keys:
+        overflow = len(_AUTH_RATE_LIMIT_STATE) - max_keys
+        oldest_keys = sorted(
+            _AUTH_RATE_LIMIT_STATE.items(),
+            key=lambda item: int(item[1].get("window_start", 0)),
+        )[:overflow]
+        for oldest_key, _ in oldest_keys:
+            _AUTH_RATE_LIMIT_STATE.pop(oldest_key, None)
+
+    state = _AUTH_RATE_LIMIT_STATE.get(key)
+    if not state or now - int(state.get("window_start", 0)) >= window_seconds:
+        _AUTH_RATE_LIMIT_STATE[key] = {"window_start": now, "count": 1}
+        return None
+
+    count = int(state.get("count", 0))
+    if count >= max_attempts:
+        retry_after = max(1, window_seconds - (now - int(state.get("window_start", now))))
+        return _too_many_requests(retry_after)
+
+    state["count"] = count + 1
+    return None
 
 
 def _is_basic_auth_valid(req, env) -> bool:
@@ -1516,6 +1589,10 @@ async def seed_db(env, enc_key: str):
 # ---------------------------------------------------------------------------
 
 async def api_register(req, env):
+    rate_limit_resp = _check_auth_rate_limit(req, env, "register")
+    if rate_limit_resp:
+        return rate_limit_resp
+
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
@@ -1603,6 +1680,10 @@ async def api_register(req, env):
 
 
 async def api_login(req, env):
+    rate_limit_resp = _check_auth_rate_limit(req, env, "login")
+    if rate_limit_resp:
+        return rate_limit_resp
+
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
