@@ -829,6 +829,18 @@ function splitTopLevel(str) {
   return parts;
 }
 
+function updateEqRowState(eq) {
+  const input = document.getElementById(`eq-raw-${eq.id}`);
+  if (!input) return;
+  const hasErr = eq.errors.length > 0;
+  input.classList.toggle('border-red-400', hasErr);
+  input.classList.toggle('dark:border-red-600', hasErr);
+  input.classList.toggle('border-gray-200', !hasErr);
+  input.classList.toggle('dark:border-gray-600', !hasErr);
+  input.classList.toggle('focus:ring-red-400', hasErr);
+  input.classList.toggle('focus:ring-teal-400', !hasErr);
+}
+
 function onRawInput(id, val) {
   const eq = equations.find(e => e.id === id);
   if (!eq) return;
@@ -838,7 +850,9 @@ function onRawInput(id, val) {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     compileEq(eq);
-    renderFunctionList();
+    // Update just this row's error styling in place — renderFunctionList()
+    // rebuilds all inputs via innerHTML and would steal focus mid-edit.
+    updateEqRowState(eq);
     draw();
     showErrors();
   }, 280);
