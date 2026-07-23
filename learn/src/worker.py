@@ -6745,10 +6745,10 @@ async def api_respond_to_message_request(req, env, request_id: str):
 
     new_status = "accepted" if action == "accept" else "declined"
     req_row = await env.DB.prepare(
-        "SELECT id, from_user_id FROM message_requests WHERE id=? AND to_user_id=?"
+        "SELECT id, from_user_id FROM message_requests WHERE id=? AND to_user_id=? AND status='pending'"
     ).bind(request_id, user["id"]).first()
     if not req_row:
-        return err("Message request not found", 404)
+        return err("Message request not found or already handled", 404)
 
     await env.DB.prepare(
         "UPDATE message_requests SET status=? WHERE id=?"
@@ -6767,26 +6767,32 @@ async def api_list_message_requests(req, env):
         res = await env.DB.prepare(
             "SELECT id, from_user_id, created_at, source, activity_id FROM message_requests WHERE to_user_id=? AND status='pending' ORDER BY created_at DESC"
         ).bind(user["id"]).all()
-        requests = []
-        for r in (res.results or []):
-            u_row = await env.DB.prepare("SELECT name, username FROM users WHERE id=?").bind(r.from_user_id).first()
-            sender_name = "Someone"
-            if u_row:
-                dec_name = await decrypt_aes(u_row.name or "", enc)
-                dec_uname = await decrypt_aes(getattr(u_row, "username", "") or "", enc)
-                sender_name = (
+        rows = res.results or []
+        user_ids = list({r.from_user_id for r in rows})
+        user_map = {}
+        if user_ids:
+            placeholders = ",".join(["?"] * len(user_ids))
+            u_res = await env.DB.prepare(f"SELECT id, name, username FROM users WHERE id IN ({placeholders})").bind(*user_ids).all()
+            for u in (u_res.results or []):
+                dec_name = await decrypt_aes(u.name or "", enc)
+                dec_uname = await decrypt_aes(getattr(u, "username", "") or "", enc)
+                user_map[u.id] = (
                     dec_name if dec_name and dec_name != "[decryption error]"
                     else (dec_uname if dec_uname and dec_uname != "[decryption error]"
-                          else (getattr(u_row, "name", "") or getattr(u_row, "username", "") or "Someone"))
+                          else (getattr(u, "name", "") or getattr(u, "username", "") or "Someone"))
                 )
-            requests.append({
+
+        requests = [
+            {
                 "id": r.id,
                 "from_user_id": r.from_user_id,
-                "from_user_name": sender_name,
+                "from_user_name": user_map.get(r.from_user_id, "Someone"),
                 "created_at": r.created_at,
                 "source": r.source,
                 "activity_id": r.activity_id or "",
-            })
+            }
+            for r in rows
+        ]
     except Exception as exc:
         if _is_no_such_table_error(exc):
             requests = []
@@ -6810,11 +6816,8 @@ async def api_activity_contacts(req, env, activity_id: str):
     enrollment = await env.DB.prepare(
         "SELECT id FROM enrollments WHERE (activity_id=? OR activity_id=?) AND user_id=?"
     ).bind(act.id, activity_id, user["id"]).first()
-    interest = await env.DB.prepare(
-        "SELECT id FROM activity_interest WHERE (activity_id=? OR activity_id=?) AND user_id=?"
-    ).bind(act.id, activity_id, user["id"]).first()
 
-    if not is_host and not enrollment and not interest:
+    if not is_host and not enrollment:
         return err("Access denied. You must be enrolled or host of this activity.", 403)
 
     participants = set()
@@ -6827,33 +6830,29 @@ async def api_activity_contacts(req, env, activity_id: str):
     for row in (enrollees_res.results or []):
         participants.add(row.user_id)
 
-    interest_res = await env.DB.prepare(
-        "SELECT user_id FROM activity_interest WHERE (activity_id=? OR activity_id=?) AND user_id!=?"
-    ).bind(act.id, activity_id, user["id"]).all()
-    for row in (interest_res.results or []):
-        participants.add(row.user_id)
-
     contacts = []
-    for pid in participants:
-        u_row = await env.DB.prepare("SELECT name, username FROM users WHERE id=?").bind(pid).first()
-        if u_row:
-            dec_name = await decrypt_aes(u_row.name or "", enc)
-            dec_uname = await decrypt_aes(getattr(u_row, "username", "") or "", enc)
-            display_name = (
+    pids = list(participants)
+    user_map = {}
+    if pids:
+        placeholders = ",".join(["?"] * len(pids))
+        u_res = await env.DB.prepare(f"SELECT id, name, username FROM users WHERE id IN ({placeholders})").bind(*pids).all()
+        for u in (u_res.results or []):
+            dec_name = await decrypt_aes(u.name or "", enc)
+            dec_uname = await decrypt_aes(getattr(u, "username", "") or "", enc)
+            user_map[u.id] = (
                 dec_name if dec_name and dec_name != "[decryption error]"
                 else (dec_uname if dec_uname and dec_uname != "[decryption error]"
-                      else (getattr(u_row, "name", "") or getattr(u_row, "username", "") or "Participant"))
+                      else (getattr(u, "name", "") or getattr(u, "username", "") or "Participant"))
             )
-        else:
-            display_name = "Participant"
 
+    for pid in pids:
         req_row = await env.DB.prepare(
             "SELECT id, status FROM message_requests WHERE (from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?) ORDER BY created_at DESC LIMIT 1"
         ).bind(user["id"], pid, pid, user["id"]).first()
 
         contacts.append({
             "user_id": pid,
-            "display_name": display_name,
+            "display_name": user_map.get(pid, "Participant"),
             "existing_request_id_or_null": req_row.id if req_row else None,
             "thread_status": req_row.status if req_row else "none",
         })
@@ -6988,20 +6987,24 @@ async def api_list_message_threads(req, env):
             " WHERE (from_user_id=? OR to_user_id=?) AND status='accepted' ORDER BY created_at DESC"
         ).bind(user["id"], user["id"]).all()
 
-        threads = []
-        for r in (res.results or []):
-            other_id = r.to_user_id if r.from_user_id == user["id"] else r.from_user_id
-            u_row = await env.DB.prepare("SELECT name, username FROM users WHERE id=?").bind(other_id).first()
-            other_name = "Connected User"
-            if u_row:
-                dec_name = await decrypt_aes(u_row.name or "", enc)
-                dec_uname = await decrypt_aes(getattr(u_row, "username", "") or "", enc)
-                other_name = (
+        threads_rows = res.results or []
+        other_ids = list({r.to_user_id if r.from_user_id == user["id"] else r.from_user_id for r in threads_rows})
+        user_map = {}
+        if other_ids:
+            placeholders = ",".join(["?"] * len(other_ids))
+            u_res = await env.DB.prepare(f"SELECT id, name, username FROM users WHERE id IN ({placeholders})").bind(*other_ids).all()
+            for u in (u_res.results or []):
+                dec_name = await decrypt_aes(u.name or "", enc)
+                dec_uname = await decrypt_aes(getattr(u, "username", "") or "", enc)
+                user_map[u.id] = (
                     dec_name if dec_name and dec_name != "[decryption error]"
                     else (dec_uname if dec_uname and dec_uname != "[decryption error]"
-                          else (getattr(u_row, "name", "") or getattr(u_row, "username", "") or "Connected User"))
+                          else (getattr(u, "name", "") or getattr(u, "username", "") or "Connected User"))
                 )
 
+        threads = []
+        for r in threads_rows:
+            other_id = r.to_user_id if r.from_user_id == user["id"] else r.from_user_id
             unread_row = await env.DB.prepare(
                 "SELECT id FROM notifications WHERE user_id=? AND type='direct_message' AND related_id=? AND is_read=0 LIMIT 1"
             ).bind(user["id"], r.id).first()
@@ -7009,7 +7012,7 @@ async def api_list_message_threads(req, env):
             threads.append({
                 "id": r.id,
                 "other_user_id": other_id,
-                "other_user_name": other_name,
+                "other_user_name": user_map.get(other_id, "Connected User"),
                 "source": r.source,
                 "has_unread": bool(unread_row),
                 "created_at": r.created_at,
@@ -7069,11 +7072,9 @@ async def api_get_thread_messages(req, env, thread_id: str):
                 m_sender = str(fields.get("sender") or fields.get("from_user_id") or fields.get("author") or "")
                 m_receiver = str(fields.get("receiver") or fields.get("to_user_id") or "")
 
-                is_match = False
-                if m_thread_id and m_thread_id == str(thread_id):
-                    is_match = True
-                elif (m_sender == user["id"] and m_receiver == other_id) or (m_sender == other_id and m_receiver == user["id"]):
-                    is_match = True
+                is_match = (m_thread_id == str(thread_id)) if m_thread_id else (
+                    (m_sender == user["id"] and m_receiver == other_id) or (m_sender == other_id and m_receiver == user["id"])
+                )
 
                 if is_match:
                     messages.append({

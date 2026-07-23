@@ -45,7 +45,7 @@
             </p>
             <form id="send-request-form" class="space-y-3">
               <div>
-                <input type="email" id="request-email" placeholder="recipient@example.com" required autocomplete="off" class="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                <input type="email" id="request-email" aria-label="Recipient email address" placeholder="recipient@example.com" required autocomplete="off" class="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:outline-none">
               </div>
               <button type="submit" class="w-full py-2 px-4 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm transition-colors flex items-center justify-center">
                 <i class="fa-solid fa-paper-plane mr-2"></i>Send Request
@@ -82,11 +82,11 @@
         </div>
 
         <!-- Chat Modal / Drawer -->
-        <div id="chat-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div id="chat-modal" role="dialog" aria-modal="true" aria-labelledby="chat-title" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
           <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-5 border border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col max-h-[85vh]">
             <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3 mb-3">
               <h3 id="chat-title" class="font-bold text-gray-900 dark:text-gray-100">Chat</h3>
-              <button type="button" id="close-chat-btn" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+              <button type="button" id="close-chat-btn" aria-label="Close chat" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
                 <i class="fa-solid fa-xmark text-lg"></i>
               </button>
             </div>
@@ -94,7 +94,7 @@
               <div class="text-xs text-gray-500 italic text-center">Loading messages...</div>
             </div>
             <form id="chat-send-form" class="mt-4 flex gap-2">
-              <input type="text" id="chat-input" placeholder="Type a message..." required class="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+              <input type="text" id="chat-input" aria-label="Type a message" placeholder="Type a message..." required class="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:outline-none">
               <button type="submit" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-sm transition-colors">
                 Send
               </button>

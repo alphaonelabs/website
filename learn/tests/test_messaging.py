@@ -64,10 +64,10 @@ class TestMessagingEndpoints:
     async def test_list_message_requests(self):
         token = _make_token(uid="usr-target")
         rows = [MockRow(id="req-1", from_user_id="usr-sender", created_at="2026-01-01", source="email", activity_id=None)]
-        sender_row = MockRow(name="Sender Name", username="sender")
+        sender_row = MockRow(id="usr-sender", name="Sender Name", username="sender")
         env = make_env(db=MockDB([
             make_stmt(all_results=rows),
-            make_stmt(first=sender_row),
+            make_stmt(all_results=[sender_row]),
         ]))
         r = await worker.api_list_message_requests(self._req("GET", "/api/messages/requests", token=token), env)
         assert r.status == 200
@@ -79,10 +79,11 @@ class TestMessagingEndpoints:
     async def test_list_message_threads(self):
         token = _make_token(uid="usr-1")
         threads_rows = [MockRow(id="th-1", from_user_id="usr-1", to_user_id="usr-2", created_at="2026-01-01", source="email", activity_id=None)]
-        other_user = MockRow(name="Bob Martinez", username="bob")
+        other_user = MockRow(id="usr-2", name="Bob Martinez", username="bob")
         env = make_env(db=MockDB([
             make_stmt(all_results=threads_rows),
-            make_stmt(first=other_user),
+            make_stmt(all_results=[other_user]),
+            make_stmt(first=None),  # unread check
         ]))
         r = await worker.api_list_message_threads(self._req("GET", "/api/messages/threads", token=token), env)
         assert r.status == 200

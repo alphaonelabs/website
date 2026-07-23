@@ -223,12 +223,20 @@
     const form = document.getElementById('chat-send-form');
     const input = document.getElementById('chat-input');
 
-    if (closeBtn && modal) {
-      closeBtn.addEventListener('click', function () {
-        modal.classList.add('hidden');
-        activeThreadId = null;
-      });
+    function closeModal() {
+      if (modal) modal.classList.add('hidden');
+      activeThreadId = null;
     }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeModal);
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
 
     if (form && input) {
       form.addEventListener('submit', async function (e) {
@@ -320,8 +328,9 @@
     loadActiveThreads();
     initChatModal();
 
-    // Auto-update chat history, threads, and requests every 4 seconds
+    // Auto-update chat history, threads, and requests every 4 seconds when tab is active
     setInterval(function () {
+      if (document.hidden) return;
       loadActiveThreads();
       loadPendingRequests();
       if (activeThreadId) {
