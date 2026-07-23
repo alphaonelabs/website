@@ -656,7 +656,7 @@ def _check_auth_rate_limit(req, env, route: str):
     if not client_ip:
         print(json.dumps({"level": "warn", "where": "auth_rate_limit", "error": "missing_cf_connecting_ip"}))
         return _too_many_requests(1)
-
+    
     key = f"{route}:{client_ip}"
     now = int(time.time())
 
@@ -1070,6 +1070,21 @@ _DDL = [
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_prtoken_user ON password_reset_tokens(user_id)",
+    # Message_requests table for direct messaging 
+    """CREATE TABLE IF NOT EXISTS message_requests (
+        id TEXT PRIMARY KEY,
+        from_user_id TEXT NOT NULL,
+        to_user_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        source TEXT NOT NULL DEFAULT 'email',
+        activity_id TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_message_requests_to_user ON message_requests(to_user_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_message_requests_from_user ON message_requests(from_user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_message_requests_activity ON message_requests(activity_id)",
 ]
 
 
@@ -3578,17 +3593,16 @@ SSR_RECORD_PAGES = {
     },
     "/messages": {
         "title": "Messages",
-        "kicker": "Peer communication",
-        "description": "View peer and secure messaging records while the first-class inbox is rebuilt.",
+        "description": "View direct messaging records and manage message requests.",
         "group": "community",
-        "models": ["web.PeerMessage"],
+        "models": ["web.Message", "web.PeerMessage"], 
         "noun": "messages",
         "private": True,
     },
 }
 
 SENSITIVE_RECORD_MODELS = {
-    "web.PeerMessage", "web.Donation",
+    "web.Message", "web.DirectMessage", "web.PeerMessage", "web.Donation",
     "web.EventCalendar", "web.TimeSlot",
     "web.CourseProgress", "web.LearningStreak", "web.Points", "web.ProgressTracker",
     "web.Quiz", "web.QuizQuestion", "web.QuizOption", "web.UserQuiz",
@@ -5543,6 +5557,16 @@ async def _server_waiting_rooms_html(env, kind: str = "learn") -> str:
 async def _server_records_for_models(env, models: list, owner_user_id: Optional[str] = None, limit: int = 250) -> list:
     if not models:
         return []
+    # Alias web.Message and web.DirectMessage to web.PeerMessage for backward compat
+    expanded_models = []
+    for m in models:
+        if m not in expanded_models:
+            expanded_models.append(m)
+        if m in ("web.Message", "web.DirectMessage") and "web.PeerMessage" not in expanded_models:
+            expanded_models.append("web.PeerMessage")  
+        elif m == "web.PeerMessage" and "web.Message" not in expanded_models:
+            expanded_models.append("web.Message")  
+    models = expanded_models
     placeholders = ",".join(["?"] * len(models))
     binds = list(models)
     owner_clause = ""
@@ -6646,6 +6670,437 @@ class PresenceDO(DurableObject):
             return 0.5
 
 
+# Messaging Endpoints 
+
+async def api_send_message_request(req, env):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    target_email = _legacy_text(body.get("email")).strip().lower()
+    neutral_msg = "We'll let the other person know you'd like to message them and they can accept to reply."
+    if not target_email or "@" not in target_email:
+        return ok(None, neutral_msg)
+
+    try:
+        count_row = await env.DB.prepare(
+            "SELECT COUNT(*) AS cnt FROM message_requests WHERE from_user_id=? AND source='email' AND created_at > datetime('now', '-1 hour')"
+        ).bind(user["id"]).first()
+        if count_row and int(getattr(count_row, "cnt", 0) or 0) >= 5:
+            return err("Rate limit exceeded. Maximum 5 email message requests per hour.", 429)
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            raise
+
+    enc = env.ENCRYPTION_KEY
+    target_hash = blind_index(target_email, enc)
+    target_user = None
+    try:
+        target_user = await env.DB.prepare("SELECT id FROM users WHERE email_hash=?").bind(target_hash).first()
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            raise
+
+    if target_user and target_user.id != user["id"]:
+        existing = await env.DB.prepare(
+            "SELECT id FROM message_requests WHERE (from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)"
+        ).bind(user["id"], target_user.id, target_user.id, user["id"]).first()
+        if not existing:
+            req_id = new_id()
+            await env.DB.prepare(
+                "INSERT INTO message_requests (id, from_user_id, to_user_id, status, source, created_at)"
+                " VALUES (?, ?, ?, 'pending', 'email', datetime('now'))"
+            ).bind(req_id, user["id"], target_user.id).run()
+            s_row = await env.DB.prepare("SELECT name, username FROM users WHERE id=?").bind(user["id"]).first()
+            sender_name = "Someone"
+            if s_row:
+                dec_name = await decrypt_aes(s_row.name or "", enc)
+                dec_uname = await decrypt_aes(getattr(s_row, "username", "") or "", enc)
+                sender_name = (
+                    dec_name if dec_name and dec_name != "[decryption error]"
+                    else (dec_uname if dec_uname and dec_uname != "[decryption error]"
+                          else (getattr(s_row, "name", "") or getattr(s_row, "username", "") or "Someone"))
+                )
+            await _create_notification(env, target_user.id, "message_request", "New Message Request", f"{sender_name} sent you a message request.", req_id)
+
+    return ok(None, neutral_msg)
+
+
+async def api_respond_to_message_request(req, env, request_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    action = _legacy_text(body.get("action")).strip().lower()
+    if action not in ("accept", "decline"):
+        return err("Action must be 'accept' or 'decline'", 400)
+
+    new_status = "accepted" if action == "accept" else "declined"
+    req_row = await env.DB.prepare(
+        "SELECT id, from_user_id FROM message_requests WHERE id=? AND to_user_id=? AND status='pending'"
+    ).bind(request_id, user["id"]).first()
+    if not req_row:
+        return err("Message request not found or already handled", 404)
+
+    await env.DB.prepare(
+        "UPDATE message_requests SET status=? WHERE id=?"
+    ).bind(new_status, request_id).run()
+
+    return ok({"id": request_id, "status": new_status}, f"Message request {new_status}")
+
+
+async def api_list_message_requests(req, env):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    enc = env.ENCRYPTION_KEY
+    try:
+        res = await env.DB.prepare(
+            "SELECT id, from_user_id, created_at, source, activity_id FROM message_requests WHERE to_user_id=? AND status='pending' ORDER BY created_at DESC"
+        ).bind(user["id"]).all()
+        rows = res.results or []
+        user_ids = list({r.from_user_id for r in rows})
+        user_map = {}
+        if user_ids:
+            placeholders = ",".join(["?"] * len(user_ids))
+            u_res = await env.DB.prepare(f"SELECT id, name, username FROM users WHERE id IN ({placeholders})").bind(*user_ids).all()
+            for u in (u_res.results or []):
+                dec_name = await decrypt_aes(u.name or "", enc)
+                dec_uname = await decrypt_aes(getattr(u, "username", "") or "", enc)
+                user_map[u.id] = (
+                    dec_name if dec_name and dec_name != "[decryption error]"
+                    else (dec_uname if dec_uname and dec_uname != "[decryption error]"
+                          else (getattr(u, "name", "") or getattr(u, "username", "") or "Someone"))
+                )
+
+        requests = [
+            {
+                "id": r.id,
+                "from_user_id": r.from_user_id,
+                "from_user_name": user_map.get(r.from_user_id, "Someone"),
+                "created_at": r.created_at,
+                "source": r.source,
+                "activity_id": r.activity_id or "",
+            }
+            for r in rows
+        ]
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            requests = []
+        else:
+            raise
+
+    return ok({"requests": requests})
+
+
+async def api_activity_contacts(req, env, activity_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    enc = env.ENCRYPTION_KEY
+    act = await env.DB.prepare("SELECT id, host_id FROM activities WHERE id=? OR slug=?").bind(activity_id, activity_id).first()
+    if not act:
+        return err("Activity not found", 404)
+
+    is_host = act.host_id == user["id"]
+    enrollment = await env.DB.prepare(
+        "SELECT id FROM enrollments WHERE (activity_id=? OR activity_id=?) AND user_id=?"
+    ).bind(act.id, activity_id, user["id"]).first()
+
+    if not is_host and not enrollment:
+        return err("Access denied. You must be enrolled or host of this activity.", 403)
+
+    participants = set()
+    if act.host_id != user["id"]:
+        participants.add(act.host_id)
+
+    enrollees_res = await env.DB.prepare(
+        "SELECT user_id FROM enrollments WHERE (activity_id=? OR activity_id=?) AND user_id!=?"
+    ).bind(act.id, activity_id, user["id"]).all()
+    for row in (enrollees_res.results or []):
+        participants.add(row.user_id)
+
+    contacts = []
+    pids = list(participants)
+    user_map = {}
+    if pids:
+        placeholders = ",".join(["?"] * len(pids))
+        u_res = await env.DB.prepare(f"SELECT id, name, username FROM users WHERE id IN ({placeholders})").bind(*pids).all()
+        for u in (u_res.results or []):
+            dec_name = await decrypt_aes(u.name or "", enc)
+            dec_uname = await decrypt_aes(getattr(u, "username", "") or "", enc)
+            user_map[u.id] = (
+                dec_name if dec_name and dec_name != "[decryption error]"
+                else (dec_uname if dec_uname and dec_uname != "[decryption error]"
+                      else (getattr(u, "name", "") or getattr(u, "username", "") or "Participant"))
+            )
+
+    for pid in pids:
+        req_row = await env.DB.prepare(
+            "SELECT id, status FROM message_requests WHERE (from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?) ORDER BY created_at DESC LIMIT 1"
+        ).bind(user["id"], pid, pid, user["id"]).first()
+
+        contacts.append({
+            "user_id": pid,
+            "display_name": user_map.get(pid, "Participant"),
+            "existing_request_id_or_null": req_row.id if req_row else None,
+            "thread_status": req_row.status if req_row else "none",
+        })
+
+    return ok({"contacts": contacts})
+
+
+async def api_send_activity_message_request(req, env, activity_id: str, target_user_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    act = await env.DB.prepare("SELECT id, host_id FROM activities WHERE id=? OR slug=?").bind(activity_id, activity_id).first()
+    if not act:
+        return err("Activity not found", 404)
+
+    req_is_host = act.host_id == user["id"]
+    req_enrolled = await env.DB.prepare(
+        "SELECT id FROM enrollments WHERE (activity_id=? OR activity_id=?) AND user_id=?"
+    ).bind(act.id, activity_id, user["id"]).first()
+    req_interested = await env.DB.prepare(
+        "SELECT id FROM activity_interest WHERE (activity_id=? OR activity_id=?) AND user_id=?"
+    ).bind(act.id, activity_id, user["id"]).first()
+    if not req_is_host and not req_enrolled and not req_interested:
+        return err("Requester must be enrolled in or host of the activity", 403)
+
+    target_is_host = act.host_id == target_user_id
+    target_enrolled = await env.DB.prepare(
+        "SELECT id FROM enrollments WHERE (activity_id=? OR activity_id=?) AND user_id=?"
+    ).bind(act.id, activity_id, target_user_id).first()
+    target_interested = await env.DB.prepare(
+        "SELECT id FROM activity_interest WHERE (activity_id=? OR activity_id=?) AND user_id=?"
+    ).bind(act.id, activity_id, target_user_id).first()
+    if not target_is_host and not target_enrolled and not target_interested:
+        return err("Target user must be enrolled in or host of the activity", 403)
+
+    existing = await env.DB.prepare(
+        "SELECT id, status FROM message_requests WHERE (from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)"
+    ).bind(user["id"], target_user_id, target_user_id, user["id"]).first()
+
+    if existing:
+        return ok({"request_id": existing.id, "status": existing.status}, f"Request already exists with status: {existing.status}")
+
+    req_id = new_id()
+    await env.DB.prepare(
+        "INSERT INTO message_requests (id, from_user_id, to_user_id, status, source, activity_id, created_at) VALUES (?, ?, ?, 'accepted', 'activity', ?, datetime('now'))"
+    ).bind(req_id, user["id"], target_user_id, act.id).run()
+
+    enc = env.ENCRYPTION_KEY
+    s_row = await env.DB.prepare("SELECT name, username FROM users WHERE id=?").bind(user["id"]).first()
+    sender_name = "Someone"
+    if s_row:
+        dec_name = await decrypt_aes(s_row.name or "", enc)
+        dec_uname = await decrypt_aes(getattr(s_row, "username", "") or "", enc)
+        sender_name = (
+            dec_name if dec_name and dec_name != "[decryption error]"
+            else (dec_uname if dec_uname and dec_uname != "[decryption error]"
+                  else (getattr(s_row, "name", "") or getattr(s_row, "username", "") or "Someone"))
+        )
+
+    await _create_notification(env, target_user_id, "message_request", "New Message Request", f"{sender_name} sent you a message request.", req_id)
+
+    return ok({"request_id": req_id, "status": "accepted"}, "Activity conversation started")
+
+
+async def api_send_thread_message(req, env, thread_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    msg_text = _legacy_text(body.get("message") or body.get("content")).strip()
+    if not msg_text:
+        return err("Message content is required", 400)
+
+    thread = await env.DB.prepare(
+        "SELECT id, from_user_id, to_user_id, status FROM message_requests WHERE id=? AND status='accepted' AND (from_user_id=? OR to_user_id=?)"
+    ).bind(thread_id, user["id"], user["id"]).first()
+    if not thread:
+        return err("Conversation thread not found or not accepted", 403)
+
+    recipient_id = thread.to_user_id if thread.from_user_id == user["id"] else thread.from_user_id
+    msg_id = new_id()
+    iso_now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    payload_obj = {
+        "model": "web.Message",  
+        "pk": msg_id,
+        "fields": {
+            "sender": user["id"],
+            "receiver": recipient_id,
+            "thread_id": thread_id,
+            "content": msg_text,
+            "created_at": iso_now,
+        }
+    }
+    enc_payload = await encrypt_aes(json.dumps(payload_obj), env.ENCRYPTION_KEY)
+
+    await env.DB.prepare(
+        "INSERT INTO legacy_records (id, legacy_model, legacy_pk, user_id, payload, created_at, updated_at)"
+        " VALUES (?, 'web.PeerMessage', ?, ?, ?, datetime('now'), datetime('now'))"
+    ).bind(msg_id, msg_id, user["id"], enc_payload).run()
+
+    s_row = await env.DB.prepare("SELECT name, username FROM users WHERE id=?").bind(user["id"]).first()
+    sender_name = "Someone"
+    if s_row:
+        dec_name = await decrypt_aes(s_row.name or "", env.ENCRYPTION_KEY)
+        dec_uname = await decrypt_aes(getattr(s_row, "username", "") or "", env.ENCRYPTION_KEY)
+        sender_name = (
+            dec_name if dec_name and dec_name != "[decryption error]"
+            else (dec_uname if dec_uname and dec_uname != "[decryption error]"
+                  else (getattr(s_row, "name", "") or getattr(s_row, "username", "") or "Someone"))
+        )
+
+    await _create_notification(env, recipient_id, "direct_message", "New Direct Message", f"{sender_name} sent you a direct message.", thread_id)
+
+    return ok({"id": msg_id, "thread_id": thread_id, "content": msg_text, "created_at": iso_now}, "Message sent")
+
+
+async def api_list_message_threads(req, env):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    enc = env.ENCRYPTION_KEY
+    try:
+        res = await env.DB.prepare(
+            "SELECT id, from_user_id, to_user_id, created_at, source, activity_id FROM message_requests"
+            " WHERE (from_user_id=? OR to_user_id=?) AND status='accepted' ORDER BY created_at DESC"
+        ).bind(user["id"], user["id"]).all()
+
+        threads_rows = res.results or []
+        other_ids = list({r.to_user_id if r.from_user_id == user["id"] else r.from_user_id for r in threads_rows})
+        user_map = {}
+        if other_ids:
+            placeholders = ",".join(["?"] * len(other_ids))
+            u_res = await env.DB.prepare(f"SELECT id, name, username FROM users WHERE id IN ({placeholders})").bind(*other_ids).all()
+            for u in (u_res.results or []):
+                dec_name = await decrypt_aes(u.name or "", enc)
+                dec_uname = await decrypt_aes(getattr(u, "username", "") or "", enc)
+                user_map[u.id] = (
+                    dec_name if dec_name and dec_name != "[decryption error]"
+                    else (dec_uname if dec_uname and dec_uname != "[decryption error]"
+                          else (getattr(u, "name", "") or getattr(u, "username", "") or "Connected User"))
+                )
+
+        threads = []
+        for r in threads_rows:
+            other_id = r.to_user_id if r.from_user_id == user["id"] else r.from_user_id
+            unread_row = await env.DB.prepare(
+                "SELECT id FROM notifications WHERE user_id=? AND type='direct_message' AND related_id=? AND is_read=0 LIMIT 1"
+            ).bind(user["id"], r.id).first()
+
+            threads.append({
+                "id": r.id,
+                "other_user_id": other_id,
+                "other_user_name": user_map.get(other_id, "Connected User"),
+                "source": r.source,
+                "has_unread": bool(unread_row),
+                "created_at": r.created_at,
+            })
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            threads = []
+        else:
+            raise
+
+    return ok({"threads": threads})
+
+
+async def api_get_thread_messages(req, env, thread_id: str):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    enc = env.ENCRYPTION_KEY
+    thread = await env.DB.prepare(
+        "SELECT id, from_user_id, to_user_id FROM message_requests WHERE id=? AND status='accepted' AND (from_user_id=? OR to_user_id=?)"
+    ).bind(thread_id, user["id"], user["id"]).first()
+    if not thread:
+        return err("Conversation thread not found or access denied", 404)
+
+    try:
+        await env.DB.prepare(
+            "UPDATE notifications SET is_read=1 WHERE user_id=? AND type='direct_message' AND related_id=?"
+        ).bind(user["id"], thread_id).run()
+    except Exception:
+        pass
+
+    other_id = thread.to_user_id if thread.from_user_id == user["id"] else thread.from_user_id
+    u_row = await env.DB.prepare("SELECT name, username FROM users WHERE id=?").bind(other_id).first()
+    other_name = "Connected User"
+    if u_row:
+        dec_name = await decrypt_aes(u_row.name or "", enc)
+        dec_uname = await decrypt_aes(getattr(u_row, "username", "") or "", enc)
+        other_name = (
+            dec_name if dec_name and dec_name != "[decryption error]"
+            else (dec_uname if dec_uname and dec_uname != "[decryption error]"
+                  else (getattr(u_row, "name", "") or getattr(u_row, "username", "") or "Connected User"))
+        )
+
+    messages = []
+    try:
+        res = await env.DB.prepare(
+            "SELECT payload, created_at FROM legacy_records WHERE legacy_model IN ('web.PeerMessage','web.Message','web.DirectMessage') AND (user_id=? OR user_id=?) ORDER BY created_at ASC"
+        ).bind(user["id"], other_id).all()
+
+        for row in (res.results or []):
+            try:
+                dec_payload = await decrypt_aes(row.payload or "", enc)
+                msg_obj = json.loads(dec_payload) if dec_payload else {}
+                fields = msg_obj.get("fields") or {}
+                m_thread_id = str(fields.get("thread_id") or "")
+                m_sender = str(fields.get("sender") or fields.get("from_user_id") or fields.get("author") or "")
+                m_receiver = str(fields.get("receiver") or fields.get("to_user_id") or "")
+
+                is_match = (m_thread_id == str(thread_id)) if m_thread_id else (
+                    (m_sender == user["id"] and m_receiver == other_id) or (m_sender == other_id and m_receiver == user["id"])
+                )
+
+                if is_match:
+                    messages.append({
+                        "id": msg_obj.get("pk"),
+                        "sender": m_sender,
+                        "receiver": m_receiver,
+                        "content": fields.get("content") or fields.get("message") or fields.get("body") or "",
+                        "created_at": fields.get("created_at") or row.created_at,
+                    })
+            except Exception:
+                pass
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            raise
+
+    return ok({
+        "thread": {
+            "id": thread_id,
+            "current_user_id": user["id"],
+            "other_user_id": other_id,
+            "other_user_name": other_name,
+        },
+        "messages": messages
+    })
+
+
 # ---------------------------------------------------------------------------
 # Main dispatcher
 # ---------------------------------------------------------------------------
@@ -6876,6 +7331,30 @@ async def _dispatch(request, env):
             return await api_forgot_password(request, env)
         if path == "/api/reset-password" and method == "POST":
             return await api_reset_password(request, env)
+
+        # --- BEGIN NEW: Privacy-First Direct Messaging Route Dispatching ---
+        if path == "/api/messages/request" and method == "POST":
+            return await api_send_message_request(request, env)
+        if path == "/api/messages/requests" and method == "GET":
+            return await api_list_message_requests(request, env)
+        if path == "/api/messages/threads" and method == "GET":
+            return await api_list_message_threads(request, env)
+        m_msg_req = re.fullmatch(r"/api/messages/request/([A-Za-z0-9_-]+)", path)
+        if m_msg_req and method == "PATCH":
+            return await api_respond_to_message_request(request, env, m_msg_req.group(1))
+        m_act_contacts = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/contacts", path)
+        if m_act_contacts and method == "GET":
+            return await api_activity_contacts(request, env, m_act_contacts.group(1))
+        m_act_msg = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/message/([A-Za-z0-9_-]+)", path)
+        if m_act_msg and method == "POST":
+            return await api_send_activity_message_request(request, env, m_act_msg.group(1), m_act_msg.group(2))
+        m_thread_get = re.fullmatch(r"/api/messages/threads/([A-Za-z0-9_-]+)", path)
+        if m_thread_get and method == "GET":
+            return await api_get_thread_messages(request, env, m_thread_get.group(1))
+        m_thread_send = re.fullmatch(r"/api/messages/threads/([A-Za-z0-9_-]+)/send", path)
+        if m_thread_send and method == "POST":
+            return await api_send_thread_message(request, env, m_thread_send.group(1))
+        # --- END NEW ---
 
         # Notifications
         if path == "/api/notifications" and method == "GET":
