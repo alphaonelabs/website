@@ -834,12 +834,28 @@ function cycleColor(id) {
   draw();
 }
 
+function splitTopLevel(str) {
+  const parts = [];
+  let depth = 0, start = 0;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth--;
+    else if (c === ',' && depth === 0) {
+      parts.push(str.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(str.slice(start));
+  return parts;
+}
+
 function onRawInput(id, val) {
   const eq = equations.find(e => e.id === id);
   if (!eq) return;
   // Capture whether this was a multi-part equation before overwriting
   const wasArray = Array.isArray(eq.raw);
-  eq.raw = wasArray ? val.split(',').map(s => s.trim()).filter(Boolean) : val;
+  eq.raw = wasArray ? splitTopLevel(val).map(s => s.trim()).filter(Boolean) : val;
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     compileEq(eq);
