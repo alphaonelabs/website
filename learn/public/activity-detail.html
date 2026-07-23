@@ -108,6 +108,19 @@
               </a>
             </div>
           </section>
+          
+          <!-- Activity Messaging & Participant Contacts -->
+          <section id="activity-contacts-card" class="hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2 flex items-center">
+              <i class="fa-solid fa-comments text-teal-500 mr-2"></i>Participant Messaging
+            </h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Connect directly with the creator and fellow participants of this activity.
+            </p>
+            <div id="activity-contacts-list" class="space-y-3">
+              <div class="text-sm text-gray-500 dark:text-gray-400 italic">Loading contacts...</div>
+            </div>
+          </section>
 
           <section class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-100 dark:border-gray-700">
             <div class="flex border-b border-gray-200 dark:border-gray-700">
@@ -333,6 +346,7 @@
 
     renderSessions(data);
     renderAction(data);
+    loadActivityContacts(data);
   }
 
   function renderSessions(data) {
@@ -471,6 +485,81 @@
       return;
     }
     window.location.reload();
+  }
+
+  // --- Activity Contacts and Messaging logic ---
+  async function loadActivityContacts(data) {
+    const card = document.getElementById('activity-contacts-card');
+    const list = document.getElementById('activity-contacts-list');
+    if (!card || !list) return;
+
+    if (!token) {
+      card.classList.add('hidden');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/activities/' + encodeURIComponent(data.activity.id) + '/contacts', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to load contacts');
+
+      const contacts = (body.data && body.data.contacts) || body.contacts || [];
+      if (!contacts.length) {
+        list.innerHTML = '<div class="text-xs text-gray-500 italic">No other participants yet.</div>';
+        card.classList.remove('hidden');
+        return;
+      }
+
+      list.innerHTML = contacts.map(c => {
+        let actionBtn = '';
+        if (c.thread_status === 'accepted') {
+          actionBtn = '<a href="/messages" class="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200 hover:bg-teal-200 transition"><i class="fa-solid fa-comments mr-1.5"></i>View conversation</a>';
+        } else if (c.thread_status === 'pending') {
+          actionBtn = '<span class="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><i class="fa-solid fa-clock mr-1.5"></i>Request pending</span>';
+        } else {
+          actionBtn = '<button type="button" data-user-id="' + esc(c.user_id) + '" class="act-msg-btn inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition"><i class="fa-solid fa-paper-plane mr-1.5"></i>Message</button>';
+        }
+
+        return '<div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">' +
+          '<div><div class="text-sm font-bold text-gray-800 dark:text-gray-200">' + esc(c.display_name) + '</div></div>' +
+          '<div>' + actionBtn + '</div>' +
+          '</div>';
+      }).join('');
+
+      card.classList.remove('hidden');
+
+      list.querySelectorAll('.act-msg-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const targetId = btn.getAttribute('data-user-id');
+          btn.disabled = true;
+          btn.textContent = 'Sending...';
+          try {
+            const mRes = await fetch('/api/activities/' + encodeURIComponent(data.activity.id) + '/message/' + encodeURIComponent(targetId), {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            const mData = await mRes.json();
+            if (!mRes.ok) throw new Error(mData.error || 'Could not start conversation');
+
+            const status = (mData.data && mData.data.status) || mData.status || 'accepted';
+            if (status === 'accepted') {
+              window.location.href = '/messages';
+            } else {
+              btn.textContent = 'Request sent';
+              btn.className = 'inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200';
+            }
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+            btn.textContent = 'Message';
+          }
+        });
+      });
+    } catch (err) {
+      card.classList.add('hidden');
+    }
   }
 
   async function loadActivityDetail() {
