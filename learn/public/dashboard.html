@@ -1,16 +1,9 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Dashboard - Alpha One Labs">
-  <meta name="keywords" content="dashboard, activities, Alpha One Labs">
-  <title>Dashboard - Alpha One Labs</title>
-  
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  
+{% extends "base.html" %}
+{% block title %}Dashboard - Alpha One Labs{% endblock %}
+{% block meta_description %}Dashboard - Alpha One Labs{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block head %}
+<meta name="keywords" content="dashboard, activities, Alpha One Labs">
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -91,13 +84,9 @@
       }
     }
   </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
-
-  <div id="site-navbar"></div>
-
-  <!-- ===== HERO SECTION ===== -->
+{% endblock %}
+{% block content %}
+<!-- ===== HERO SECTION ===== -->
   <section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 relative overflow-hidden py-16 md:py-20">
     <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
       <i class="fas fa-chart-line absolute top-10 left-10 text-6xl"></i>
@@ -158,7 +147,7 @@
           <i class="fas fa-inbox text-5xl text-gray-400 dark:text-gray-600 mb-4 block"></i>
           <p class="text-gray-600 dark:text-gray-400 text-lg mb-2 font-semibold" id="empty-msg">No hosted activities yet.</p>
           <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Create your first activity to start hosting courses, workshops, and more.</p>
-          <a id="empty-action-link" href="/teach.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
+          <a id="empty-action-link" href="/teach" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
             <i class="fas fa-plus mr-1"></i>Create Your First Activity
           </a>
         </div>
@@ -169,11 +158,7 @@
 
     </div>
   </main>
-
-  <div id="site-footer"></div>
-
-  <script src="/js/layout.js" defer></script>
-  <script>
+<script>
     const API = '';
 const token = localStorage.getItem('edu_token');
 const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
@@ -189,18 +174,19 @@ const pageEsc = window.esc || function (s) {
 const pageLogout = window.logout || function () {
     localStorage.removeItem('edu_token');
     localStorage.removeItem('edu_user');
-    window.location.href = '/login.html';
+    window.location.href = '/login';
 };
 
 // Auth check
 if (!token || !user) {
-    window.location.href = '/login.html';
+    window.location.href = '/login';
 }
 
 // Type icons and colors
-const typeIcon = { course: '📚', meetup: '🤝', workshop: '🔧', seminar: '🎤', other: '✨' };
+const typeIcon = { course: '📚', study_group: '👥', meetup: '🤝', workshop: '🔧', seminar: '🎤', other: '✨' };
 const typeColor = {
     course: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+    study_group: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
     meetup: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
     workshop: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
     seminar: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
@@ -241,6 +227,10 @@ function statCard(value, label, icon, color) {
     `;
 }
 
+function activityUrl(a) {
+    return '/activity/' + encodeURIComponent(a && (a.slug || a.id) ? (a.slug || a.id) : '');
+}
+
 // Load dashboard
 async function loadDashboard() {
     try {
@@ -252,7 +242,7 @@ async function loadDashboard() {
             if (res.status === 401) {
                 localStorage.removeItem('edu_token');
                 localStorage.removeItem('edu_user');
-                window.location.href = '/login.html';
+                window.location.href = '/login';
                 return;
             }
             throw new Error('Failed to load dashboard');
@@ -295,10 +285,10 @@ function renderDashboard(data) {
     // Quick actions
     document.getElementById('quick-actions').innerHTML = `
         <div class="flex flex-wrap gap-3">
-            <a href="/teach.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
+            <a href="/teach" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
                 <i class="fas fa-plus"></i>Create Activity
             </a>
-            <a href="/activity.html" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl border border-teal-200 dark:border-teal-800 shadow-md hover:shadow-lg transition-all">
+            <a href="/activity" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl border border-teal-200 dark:border-teal-800 shadow-md hover:shadow-lg transition-all">
                 <i class="fas fa-compass"></i>Browse Activities
             </a>
         </div>
@@ -352,10 +342,10 @@ function renderDashboard(data) {
                     ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
                     
                     <div class="flex gap-2 mt-auto">
-                        <a href="/activity.html?id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
+                        <a href="${activityUrl(a)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
                             <i class="fas fa-eye mr-1"></i>View
                         </a>
-                        <a href="/teach.html?activity_id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <a href="/teach?activity_id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             <i class="fas fa-sliders-h mr-1"></i>Manage
                         </a>
                     </div>
@@ -385,7 +375,7 @@ function renderDashboard(data) {
                 <i class="fas fa-smile text-5xl text-gray-400 dark:text-gray-600 mb-4 block"></i>
                 <p class="text-gray-600 dark:text-gray-400 text-lg mb-2 font-semibold">No joined activities yet.</p>
                 <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Browse and join activities to start learning.</p>
-                <a href="/activity.html" class="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
+                <a href="/activity" class="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
                     <i class="fas fa-compass mr-1"></i>Browse Activities
                 </a>
             </div>
@@ -434,7 +424,7 @@ function renderDashboard(data) {
                             
                             ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
                             
-                            <a href="/activity.html?id=${esc(a.id)}" class="mt-auto text-center py-2.5 px-4 rounded-lg font-semibold text-sm text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors">
+                            <a href="${activityUrl(a)}" class="mt-auto text-center py-2.5 px-4 rounded-lg font-semibold text-sm text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors">
                                 <i class="fas fa-arrow-right mr-1"></i>View Activity
                             </a>
                         </article>
@@ -453,5 +443,4 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
 });
   </script>
-</body>
-</html>
+{% endblock %}

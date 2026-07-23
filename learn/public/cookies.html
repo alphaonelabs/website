@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Cookie Policy - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 max-w-4xl mx-auto w-full px-4 md:px-6 py-12 prose dark:prose-invert">
+    <h1>Cookie Policy</h1>
+    <p>The site primarily uses browser storage for login tokens, dark mode preference, cart indicators, and post-login redirects.</p>
+    <h2>Authentication</h2>
+    <p>Login state is stored locally in the browser so the static frontend can call the Worker API.</p>
+    <h2>Preferences</h2>
+    <p>Dark mode and similar UI preferences may be stored in local storage.</p>
+    <h2>Third-party services</h2>
+    <p>Stripe may use cookies or similar technologies during checkout.</p>
+  </main>
+{% endblock %}

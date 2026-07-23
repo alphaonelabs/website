@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Features - Alpha One Labs{% endblock %}
+{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1">
+    <section class="bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900 text-white py-16">
+      <div class="max-w-6xl mx-auto px-4 md:px-6">
+        <p class="text-sm font-bold uppercase tracking-[0.2em] text-cyan-200 mb-3">Current platform data</p>
+        <h1 class="text-4xl md:text-6xl font-extrabold mb-4">Community, progress, assessments, and more.</h1>
+        <p class="max-w-3xl text-cyan-50 text-lg">
+          These sections expose current Alpha One Labs feature records through the Worker.
+          Team features are intentionally omitted.
+        </p>
+      </div>
+    </section>
+
+    <section class="max-w-6xl mx-auto px-4 md:px-6 py-10">
+      <div id="tabs" class="flex flex-wrap gap-2 mb-6"></div>
+      <div id="message" class="hidden rounded-2xl p-4 mb-6 text-sm"></div>
+      <div id="records" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center text-gray-500 dark:text-gray-400">
+          <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+          <p>Loading records...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+<script>
+    const token = localStorage.getItem('edu_token');
+    if (!token) {
+      sessionStorage.setItem('post_login_redirect', location.pathname + location.search);
+      window.location.href = '/login';
+    }
+    const params = new URLSearchParams(location.search);
+    let activeGroup = params.get('group') || 'community';
+
+    function esc(value) {
+      return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function setMessage(message, isError) {
+      const el = document.getElementById('message');
+      el.textContent = message;
+      el.className = 'rounded-2xl p-4 mb-6 text-sm ' + (isError ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300');
+      el.classList.remove('hidden');
+    }
+
+    function renderTabs(groups) {
+      document.getElementById('tabs').innerHTML = groups.map(group => {
+        const active = group.id === activeGroup;
+        return '<button type="button" data-group="' + esc(group.id) + '" class="rounded-full px-4 py-2 text-sm font-bold border transition ' +
+          (active ? 'bg-teal-600 text-white border-teal-600' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-teal-500') +
+          '">' + esc(group.title) + '</button>';
+      }).join('');
+      document.querySelectorAll('[data-group]').forEach(button => {
+        button.addEventListener('click', () => loadGroup(button.dataset.group));
+      });
+    }
+
+    function renderRecords(records) {
+      const holder = document.getElementById('records');
+      if (!records.length) {
+        holder.innerHTML = '<div class="md:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-700 p-10 text-center text-gray-500 dark:text-gray-400"><i class="fas fa-box-open text-4xl mb-3 opacity-50"></i><p>No records in this section yet.</p></div>';
+        return;
+      }
+      holder.innerHTML = records.map(record => {
+        const date = record.created_at ? String(record.created_at).slice(0, 10) : '';
+        const model = String(record.model || '').replace('web.', '');
+        return `
+          <article class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md p-6">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <span class="inline-flex rounded-full bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 px-3 py-1 text-xs font-bold">${esc(model)}</span>
+                <h2 class="text-xl font-extrabold mt-3">${esc(record.title)}</h2>
+              </div>
+              ${date ? `<span class="text-xs text-gray-500 dark:text-gray-400">${esc(date)}</span>` : ''}
+            </div>
+            ${record.description ? `<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed mb-4">${esc(record.description)}</p>` : ''}
+            <div class="flex flex-wrap gap-2 text-xs">
+              ${record.status ? `<span class="rounded-full bg-gray-100 dark:bg-gray-900 px-3 py-1 text-gray-600 dark:text-gray-300">${esc(record.status)}</span>` : ''}
+              ${record.amount ? `<span class="rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-amber-700 dark:text-amber-300">${esc(record.amount)}</span>` : ''}
+              ${record.url ? `<a href="${esc(record.url)}" target="_blank" rel="noopener" class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300 hover:underline">Open link</a>` : ''}
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    async function loadGroup(group) {
+      activeGroup = group || activeGroup;
+      history.replaceState({}, '', '/features?group=' + encodeURIComponent(activeGroup));
+      const res = await fetch('/api/features?group=' + encodeURIComponent(activeGroup), {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not load features');
+      document.title = body.title + ' - Alpha One Labs';
+      renderTabs(body.groups || []);
+      renderRecords(body.records || []);
+    }
+
+    loadGroup(activeGroup).catch(err => setMessage(err.message, true));
+  </script>
+{% endblock %}

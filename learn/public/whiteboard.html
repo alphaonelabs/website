@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+{% block title %}Advanced Whiteboard - Alpha One Labs{% endblock %}
+{% block meta_description %}Realtime advanced whiteboard with drawing tools, shapes, text, room replay, image loading, and export.{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block head %}
+<style>
+  #whiteboard { touch-action: none; cursor: crosshair; }
+  .tool-button[aria-pressed="true"] { outline: 2px solid rgb(20 184 166); outline-offset: 2px; }
+</style>
+{% endblock %}
+{% block content %}
+<main class="flex-1 bg-gray-50 dark:bg-gray-950">
+  <section class="bg-gradient-to-br from-slate-950 via-teal-950 to-cyan-900 text-white py-8">
+    <div class="max-w-[96rem] mx-auto px-4 md:px-6 flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
+      <div>
+        <p class="text-sm font-bold uppercase tracking-[0.22em] text-cyan-100 mb-3">Live classroom tool</p>
+        <h1 class="text-4xl md:text-5xl font-black mb-3">Advanced Whiteboard</h1>
+        <p class="max-w-3xl text-cyan-50">The restored legacy whiteboard tools, upgraded with Cloudflare realtime rooms, persisted replay, active users, undo, redo, and view-only access for visitors.</p>
+      </div>
+      <div class="rounded-2xl bg-white/10 border border-white/20 p-4 backdrop-blur w-full xl:w-auto">
+        <label for="room" class="block text-xs font-bold uppercase tracking-wide text-cyan-100 mb-1">Room</label>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input id="room" class="rounded-xl px-3 py-2 text-gray-900 min-w-0" value="main-whiteboard" autocomplete="off">
+          <button id="connect" class="rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-2 font-bold">Connect</button>
+        </div>
+        <p id="status" class="text-sm text-cyan-100 mt-2">Disconnected</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-[96rem] mx-auto px-4 md:px-6 py-6">
+    <div id="viewer-note" class="hidden mb-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-100">
+      Viewing only. <a id="whiteboard-login" href="/login" class="font-bold underline underline-offset-2">Sign in to draw, undo, redo, or clear the board.</a>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[22rem_1fr] gap-5">
+      <aside class="space-y-4">
+        <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+          <h2 class="font-black text-lg mb-4">Tools</h2>
+          <label for="toolSelect" class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Tool</label>
+          <select id="toolSelect" class="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 mb-4">
+            <option value="pen">Pen</option>
+            <option value="eraser">Eraser</option>
+            <option value="highlighter">Highlighter</option>
+            <option value="line">Line</option>
+            <option value="rectangle">Rectangle</option>
+            <option value="circle">Circle</option>
+            <option value="text">Text</option>
+            <option value="arrow">Arrow</option>
+          </select>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <label class="text-sm font-bold text-gray-700 dark:text-gray-300">Color
+              <input id="penColor" type="color" value="#0f766e" class="mt-2 w-full h-11 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950">
+            </label>
+            <label class="text-sm font-bold text-gray-700 dark:text-gray-300">Width <span id="penWidthValue" class="font-normal">4</span>
+              <input id="penWidth" type="range" min="1" max="32" value="4" class="mt-4 w-full">
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" data-tool="pen" class="tool-button rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800" aria-pressed="true">Pen</button>
+            <button type="button" data-tool="highlighter" class="tool-button rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800" aria-pressed="false">Highlighter</button>
+            <button type="button" data-tool="eraser" class="tool-button rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800" aria-pressed="false">Eraser</button>
+            <button type="button" data-tool="text" class="tool-button rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800" aria-pressed="false">Text</button>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+          <h2 class="font-black text-lg mb-4">Actions</h2>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="undoBoard" type="button" class="rounded-xl bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 font-bold">Undo</button>
+            <button id="redoBoard" type="button" class="rounded-xl bg-gray-700 hover:bg-gray-800 text-white px-3 py-2 font-bold">Redo</button>
+            <button id="downloadBoard" type="button" class="rounded-xl bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 font-bold">Download</button>
+            <button id="clearBoard" type="button" class="rounded-xl bg-red-600 hover:bg-red-700 text-white px-3 py-2 font-bold">Clear</button>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+          <h2 class="font-black text-lg mb-4">Background image</h2>
+          <label class="text-sm font-bold text-gray-700 dark:text-gray-300">Image Scale <span id="imageScaleValue" class="font-normal">100%</span>
+            <input id="imageScale" type="range" min="10" max="300" value="100" class="mt-3 w-full">
+          </label>
+          <div class="grid grid-cols-2 gap-2 mt-4">
+            <button id="uploadBoard" type="button" class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 font-bold">Load Image</button>
+            <button id="removeImage" type="button" class="rounded-xl border border-gray-300 dark:border-gray-700 px-3 py-2 font-bold hover:bg-gray-50 dark:hover:bg-gray-800">Remove</button>
+          </div>
+          <input type="file" id="loadInput" accept="image/*" class="hidden">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">Images are kept locally in this browser for the selected room. Drawing events are shared live.</p>
+        </div>
+
+        <div class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h2 class="font-black text-lg">Active users</h2>
+            <span id="active-count" class="rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 px-2.5 py-1 text-xs font-black">0</span>
+          </div>
+          <div id="activeUsers" class="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-gray-300">
+            <span class="text-gray-400">No signed-in users connected.</span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden min-h-[42rem]">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <div class="text-sm text-gray-600 dark:text-gray-300">
+            <span class="font-bold text-gray-900 dark:text-white">Canvas:</span> drag to draw, use wheel/trackpad outside the canvas to scroll, export when done.
+          </div>
+          <div id="coordinates" class="rounded-lg bg-gray-100 dark:bg-gray-800 px-3 py-1 text-xs font-mono text-gray-600 dark:text-gray-300">x: 0, y: 0</div>
+        </div>
+        <div class="overflow-auto bg-slate-100 dark:bg-slate-950 p-3">
+          <canvas id="whiteboard" width="1500" height="800" class="block rounded-2xl border border-gray-300 bg-white shadow-sm">
+            Your browser does not support the HTML5 canvas.
+          </canvas>
+        </div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  const token = localStorage.getItem('edu_token');
+  const canInteract = Boolean(token);
+  const canvas = document.getElementById('whiteboard');
+  const ctx = canvas.getContext('2d');
+  const roomInput = document.getElementById('room');
+  const statusEl = document.getElementById('status');
+  const viewerNote = document.getElementById('viewer-note');
+  const loginLink = document.getElementById('whiteboard-login');
+  const toolSelect = document.getElementById('toolSelect');
+  const penColorInput = document.getElementById('penColor');
+  const penWidthInput = document.getElementById('penWidth');
+  const penWidthValue = document.getElementById('penWidthValue');
+  const imageScaleInput = document.getElementById('imageScale');
+  const imageScaleValue = document.getElementById('imageScaleValue');
+  const activeUsers = document.getElementById('activeUsers');
+  const activeCount = document.getElementById('active-count');
+  const coordinates = document.getElementById('coordinates');
+  let ws = null;
+  let currentParticipantId = '';
+  let events = [];
+  let seenEventIds = new Set();
+  let redoStack = [];
+  let drawing = false;
+  let startPoint = null;
+  let lastPoint = null;
+  let draftEvent = null;
+  let uploadedImage = null;
+  let imageDataUrl = '';
+  let imageScale = 1;
+
+  function esc(value) {
+    return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function preserveWhiteboardRedirect() {
+    sessionStorage.setItem('post_login_redirect', location.pathname + location.search);
+  }
+
+  function loginForWhiteboard() {
+    preserveWhiteboardRedirect();
+    window.location.href = '/login';
+  }
+
+  function viewerId() {
+    try {
+      let id = localStorage.getItem('classroom_participant_id');
+      if (!id) {
+        id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+        localStorage.setItem('classroom_participant_id', id);
+      }
+      return id;
+    } catch (_) {
+      return String(Date.now()) + Math.random().toString(16).slice(2);
+    }
+  }
+
+  function eventId() {
+    try { return crypto.randomUUID().replace(/[^A-Za-z0-9_-]/g, ''); }
+    catch (_) { return 'evt_' + Date.now() + '_' + Math.random().toString(16).slice(2); }
+  }
+
+  function setStatus(text, ok) {
+    statusEl.textContent = text;
+    statusEl.className = 'text-sm mt-2 ' + (ok ? 'text-emerald-100' : 'text-cyan-100');
+  }
+
+  function roomName() {
+    return (roomInput.value || 'main-whiteboard').trim() || 'main-whiteboard';
+  }
+
+  function backgroundKey() {
+    return 'whiteboard_background_' + roomName();
+  }
+
+  function saveBackground() {
+    try {
+      if (imageDataUrl) localStorage.setItem(backgroundKey(), JSON.stringify({ data: imageDataUrl, scale: imageScale }));
+      else localStorage.removeItem(backgroundKey());
+    } catch (_) {}
+  }
+
+  function loadBackground() {
+    uploadedImage = null;
+    imageDataUrl = '';
+    try {
+      const raw = localStorage.getItem(backgroundKey());
+      if (!raw) return redrawAll();
+      const payload = JSON.parse(raw);
+      if (!payload || !payload.data) return redrawAll();
+      imageDataUrl = payload.data;
+      imageScale = Number(payload.scale || 1);
+      imageScaleInput.value = Math.round(imageScale * 100);
+      imageScaleValue.textContent = Math.round(imageScale * 100) + '%';
+      const img = new Image();
+      img.onload = function () { uploadedImage = img; redrawAll(); };
+      img.src = imageDataUrl;
+    } catch (_) {
+      redrawAll();
+    }
+  }
+
+  function whiteFill() {
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    whiteFill();
+    if (uploadedImage) {
+      ctx.drawImage(uploadedImage, 0, 0, uploadedImage.width * imageScale, uploadedImage.height * imageScale);
+    }
+  }
+
+  function pointFromEvent(event) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches && event.touches[0] ? event.touches[0] : event;
+    return {
+      x: Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (touch.clientY - rect.top) / rect.height))
+    };
+  }
+
+  function px(point) {
+    return { x: point.x * canvas.width, y: point.y * canvas.height };
+  }
+
+  function setStyle(event) {
+    ctx.lineWidth = Number(event.size || 4);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = event.color || '#0f766e';
+    ctx.fillStyle = event.color || '#0f766e';
+    ctx.globalAlpha = Number(event.alpha || 1);
+    ctx.globalCompositeOperation = event.mode === 'eraser' ? 'destination-out' : 'source-over';
+  }
+
+  function drawArrow(from, to) {
+    const headlen = Math.max(10, Number(ctx.lineWidth || 4) * 3);
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(to.x, to.y);
+    ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(to.x, to.y);
+    ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  }
+
+  function drawEvent(event) {
+    if (!event || !event.from) return;
+    const kind = event.kind || 'stroke';
+    const from = px(event.from);
+    const to = px(event.to || event.from);
+    ctx.save();
+    setStyle(event);
+    if (kind === 'stroke') {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    } else if (kind === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    } else if (kind === 'rectangle') {
+      ctx.strokeRect(from.x, from.y, to.x - from.x, to.y - from.y);
+    } else if (kind === 'circle') {
+      const radius = Math.hypot(to.x - from.x, to.y - from.y);
+      ctx.beginPath();
+      ctx.arc(from.x, from.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (kind === 'arrow') {
+      drawArrow(from, to);
+    } else if (kind === 'text') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.font = Math.max(12, Number(event.size || 4) * 5) + 'px sans-serif';
+      ctx.fillText(event.text || '', from.x, from.y);
+    }
+    ctx.restore();
+  }
+
+  function redrawAll(extraEvent) {
+    drawBackground();
+    events.forEach(drawEvent);
+    if (extraEvent) drawEvent(extraEvent);
+  }
+
+  function currentMode() {
+    const tool = toolSelect.value;
+    if (tool === 'eraser') return 'eraser';
+    if (tool === 'highlighter') return 'highlighter';
+    if (tool === 'text') return 'text';
+    if (['line', 'rectangle', 'circle', 'arrow'].includes(tool)) return 'shape';
+    return 'pen';
+  }
+
+  function makeEvent(kind, from, to, text) {
+    const mode = currentMode();
+    return {
+      event_id: eventId(),
+      kind,
+      from,
+      to: to || from,
+      color: penColorInput.value,
+      size: Number(penWidthInput.value || 4),
+      mode,
+      alpha: mode === 'highlighter' ? 0.3 : 1,
+      text: text || ''
+    };
+  }
+
+  function applyIncomingEvent(event) {
+    if (!event) return;
+    if (event.event_id && seenEventIds.has(event.event_id)) return;
+    if (event.event_id) seenEventIds.add(event.event_id);
+    events.push(event);
+    if (events.length > 1000) events = events.slice(-1000);
+    drawEvent(event);
+  }
+
+  function sendEvent(event) {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    redoStack = [];
+    if (currentParticipantId) event.participant_id = currentParticipantId;
+    if (event.event_id) seenEventIds.add(event.event_id);
+    events.push(event);
+    if (events.length > 1000) events = events.slice(-1000);
+    drawEvent(event);
+    ws.send(JSON.stringify({ type: 'whiteboard_event', event }));
+  }
+
+  function updateActiveUsers(participants) {
+    const users = Array.isArray(participants) ? participants : [];
+    activeCount.textContent = String(users.length);
+    if (!users.length) {
+      activeUsers.innerHTML = '<span class="text-gray-400">No signed-in users connected.</span>';
+      return;
+    }
+    activeUsers.innerHTML = users.map(function (user) {
+      const name = user.display_name || user.participant_id || 'User';
+      return '<span class="rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 font-semibold">' + esc(name) + '</span>';
+    }).join('');
+  }
+
+  function connect() {
+    if (ws) ws.close();
+    events = [];
+    seenEventIds = new Set();
+    redoStack = [];
+    redrawAll();
+    loadBackground();
+    const room = encodeURIComponent(roomName());
+    const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const params = new URLSearchParams();
+    if (token) {
+      params.set('token', token);
+    } else {
+      params.set('participant_id', viewerId());
+      params.set('display_name', 'Viewer');
+    }
+    ws = new WebSocket(scheme + '//' + location.host + '/api/classroom/' + room + '?' + params.toString());
+    setStatus('Connecting...', false);
+    ws.addEventListener('open', function () { setStatus(canInteract ? 'Connected' : 'Viewing live board', true); });
+    ws.addEventListener('close', function () { setStatus('Disconnected', false); });
+    ws.addEventListener('message', function (message) {
+      let data = null;
+      try { data = JSON.parse(message.data); } catch (_) { return; }
+      if (data.type === 'user_info') {
+        currentParticipantId = data.participant_id || '';
+      } else if (data.type === 'whiteboard_state') {
+        events = Array.isArray(data.events) ? data.events : [];
+        seenEventIds = new Set(events.map(e => e && e.event_id).filter(Boolean));
+        redrawAll();
+      } else if (data.type === 'whiteboard_event') {
+        applyIncomingEvent(data.event || {});
+      } else if (data.type === 'whiteboard_clear') {
+        events = [];
+        seenEventIds = new Set();
+        redoStack = [];
+        redrawAll();
+      } else if (data.type === 'room_state') {
+        updateActiveUsers(data.participants || []);
+      }
+    });
+  }
+
+  function start(event) {
+    event.preventDefault();
+    if (!canInteract) { loginForWhiteboard(); return; }
+    const point = pointFromEvent(event);
+    coordinates.textContent = 'x: ' + Math.round(point.x * canvas.width) + ', y: ' + Math.round(point.y * canvas.height);
+    const tool = toolSelect.value;
+    if (tool === 'text') {
+      const text = prompt('Enter text to add:');
+      if (text) sendEvent(makeEvent('text', point, point, text));
+      return;
+    }
+    drawing = true;
+    startPoint = point;
+    lastPoint = point;
+    draftEvent = null;
+  }
+
+  function move(event) {
+    const point = pointFromEvent(event);
+    coordinates.textContent = 'x: ' + Math.round(point.x * canvas.width) + ', y: ' + Math.round(point.y * canvas.height);
+    if (!drawing || !lastPoint) return;
+    event.preventDefault();
+    const tool = toolSelect.value;
+    if (tool === 'pen' || tool === 'eraser' || tool === 'highlighter') {
+      sendEvent(makeEvent('stroke', lastPoint, point));
+      lastPoint = point;
+    } else {
+      draftEvent = makeEvent(tool, startPoint, point);
+      redrawAll(draftEvent);
+    }
+  }
+
+  function stop(event) {
+    if (!drawing) return;
+    drawing = false;
+    const hasPointer = event && (
+      typeof event.clientX === 'number' ||
+      (event.touches && event.touches[0]) ||
+      (event.changedTouches && event.changedTouches[0])
+    );
+    const point = hasPointer ? pointFromEvent(event.changedTouches && event.changedTouches[0] ? event.changedTouches[0] : event) : lastPoint;
+    const tool = toolSelect.value;
+    if (['line', 'rectangle', 'circle', 'arrow'].includes(tool)) {
+      redrawAll();
+      sendEvent(makeEvent(tool, startPoint, point));
+    }
+    startPoint = null;
+    lastPoint = null;
+    draftEvent = null;
+  }
+
+  function clearRoom() {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    if (!confirm('Clear this whiteboard room for everyone?')) return;
+    events = [];
+    seenEventIds = new Set();
+    redoStack = [];
+    redrawAll();
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'whiteboard_clear' }));
+  }
+
+  function undo() {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    const idx = [...events].map((event, index) => ({ event, index })).reverse().find(item => !currentParticipantId || item.event.participant_id === currentParticipantId || !item.event.participant_id);
+    if (idx) redoStack.push(idx.event);
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'whiteboard_undo' }));
+  }
+
+  function redo() {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    const event = redoStack.pop();
+    if (!event) return;
+    const copy = Object.assign({}, event, { event_id: eventId() });
+    sendEvent(copy);
+  }
+
+  function downloadCanvas() {
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = roomName().replace(/[^A-Za-z0-9_-]+/g, '-') + '-whiteboard.png';
+    link.click();
+  }
+
+  function syncToolButtons() {
+    document.querySelectorAll('.tool-button').forEach(function (button) {
+      button.setAttribute('aria-pressed', button.dataset.tool === toolSelect.value ? 'true' : 'false');
+    });
+    canvas.style.cursor = toolSelect.value === 'eraser' ? 'cell' : (toolSelect.value === 'text' ? 'text' : 'crosshair');
+  }
+
+  if (!canInteract) {
+    viewerNote.classList.remove('hidden');
+    canvas.style.cursor = 'not-allowed';
+    [toolSelect, penColorInput, penWidthInput, imageScaleInput].forEach(el => el.disabled = true);
+    ['undoBoard', 'redoBoard', 'clearBoard', 'uploadBoard', 'removeImage'].forEach(id => {
+      const button = document.getElementById(id);
+      button.classList.add('opacity-60');
+      button.title = 'Sign in to use this control';
+    });
+  }
+
+  loginLink.addEventListener('click', preserveWhiteboardRedirect);
+  document.getElementById('connect').addEventListener('click', connect);
+  roomInput.addEventListener('change', connect);
+  toolSelect.addEventListener('change', syncToolButtons);
+  document.querySelectorAll('.tool-button').forEach(function (button) {
+    button.addEventListener('click', function () {
+      toolSelect.value = button.dataset.tool;
+      syncToolButtons();
+    });
+  });
+  penWidthInput.addEventListener('input', function () { penWidthValue.textContent = penWidthInput.value; });
+  imageScaleInput.addEventListener('input', function () {
+    imageScale = Number(imageScaleInput.value || 100) / 100;
+    imageScaleValue.textContent = imageScaleInput.value + '%';
+    saveBackground();
+    redrawAll();
+  });
+  document.getElementById('uploadBoard').addEventListener('click', function () {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    document.getElementById('loadInput').click();
+  });
+  document.getElementById('loadInput').addEventListener('change', function (event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (loadEvent) {
+      imageDataUrl = loadEvent.target.result;
+      const img = new Image();
+      img.onload = function () {
+        uploadedImage = img;
+        saveBackground();
+        redrawAll();
+      };
+      img.src = imageDataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('removeImage').addEventListener('click', function () {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    uploadedImage = null;
+    imageDataUrl = '';
+    saveBackground();
+    redrawAll();
+  });
+  document.getElementById('downloadBoard').addEventListener('click', downloadCanvas);
+  document.getElementById('clearBoard').addEventListener('click', clearRoom);
+  document.getElementById('undoBoard').addEventListener('click', undo);
+  document.getElementById('redoBoard').addEventListener('click', redo);
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', stop);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', stop, { passive: false });
+  canvas.addEventListener('mouseleave', stop);
+
+  syncToolButtons();
+  redrawAll();
+  connect();
+})();
+</script>
+{% endblock %}
