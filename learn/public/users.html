@@ -119,7 +119,7 @@ function renderGrid(users) {
   grid.innerHTML = users.map(u => {
     const initials = (u.name || u.username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
     const avatarEl = u.avatar_url
-      ? `<img src="${esc(u.avatar_url)}" alt="" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=&quot;text-white text-xl font-bold&quot;>${esc(initials)}</span>'" />`
+      ? `<img src="${esc(u.avatar_url)}" alt="" data-avatar-initials="${esc(initials)}" class="w-full h-full object-cover" />`
       : `<span class="text-white text-xl font-bold">${esc(initials)}</span>`;
 
     const teacherBadge = u.is_teacher
@@ -180,6 +180,15 @@ async function loadUsers() {
     document.getElementById('empty-sub').textContent   = 'Could not reach the server.';
   }
 }
+
+document.getElementById('users-grid').addEventListener('error', (e) => {
+  const img = e.target;
+  if (!img.matches('img[data-avatar-initials]')) return;
+  const span = document.createElement('span');
+  span.className = 'text-white text-xl font-bold';
+  span.textContent = img.dataset.avatarInitials;
+  img.replaceWith(span);
+}, true);
 
 document.addEventListener('DOMContentLoaded', loadUsers);
 </script>

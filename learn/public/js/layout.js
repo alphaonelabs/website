@@ -99,10 +99,10 @@ function initializeDarkMode() {
 }
 
 // ── Layout injection ──────────────────────────────────────────────────
-const _navbarPromise = fetch('/partials/navbar.html');
-const _footerPromise = fetch('/partials/footer.html');
+const _navbarPromise = fetch('/partials/navbar.html').then(res => res.text()).catch(e => { console.error('Layout fetch error:', e); return null; });
+const _footerPromise = fetch('/partials/footer.html').then(res => res.text()).catch(e => { console.error('Layout fetch error:', e); return null; });
 
-async function inject(id, fetchPromise, callback) {
+async function inject(id, textPromise, callback) {
     const el = document.getElementById(id);
     if (!el) return;
     if (el.dataset.inline === 'true') {
@@ -112,8 +112,9 @@ async function inject(id, fetchPromise, callback) {
         return;
     }
     try {
-        const res = await fetchPromise;
-        el.innerHTML = await res.text();
+        const html = await textPromise;
+        if (html === null) return;
+        el.innerHTML = html;
         if (typeof callback === 'function') callback();
     } catch (e) {
         console.error('Layout inject error:', e);
@@ -136,14 +137,15 @@ function _setNavAvatar(initialsId, imgId, name, username, avatarUrl) {
     const imgEl      = document.getElementById(imgId);
     if (!initialsEl) return;
     if (avatarUrl) {
+        initialsEl.textContent = initials;
         initialsEl.classList.add('hidden');
         if (imgEl) {
-            imgEl.src = avatarUrl;
-            imgEl.classList.remove('hidden');
             imgEl.onerror = function () {
                 this.classList.add('hidden');
                 initialsEl.classList.remove('hidden');
             };
+            imgEl.src = avatarUrl;
+            imgEl.classList.remove('hidden');
         }
     } else {
         initialsEl.textContent = initials;
@@ -189,6 +191,8 @@ function updateAuthSection() {
 
         const notifLink = document.getElementById('notif-bell-link');
         if (notifLink) notifLink.classList.remove('hidden');
+        const cartLink = document.getElementById('cart-nav-link');
+        if (cartLink) cartLink.classList.remove('hidden');
 
         // Trigger button circle (existing id="profile-avatar")
         _setNavButtonAvatar('profile-avatar', user.name, user.username, avatarUrl);
@@ -314,6 +318,7 @@ async function refreshCartBadge() {
         if (!res.ok) return;
         const body = await res.json();
         const count = (body.items || []).reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        if (link) link.classList.remove('hidden');
         if (count > 0) {
             badge.textContent = count > 99 ? '99+' : String(count);
             badge.classList.remove('hidden');

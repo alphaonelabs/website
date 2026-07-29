@@ -7136,7 +7136,7 @@ async def api_upload_avatar(req, env):
         image_data = image_data.split(",", 1)[1]
 
     try:
-        img_bytes = base64.b64decode(image_data)
+        img_bytes = base64.b64decode(image_data, validate=True)
     except Exception:
         return err("Invalid image data — expected base64-encoded content")
 
@@ -7151,7 +7151,11 @@ async def api_upload_avatar(req, env):
         ext = image_type.split("/")[-1].replace("jpeg", "jpg")
         r2_key = f"avatars/{user['id']}/{new_id()}.{ext}"
         try:
-            await r2.put(r2_key, to_js(img_bytes))
+            put_opts = to_js(
+                {"httpMetadata": {"contentType": image_type}},
+                dict_converter=js.Object.fromEntries,
+            )
+            await r2.put(r2_key, to_js(img_bytes, create_pyproxies=False), put_opts)
         except Exception as e:
             await capture_exception(e, req, env, "api_upload_avatar.r2_put")
             return err("Avatar upload failed — please try again", 500)
@@ -7238,15 +7242,25 @@ async def api_get_public_profile(username: str, _req, env):
     })
 
 
-async def api_list_users(_req, env):
-    """GET /api/users — return all users who have set their profile to public."""
+async def api_list_users(req, env):
+    """GET /api/users — return public-profile users, paginated."""
     enc = env.ENCRYPTION_KEY
+
+    params = parse_qs(urlparse(req.url).query)
+    try:
+        limit = max(1, min(100, int((params.get("limit") or ["50"])[0])))
+    except Exception:
+        limit = 50
+    try:
+        offset = max(0, int((params.get("offset") or ["0"])[0]))
+    except Exception:
+        offset = 0
 
     rows = await env.DB.prepare(
         "SELECT u.id,u.name,u.username,p.bio,p.expertise,p.avatar_url,p.is_teacher"
         " FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE p.is_profile_public=1"
-        " ORDER BY u.created_at DESC"
-    ).all()
+        " ORDER BY u.created_at DESC LIMIT ? OFFSET ?"
+    ).bind(limit, offset).all()
 
     users_list = []
     for r in rows.results or []:

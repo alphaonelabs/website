@@ -111,6 +111,7 @@ async function loadProfile() {
 function showError(title, msg) {
   document.getElementById('error-title').textContent = title;
   document.getElementById('error-msg').textContent   = msg;
+  hideBlock('state-loading');
   show('state-error');
   hideBlock('state-profile');
 }

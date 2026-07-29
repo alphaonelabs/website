@@ -17,7 +17,7 @@
 </section>
 
 <!-- Toast -->
-<div id="flash" class="hidden fixed top-4 right-4 z-[100] max-w-sm w-full rounded-xl px-5 py-4 text-sm font-medium flex items-center gap-3 shadow-lg transition-all"></div>
+<div id="flash" class="hidden fixed top-4 right-4 z-[100] max-w-sm w-full rounded-xl px-5 py-4 text-sm font-medium flex items-center gap-3 shadow-lg transition-all" role="status" aria-live="polite"></div>
 
 <main class="flex-1 max-w-[90rem] mx-auto w-full px-4 md:px-6 py-8">
   <div class="lg:grid lg:grid-cols-3 lg:gap-6 space-y-6 lg:space-y-0">
@@ -62,7 +62,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><label class="block text-sm font-medium mb-1" for="name">Display Name</label><input id="name" name="name" maxlength="80" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div>
           <div>
-            <label class="block text-sm font-medium mb-1">Username</label>
+            <label class="block text-sm font-medium mb-1" for="username-display">Username</label>
             <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span><input id="username-display" type="text" disabled class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 pl-7 pr-3 py-2 cursor-not-allowed"></div>
           </div>
         </div>
@@ -75,11 +75,11 @@
           <div><label class="block text-sm font-medium mb-1" for="slack_username"><i class="fab fa-slack mr-1"></i>Slack</label><input id="slack_username" name="slack_username" placeholder="username" maxlength="60" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div>
         </div>
 
-        <div><label class="block text-sm font-medium mb-1" for="how_did_you_hear_about_us">How did you hear about us?</label><input id="how_did_you_hear_about_us" name="how_did_you_hear_about_us" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div>
+        <div><label class="block text-sm font-medium mb-1" for="how_did_you_hear_about_us">How did you hear about us?</label><input id="how_did_you_hear_about_us" name="how_did_you_hear_about_us" maxlength="200" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></div>
         <label class="inline-flex items-center gap-2"><input id="is_teacher" name="is_teacher" type="checkbox" class="h-4 w-4 text-teal-600"><span class="text-sm">I teach or host activities</span></label>
 
         <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded"><i class="fas fa-save mr-2"></i>Update Profile</button>
-        <p id="profile-status" class="text-sm text-gray-500 dark:text-gray-400"></p>
+        <p id="profile-status" class="text-sm text-gray-500 dark:text-gray-400" role="status" aria-live="polite"></p>
       </form>
 
       <!-- Danger Zone -->
@@ -89,7 +89,7 @@
         <label class="block text-sm font-medium mb-1" for="delete-confirmation">Type DELETE to confirm</label>
         <input id="delete-confirmation" class="w-full rounded-lg border border-red-300 dark:border-red-800 bg-white dark:bg-gray-900 px-3 py-2 mb-3" autocomplete="off">
         <button id="delete-account-button" type="button" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded"><i class="fas fa-trash mr-2"></i>Delete my account</button>
-        <p id="delete-account-status" class="text-sm text-gray-500 dark:text-gray-400 mt-3"></p>
+        <p id="delete-account-status" class="text-sm text-gray-500 dark:text-gray-400 mt-3" role="status" aria-live="polite"></p>
       </section>
     </div>
 
@@ -146,7 +146,7 @@ function flash(msg, type = 'success') {
   const el = document.getElementById('flash');
   const ok = type === 'success';
   el.className = `fixed top-4 right-4 z-[100] max-w-sm w-full rounded-xl px-5 py-4 text-sm font-medium flex items-center gap-3 shadow-lg transition-all ${ok ? 'bg-teal-600 text-white' : type === 'info' ? 'bg-blue-600 text-white' : 'bg-red-600 text-white'}`;
-  el.innerHTML = `<i class="fas ${ok ? 'fa-check-circle' : type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle'} flex-shrink-0"></i><span class="flex-1">${esc(msg)}</span><button onclick="this.parentElement.classList.add('hidden')" class="ml-2 opacity-70 hover:opacity-100"><i class="fas fa-times text-xs"></i></button>`;
+  el.innerHTML = `<i class="fas ${ok ? 'fa-check-circle' : type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle'} flex-shrink-0"></i><span class="flex-1">${esc(msg)}</span><button type="button" aria-label="Dismiss" onclick="this.parentElement.classList.add('hidden')" class="ml-2 opacity-70 hover:opacity-100"><i class="fas fa-times text-xs"></i></button>`;
   el.classList.remove('hidden');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add('hidden'), 5000);
@@ -175,15 +175,19 @@ function updatePublicLink() {
   const badge = document.getElementById('quick-profile-badge');
   const privBadge = document.getElementById('quick-profile-private-badge');
   const uname = document.getElementById('username-display').value || (user && user.username) || '';
+  const quickLink = document.getElementById('quick-view-profile');
   if (on) {
     row.classList.remove('hidden'); row.classList.add('flex');
     const link = document.getElementById('public-link');
     link.href = `/public-profile.html?username=${encodeURIComponent(uname)}`;
     link.textContent = `${window.location.origin}/public-profile.html?username=${encodeURIComponent(uname)}`;
-    document.getElementById('quick-view-profile').href = link.href;
+    quickLink.href = link.href;
+    quickLink.querySelector('span').textContent = 'View Public Profile';
     badge.classList.remove('hidden'); privBadge.classList.add('hidden');
   } else {
     row.classList.add('hidden'); row.classList.remove('flex');
+    quickLink.href = '/users.html';
+    quickLink.querySelector('span').textContent = 'Set Up Public Profile';
     badge.classList.add('hidden'); privBadge.classList.remove('hidden');
   }
 }
@@ -234,20 +238,20 @@ async function handleAvatarFile(input) {
   if (!allowed.includes(file.type)) { flash('Only JPG, PNG, or WebP images are allowed.', 'error'); input.value = ''; return; }
   if (file.size > 5 * 1024 * 1024) { flash('Image must be under 5 MB.', 'error'); input.value = ''; return; }
 
-  const bitmap = await createImageBitmap(file);
-  const MAX = 256;
-  const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-  const outType = file.type === 'image/png' && file.size < 100000 ? 'image/png' : 'image/jpeg';
-  const dataUrl = canvas.toDataURL(outType, 0.85);
-  const b64 = dataUrl.split(',')[1];
-
-  setAvatarDisplay(dataUrl, null, null);
   try {
+    const bitmap = await createImageBitmap(file);
+    const MAX = 256;
+    const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    const outType = file.type === 'image/png' && file.size < 100000 ? 'image/png' : 'image/jpeg';
+    const dataUrl = canvas.toDataURL(outType, 0.85);
+    const b64 = dataUrl.split(',')[1];
+
+    setAvatarDisplay(dataUrl, null, null);
     const res = await fetch('/api/profile/avatar', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+token }, body: JSON.stringify({ image_data: b64, image_type: outType }) });
     const json = await res.json();
     if (res.ok) {
@@ -259,8 +263,12 @@ async function handleAvatarFile(input) {
       setAvatarDisplay(null, null, null);
       flash(json.error || 'Avatar upload failed.', 'error');
     }
-  } catch { setAvatarDisplay(null, null, null); flash('Network error — please try again.', 'error'); }
-  finally { input.value = ''; }
+  } catch {
+    setAvatarDisplay(null, null, null);
+    flash('Could not process that image — please try a different file.', 'error');
+  } finally {
+    input.value = '';
+  }
 }
 
 async function removeAvatar() {
