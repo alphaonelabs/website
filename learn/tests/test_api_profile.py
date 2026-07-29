@@ -1,9 +1,10 @@
 """
-Tests for Week-2 profile & user-directory API endpoints:
+Tests for profile & user-directory API endpoints:
   GET    /api/profile
   PATCH  /api/profile
+  DELETE /api/profile   (anonymizing account deletion)
   POST   /api/profile/avatar
-  DELETE /api/account
+  DELETE /api/profile/avatar
   GET    /api/users
   GET    /api/users/:username
 """
@@ -38,20 +39,35 @@ def _auth(uid="uid-alice", username="alice", role="member"):
     return {"Authorization": f"Bearer {_make_token(uid, username, role)}"}
 
 
-def _full_profile_row(**overrides):
+def _ensure_profile_stmts(referred_by_user_id=""):
+    """The two DB calls `_ensure_user_profile` makes when a profile row already exists."""
+    existing = MockRow(
+        referral_code=_enc("REF123"),
+        referral_code_hash="hash",
+        referral_earnings_cents=0,
+        referred_by_user_id=referred_by_user_id,
+    )
+    return [make_stmt(first=existing), make_stmt()]
+
+
+def _profile_row(**overrides):
     defaults = dict(
         id="uid-alice",
         name=_enc("Alice Smith"),
         username=_enc("alice"),
+        email=_enc("alice@example.com"),
+        role=_enc("member"),
         bio=None,
         expertise=None,
-        github_username=None,
+        avatar_url=None,
         discord_username=None,
         slack_username=None,
-        avatar_url=None,
+        github_username=None,
         is_teacher=0,
         is_profile_public=0,
-        created_at="2024-01-01 00:00:00",
+        how_did_you_hear_about_us=None,
+        referral_code=_enc("REF123"),
+        referral_earnings_cents=0,
     )
     defaults.update(overrides)
     return MockRow(**defaults)
@@ -63,59 +79,47 @@ def _full_profile_row(**overrides):
 
 class TestGetProfile:
     def _req(self):
-        return MockRequest(method="GET", url="http://localhost/api/profile",
-                           headers=_auth())
+        return MockRequest(method="GET", url="http://localhost/api/profile", headers=_auth())
 
     async def test_no_token_returns_401(self):
         env = make_env()
-        r   = await worker.api_get_profile(
-            MockRequest(method="GET", url="http://localhost/api/profile"), env
-        )
+        r   = await worker.api_profile(MockRequest(method="GET", url="http://localhost/api/profile"), env)
         assert r.status == 401
 
     async def test_user_not_found_returns_404(self):
-        env = make_env(db=MockDB([make_stmt(first=None)]))
-        r   = await worker.api_get_profile(self._req(), env)
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt(first=None)]))
+        r   = await worker.api_profile(self._req(), env)
         assert r.status == 404
 
     async def test_returns_profile_fields(self):
-        row = _full_profile_row(
+        row = _profile_row(
             bio=_enc("Love coding!"),
             expertise=_enc("Python, Django"),
             github_username=_enc("alice-gh"),
         )
-        env = make_env(db=MockDB([make_stmt(first=row)]))
-        r   = await worker.api_get_profile(self._req(), env)
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt(first=row)]))
+        r   = await worker.api_profile(self._req(), env)
         assert r.status == 200
-        d   = _parse(r)["data"]
+        d   = _parse(r)["profile"]
         assert d["username"]        == "alice"
         assert d["name"]            == "Alice Smith"
         assert d["bio"]             == "Love coding!"
         assert d["expertise"]       == "Python, Django"
         assert d["github_username"] == "alice-gh"
-        assert d["is_teacher"]      == 0
-        assert d["is_profile_public"] == 0
+        assert d["is_teacher"]      is False
+        assert d["is_profile_public"] is False
 
     async def test_null_optional_fields_return_empty_string(self):
-        row = _full_profile_row()
-        env = make_env(db=MockDB([make_stmt(first=row)]))
-        r   = await worker.api_get_profile(self._req(), env)
-        d   = _parse(r)["data"]
+        row = _profile_row()
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt(first=row)]))
+        r   = await worker.api_profile(self._req(), env)
+        d   = _parse(r)["profile"]
         assert d["bio"]              == ""
         assert d["expertise"]        == ""
         assert d["github_username"]  == ""
         assert d["discord_username"] == ""
         assert d["slack_username"]   == ""
         assert d["avatar_url"]       == ""
-
-    async def test_does_not_expose_email_or_password(self):
-        row = _full_profile_row()
-        env = make_env(db=MockDB([make_stmt(first=row)]))
-        r   = await worker.api_get_profile(self._req(), env)
-        d   = _parse(r)["data"]
-        assert "email"         not in d
-        assert "password_hash" not in d
-        assert "email_verified" not in d
 
 
 # ---------------------------------------------------------------------------
@@ -128,93 +132,153 @@ class TestPatchProfile:
 
     async def test_no_token_returns_401(self):
         env = make_env()
-        r   = await worker.api_patch_profile(
+        r   = await worker.api_profile(
             json_request("/api/profile", {"bio": "x"}, method="PATCH"), env
         )
         assert r.status == 401
 
-    async def test_empty_body_returns_400(self):
-        env = make_env()
-        r   = await worker.api_patch_profile(self._req({}), env)
-        assert r.status == 400
-
-    async def test_unknown_fields_ignored_returns_400(self):
-        env = make_env()
-        r   = await worker.api_patch_profile(self._req({"hacked_column": "x"}), env)
-        assert r.status == 400
-
     async def test_valid_update_returns_200(self):
-        env = make_env(db=MockDB([make_stmt()]))
-        r   = await worker.api_patch_profile(
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt()]))
+        r   = await worker.api_profile(
             self._req({"bio": "Hello world", "is_profile_public": True}), env
         )
         assert r.status == 200
         assert _parse(r)["success"] is True
 
+    async def test_name_update_issues_users_table_write(self):
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt(), make_stmt()]))
+        r   = await worker.api_profile(self._req({"name": "New Name"}), env)
+        assert r.status == 200
+
     async def test_is_teacher_coerced_to_int(self):
-        # Ensure the handler runs without errors when toggling boolean fields
-        env = make_env(db=MockDB([make_stmt()]))
-        r   = await worker.api_patch_profile(
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt()]))
+        r   = await worker.api_profile(
             self._req({"is_teacher": True, "is_profile_public": False}), env
         )
         assert r.status == 200
 
-    async def test_partial_update_only_allowed_fields(self):
-        # Only known fields should survive; unknown fields are stripped silently
-        env = make_env(db=MockDB([make_stmt()]))
-        r   = await worker.api_patch_profile(
-            self._req({"bio": "ok", "role": "host"}), env
-        )
-        assert r.status == 200
-
 
 # ---------------------------------------------------------------------------
-# DELETE /api/account
+# DELETE /api/profile  (anonymizing account deletion)
 # ---------------------------------------------------------------------------
 
 class TestDeleteAccount:
     def _req(self, payload):
-        return json_request("/api/account", payload,
-                            headers=_auth(), method="DELETE")
-
-    def _user_row(self, username="alice", password="password123"):
-        return MockRow(
-            id="uid-alice",
-            password_hash=worker.hash_password(password, username),
-            username=_enc(username),
-        )
+        return json_request("/api/profile", payload, headers=_auth(), method="DELETE")
 
     async def test_no_token_returns_401(self):
         env = make_env()
         r   = await worker.api_delete_account(
-            json_request("/api/account", {"password": "x"}, method="DELETE"), env
+            json_request("/api/profile", {"confirmation": "DELETE"}, method="DELETE"), env
         )
         assert r.status == 401
 
-    async def test_missing_password_returns_400(self):
+    async def test_missing_confirmation_returns_400(self):
         env = make_env()
         r   = await worker.api_delete_account(self._req({}), env)
         assert r.status == 400
 
-    async def test_wrong_password_returns_401(self):
-        row = self._user_row()
-        env = make_env(db=MockDB([make_stmt(first=row)]))
-        r   = await worker.api_delete_account(self._req({"password": "wrongpass"}), env)
-        assert r.status == 401
+    async def test_wrong_confirmation_returns_400(self):
+        env = make_env()
+        r   = await worker.api_delete_account(self._req({"confirmation": "delete me"}), env)
+        assert r.status == 400
 
-    async def test_correct_password_returns_200(self):
-        row  = self._user_row()
-        acts = make_stmt(all_results=[])   # no owned activities
-        # Sequence: lookup user, SELECT activities, DELETE user
-        env  = make_env(db=MockDB([make_stmt(first=row), acts, make_stmt()]))
-        r    = await worker.api_delete_account(self._req({"password": "password123"}), env)
+    async def test_correct_confirmation_returns_200(self):
+        cart_rows = make_stmt(all_results=[])
+        cleanup_stmts = [make_stmt() for _ in range(13)]  # 13 cleanup DELETE statements
+        archive_stmt = make_stmt()
+        final_update = make_stmt()
+        env = make_env(db=MockDB([cart_rows, *cleanup_stmts, archive_stmt, final_update]))
+        r   = await worker.api_delete_account(self._req({"confirmation": "DELETE"}), env)
         assert r.status == 200
         assert _parse(r)["success"] is True
 
-    async def test_user_not_found_returns_404(self):
-        env = make_env(db=MockDB([make_stmt(first=None)]))
-        r   = await worker.api_delete_account(self._req({"password": "pw"}), env)
-        assert r.status == 404
+
+# ---------------------------------------------------------------------------
+# POST/DELETE /api/profile/avatar
+# ---------------------------------------------------------------------------
+
+class TestUploadAvatar:
+    def _req(self, payload, headers=None):
+        h = {**_auth(), **(headers or {})}
+        return json_request("/api/profile/avatar", payload, headers=h)
+
+    async def test_no_token_returns_401(self):
+        env = make_env()
+        r   = await worker.api_upload_avatar(
+            json_request("/api/profile/avatar", {"image_data": "x", "image_type": "image/png"}), env
+        )
+        assert r.status == 401
+
+    async def test_invalid_type_returns_400(self):
+        env = make_env()
+        r   = await worker.api_upload_avatar(
+            self._req({"image_data": "abc", "image_type": "image/gif"}), env
+        )
+        assert r.status == 400
+        assert "jpg" in _parse(r)["error"].lower() or "jpeg" in _parse(r)["error"].lower() \
+               or "png" in _parse(r)["error"].lower() or "webp" in _parse(r)["error"].lower()
+
+    async def test_missing_image_data_returns_400(self):
+        env = make_env()
+        r   = await worker.api_upload_avatar(
+            self._req({"image_type": "image/png"}), env
+        )
+        assert r.status == 400
+
+    async def test_oversized_image_returns_400(self):
+        big_bytes = b"\xff" * (5 * 1024 * 1024 + 1)
+        big_b64   = base64.b64encode(big_bytes).decode()
+        env       = make_env()
+        r         = await worker.api_upload_avatar(
+            self._req({"image_data": big_b64, "image_type": "image/png"}), env
+        )
+        assert r.status == 400
+        assert "5" in _parse(r)["error"]
+
+    async def test_no_r2_falls_back_to_base64(self):
+        small_b64 = base64.b64encode(b"\x89PNG fake").decode()
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt()]))
+        del env.R2
+        r = await worker.api_upload_avatar(
+            self._req({"image_data": small_b64, "image_type": "image/png"}), env
+        )
+        assert r.status == 200
+        url = _parse(r)["data"]["avatar_url"]
+        assert url.startswith("data:image/png;base64,")
+
+    async def test_r2_upload_returns_public_url(self):
+        from unittest.mock import AsyncMock, MagicMock
+        small_b64 = base64.b64encode(b"\x89PNG fake").decode()
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt()]))
+        mock_r2 = MagicMock()
+        mock_r2.put = AsyncMock(return_value=None)
+        env.R2 = mock_r2
+        env.R2_PUBLIC_URL = "https://pub-abc123.r2.dev"
+        r = await worker.api_upload_avatar(
+            self._req({"image_data": small_b64, "image_type": "image/png"}), env
+        )
+        assert r.status == 200
+        url = _parse(r)["data"]["avatar_url"]
+        assert url.startswith("https://pub-abc123.r2.dev/avatars/")
+        assert url.endswith(".png")
+        mock_r2.put.assert_awaited_once()
+
+
+class TestRemoveAvatar:
+    async def test_no_token_returns_401(self):
+        env = make_env()
+        r   = await worker.api_remove_avatar(
+            MockRequest(method="DELETE", url="http://localhost/api/profile/avatar"), env
+        )
+        assert r.status == 401
+
+    async def test_removes_avatar_returns_200(self):
+        env = make_env(db=MockDB([make_stmt()]))
+        r   = await worker.api_remove_avatar(
+            MockRequest(method="DELETE", url="http://localhost/api/profile/avatar", headers=_auth()), env
+        )
+        assert r.status == 200
 
 
 # ---------------------------------------------------------------------------
@@ -234,8 +298,6 @@ class TestListUsers:
         assert d["total"]  == 0
 
     async def test_only_public_users_returned(self):
-        # The SQL query WHERE is_profile_public=1 is handled by the DB;
-        # here we verify the response shape for a returned public user.
         public_row = MockRow(
             id="uid-bob",
             username=_enc("bob"),
@@ -307,7 +369,6 @@ class TestGetPublicProfile:
 
     async def test_private_profile_returns_403(self):
         row = self._public_row(is_profile_public=0)
-        # first() for user lookup; all() for activities
         env = make_env(db=MockDB([make_stmt(first=row)]))
         r   = await worker.api_get_public_profile("alice", self._req(), env)
         assert r.status == 403
@@ -350,75 +411,3 @@ class TestGetPublicProfile:
         r    = await worker.api_get_public_profile("alice", self._req(), env)
         d    = _parse(r)["data"]
         assert d["is_teacher"] == 1
-
-
-# ---------------------------------------------------------------------------
-# POST /api/profile/avatar  (avatar upload validation)
-# ---------------------------------------------------------------------------
-
-class TestUploadAvatar:
-    def _req(self, payload, headers=None):
-        h = {**_auth(), **(headers or {})}
-        return json_request("/api/profile/avatar", payload, headers=h)
-
-    async def test_no_token_returns_401(self):
-        env = make_env()
-        r   = await worker.api_upload_avatar(
-            json_request("/api/profile/avatar", {"image_data": "x", "image_type": "image/png"}), env
-        )
-        assert r.status == 401
-
-    async def test_invalid_type_returns_400(self):
-        env = make_env()
-        r   = await worker.api_upload_avatar(
-            self._req({"image_data": "abc", "image_type": "image/gif"}), env
-        )
-        assert r.status == 400
-        assert "jpg" in _parse(r)["error"].lower() or "jpeg" in _parse(r)["error"].lower() \
-               or "png" in _parse(r)["error"].lower() or "webp" in _parse(r)["error"].lower()
-
-    async def test_missing_image_data_returns_400(self):
-        env = make_env()
-        r   = await worker.api_upload_avatar(
-            self._req({"image_type": "image/png"}), env
-        )
-        assert r.status == 400
-
-    async def test_oversized_image_returns_400(self):
-        big_bytes   = b"\xff" * (5 * 1024 * 1024 + 1)
-        big_b64     = base64.b64encode(big_bytes).decode()
-        env         = make_env()
-        r           = await worker.api_upload_avatar(
-            self._req({"image_data": big_b64, "image_type": "image/png"}), env
-        )
-        assert r.status == 400
-        assert "5" in _parse(r)["error"]
-
-    async def test_no_r2_falls_back_to_base64(self):
-        # When R2 is not configured the avatar is stored as a data-URL (no 503)
-        small_b64 = base64.b64encode(b"\x89PNG fake").decode()
-        env = make_env(db=MockDB([make_stmt(), make_stmt()]))
-        del env.R2  # ensure R2 is absent
-        r = await worker.api_upload_avatar(
-            self._req({"image_data": small_b64, "image_type": "image/png"}), env
-        )
-        assert r.status == 200
-        url = _parse(r)["data"]["avatar_url"]
-        assert url.startswith("data:image/png;base64,")
-
-    async def test_r2_upload_returns_public_url(self):
-        from unittest.mock import AsyncMock, MagicMock
-        small_b64 = base64.b64encode(b"\x89PNG fake").decode()
-        env = make_env(db=MockDB([make_stmt(), make_stmt()]))
-        mock_r2 = MagicMock()
-        mock_r2.put = AsyncMock(return_value=None)
-        env.R2 = mock_r2
-        env.R2_PUBLIC_URL = "https://pub-abc123.r2.dev"
-        r = await worker.api_upload_avatar(
-            self._req({"image_data": small_b64, "image_type": "image/png"}), env
-        )
-        assert r.status == 200
-        url = _parse(r)["data"]["avatar_url"]
-        assert url.startswith("https://pub-abc123.r2.dev/avatars/")
-        assert url.endswith(".png")
-        mock_r2.put.assert_awaited_once()

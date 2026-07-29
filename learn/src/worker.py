@@ -956,14 +956,6 @@ _DDL = [
         password_hash     TEXT NOT NULL,
         role              TEXT NOT NULL,
         email_verified    INTEGER NOT NULL DEFAULT 0,
-        bio               TEXT,
-        avatar_url        TEXT,
-        is_teacher        INTEGER NOT NULL DEFAULT 0,
-        github_username   TEXT,
-        discord_username  TEXT,
-        slack_username    TEXT,
-        expertise         TEXT,
-        is_profile_public INTEGER NOT NULL DEFAULT 0,
         created_at        TEXT NOT NULL DEFAULT (datetime('now'))
     )""",
     # Activities
@@ -1720,7 +1712,7 @@ async def api_login(req, env):
     enc    = env.ENCRYPTION_KEY
     u_hash = blind_index(username, enc)
     row    = await env.DB.prepare(
-        "SELECT id,password_hash,role,name,username,email_verified,avatar_url FROM users WHERE username_hash=?"
+        "SELECT id,password_hash,role,name,username,email_verified FROM users WHERE username_hash=?"
     ).bind(u_hash).first()
     if not row:
         e_hash = blind_index(username, enc)
@@ -1755,11 +1747,14 @@ async def api_login(req, env):
     if not real_role or real_role == "[decryption error]":
         return err("Account data corrupted — please contact support", 500)
     token     = create_token(user_id, stored_username, real_role, env.JWT_SECRET)
+    profile_row = await env.DB.prepare(
+        "SELECT avatar_url FROM user_profiles WHERE user_id=?"
+    ).bind(user_id).first()
     return ok(
         {"token": token,
          "user": {"id": user_id, "username": stored_username,
                   "name": real_name, "role": real_role,
-                  "avatar_url": row.avatar_url or ""}},
+                  "avatar_url": (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""}},
         "Login successful",
     )
 
@@ -3637,6 +3632,8 @@ STATIC_CLEAN_ROUTES = {
     "/notification-preferences": "/notification-preferences.html",
     "/notifications": "/notifications.html",
     "/profile": "/profile.html",
+    "/users": "/users.html",
+    "/public-profile": "/public-profile.html",
     "/referral-leaderboard": "/referral-leaderboard.html",
     "/reset-password": "/reset-password.html",
     "/status": "/status.html",
@@ -7114,83 +7111,6 @@ async def api_get_thread_messages(req, env, thread_id: str):
 # Profile & user-directory API handlers
 # ---------------------------------------------------------------------------
 
-async def api_get_profile(req, env):
-    """GET /api/profile — return the authenticated user's full profile."""
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user:
-        return err("Authentication required", 401)
-
-    enc = env.ENCRYPTION_KEY
-    row = await env.DB.prepare(
-        "SELECT id, name, username, bio, expertise, github_username, "
-        "discord_username, slack_username, avatar_url, is_teacher, "
-        "is_profile_public, created_at FROM users WHERE id=?"
-    ).bind(user["id"]).first()
-
-    if not row:
-        return err("User not found", 404)
-
-    async def _d(val):
-        return await decrypt_aes(val, enc) if val else ""
-
-    return ok({
-        "id":               row.id,
-        "username":         await _d(row.username),
-        "name":             await _d(row.name),
-        "bio":              await _d(row.bio),
-        "expertise":        await _d(row.expertise),
-        "github_username":  await _d(row.github_username),
-        "discord_username": await _d(row.discord_username),
-        "slack_username":   await _d(row.slack_username),
-        "avatar_url":       row.avatar_url or "",
-        "is_teacher":       row.is_teacher or 0,
-        "is_profile_public": row.is_profile_public or 0,
-        "created_at":       row.created_at,
-    })
-
-
-async def api_patch_profile(req, env):
-    """PATCH /api/profile — update the authenticated user's editable profile fields."""
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user:
-        return err("Authentication required", 401)
-
-    body, bad_resp = await parse_json_object(req)
-    if bad_resp:
-        return bad_resp
-
-    enc = env.ENCRYPTION_KEY
-    _encrypted = {"name", "bio", "expertise", "github_username", "discord_username", "slack_username"}
-    _bools      = {"is_teacher", "is_profile_public"}
-    _allowed    = _encrypted | _bools
-
-    set_parts, binds = [], []
-    for field in _allowed:
-        if field not in body:
-            continue
-        val = body[field]
-        if field in _encrypted:
-            val = await encrypt_aes(str(val or "").strip(), enc)
-        else:
-            val = 1 if val else 0
-        set_parts.append(f"{field}=?")
-        binds.append(val)
-
-    if not set_parts:
-        return err("No valid fields to update")
-
-    binds.append(user["id"])
-    try:
-        await env.DB.prepare(
-            f"UPDATE users SET {', '.join(set_parts)} WHERE id=?"
-        ).bind(*binds).run()
-    except Exception as e:
-        await capture_exception(e, req, env, "api_patch_profile")
-        return err("Profile update failed — please try again", 500)
-
-    return ok(None, "Profile updated")
-
-
 async def api_upload_avatar(req, env):
     """POST /api/profile/avatar — upload a new avatar image (base64 JSON body)."""
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -7224,29 +7144,31 @@ async def api_upload_avatar(req, env):
         return err("Image must be 5 MB or smaller")
 
     r2 = getattr(env, "R2", None)
+    r2_key = ""
 
     if r2:
         # Upload to R2 and store the public URL
         ext = image_type.split("/")[-1].replace("jpeg", "jpg")
-        key = f"avatars/{user['id']}/{new_id()}.{ext}"
+        r2_key = f"avatars/{user['id']}/{new_id()}.{ext}"
         try:
-            await r2.put(key, to_js(img_bytes))
+            await r2.put(r2_key, to_js(img_bytes))
         except Exception as e:
             await capture_exception(e, req, env, "api_upload_avatar.r2_put")
             return err("Avatar upload failed — please try again", 500)
         r2_public_url = (getattr(env, "R2_PUBLIC_URL", "") or "").rstrip("/")
-        avatar_url = f"{r2_public_url}/{key}" if r2_public_url else f"/r2/{key}"
+        avatar_url = f"{r2_public_url}/{r2_key}" if r2_public_url else f"/r2/{r2_key}"
     else:
         # R2 not configured — store the image as a base64 data-URL directly.
         # The client is expected to pre-resize to ≤256×256 so this stays small.
         b64 = base64.b64encode(img_bytes).decode()
         avatar_url = f"data:{image_type};base64,{b64}"
 
+    enc = env.ENCRYPTION_KEY
+    await _ensure_user_profile(env, user["id"], enc)
     try:
-        await env.DB.prepare("UPDATE users SET avatar_url=? WHERE id=?").bind(avatar_url, user["id"]).run()
         await env.DB.prepare(
-            "INSERT INTO avatars (id, user_id, avatar_url) VALUES (?,?,?)"
-        ).bind(new_id(), user["id"], avatar_url).run()
+            "UPDATE user_profiles SET avatar_url=?,avatar_r2_key=?,updated_at=datetime('now') WHERE user_id=?"
+        ).bind(avatar_url, r2_key, user["id"]).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_upload_avatar.db")
         return err("Avatar saved but database update failed", 500)
@@ -7262,7 +7184,7 @@ async def api_remove_avatar(req, env):
 
     try:
         await env.DB.prepare(
-            "UPDATE users SET avatar_url=NULL WHERE id=?"
+            "UPDATE user_profiles SET avatar_url=NULL,avatar_r2_key=NULL WHERE user_id=?"
         ).bind(user["id"]).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_remove_avatar")
@@ -7271,74 +7193,22 @@ async def api_remove_avatar(req, env):
     return ok(None, "Avatar removed")
 
 
-
-
-async def api_delete_account(req, env):
-    """DELETE /api/account — permanently delete the authenticated user's account."""
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    if not user:
-        return err("Authentication required", 401)
-
-    body, bad_resp = await parse_json_object(req)
-    if bad_resp:
-        return bad_resp
-
-    password = body.get("password") or ""
-    if not password:
-        return err("Password is required to confirm account deletion")
-
-    enc = env.ENCRYPTION_KEY
-    row = await env.DB.prepare(
-        "SELECT password_hash, username FROM users WHERE id=?"
-    ).bind(user["id"]).first()
-
-    if not row:
-        return err("Account not found", 404)
-
-    stored_username = await decrypt_aes(row.username or "", enc)
-    if not verify_password(password, row.password_hash, stored_username):
-        return err("Incorrect password", 401)
-
-    uid = user["id"]
-    try:
-        # Clean up activities and their dependents (no ON DELETE CASCADE on activities)
-        acts = await env.DB.prepare("SELECT id FROM activities WHERE host_id=?").bind(uid).all()
-        for act in (acts.results or []):
-            await env.DB.prepare("DELETE FROM activity_tags WHERE activity_id=?").bind(act.id).run()
-            await env.DB.prepare("DELETE FROM session_attendance WHERE session_id IN "
-                                 "(SELECT id FROM sessions WHERE activity_id=?)").bind(act.id).run()
-            await env.DB.prepare("DELETE FROM sessions WHERE activity_id=?").bind(act.id).run()
-            await env.DB.prepare("DELETE FROM enrollments WHERE activity_id=?").bind(act.id).run()
-        await env.DB.prepare("DELETE FROM activities WHERE host_id=?").bind(uid).run()
-
-        # Remove this user's enrollments in other activities
-        await env.DB.prepare("DELETE FROM enrollments WHERE user_id=?").bind(uid).run()
-
-        # Delete user row — ON DELETE CASCADE handles: notifications, notification_preferences,
-        # email_verification_tokens, password_reset_tokens, avatars
-        await env.DB.prepare("DELETE FROM users WHERE id=?").bind(uid).run()
-    except Exception as e:
-        await capture_exception(e, req, env, "api_delete_account")
-        return err("Account deletion failed — please try again", 500)
-
-    return ok(None, "Account deleted successfully")
-
-
 async def api_get_public_profile(username: str, _req, env):
     """GET /api/users/:username — return a user's public profile (only if is_profile_public=1)."""
     enc    = env.ENCRYPTION_KEY
     u_hash = blind_index(username, enc)
 
     row = await env.DB.prepare(
-        "SELECT id, name, username, bio, expertise, github_username, "
-        "discord_username, slack_username, avatar_url, is_teacher, "
-        "is_profile_public, created_at FROM users WHERE username_hash=?"
+        "SELECT u.id,u.name,u.username,p.bio,p.expertise,p.github_username,"
+        "p.discord_username,p.slack_username,p.avatar_url,p.is_teacher,"
+        "p.is_profile_public,u.created_at"
+        " FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.username_hash=?"
     ).bind(u_hash).first()
 
     if not row:
         return err("User not found", 404)
 
-    if not row.is_profile_public:
+    if not getattr(row, "is_profile_public", 0):
         return err("This profile is private", 403)
 
     async def _d(val):
@@ -7356,13 +7226,13 @@ async def api_get_public_profile(username: str, _req, env):
     return ok({
         "username":        await _d(row.username),
         "name":            await _d(row.name),
-        "bio":             await _d(row.bio),
-        "expertise":       await _d(row.expertise),
-        "github_username": await _d(row.github_username),
-        "discord_username": await _d(row.discord_username),
-        "slack_username":  await _d(row.slack_username),
-        "avatar_url":      row.avatar_url or "",
-        "is_teacher":      row.is_teacher or 0,
+        "bio":             await _d(getattr(row, "bio", "")),
+        "expertise":       await _d(getattr(row, "expertise", "")),
+        "github_username": await _d(getattr(row, "github_username", "")),
+        "discord_username": await _d(getattr(row, "discord_username", "")),
+        "slack_username":  await _d(getattr(row, "slack_username", "")),
+        "avatar_url":      getattr(row, "avatar_url", "") or "",
+        "is_teacher":      getattr(row, "is_teacher", 0) or 0,
         "member_since":    row.created_at,
         "activities":      activities,
     })
@@ -7373,8 +7243,9 @@ async def api_list_users(_req, env):
     enc = env.ENCRYPTION_KEY
 
     rows = await env.DB.prepare(
-        "SELECT id, name, username, bio, expertise, avatar_url, is_teacher "
-        "FROM users WHERE is_profile_public=1 ORDER BY created_at DESC"
+        "SELECT u.id,u.name,u.username,p.bio,p.expertise,p.avatar_url,p.is_teacher"
+        " FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE p.is_profile_public=1"
+        " ORDER BY u.created_at DESC"
     ).all()
 
     users_list = []
@@ -7542,6 +7413,16 @@ async def _dispatch(request, env):
 
         if path == "/api/profile" and method in ("GET", "PATCH", "DELETE"):
             return await (api_delete_account(request, env) if method == "DELETE" else api_profile(request, env))
+
+        if path == "/api/profile/avatar" and method in ("POST", "DELETE"):
+            return await (api_upload_avatar(request, env) if method == "POST" else api_remove_avatar(request, env))
+
+        if path == "/api/users" and method == "GET":
+            return await api_list_users(request, env)
+
+        m_public_user = re.fullmatch(r"/api/users/([^/]+)", path)
+        if m_public_user and method == "GET":
+            return await api_get_public_profile(unquote(m_public_user.group(1)), request, env)
 
         if path == "/api/feedback" and method == "POST":
             return await api_feedback(request, env)

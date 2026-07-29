@@ -57,11 +57,19 @@
             <i class="fas fa-chevron-down text-xs"></i>
           </button>
           <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50">
-            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-              <p id="dropdown-username" class="text-sm font-semibold text-gray-800 dark:text-gray-200"></p>
+            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+                <span id="dropdown-avatar-initials"></span>
+                <img id="dropdown-avatar-img" class="hidden w-full h-full object-cover" alt="" />
+              </div>
+              <div class="min-w-0">
+                <p id="dropdown-username" class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate"></p>
+                <p id="dropdown-user-role" class="text-xs text-gray-500 dark:text-gray-400 capitalize"></p>
+              </div>
             </div>
             <a href="/dashboard" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-tachometer-alt mr-2 text-teal-500"></i>Dashboard</a>
             <a href="/profile" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-user mr-2 text-teal-500"></i>Profile</a>
+            <a id="dropdown-view-profile-link" href="/users.html" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-id-badge mr-2 text-teal-500"></i>My Public Profile</a>
             <a href="/notification-preferences" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-sliders mr-2 text-teal-500"></i>Notifications</a>
             <button onclick="logout()" class="w-full text-left block px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
           </div>
@@ -95,11 +103,18 @@
       </div>
       <div id="mobile-auth-logged-in" class="hidden pt-3 border-t border-teal-500/40 space-y-2">
         <div class="flex items-center gap-2 px-3 py-2">
-          <div id="mobile-profile-avatar" class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm"></div>
-          <span id="mobile-profile-greeting" class="font-semibold"></span>
+          <div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+            <span id="mobile-avatar-initials"></span>
+            <img id="mobile-avatar-img" class="hidden w-full h-full object-cover" alt="" />
+          </div>
+          <div class="min-w-0">
+            <span id="mobile-profile-greeting" class="font-semibold block truncate"></span>
+            <span id="mobile-user-role" class="text-xs text-teal-100 capitalize block"></span>
+          </div>
         </div>
         <a href="/dashboard" class="block px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</a>
         <a href="/profile" class="block px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-user mr-2"></i>Profile</a>
+        <a id="mobile-view-profile-link" href="/users.html" class="block px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-id-badge mr-2"></i>My Public Profile</a>
         <button onclick="logout()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
       </div>
     </div>

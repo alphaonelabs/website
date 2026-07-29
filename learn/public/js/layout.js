@@ -186,14 +186,7 @@ function updateAuthSection() {
         // Desktop
         if (notLoggedInDiv) notLoggedInDiv.classList.add('hidden');
         if (loggedInDiv) loggedInDiv.classList.remove('hidden');
-        
-        const avatarEl = document.getElementById('profile-avatar');
-        const greetingEl = document.getElementById('profile-greeting');
-        const usernameEl = document.getElementById('dropdown-username');
-        
-        if (avatarEl) avatarEl.textContent = firstLetter;
-        if (greetingEl) greetingEl.textContent = `Hi, ${firstName}`;
-        if (usernameEl) usernameEl.textContent = user.username;
+
         const notifLink = document.getElementById('notif-bell-link');
         if (notifLink) notifLink.classList.remove('hidden');
 

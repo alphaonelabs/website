@@ -15,14 +15,6 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash     TEXT NOT NULL,          -- PBKDF2-SHA256, per-user salt
     role              TEXT NOT NULL,          -- encrypt('host' | 'member')
     email_verified    INTEGER NOT NULL DEFAULT 0,
-    bio               TEXT,                   -- encrypt(bio)
-    avatar_url        TEXT,
-    is_teacher        INTEGER NOT NULL DEFAULT 0,
-    github_username   TEXT,                   -- encrypt(github_username)
-    discord_username  TEXT,                   -- encrypt(discord_username)
-    slack_username    TEXT,                   -- encrypt(slack_username)
-    expertise         TEXT,                   -- encrypt(expertise)
-    is_profile_public INTEGER NOT NULL DEFAULT 0,
     created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

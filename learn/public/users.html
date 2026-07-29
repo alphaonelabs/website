@@ -1,233 +1,186 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Community Directory - Alpha One Labs">
-  <title>Community Directory - Alpha One Labs</title>
+{% extends "base.html" %}
+{% block title %}Community Directory - Alpha One Labs{% endblock %}
+{% block meta_description %}Discover teachers, learners, and experts in the Alpha One Labs community{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors{% endblock %}
+{% block head %}
+<style>
+  .user-card { transition: transform .2s, box-shadow .2s; }
+  .user-card:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(0,0,0,.1); }
+</style>
+{% endblock %}
+{% block content %}
+<section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 py-16 relative overflow-hidden">
+  <div class="absolute inset-0 opacity-10 pointer-events-none select-none" aria-hidden="true">
+    <i class="fas fa-users absolute top-6 left-8 text-7xl"></i>
+    <i class="fas fa-globe absolute bottom-6 right-8 text-7xl"></i>
+  </div>
+  <div class="max-w-3xl mx-auto px-4 md:px-6 relative text-center">
+    <p class="text-teal-100 text-sm font-semibold tracking-widest uppercase mb-3"><i class="fas fa-users mr-2"></i>Community</p>
+    <h1 class="text-4xl font-extrabold text-white mb-3">Member Directory</h1>
+    <p class="text-teal-100 text-lg mb-8">Discover teachers, learners, and experts in our community.</p>
 
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-  <script>
-    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
-    (function () {
-      if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
-    })();
-  </script>
-
-  <style>
-    html, body { overflow-x: hidden; }
-    .dark { color-scheme: dark; }
-    :root  { color-scheme: light; }
-    .user-card {
-      transition: transform .2s, box-shadow .2s;
-    }
-    .user-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 24px rgba(0,0,0,.1);
-    }
-  </style>
-</head>
-
-<body class="min-h-screen flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors">
-
-  <div id="site-navbar"></div>
-
-  <!-- Hero -->
-  <section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 py-16 relative overflow-hidden">
-    <div class="absolute inset-0 opacity-10 pointer-events-none select-none" aria-hidden="true">
-      <i class="fas fa-users absolute top-6 left-8 text-7xl"></i>
-      <i class="fas fa-globe absolute bottom-6 right-8 text-7xl"></i>
-    </div>
-    <div class="max-w-5xl mx-auto px-4 md:px-6 relative text-center">
-      <p class="text-teal-100 text-sm font-semibold tracking-widest uppercase mb-3">
-        <i class="fas fa-users mr-2"></i>Community
-      </p>
-      <h1 class="text-4xl font-extrabold text-white mb-3">Member Directory</h1>
-      <p class="text-teal-100 text-lg mb-8">Discover teachers, learners, and experts in our community.</p>
-
-      <!-- Search + filter -->
-      <div class="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
-        <div class="relative flex-1">
-          <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-          <input id="search-input" type="text" placeholder="Search by name, username or skill…"
-            aria-label="Search members by name, username, or skill"
-            class="w-full pl-11 pr-4 py-3 rounded-xl border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-            oninput="filterUsers()" />
-        </div>
-        <button type="button" id="filter-teachers" onclick="toggleTeacherFilter()"
-          class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-semibold shadow-md hover:bg-teal-50 dark:hover:bg-teal-900/30 transition whitespace-nowrap">
-          <i class="fas fa-chalkboard-teacher text-teal-500"></i> Teachers Only
-        </button>
+    <div class="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
+      <div class="relative flex-1">
+        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input id="search-input" type="text" placeholder="Search by name, username or skill…" aria-label="Search members by name, username, or skill"
+          class="w-full pl-11 pr-4 py-3 rounded-xl border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" oninput="filterUsers()">
       </div>
+      <button type="button" id="filter-teachers" onclick="toggleTeacherFilter()"
+        class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-semibold shadow-md hover:bg-teal-50 dark:hover:bg-teal-900/30 transition whitespace-nowrap">
+        <i class="fas fa-chalkboard-teacher text-teal-500"></i> Teachers Only
+      </button>
     </div>
-  </section>
+  </div>
+</section>
 
-  <main class="flex-1 max-w-6xl mx-auto w-full px-4 md:px-6 py-10">
+<main class="flex-1 max-w-6xl mx-auto w-full px-4 md:px-6 py-10">
+  <div class="flex items-center justify-between mb-8">
+    <p class="text-sm text-gray-500 dark:text-gray-400" id="results-count">Loading…</p>
+  </div>
 
-    <!-- Stats bar -->
-    <div class="flex items-center justify-between mb-8">
-      <p class="text-sm text-gray-500 dark:text-gray-400" id="results-count">Loading…</p>
+  <div id="state-loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="animate-pulse rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6">
+      <div class="flex gap-4 mb-4"><div class="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700"></div><div class="flex-1 space-y-2 pt-2"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div></div></div>
+      <div class="space-y-2"><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div></div>
     </div>
-
-    <!-- Loading skeleton -->
-    <div id="state-loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div class="animate-pulse rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex gap-4 mb-4"><div class="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700"></div><div class="flex-1 space-y-2 pt-2"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div></div></div>
-        <div class="space-y-2"><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div></div>
-      </div>
-      <div class="animate-pulse rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 hidden sm:block">
-        <div class="flex gap-4 mb-4"><div class="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700"></div><div class="flex-1 space-y-2 pt-2"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div></div></div>
-        <div class="space-y-2"><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div></div>
-      </div>
-      <div class="animate-pulse rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 hidden lg:block">
-        <div class="flex gap-4 mb-4"><div class="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700"></div><div class="flex-1 space-y-2 pt-2"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div></div></div>
-        <div class="space-y-2"><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div></div>
-      </div>
+    <div class="animate-pulse rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 hidden sm:block">
+      <div class="flex gap-4 mb-4"><div class="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700"></div><div class="flex-1 space-y-2 pt-2"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div></div></div>
+      <div class="space-y-2"><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div></div>
     </div>
-
-    <!-- Users grid -->
-    <div id="users-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-
-    <!-- Empty state -->
-    <div id="state-empty" class="hidden text-center py-20">
-      <i class="fas fa-user-slash text-5xl text-gray-300 dark:text-gray-600 mb-4 block"></i>
-      <p class="text-gray-500 dark:text-gray-400 text-lg font-semibold mb-2" id="empty-title">No members found</p>
-      <p class="text-gray-400 dark:text-gray-500 text-sm" id="empty-sub">Try a different search or check back later.</p>
+    <div class="animate-pulse rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-6 hidden lg:block">
+      <div class="flex gap-4 mb-4"><div class="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700"></div><div class="flex-1 space-y-2 pt-2"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div></div></div>
+      <div class="space-y-2"><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div><div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div></div>
     </div>
+  </div>
 
-  </main>
+  <div id="users-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
-  <div id="site-footer"></div>
-  <script src="/js/layout.js" defer></script>
+  <div id="state-empty" class="hidden text-center py-20">
+    <i class="fas fa-user-slash text-5xl text-gray-300 dark:text-gray-600 mb-4 block"></i>
+    <p class="text-gray-500 dark:text-gray-400 text-lg font-semibold mb-2" id="empty-title">No members found</p>
+    <p class="text-gray-400 dark:text-gray-500 text-sm" id="empty-sub">Try a different search or check back later.</p>
+  </div>
+</main>
 
-  <script>
-    const esc = window.esc || (s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+<script>
+let allUsers        = [];
+let teacherFilterOn = false;
 
-    let allUsers         = [];
-    let teacherFilterOn  = false;
+function toggleTeacherFilter() {
+  teacherFilterOn = !teacherFilterOn;
+  const btn = document.getElementById('filter-teachers');
+  btn.classList.toggle('bg-teal-500', teacherFilterOn);
+  btn.classList.toggle('text-white', teacherFilterOn);
+  btn.classList.toggle('bg-white', !teacherFilterOn);
+  btn.classList.toggle('dark:bg-gray-800', !teacherFilterOn);
+  btn.classList.toggle('text-gray-700', !teacherFilterOn);
+  btn.classList.toggle('dark:text-gray-200', !teacherFilterOn);
+  filterUsers();
+}
 
-    function toggleTeacherFilter() {
-      teacherFilterOn = !teacherFilterOn;
-      const btn = document.getElementById('filter-teachers');
-      btn.classList.toggle('bg-teal-500', teacherFilterOn);
-      btn.classList.toggle('text-white',  teacherFilterOn);
-      btn.classList.toggle('bg-white',    !teacherFilterOn);
-      btn.classList.toggle('dark:bg-gray-800', !teacherFilterOn);
-      btn.classList.toggle('text-gray-700', !teacherFilterOn);
-      btn.classList.toggle('dark:text-gray-200', !teacherFilterOn);
-      filterUsers();
+function filterUsers() {
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  let filtered = allUsers;
+  if (teacherFilterOn) filtered = filtered.filter(u => u.is_teacher);
+  if (q) {
+    filtered = filtered.filter(u =>
+      (u.name || '').toLowerCase().includes(q) ||
+      (u.username || '').toLowerCase().includes(q) ||
+      (u.expertise || '').toLowerCase().includes(q) ||
+      (u.bio || '').toLowerCase().includes(q)
+    );
+  }
+  renderGrid(filtered);
+}
+
+function renderGrid(users) {
+  const grid  = document.getElementById('users-grid');
+  const empty = document.getElementById('state-empty');
+  const count = document.getElementById('results-count');
+
+  if (users.length === 0) {
+    grid.classList.add('hidden');
+    empty.classList.remove('hidden');
+    count.textContent = '0 members';
+    if (document.getElementById('search-input').value || teacherFilterOn) {
+      document.getElementById('empty-title').textContent = 'No matching members';
+      document.getElementById('empty-sub').textContent   = 'Try adjusting your search or filter.';
+    } else {
+      document.getElementById('empty-title').textContent = 'No public profiles yet';
+      document.getElementById('empty-sub').textContent   = 'Be the first to make your profile public!';
     }
+    return;
+  }
 
-    function filterUsers() {
-      const q = document.getElementById('search-input').value.toLowerCase().trim();
-      let filtered = allUsers;
+  empty.classList.add('hidden');
+  grid.classList.remove('hidden');
+  count.textContent = `${users.length} member${users.length !== 1 ? 's' : ''}`;
 
-      if (teacherFilterOn) filtered = filtered.filter(u => u.is_teacher);
+  grid.innerHTML = users.map(u => {
+    const initials = (u.name || u.username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const avatarEl = u.avatar_url
+      ? `<img src="${esc(u.avatar_url)}" alt="" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=&quot;text-white text-xl font-bold&quot;>${esc(initials)}</span>'" />`
+      : `<span class="text-white text-xl font-bold">${esc(initials)}</span>`;
 
-      if (q) {
-        filtered = filtered.filter(u =>
-          (u.name || '').toLowerCase().includes(q) ||
-          (u.username || '').toLowerCase().includes(q) ||
-          (u.expertise || '').toLowerCase().includes(q) ||
-          (u.bio || '').toLowerCase().includes(q)
-        );
-      }
+    const teacherBadge = u.is_teacher
+      ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200"><i class="fas fa-chalkboard-teacher text-[10px]"></i> Teacher</span>`
+      : '';
 
-      renderGrid(filtered);
-    }
+    const skills = u.expertise
+      ? u.expertise.split(/[,;]+/).map(s => s.trim()).filter(Boolean).slice(0, 3)
+          .map(s => `<span class="px-2 py-0.5 rounded-full text-xs bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300">${esc(s)}</span>`).join('')
+      : '';
 
-    function renderGrid(users) {
-      const grid  = document.getElementById('users-grid');
-      const empty = document.getElementById('state-empty');
-      const count = document.getElementById('results-count');
+    const bioSnippet = u.bio
+      ? `<p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-2">${esc(u.bio)}</p>`
+      : '';
 
-      if (users.length === 0) {
-        grid.classList.add('hidden');
-        empty.classList.remove('hidden');
-        count.textContent = '0 members';
-        if (document.getElementById('search-input').value || teacherFilterOn) {
-          document.getElementById('empty-title').textContent = 'No matching members';
-          document.getElementById('empty-sub').textContent   = 'Try adjusting your search or filter.';
-        } else {
-          document.getElementById('empty-title').textContent = 'No public profiles yet';
-          document.getElementById('empty-sub').textContent   = 'Be the first to make your profile public!';
-        }
-        return;
-      }
-
-      empty.classList.add('hidden');
-      grid.classList.remove('hidden');
-      count.textContent = `${users.length} member${users.length !== 1 ? 's' : ''}`;
-
-      grid.innerHTML = users.map(u => {
-        const initials = (u.name || u.username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-        const avatarEl = u.avatar_url
-          ? `<img src="${esc(u.avatar_url)}" alt="" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=&quot;text-white text-xl font-bold&quot;>${esc(initials)}</span>'" />`
-          : `<span class="text-white text-xl font-bold">${esc(initials)}</span>`;
-
-        const teacherBadge = u.is_teacher
-          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200"><i class="fas fa-chalkboard-teacher text-[10px]"></i> Teacher</span>`
-          : '';
-
-        const skills = u.expertise
-          ? u.expertise.split(/[,;]+/).map(s => s.trim()).filter(Boolean).slice(0, 3)
-              .map(s => `<span class="px-2 py-0.5 rounded-full text-xs bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300">${esc(s)}</span>`).join('')
-          : '';
-
-        const bioSnippet = u.bio
-          ? `<p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-2">${esc(u.bio)}</p>`
-          : '';
-
-        return `
-          <a href="/public-profile.html?username=${encodeURIComponent(u.username)}"
-             class="user-card block bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:border-teal-300 dark:hover:border-teal-700 transition">
-            <div class="flex gap-4 items-start mb-3">
-              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md">
-                ${avatarEl}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
-                  <span class="font-bold text-sm truncate">${esc(u.name || u.username)}</span>
-                  ${teacherBadge}
-                </div>
-                <p class="text-xs text-gray-400 dark:text-gray-500">@${esc(u.username)}</p>
-              </div>
+    return `
+      <a href="/public-profile.html?username=${encodeURIComponent(u.username)}"
+         class="user-card block bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:border-teal-300 dark:hover:border-teal-700 transition">
+        <div class="flex gap-4 items-start mb-3">
+          <div class="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md">
+            ${avatarEl}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
+              <span class="font-bold text-sm truncate">${esc(u.name || u.username)}</span>
+              ${teacherBadge}
             </div>
-            ${bioSnippet}
-            ${skills ? `<div class="flex flex-wrap gap-1 mt-3">${skills}</div>` : ''}
-          </a>`;
-      }).join('');
+            <p class="text-xs text-gray-400 dark:text-gray-500">@${esc(u.username)}</p>
+          </div>
+        </div>
+        ${bioSnippet}
+        ${skills ? `<div class="flex flex-wrap gap-1 mt-3">${skills}</div>` : ''}
+      </a>`;
+  }).join('');
+}
+
+async function loadUsers() {
+  try {
+    const res  = await fetch('/api/users');
+    const json = await res.json();
+
+    document.getElementById('state-loading').classList.add('hidden');
+
+    if (!res.ok) {
+      document.getElementById('results-count').textContent = '';
+      document.getElementById('state-empty').classList.remove('hidden');
+      document.getElementById('empty-title').textContent = 'Could not load members';
+      document.getElementById('empty-sub').textContent   = json.error || 'Please try again later.';
+      return;
     }
 
-    async function loadUsers() {
-      try {
-        const res  = await fetch('/api/users');
-        const json = await res.json();
+    allUsers = json.data.users || [];
+    filterUsers();
+  } catch (e) {
+    document.getElementById('state-loading').classList.add('hidden');
+    document.getElementById('state-empty').classList.remove('hidden');
+    document.getElementById('empty-title').textContent = 'Connection error';
+    document.getElementById('empty-sub').textContent   = 'Could not reach the server.';
+  }
+}
 
-        document.getElementById('state-loading').classList.add('hidden');
-
-        if (!res.ok) {
-          document.getElementById('results-count').textContent = '';
-          document.getElementById('state-empty').classList.remove('hidden');
-          document.getElementById('empty-title').textContent = 'Could not load members';
-          document.getElementById('empty-sub').textContent   = json.error || 'Please try again later.';
-          return;
-        }
-
-        allUsers = json.data.users || [];
-        filterUsers();
-      } catch (e) {
-        document.getElementById('state-loading').classList.add('hidden');
-        document.getElementById('state-empty').classList.remove('hidden');
-        document.getElementById('empty-title').textContent = 'Connection error';
-        document.getElementById('empty-sub').textContent   = 'Could not reach the server.';
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', loadUsers);
-  </script>
-</body>
-</html>
+document.addEventListener('DOMContentLoaded', loadUsers);
+</script>
+{% endblock %}
