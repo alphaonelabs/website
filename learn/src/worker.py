@@ -2510,7 +2510,7 @@ async def api_express_activity_interest(activity_ref: str, req, env):
     }, "Interest recorded")
 
 
-async def api_generate_certificate(request, env, enrollment_id):
+async def api_generate_certificate(request, env, target_id):
     user = verify_token(request.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
@@ -2519,18 +2519,36 @@ async def api_generate_certificate(request, env, enrollment_id):
         "SELECT e.*, a.host_id FROM enrollments e "
         "JOIN activities a ON e.activity_id = a.id "
         "WHERE e.id = ?"
-    ).bind(enrollment_id).first()
+    ).bind(target_id).first()
+
+    if not enrollment:
+        enrollment = await env.DB.prepare(
+            "SELECT e.*, a.host_id FROM enrollments e "
+            "JOIN activities a ON e.activity_id = a.id "
+            "WHERE (a.id = ? OR a.slug = ?) AND e.user_id = ?"
+        ).bind(target_id, target_id, user["id"]).first()
+
     if not enrollment:
         return err("Enrollment not found", 404)
 
     if enrollment.user_id != user["id"] and enrollment.host_id != user["id"]:
         return err("Forbidden", 403)
 
+    enrollment_id = enrollment.id
+
     if enrollment.status != "completed":
-        return err(
-            "Enrollment is not completed yet. Finish all sessions to earn your certificate.",
-            400,
-        )
+        comp = await env.DB.prepare(
+            "SELECT id FROM activity_completions WHERE activity_id=? AND user_id=? LIMIT 1"
+        ).bind(enrollment.activity_id, enrollment.user_id).first()
+        if comp:
+            await env.DB.prepare(
+                "UPDATE enrollments SET status='completed' WHERE id=?"
+            ).bind(enrollment_id).run()
+        else:
+            return err(
+                "Enrollment is not completed yet. Finish all sessions to earn your certificate.",
+                400,
+            )
 
     existing = await env.DB.prepare(
         "SELECT id FROM certificates WHERE enrollment_id = ?"
@@ -2565,6 +2583,8 @@ async def api_generate_certificate(request, env, enrollment_id):
         "certificate_issued",
         "Certificate Issued",
         "Your certificate is ready. View and download it from your activity page.",
+        related_id=cert_uuid,
+        category="system",
     )
 
     return ok({
@@ -7328,6 +7348,14 @@ async def _dispatch(request, env):
         if path == "/api/activities" and method == "POST":
             return await api_create_activity(request, env)
 
+        m_cert_gen = re.fullmatch(r"/api/certificates/generate/([A-Za-z0-9_-]+)", path)
+        if m_cert_gen and method == "POST":
+            return await api_generate_certificate(request, env, m_cert_gen.group(1))
+
+        m_cert_get = re.fullmatch(r"/api/certificates/([A-Za-z0-9_-]+)", path)
+        if m_cert_get and method == "GET":
+            return await api_get_certificate(request, env, m_cert_get.group(1))
+
         m_complete = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/complete", path)
         if m_complete and method == "POST":
             return await api_complete_activity(m_complete.group(1), request, env)
@@ -7701,7 +7729,7 @@ async def _create_notification(env, user_id: str, type_: str, title: str,
         ).bind(new_id(), user_id, type_,
                await encrypt_aes(title, enc),
                await encrypt_aes(message, enc),
-               related_id).run()
+               related_id or "").run()
     except Exception as exc:
         await capture_exception(exc, _env=env, where="_create_notification")
     return None

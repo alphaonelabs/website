@@ -52,6 +52,17 @@
             <div id="host-info" class="flex items-center gap-4"></div>
           </div>
 
+          <div id="certificate-card" class="hidden rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
+            <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+              <i class="fas fa-certificate text-teal-600 dark:text-teal-400"></i>Certificate
+            </h2>
+            <div class="space-y-3">
+              <button id="btn-certificate" type="button" class="w-full inline-flex items-center justify-center gap-2 font-bold px-5 py-3 rounded-xl transition-all"></button>
+              <p id="certificate-note" class="text-sm text-gray-600 dark:text-gray-300"></p>
+              <p id="certificate-error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
+            </div>
+          </div>
+
           <div id="sessions-card" class="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden shadow-md border border-gray-100 dark:border-gray-700">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20">
               <h2 class="font-bold text-gray-800 dark:text-gray-200 flex items-center">
@@ -164,6 +175,7 @@
   const cartHumanStartedAt = Date.now();
   let currentActivity = null;
   let currentActivityData = null;
+  let currentEnrollment = null;
 
   const typeIcon = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', club:'🏛', event:'📅', video:'🎬', study_group:'👥', other:'✨' };
   const typeLabel = { course:'Course', meetup:'Meetup', workshop:'Workshop', seminar:'Seminar', club:'Club', event:'Event', video:'Video', study_group:'Study Group', other:'Activity' };
@@ -369,16 +381,114 @@
     }).join('');
   }
 
+  function resetCertificateSection() {
+    const card = document.getElementById('certificate-card');
+    const button = document.getElementById('btn-certificate');
+    const note = document.getElementById('certificate-note');
+    const error = document.getElementById('certificate-error');
+    if (!card) return;
+    card.classList.add('hidden');
+    error.classList.add('hidden');
+    error.textContent = '';
+    note.textContent = '';
+    button.disabled = false;
+    button.onclick = null;
+    button.className = 'w-full inline-flex items-center justify-center gap-2 font-bold px-5 py-3 rounded-xl transition-all';
+  }
+
+  function renderCertificateSection(data) {
+    const card = document.getElementById('certificate-card');
+    const button = document.getElementById('btn-certificate');
+    const note = document.getElementById('certificate-note');
+    const error = document.getElementById('certificate-error');
+    if (!card) return;
+
+    resetCertificateSection();
+    card.classList.remove('hidden');
+
+    const isCompleted = data.is_completed || (data.enrollment && data.enrollment.status === 'completed');
+
+    if (isCompleted) {
+      button.innerHTML = '<i class="fas fa-certificate"></i>Generate Certificate';
+      button.classList.add('bg-green-600', 'hover:bg-green-700', 'text-white', 'shadow-md');
+      note.textContent = 'Your activity is complete. Generate your certificate and download it as a PDF.';
+      button.onclick = generateCertificate;
+      return;
+    }
+
+    button.innerHTML = '<i class="fas fa-lock"></i>Certificate not available yet';
+    button.disabled = true;
+    button.classList.add('bg-gray-300', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-300', 'cursor-not-allowed', 'opacity-60');
+    note.textContent = 'Complete all sessions or mark the activity complete to unlock your certificate.';
+    error.classList.add('hidden');
+  }
+
+  async function generateCertificate() {
+    const error = document.getElementById('certificate-error');
+    const button = document.getElementById('btn-certificate');
+    error.classList.add('hidden');
+    error.textContent = '';
+
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    const targetId = (currentEnrollment && currentEnrollment.id) || (currentActivity && (currentActivity.slug || currentActivity.id)) || '';
+    if (!targetId) {
+      error.textContent = 'Enrollment not found for certificate generation.';
+      error.classList.remove('hidden');
+      return;
+    }
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+
+    try {
+      const res = await fetch(`/api/certificates/generate/${encodeURIComponent(targetId)}`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const payload = await res.json();
+
+      if (res.ok) {
+        window.open('/certificate.html?uuid=' + encodeURIComponent(payload.data.uuid), '_blank');
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+        return;
+      }
+
+      if (res.status === 400) {
+        error.textContent = payload.error || 'Something went wrong. Please try again.';
+      } else {
+        error.textContent = 'Something went wrong. Please try again.';
+      }
+      error.classList.remove('hidden');
+    } catch (e) {
+      error.textContent = 'Something went wrong. Please try again.';
+      error.classList.remove('hidden');
+    } finally {
+      if (button.innerHTML && button.innerHTML.includes('Generating...')) {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+      }
+    }
+  }
+
   function renderAction(data) {
     const a = data.activity;
     const action = document.getElementById('act-action');
     const welcome = document.getElementById('welcome-text');
     if (data.is_host) {
+      currentEnrollment = null;
+      resetCertificateSection();
       action.innerHTML = '<a href="/teach?activity_id=' + esc(a.id) + '" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all min-h-11"><i class="fas fa-cog"></i>Manage Activity</a>';
       welcome.textContent = 'You are the creator of this activity. Use the Manage button to update details and sessions.';
       return;
     }
     if (data.is_enrolled) {
+      currentEnrollment = data.enrollment || null;
+      renderCertificateSection(data);
       document.getElementById('member-card').classList.remove('hidden');
       const enr = data.enrollment || {};
       document.getElementById('enr-details').innerHTML = '<span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">' + esc(enr.status || 'active') + '</span><span class="text-green-700 dark:text-green-300">✅ You have full access to session details.</span>';
@@ -386,6 +496,8 @@
       welcome.textContent = 'You are participating in this activity. Session locations and details are visible above.';
       return;
     }
+    currentEnrollment = null;
+    resetCertificateSection();
     if (a.status === 'waitlist') {
       if (token) {
         action.innerHTML = data.user_interested
