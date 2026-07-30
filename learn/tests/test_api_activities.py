@@ -407,3 +407,62 @@ class TestApiGetActivity:
                       "schedule_type", "host_name", "participant_count", "tags", "created_at"):
             assert field in activity
         assert activity["participant_count"] == 7
+
+
+class TestApiCertificates:
+    def _req(self, method="GET", path="/api/certificates", token=None):
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return MockRequest(method=method, url=f"http://localhost{path}", headers=headers)
+
+    async def test_generate_certificate_requires_auth(self):
+        env = make_env()
+        req = self._req(method="POST", path="/api/certificates/generate/enr-1")
+        r = await worker.api_generate_certificate(req, env, "enr-1")
+        assert r.status == 401
+
+    async def test_generate_certificate_not_found(self):
+        token = _make_host_token(uid="user-1")
+        env = make_env(db=MockDB([make_stmt(first=None), make_stmt(first=None)]))
+        req = self._req(method="POST", path="/api/certificates/generate/enr-1", token=token)
+        r = await worker.api_generate_certificate(req, env, "enr-1")
+        assert r.status == 404
+
+    async def test_generate_certificate_success(self):
+        token = _make_host_token(uid="user-1")
+        enr = MockRow(id="enr-1", user_id="user-1", host_id="host-1", status="completed", activity_id="act-1")
+        env = make_env(db=MockDB([
+            make_stmt(first=enr),        # fetch enrollment
+            make_stmt(first=None),       # check existing cert
+            make_stmt(),                 # insert cert
+            make_stmt(),                 # notification
+        ]))
+        req = self._req(method="POST", path="/api/certificates/generate/enr-1", token=token)
+        r = await worker.api_generate_certificate(req, env, "enr-1")
+        assert r.status == 200
+        data = _parse(r)
+        assert "uuid" in data["data"]
+        assert "/certificate.html?uuid=" in data["data"]["url"]
+
+    async def test_generate_certificate_by_activity_id_fallback(self):
+        token = _make_host_token(uid="user-1")
+        enr = MockRow(id="enr-1", user_id="user-1", host_id="host-1", status="completed", activity_id="act-1")
+        env = make_env(db=MockDB([
+            make_stmt(first=None),       # fetch enrollment by enrollment.id (none)
+            make_stmt(first=enr),        # fetch enrollment by activity.id / slug
+            make_stmt(first=None),       # check existing cert
+            make_stmt(),                 # insert cert
+            make_stmt(),                 # notification
+        ]))
+        req = self._req(method="POST", path="/api/certificates/generate/act-1", token=token)
+        r = await worker.api_generate_certificate(req, env, "act-1")
+        assert r.status == 200
+        data = _parse(r)
+        assert "uuid" in data["data"]
+
+    async def test_get_certificate_not_found(self):
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+        req = self._req(method="GET", path="/api/certificates/cert-uuid")
+        r = await worker.api_get_certificate(req, env, "cert-uuid")
+        assert r.status == 404

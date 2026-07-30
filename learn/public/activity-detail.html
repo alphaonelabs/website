@@ -443,6 +443,7 @@
     const originalHtml = button.innerHTML;
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+    const certWin = window.open('about:blank', '_blank');
 
     try {
       const res = await fetch(`/api/certificates/generate/${encodeURIComponent(targetId)}`, {
@@ -452,11 +453,13 @@
       const payload = await res.json();
 
       if (res.ok) {
-        window.open('/certificate.html?uuid=' + encodeURIComponent(payload.data.uuid), '_blank');
+        if (certWin) certWin.location.href = '/certificate.html?uuid=' + encodeURIComponent(payload.data.uuid);
+        else window.location.href = '/certificate.html?uuid=' + encodeURIComponent(payload.data.uuid);
         button.disabled = false;
         button.innerHTML = originalHtml;
         return;
       }
+      if (certWin) certWin.close();
 
       if (res.status === 400) {
         error.textContent = payload.error || 'Something went wrong. Please try again.';

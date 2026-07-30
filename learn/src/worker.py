@@ -1030,7 +1030,6 @@ _DDL = [
     "CREATE INDEX IF NOT EXISTS idx_activities_host      ON activities(host_id)",
     "CREATE INDEX IF NOT EXISTS idx_enrollments_activity ON enrollments(activity_id)",
     "CREATE INDEX IF NOT EXISTS idx_enrollments_user     ON enrollments(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_certificates_enrollment ON certificates(enrollment_id)",
     "CREATE INDEX IF NOT EXISTS idx_sessions_activity    ON sessions(activity_id)",
     "CREATE INDEX IF NOT EXISTS idx_sa_session           ON session_attendance(session_id)",
     "CREATE INDEX IF NOT EXISTS idx_sa_user              ON session_attendance(user_id)",
@@ -2535,6 +2534,9 @@ async def api_generate_certificate(request, env, target_id):
         return err("Forbidden", 403)
 
     enrollment_id = enrollment.id
+
+    if enrollment.status == "cancelled":
+        return err("Enrollment is cancelled", 400)
 
     if enrollment.status != "completed":
         comp = await env.DB.prepare(
