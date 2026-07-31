@@ -947,16 +947,16 @@ async def send_password_reset_email(to_email: str, _username: str, token: str, e
 _DDL = [
     # Users - all PII encrypted; HMAC blind indexes for O(1) lookups
     """CREATE TABLE IF NOT EXISTS users (
-        id             TEXT PRIMARY KEY,
-        username_hash  TEXT NOT NULL UNIQUE,
-        email_hash     TEXT NOT NULL UNIQUE,
-        name           TEXT NOT NULL,
-        username       TEXT NOT NULL,
-        email          TEXT NOT NULL,
-        password_hash  TEXT NOT NULL,
-        role           TEXT NOT NULL,
-        email_verified INTEGER NOT NULL DEFAULT 0,
-        created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+        id                TEXT PRIMARY KEY,
+        username_hash     TEXT NOT NULL UNIQUE,
+        email_hash        TEXT NOT NULL UNIQUE,
+        name              TEXT NOT NULL,
+        username          TEXT NOT NULL,
+        email             TEXT NOT NULL,
+        password_hash     TEXT NOT NULL,
+        role              TEXT NOT NULL,
+        email_verified    INTEGER NOT NULL DEFAULT 0,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now'))
     )""",
     # Activities
     """CREATE TABLE IF NOT EXISTS activities (
@@ -1755,10 +1755,14 @@ async def api_login(req, env):
     if not real_role or real_role == "[decryption error]":
         return err("Account data corrupted — please contact support", 500)
     token     = create_token(user_id, stored_username, real_role, env.JWT_SECRET)
+    profile_row = await env.DB.prepare(
+        "SELECT avatar_url FROM user_profiles WHERE user_id=?"
+    ).bind(user_id).first()
     return ok(
         {"token": token,
          "user": {"id": user_id, "username": stored_username,
-                  "name": real_name, "role": real_role}},
+                  "name": real_name, "role": real_role,
+                  "avatar_url": (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""}},
         "Login successful",
     )
 
@@ -3747,6 +3751,8 @@ STATIC_CLEAN_ROUTES = {
     "/notification-preferences": "/notification-preferences.html",
     "/notifications": "/notifications.html",
     "/profile": "/profile.html",
+    "/users": "/users.html",
+    "/public-profile": "/public-profile.html",
     "/referral-leaderboard": "/referral-leaderboard.html",
     "/reset-password": "/reset-password.html",
     "/status": "/status.html",
@@ -7221,6 +7227,176 @@ async def api_get_thread_messages(req, env, thread_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Profile & user-directory API handlers
+# ---------------------------------------------------------------------------
+
+async def api_upload_avatar(req, env):
+    """POST /api/profile/avatar — upload a new avatar image (base64 JSON body)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    image_data = (body.get("image_data") or "").strip()
+    image_type = (body.get("image_type") or "").lower().strip()
+
+    _allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
+    if image_type not in _allowed_types:
+        return err("Only jpg, jpeg, png, and webp images are allowed")
+
+    if not image_data:
+        return err("image_data is required")
+
+    # Strip data-URL prefix if the browser included it
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(image_data, validate=True)
+    except Exception:
+        return err("Invalid image data — expected base64-encoded content")
+
+    if len(img_bytes) > 5 * 1024 * 1024:
+        return err("Image must be 5 MB or smaller")
+
+    r2 = getattr(env, "R2", None)
+    r2_key = ""
+
+    if r2:
+        # Upload to R2 and store the public URL
+        ext = image_type.split("/")[-1].replace("jpeg", "jpg")
+        r2_key = f"avatars/{user['id']}/{new_id()}.{ext}"
+        try:
+            put_opts = to_js(
+                {"httpMetadata": {"contentType": image_type}},
+                dict_converter=js.Object.fromEntries,
+            )
+            await r2.put(r2_key, to_js(img_bytes, create_pyproxies=False), put_opts)
+        except Exception as e:
+            await capture_exception(e, req, env, "api_upload_avatar.r2_put")
+            return err("Avatar upload failed — please try again", 500)
+        r2_public_url = (getattr(env, "R2_PUBLIC_URL", "") or "").rstrip("/")
+        avatar_url = f"{r2_public_url}/{r2_key}" if r2_public_url else f"/r2/{r2_key}"
+    else:
+        # R2 not configured — store the image as a base64 data-URL directly.
+        # The client is expected to pre-resize to ≤256×256 so this stays small.
+        b64 = base64.b64encode(img_bytes).decode()
+        avatar_url = f"data:{image_type};base64,{b64}"
+
+    enc = env.ENCRYPTION_KEY
+    await _ensure_user_profile(env, user["id"], enc)
+    try:
+        await env.DB.prepare(
+            "UPDATE user_profiles SET avatar_url=?,avatar_r2_key=?,updated_at=datetime('now') WHERE user_id=?"
+        ).bind(avatar_url, r2_key, user["id"]).run()
+    except Exception as e:
+        await capture_exception(e, req, env, "api_upload_avatar.db")
+        return err("Avatar saved but database update failed", 500)
+
+    return ok({"avatar_url": avatar_url}, "Avatar uploaded successfully")
+
+
+async def api_remove_avatar(req, env):
+    """DELETE /api/profile/avatar — clear the authenticated user's avatar."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    try:
+        await env.DB.prepare(
+            "UPDATE user_profiles SET avatar_url=NULL,avatar_r2_key=NULL WHERE user_id=?"
+        ).bind(user["id"]).run()
+    except Exception as e:
+        await capture_exception(e, req, env, "api_remove_avatar")
+        return err("Failed to remove avatar", 500)
+
+    return ok(None, "Avatar removed")
+
+
+async def api_get_public_profile(username: str, _req, env):
+    """GET /api/users/:username — return a user's public profile (only if is_profile_public=1)."""
+    enc    = env.ENCRYPTION_KEY
+    u_hash = blind_index(username, enc)
+
+    row = await env.DB.prepare(
+        "SELECT u.id,u.name,u.username,p.bio,p.expertise,p.github_username,"
+        "p.discord_username,p.slack_username,p.avatar_url,p.is_teacher,"
+        "p.is_profile_public,u.created_at"
+        " FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.username_hash=?"
+    ).bind(u_hash).first()
+
+    if not row:
+        return err("User not found", 404)
+
+    if not getattr(row, "is_profile_public", 0):
+        return err("This profile is private", 403)
+
+    async def _d(val):
+        return await decrypt_aes(val, enc) if val else ""
+
+    # Fetch public hosted activities for this user
+    acts_res = await env.DB.prepare(
+        "SELECT id, title, type, format FROM activities WHERE host_id=? ORDER BY created_at DESC LIMIT 10"
+    ).bind(row.id).all()
+    activities = [
+        {"id": a.id, "title": a.title, "type": a.type, "format": a.format}
+        for a in (acts_res.results or [])
+    ]
+
+    return ok({
+        "username":        await _d(row.username),
+        "name":            await _d(row.name),
+        "bio":             await _d(getattr(row, "bio", "")),
+        "expertise":       await _d(getattr(row, "expertise", "")),
+        "github_username": await _d(getattr(row, "github_username", "")),
+        "discord_username": await _d(getattr(row, "discord_username", "")),
+        "slack_username":  await _d(getattr(row, "slack_username", "")),
+        "avatar_url":      getattr(row, "avatar_url", "") or "",
+        "is_teacher":      getattr(row, "is_teacher", 0) or 0,
+        "member_since":    row.created_at,
+        "activities":      activities,
+    })
+
+
+async def api_list_users(req, env):
+    """GET /api/users — return public-profile users, paginated."""
+    enc = env.ENCRYPTION_KEY
+
+    params = parse_qs(urlparse(req.url).query)
+    try:
+        limit = max(1, min(100, int((params.get("limit") or ["50"])[0])))
+    except Exception:
+        limit = 50
+    try:
+        offset = max(0, int((params.get("offset") or ["0"])[0]))
+    except Exception:
+        offset = 0
+
+    rows = await env.DB.prepare(
+        "SELECT u.id,u.name,u.username,p.bio,p.expertise,p.avatar_url,p.is_teacher"
+        " FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE p.is_profile_public=1"
+        " ORDER BY u.created_at DESC LIMIT ? OFFSET ?"
+    ).bind(limit, offset).all()
+
+    users_list = []
+    for r in rows.results or []:
+        bio_plain = await decrypt_aes(r.bio, enc) if r.bio else ""
+        users_list.append({
+            "username":   await decrypt_aes(r.username, enc) if r.username else "",
+            "name":       await decrypt_aes(r.name, enc) if r.name else "",
+            "bio":        bio_plain[:200],
+            "expertise":  await decrypt_aes(r.expertise, enc) if r.expertise else "",
+            "avatar_url": r.avatar_url or "",
+            "is_teacher": r.is_teacher or 0,
+        })
+
+    return ok({"users": users_list, "total": len(users_list)})
+
+
+# ---------------------------------------------------------------------------
 # Main dispatcher
 # ---------------------------------------------------------------------------
 
@@ -7378,6 +7554,16 @@ async def _dispatch(request, env):
 
         if path == "/api/profile" and method in ("GET", "PATCH", "DELETE"):
             return await (api_delete_account(request, env) if method == "DELETE" else api_profile(request, env))
+
+        if path == "/api/profile/avatar" and method in ("POST", "DELETE"):
+            return await (api_upload_avatar(request, env) if method == "POST" else api_remove_avatar(request, env))
+
+        if path == "/api/users" and method == "GET":
+            return await api_list_users(request, env)
+
+        m_public_user = re.fullmatch(r"/api/users/([^/]+)", path)
+        if m_public_user and method == "GET":
+            return await api_get_public_profile(unquote(m_public_user.group(1)), request, env)
 
         if path == "/api/feedback" and method == "POST":
             return await api_feedback(request, env)

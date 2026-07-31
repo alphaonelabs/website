@@ -192,6 +192,7 @@ class TestApiLogin:
             name=_enc(name),
             username=_enc(username),
             email_verified=1,
+            avatar_url=None,
         )
 
     async def test_missing_username_returns_400(self):
@@ -275,12 +276,9 @@ class TestApiLogin:
     async def test_login_rate_limit_resets_after_window(self, monkeypatch):
         row = self._make_user_row()
         env = self._rate_limited_env()
-        env.DB = MockDB([
-            make_stmt(first=row),
-            make_stmt(first=row),
-            make_stmt(first=row),
-            make_stmt(first=row),
-        ])
+        # Each successful login issues two DB reads: the user row lookup and
+        # the user_profiles avatar_url lookup. Four logins in this test = 8 stmts.
+        env.DB = MockDB([make_stmt(first=row) for _ in range(8)])
 
         worker._AUTH_RATE_LIMIT_STATE.clear()
         monkeypatch.setattr(worker.time, "time", lambda: 1000)

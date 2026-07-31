@@ -6,7 +6,7 @@ compatibility_flags = ["python_workers"]
 [assets]
 directory = "./public"
 binding = "ASSETS"
-run_worker_first = ["/api/*", "/media/*", "/admin", "/admin/*", "/admin-*", "/ref/*", "/activity/*", "/blog/*", "/en/*", "/es/*", "/fr/*", "/de/*", "/zh/*", "/*.html", "/", "/activity", "/classes-map", "/requests", "/waiting-rooms", "/cart", "/checkout-success", "/dashboard", "/donate", "/feedback", "/forgot-password", "/login", "/notification-preferences", "/notifications", "/profile", "/referral-leaderboard", "/reset-password", "/status", "/teach", "/verify-email", "/virtual-classroom", "/whiteboard", "/calculator", "/contributors", "/gsoc", "/about", "/terms", "/privacy", "/cookies", "/429", "/500", "/features", "/legacy-features", "/forum", "/blog", "/study-groups", "/quizzes", "/surveys", "/challenges", "/progress", "/grade-links", "/calendar", "/memes", "/success-stories", "/feature-votes", "/messages"]
+run_worker_first = ["/api/*", "/media/*", "/admin", "/admin/*", "/admin-*", "/ref/*", "/activity/*", "/blog/*", "/en/*", "/es/*", "/fr/*", "/de/*", "/zh/*", "/*.html", "/", "/activity", "/classes-map", "/requests", "/waiting-rooms", "/cart", "/checkout-success", "/dashboard", "/donate", "/feedback", "/forgot-password", "/login", "/notification-preferences", "/notifications", "/profile", "/users", "/public-profile", "/referral-leaderboard", "/reset-password", "/status", "/teach", "/verify-email", "/virtual-classroom", "/whiteboard", "/calculator", "/contributors", "/gsoc", "/about", "/terms", "/privacy", "/cookies", "/429", "/500", "/features", "/legacy-features", "/forum", "/blog", "/study-groups", "/quizzes", "/surveys", "/challenges", "/progress", "/grade-links", "/calendar", "/memes", "/success-stories", "/feature-votes", "/messages"]
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
 
@@ -17,6 +17,17 @@ binding = "DB"
 database_name = "education_db"
 database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
 migrations_dir = "migrations"
+
+
+# To enable R2 avatar storage:
+#   1. Create the bucket:  wrangler r2 bucket create learn-avatars
+#   2. Enable public access in the Cloudflare dashboard for the bucket
+#   3. Add R2_PUBLIC_URL as an environment variable (Workers → Settings → Variables)
+#      e.g. https://pub-xxxxx.r2.dev  or your custom domain
+#   Without R2_PUBLIC_URL, the worker falls back to base64 data-URLs stored in D1.
+# [[r2_buckets]]
+# binding  = "R2"
+# bucket_name = "learn-avatars"
 
 
 # Virtual Classroom Durable Object
