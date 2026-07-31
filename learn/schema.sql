@@ -59,6 +59,14 @@ CREATE TABLE IF NOT EXISTS enrollments (
     FOREIGN KEY (user_id)     REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS certificates (
+    id            TEXT PRIMARY KEY,
+    enrollment_id TEXT NOT NULL UNIQUE,
+    issued_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
+);
+
 -- SESSION ATTENDANCE (optional per-session tracking)
 CREATE TABLE IF NOT EXISTS session_attendance (
     id         TEXT PRIMARY KEY,

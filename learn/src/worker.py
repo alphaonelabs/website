@@ -994,6 +994,14 @@ _DDL = [
         FOREIGN KEY (activity_id) REFERENCES activities(id),
         FOREIGN KEY (user_id)     REFERENCES users(id)
     )""",
+    # Certificates
+    """CREATE TABLE IF NOT EXISTS certificates (
+        id            TEXT PRIMARY KEY,
+        enrollment_id TEXT NOT NULL UNIQUE,
+        issued_at     TEXT NOT NULL DEFAULT (datetime('now')),
+        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
+    )""",
     # Session attendance
     """CREATE TABLE IF NOT EXISTS session_attendance (
         id         TEXT PRIMARY KEY,
@@ -2417,6 +2425,7 @@ async def api_get_activity(activity_ref: str, req, env):
         "enrollment":  {
             "role":   enrollment.role,
             "status": enrollment.status,
+            "id":     enrollment.id,
         } if enrollment else None,
     })
 
@@ -2498,6 +2507,116 @@ async def api_express_activity_interest(activity_ref: str, req, env):
         "activity_id": act.id,
         "interest_count": count_row.cnt if count_row else 1,
     }, "Interest recorded")
+
+
+async def api_generate_certificate(request, env, target_id):
+    user = verify_token(request.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    enrollment = await env.DB.prepare(
+        "SELECT e.*, a.host_id FROM enrollments e "
+        "JOIN activities a ON e.activity_id = a.id "
+        "WHERE e.id = ?"
+    ).bind(target_id).first()
+
+    if not enrollment:
+        enrollment = await env.DB.prepare(
+            "SELECT e.*, a.host_id FROM enrollments e "
+            "JOIN activities a ON e.activity_id = a.id "
+            "WHERE (a.id = ? OR a.slug = ?) AND e.user_id = ?"
+        ).bind(target_id, target_id, user["id"]).first()
+
+    if not enrollment:
+        return err("Enrollment not found", 404)
+
+    if enrollment.user_id != user["id"] and enrollment.host_id != user["id"]:
+        return err("Forbidden", 403)
+
+    enrollment_id = enrollment.id
+
+    if enrollment.status == "cancelled":
+        return err("Enrollment is cancelled", 400)
+
+    if enrollment.status != "completed":
+        comp = await env.DB.prepare(
+            "SELECT id FROM activity_completions WHERE activity_id=? AND user_id=? LIMIT 1"
+        ).bind(enrollment.activity_id, enrollment.user_id).first()
+        if comp:
+            await env.DB.prepare(
+                "UPDATE enrollments SET status='completed' WHERE id=?"
+            ).bind(enrollment_id).run()
+        else:
+            return err(
+                "Enrollment is not completed yet. Finish all sessions to earn your certificate.",
+                400,
+            )
+
+    existing = await env.DB.prepare(
+        "SELECT id FROM certificates WHERE enrollment_id = ?"
+    ).bind(enrollment_id).first()
+    if existing:
+        return ok({
+            "uuid": existing.id,
+            "url": "/certificate.html?uuid=" + existing.id,
+        })
+
+    cert_uuid = new_id()
+    try:
+        await env.DB.prepare(
+            "INSERT INTO certificates (id, enrollment_id) VALUES (?, ?)"
+        ).bind(cert_uuid, enrollment_id).run()
+    except Exception as exc:
+        # Handle UNIQUE constraint violation (concurrent duplicate request)
+        existing_after = await env.DB.prepare(
+            "SELECT id FROM certificates WHERE enrollment_id = ?"
+        ).bind(enrollment_id).first()
+        if existing_after:
+            return ok({
+                "uuid": existing_after.id,
+                "url": "/certificate.html?uuid=" + existing_after.id,
+            })
+        await capture_exception(exc, request, env, "api_generate_certificate.insert")
+        return err("Failed to generate certificate", 500)
+
+    await _create_notification(
+        env,
+        enrollment.user_id,
+        "certificate_issued",
+        "Certificate Issued",
+        "Your certificate is ready. View and download it from your activity page.",
+        related_id=cert_uuid,
+        category="system",
+    )
+
+    return ok({
+        "uuid": cert_uuid,
+        "url": "/certificate.html?uuid=" + cert_uuid,
+    })
+
+
+async def api_get_certificate(request, env, cert_uuid):
+    row = await env.DB.prepare(
+        "SELECT c.id, c.issued_at, c.enrollment_id, "
+        "u.name as student_name_enc, "
+        "a.title as activity_title "
+        "FROM certificates c "
+        "JOIN enrollments e ON c.enrollment_id = e.id "
+        "JOIN users u ON e.user_id = u.id "
+        "JOIN activities a ON e.activity_id = a.id "
+        "WHERE c.id = ?"
+    ).bind(cert_uuid).first()
+    if not row:
+        return err("Certificate not found", 404)
+
+    student_name = await decrypt_aes(row.student_name_enc, env.ENCRYPTION_KEY)
+    return ok({
+        "uuid": cert_uuid,
+        "student_name": student_name,
+        "activity_title": row.activity_title,
+        "issued_at": row.issued_at,
+        "enrollment_id": row.enrollment_id,
+    })
 
 
 async def api_join(req, env):
@@ -7231,6 +7350,14 @@ async def _dispatch(request, env):
         if path == "/api/activities" and method == "POST":
             return await api_create_activity(request, env)
 
+        m_cert_gen = re.fullmatch(r"/api/certificates/generate/([A-Za-z0-9_-]+)", path)
+        if m_cert_gen and method == "POST":
+            return await api_generate_certificate(request, env, m_cert_gen.group(1))
+
+        m_cert_get = re.fullmatch(r"/api/certificates/([A-Za-z0-9_-]+)", path)
+        if m_cert_get and method == "GET":
+            return await api_get_certificate(request, env, m_cert_get.group(1))
+
         m_complete = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/complete", path)
         if m_complete and method == "POST":
             return await api_complete_activity(m_complete.group(1), request, env)
@@ -7372,10 +7499,6 @@ async def _dispatch(request, env):
             return await api_get_notification_preferences(request, env)
         if path == "/api/notification-preferences" and method == "PATCH":
             return await api_patch_notification_preferences(request, env)
-
-        # Feedback
-        if path == "/api/feedback" and method == "POST":
-            return await api_submit_feedback(request, env)
 
         return err("API endpoint not found", 404)
 
@@ -7608,7 +7731,7 @@ async def _create_notification(env, user_id: str, type_: str, title: str,
         ).bind(new_id(), user_id, type_,
                await encrypt_aes(title, enc),
                await encrypt_aes(message, enc),
-               related_id).run()
+               related_id or "").run()
     except Exception as exc:
         await capture_exception(exc, _env=env, where="_create_notification")
     return None

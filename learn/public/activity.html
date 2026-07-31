@@ -418,6 +418,7 @@
     let allActivities = [];
     let currentActivity = null;
     let activeTag = null;
+    let currentEnrollment = null;
     let currentPage = 1;
     const activitiesPerPage = 12;
     const loadedActivityTypes = new Set();
@@ -724,6 +725,93 @@
       }).join('');
     }
 
+    function resetCertificateSection() {
+      const section = document.getElementById('certificate-section');
+      const button = document.getElementById('btn-certificate');
+      const note = document.getElementById('certificate-note');
+      const error = document.getElementById('certificate-error');
+      section.classList.add('hidden');
+      error.classList.add('hidden');
+      error.textContent = '';
+      note.textContent = '';
+      button.disabled = false;
+      button.onclick = null;
+      button.className = 'w-full inline-flex items-center justify-center gap-2 font-bold px-5 py-3 rounded-xl transition-all';
+    }
+
+    function renderCertificateSection(enrollment) {
+      const section = document.getElementById('certificate-section');
+      const button = document.getElementById('btn-certificate');
+      const note = document.getElementById('certificate-note');
+      const error = document.getElementById('certificate-error');
+
+      resetCertificateSection();
+      section.classList.remove('hidden');
+
+      if (enrollment.status === 'completed') {
+        button.innerHTML = '<i class="fas fa-certificate"></i>Generate Certificate';
+        button.classList.add('bg-green-600', 'hover:bg-green-700', 'text-white', 'shadow-md');
+        note.textContent = 'Your activity is complete. Generate your certificate and download it as a PDF.';
+        button.onclick = generateCertificate;
+        return;
+      }
+
+      button.innerHTML = '<i class="fas fa-lock"></i>Certificate not available yet';
+      button.disabled = true;
+      button.classList.add('bg-gray-300', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-300', 'cursor-not-allowed', 'opacity-60');
+      note.textContent = 'Complete all sessions in this activity to unlock your certificate.';
+      error.classList.add('hidden');
+    }
+
+    async function generateCertificate() {
+      const error = document.getElementById('certificate-error');
+      const button = document.getElementById('btn-certificate');
+      error.classList.add('hidden');
+      error.textContent = '';
+
+      if (!token) {
+        window.location.href = '/login.html';
+        return;
+      }
+      if (!currentEnrollment || !currentEnrollment.id) {
+        error.textContent = 'Enrollment not found for certificate generation.';
+        error.classList.remove('hidden');
+        return;
+      }
+
+      const originalHtml = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+
+      try {
+        const res = await fetch(`/api/certificates/generate/${encodeURIComponent(currentEnrollment.id)}`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        const payload = await res.json();
+
+        if (res.ok) {
+          window.open('/certificate.html?uuid=' + encodeURIComponent(payload.data.uuid), '_blank');
+          button.disabled = false;
+          button.innerHTML = originalHtml;
+          return;
+        }
+
+        if (res.status === 400) {
+          error.textContent = payload.error || 'Something went wrong. Please try again.';
+        } else {
+          error.textContent = 'Something went wrong. Please try again.';
+        }
+        error.classList.remove('hidden');
+      } catch (e) {
+        error.textContent = 'Something went wrong. Please try again.';
+        error.classList.remove('hidden');
+      }
+
+      button.disabled = false;
+      button.innerHTML = originalHtml;
+    }
+
     let serverActivityDetailPayloadRead = false;
     let serverActivityDetailPayload = null;
     function readServerActivityDetail(activityRef) {
@@ -760,6 +848,7 @@
       }
       try {
         if (!data) {
+      resetCertificateSection();
           const headers = token ? { Authorization: 'Bearer ' + token } : {};
           const res = await fetch('/api/activities/' + encodeURIComponent(activityRef), { headers });
           const body = await res.json();
@@ -921,6 +1010,7 @@
         document.getElementById('join-cta').classList.add('hidden');
         document.getElementById('member-card').classList.remove('hidden');
         const enr = data.enrollment;
+        currentEnrollment = enr;
         const rc  = { participant:'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', instructor:'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300', organizer:'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' };
         const sc  = { active:'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', cancelled:'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', completed:'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' };
         document.getElementById('enr-details').innerHTML =
@@ -937,7 +1027,9 @@
         document.getElementById('act-action').innerHTML = '<div class="flex flex-wrap items-center gap-3"><span class="inline-flex items-center gap-2 text-teal-100 text-sm font-semibold">✅ Joined</span>' + watchLink + completeControl + '</div>';
         document.getElementById('welcome-card').querySelector('#welcome-text').textContent =
           'You are participating in this activity. Session locations and details are visible above.';
+        renderCertificateSection(enr);
       } else {
+        currentEnrollment = null;
         if (token) {
           if (a.status === 'waitlist') {
             document.getElementById('join-cta').classList.add('hidden');
