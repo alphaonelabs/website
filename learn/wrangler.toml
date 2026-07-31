@@ -56,6 +56,8 @@ enabled = false
 persist = true
 head_sampling_rate = 1
 
+[build]
+command = "bash migrate.sh"
 
 [triggers]
 crons = ["0 13 * * *"]
