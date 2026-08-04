@@ -19,6 +19,7 @@ export class FirstPersonControls {
     document.addEventListener("mousemove", this.onMouseMove);
     document.addEventListener("keydown", this.onKeyDown);
     document.addEventListener("keyup", this.onKeyUp);
+    window.addEventListener("blur", this.resetMoveState);
   }
 
   lock(): void {
@@ -43,7 +44,8 @@ export class FirstPersonControls {
 
     const right = new THREE.Vector3().crossVectors(forward, this.camera.up);
 
-    const step = MOVE_SPEED * deltaSeconds;
+    const inputLength = Math.hypot(forwardInput, rightInput);
+    const step = (MOVE_SPEED * deltaSeconds) / inputLength;
     this.camera.position.addScaledVector(forward, forwardInput * step);
     this.camera.position.addScaledVector(right, rightInput * step);
     this.camera.position.y = EYE_HEIGHT;
@@ -54,10 +56,19 @@ export class FirstPersonControls {
     document.removeEventListener("mousemove", this.onMouseMove);
     document.removeEventListener("keydown", this.onKeyDown);
     document.removeEventListener("keyup", this.onKeyUp);
+    window.removeEventListener("blur", this.resetMoveState);
   }
 
   private onLockChange = (): void => {
     this.isLocked = document.pointerLockElement === this.domElement;
+    if (!this.isLocked) this.resetMoveState();
+  };
+
+  private resetMoveState = (): void => {
+    this.move.forward = false;
+    this.move.backward = false;
+    this.move.left = false;
+    this.move.right = false;
   };
 
   private onMouseMove = (event: MouseEvent): void => {
@@ -71,6 +82,7 @@ export class FirstPersonControls {
   };
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    if (!this.isLocked) return;
     this.setMoveState(event.code, true);
   };
 

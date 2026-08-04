@@ -18,7 +18,8 @@ npm run dev
 ## Build & deploy
 
 ```bash
-wrangler login
-npm run build
+npx wrangler login
 npm run deploy
 ```
+
+`npm run deploy` runs the build automatically. Set `VITE_LEARN_API_BASE` (defaults to `https://learn.alphaonelabs.com`) if the app should talk to a different Learn API instance.

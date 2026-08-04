@@ -60,17 +60,32 @@ function showErr(boxId: string, msgId: string, msg: string): void {
   setTimeout(() => box.classList.remove("show"), 5000);
 }
 
+const REQUEST_TIMEOUT_MS = 15000;
+
 async function callApi<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${LEARN_API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = (await res.json()) as ApiEnvelope<T>;
-  if (!res.ok) {
-    throw new Error(data.error || data.message || "Request failed");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${LEARN_API_BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const data = (await res.json()) as ApiEnvelope<T>;
+    if (!res.ok) {
+      throw new Error(data.error || data.message || "Request failed");
+    }
+    return (data.data ?? (data as unknown as T));
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return (data.data ?? (data as unknown as T));
 }
 
 const params = new URLSearchParams(location.search);
@@ -166,6 +181,7 @@ function showRegisterSuccess(msg: string): void {
 
   const heading = document.createElement("h2");
   heading.textContent = "Check your email";
+  heading.tabIndex = -1;
 
   const msgPara = document.createElement("p");
   msgPara.textContent = msg;
@@ -178,4 +194,5 @@ function showRegisterSuccess(msg: string): void {
   container.append(iconDiv, heading, msgPara, actionButton);
 
   panel.replaceChildren(container);
+  heading.focus();
 }

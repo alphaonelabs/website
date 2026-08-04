@@ -15,6 +15,7 @@ const { scene, camera, renderer } = createScene(canvas);
 const controls = new FirstPersonControls(camera, canvas);
 const portals: Portal[] = createPortals(scene, activities);
 const overlay = new Overlay();
+overlay.renderActivityList(activities);
 
 let activePortal: Portal | null = null;
 
@@ -34,6 +35,7 @@ document.addEventListener("keydown", (event) => {
     overlay.showPanel(activePortal.activity);
   } else if (event.code === "Escape" && overlay.isPanelOpen()) {
     overlay.hidePanel();
+    controls.lock();
   }
 });
 

@@ -20,7 +20,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneBundle {
   camera.position.set(0, 1.6, 6);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
