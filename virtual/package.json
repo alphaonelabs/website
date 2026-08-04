@@ -1,0 +1,22 @@
+{
+  "name": "virtual",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Alpha One Labs virtual world",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.169.0",
+    "typescript": "^5.6.3",
+    "vite": "^8.2.0",
+    "wrangler": "^4.42.1"
+  }
+}

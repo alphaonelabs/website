@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in — Alpha One Labs Virtual</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: #0a0a0a;
+        color: #f5f5f5;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      header.site-header {
+        width: 100%;
+        background: #0f766e;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+      .site-header .bar {
+        max-width: 90rem;
+        margin: 0 auto;
+        min-height: 70px;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .site-header .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        text-decoration: none;
+        color: #fff;
+        font-weight: 800;
+        font-size: 1.1rem;
+        white-space: nowrap;
+      }
+      .site-header .brand .logo {
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.6rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        flex-shrink: 0;
+      }
+      .site-header nav {
+        display: flex;
+        gap: 0.25rem;
+      }
+      .site-header nav a {
+        color: #e0f2f1;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.6rem;
+        white-space: nowrap;
+      }
+      .site-header nav a:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+      @media (max-width: 720px) {
+        .site-header nav { display: none; }
+      }
+
+      main.content {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+      }
+      .wrap { width: 100%; max-width: 26rem; }
+
+      .security-note {
+        text-align: center;
+        color: #9aa4a9;
+        font-size: 0.8rem;
+        margin: 0 0 1.5rem;
+      }
+
+      .card {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 1.25rem;
+        background: #12181c;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .tab {
+        flex: 1;
+        padding: 1rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-align: center;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: #9aa4a9;
+        cursor: pointer;
+      }
+      .tab.active { color: #2dd4bf; border-bottom-color: #2dd4bf; }
+
+      .panel { padding: 2rem; }
+      .panel.hidden { display: none; }
+
+      .panel h2 { margin: 0 0 0.4rem; font-size: 1.3rem; }
+      .panel > p.sub { margin: 0 0 1.5rem; color: #9aa4a9; font-size: 0.9rem; }
+
+      label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #d1d5db;
+        margin-bottom: 0.4rem;
+      }
+      .field { margin-bottom: 1rem; }
+      input {
+        width: 100%;
+        padding: 0.65rem 0.9rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: #1c242a;
+        color: #fff;
+        font-size: 0.9rem;
+      }
+      input:focus {
+        outline: none;
+        border-color: #2dd4bf;
+        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.35);
+      }
+      .hint { font-size: 0.75rem; color: #9aa4a9; margin: 0.4rem 0 0; }
+
+      .error {
+        display: none;
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.6rem;
+        background: rgba(220, 38, 38, 0.15);
+        border: 1px solid rgba(220, 38, 38, 0.4);
+        color: #fca5a5;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+      }
+      .error.show { display: block; }
+
+      button.submit {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        border: none;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #fff;
+        cursor: pointer;
+        background: linear-gradient(90deg, #14b8a6, #06b6d4);
+      }
+      button.submit:hover { filter: brightness(1.1); }
+      button.submit:disabled { opacity: 0.6; cursor: default; }
+
+      #panel-register button.submit {
+        background: linear-gradient(90deg, #06b6d4, #3b82f6);
+      }
+
+      .footer-link {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #9aa4a9;
+        margin-top: 1.5rem;
+      }
+      a { color: #2dd4bf; text-decoration: none; font-weight: 600; }
+      a:hover { text-decoration: underline; }
+
+      .terms { font-size: 0.75rem; color: #9aa4a9; margin-top: 1rem; text-align: center; }
+
+      .success { text-align: center; padding: 2rem 0; }
+      .success .icon {
+        width: 4rem;
+        height: 4rem;
+        border-radius: 50%;
+        background: rgba(45, 212, 191, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.75rem;
+      }
+      .success h2 { margin: 0 0 0.5rem; }
+      .success p { color: #9aa4a9; font-size: 0.9rem; margin: 0 0 1.5rem; }
+      .success button {
+        background: transparent;
+        border: none;
+        color: #2dd4bf;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.8rem;
+        padding: 0;
+      }
+
+      .toast {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(20, 184, 166, 0.15);
+        border: 1px solid rgba(20, 184, 166, 0.4);
+        color: #5eead4;
+        padding: 0.8rem 1.1rem;
+        border-radius: 0.6rem;
+        font-size: 0.85rem;
+        z-index: 50;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="bar">
+        <a href="https://learn.alphaonelabs.com" class="brand">
+          <img class="logo" src="./images/logo.png"></img>
+          <span>Alpha One Labs</span>
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="https://learn.alphaonelabs.com/activity">Browse</a>
+          <a href="https://learn.alphaonelabs.com/requests?kind=learn">Learn</a>
+          <a href="https://learn.alphaonelabs.com/requests?kind=teach">Teach</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="content">
+    <div class="wrap">
+      <p class="security-note">All user data encrypted at rest — zero plaintext PII stored</p>
+
+      <div class="card">
+        <div class="tabs">
+          <button id="tab-login" class="tab active" type="button">Login</button>
+          <button id="tab-register" class="tab" type="button">Register</button>
+        </div>
+
+        <div id="panel-login" class="panel">
+          <h2>Welcome back!</h2>
+          <p class="sub">Sign in to enter the virtual world</p>
+
+          <form id="form-login" novalidate>
+            <div class="field">
+              <label for="l-username">Username or Email</label>
+              <input id="l-username" type="text" autocomplete="username" required placeholder="username or email" />
+            </div>
+            <div class="field">
+              <label for="l-password">Password</label>
+              <input id="l-password" type="password" autocomplete="current-password" required placeholder="••••••••" />
+            </div>
+
+            <div id="login-err" class="error"><span id="login-err-msg"></span></div>
+
+            <button class="submit" type="submit">Sign In</button>
+          </form>
+        </div>
+
+        <div id="panel-register" class="panel hidden">
+          <h2>Create your account</h2>
+          <p class="sub">Register and start exploring today</p>
+
+          <form id="form-register" novalidate>
+            <div class="field">
+              <label for="r-name">Display Name</label>
+              <input id="r-name" type="text" autocomplete="name" placeholder="Your Full Name" />
+            </div>
+            <div class="field">
+              <label for="r-username">Username</label>
+              <input id="r-username" type="text" autocomplete="username" required placeholder="choose_a_username" />
+            </div>
+            <div class="field">
+              <label for="r-email">Email</label>
+              <input id="r-email" type="email" autocomplete="email" required placeholder="you@example.com" />
+            </div>
+            <div class="field">
+              <label for="r-password">Password</label>
+              <input id="r-password" type="password" autocomplete="new-password" required minlength="6" placeholder="min 6 characters" />
+              <p class="hint">Passwords are encrypted at rest</p>
+            </div>
+            <div class="field">
+              <label for="r-confirm-password">Confirm Password</label>
+              <input id="r-confirm-password" type="password" autocomplete="new-password" required minlength="6" placeholder="confirm password" />
+            </div>
+            <div class="field">
+              <label for="r-referral-code">Referral Code</label>
+              <input id="r-referral-code" type="text" autocomplete="off" placeholder="optional" style="text-transform: uppercase" />
+              <p class="hint">Use this if someone invited you through the referral program.</p>
+            </div>
+
+            <div id="register-err" class="error"><span id="register-err-msg"></span></div>
+
+            <button class="submit" type="submit">Create Account</button>
+          </form>
+
+          <p class="terms">
+            By registering, you agree to our
+            <a href="https://learn.alphaonelabs.com/terms" target="_blank" rel="noopener">Terms of Service</a>
+            and
+            <a href="https://learn.alphaonelabs.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+          </p>
+        </div>
+      </div>
+
+      <p class="footer-link"><a href="https://learn.alphaonelabs.com">← Back to Alpha One Labs</a></p>
+    </div>
+    </main>
+
+    <script type="module" src="/src/login.ts"></script>
+  </body>
+</html>

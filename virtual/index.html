@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alpha One Labs — Virtual</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0a0a0a;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      #app { width: 100vw; height: 100vh; display: block; }
+
+      #blocker {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        text-align: center;
+        cursor: pointer;
+        z-index: 10;
+      }
+      #blocker.hidden { display: none; }
+      #blocker h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
+      #blocker p { margin: 0; color: #ccc; }
+
+      #crosshair {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin: -3px 0 0 -3px;
+        border-radius: 50%;
+        background: #fff;
+        opacity: 0.8;
+        z-index: 5;
+        pointer-events: none;
+      }
+      #crosshair.hidden { display: none; }
+
+      #prompt {
+        position: fixed;
+        bottom: 8%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        padding: 0.6rem 1.2rem;
+        border-radius: 999px;
+        font-size: 0.95rem;
+        z-index: 5;
+        pointer-events: none;
+      }
+      #prompt.hidden { display: none; }
+
+      #panel {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 20;
+      }
+      #panel.hidden { display: none; }
+      #panel-card {
+        background: #12181c;
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 1.25rem;
+        padding: 2rem;
+        max-width: 26rem;
+        width: 90%;
+      }
+      #panel-card h2 { margin: 0 0 0.75rem; font-size: 1.5rem; }
+      #panel-card p { margin: 0 0 1.5rem; color: #b8c2c9; line-height: 1.5; }
+      #panel-links { display: flex; flex-direction: column; gap: 0.6rem; }
+      #panel-links a {
+        display: block;
+        text-align: center;
+        text-decoration: none;
+        color: #fff;
+        background: #0d9488;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+      }
+      #panel-links a:hover { background: #0f766e; }
+      #panel-close {
+        margin-top: 1.25rem;
+        width: 100%;
+        padding: 0.6rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: transparent;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      #logout {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        /* Above #blocker (10) so it's clickable whenever the pointer is
+           unlocked — otherwise the full-screen blocker swallows the click. */
+        z-index: 15;
+        padding: 0.45rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        font-size: 0.8rem;
+        cursor: pointer;
+      }
+      #logout:hover { background: rgba(0, 0, 0, 0.7); }
+      #logout.hidden { display: none; }
+
+      #hint {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 6;
+        color: #ccc;
+        font-size: 0.75rem;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 0.4rem 0.7rem;
+        border-radius: 999px;
+        pointer-events: none;
+      }
+      #hint.hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="app"></canvas>
+
+    <div id="crosshair" class="hidden"></div>
+    <div id="prompt" class="hidden"></div>
+    <button id="logout" type="button" class="hidden">Log out</button>
+    <div id="hint" class="hidden">Press ESC to free your cursor</div>
+
+    <div id="blocker">
+      <div>
+        <h1>Alpha One Labs — Virtual</h1>
+        <p>Click to enter · WASD to move · Mouse to look · E to interact</p>
+        <p>Press ESC anytime to release your cursor and use the menu</p>
+      </div>
+    </div>
+
+    <div id="panel" class="hidden">
+      <div id="panel-card">
+        <h2 id="panel-title"></h2>
+        <p id="panel-description"></p>
+        <div id="panel-links"></div>
+        <button id="panel-close" type="button">Close (Esc)</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
