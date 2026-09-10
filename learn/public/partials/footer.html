@@ -87,7 +87,7 @@
     </div>
 
     <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-      <p>© {% now "Y" %} Alpha One Labs. All rights reserved.</p>
+      <p>© <span id="current-year"></span> Alpha One Labs. All rights reserved.</p>
       <p>Open source education, current classes, and community learning tools.</p>
     </div>
   </div>
@@ -109,5 +109,5 @@
   </style>
 </footer>
 <script>
-  document.getElementById("year").textContent = new Date().getFullYear();
+  document.getElementById("current-year").textContent = new Date().getFullYear();
 </script>
