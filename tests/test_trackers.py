@@ -26,14 +26,18 @@ class ProgressTrackerTests(TestCase):
         self.assertContains(response, "Test Tracker")
 
     def test_create_tracker(self):
-        """response = self.client.post(reverse('create_tracker'), {
-            'title': 'New Tracker',
-            'description': 'New description',
-            'current_value': 10,
-            'target_value': 50,
-            'color': 'green-600',
-            'public': True
-        })"""
+        response = self.client.post(
+            reverse("create_tracker"),
+            {
+                "title": "New Tracker",
+                "description": "New description",
+                "current_value": 10,
+                "target_value": 50,
+                "color": "green-600",
+                "public": True,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(ProgressTracker.objects.count(), 2)
         new_tracker = ProgressTracker.objects.get(title="New Tracker")
         self.assertEqual(new_tracker.current_value, 10)
