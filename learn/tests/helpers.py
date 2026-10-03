@@ -167,3 +167,39 @@ def json_request(path: str, payload: dict, headers=None, method="POST") -> MockR
         h.update(headers)
     return MockRequest(method=method, url=f"http://localhost{path}", headers=h,
                        body=json.dumps(payload))
+
+
+# ---------------------------------------------------------------------------
+# Helper: dynamically count statements executed by init_db
+# ---------------------------------------------------------------------------
+
+_INIT_DB_STMT_COUNT = None
+
+
+async def get_init_db_statement_count(worker_mod) -> int:
+    """Return the total number of SQL statements prepared during worker.init_db().
+
+    Cached across test invocations so schema evolution never desyncs MockDB
+    statement sequences in retry-after-missing-table tests.
+    """
+    global _INIT_DB_STMT_COUNT
+    if _INIT_DB_STMT_COUNT is None:
+        count = 0
+
+        class _CounterDB:
+            def prepare(self, _sql):
+                nonlocal count
+                count += 1
+                return make_stmt()
+
+        env = make_env(db=_CounterDB())
+        await worker_mod.init_db(env)
+        _INIT_DB_STMT_COUNT = count
+    return _INIT_DB_STMT_COUNT
+
+
+async def make_init_db_stmts(worker_mod):
+    """Return a list of dummy statements sized to match worker.init_db()."""
+    cnt = await get_init_db_statement_count(worker_mod)
+    return [make_stmt() for _ in range(cnt)]
+
