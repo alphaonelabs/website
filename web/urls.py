@@ -6,7 +6,14 @@ from django.contrib.auth.decorators import login_required
 from django.urls import include, path
 from django.views.generic.base import RedirectView
 
-from . import admin_views, peer_challenge_views, quiz_views, views, views_avatar, views_whiteboard
+from . import (
+    admin_views,
+    peer_challenge_views,
+    quiz_views,
+    views,
+    views_avatar,
+    views_whiteboard,
+)
 from .secure_messaging import (
     compose_message,
     download_message,
@@ -64,6 +71,7 @@ urlpatterns += i18n_patterns(
     path("waiting-rooms/", views.waiting_rooms, name="waiting_rooms"),
     path("teach/", views.teach, name="teach"),
     path("about/", views.about, name="about"),
+    path("affiliations/", views.affiliations, name="affiliations"),
     path("users/", views.users_list, name="users_list"),
     path("profile/<str:username>/", views.public_profile, name="public_profile"),
     path("graphing_calculator/", views.graphing_calculator, name="graphing_calculator"),

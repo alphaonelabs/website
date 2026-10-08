@@ -1160,6 +1160,11 @@ def about(request):
     return render(request, "about.html")
 
 
+def affiliations(request):
+    """View for affiliations and partner initiatives."""
+    return render(request, "affiliations.html")
+
+
 def waiting_rooms(request):
     # Get open waiting rooms
     open_rooms = WaitingRoom.objects.filter(status="open").order_by("-created_at")
@@ -2695,9 +2700,17 @@ def teacher_dashboard(request):
     return render(request, "dashboard/teacher.html", context)
 
 
-def custom_404(request, exception):
-    """Custom 404 error handler"""
-    return render(request, "404.html", status=404)
+def custom_404(request, exception=None):
+    """Custom 404 error handler."""
+    return render(
+        request,
+        "404.html",
+        {
+            "requested_path": request.path,
+            "exception": str(exception) if exception else "",
+        },
+        status=404,
+    )
 
 
 # def custom_500(request):
