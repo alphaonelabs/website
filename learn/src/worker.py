@@ -3764,6 +3764,7 @@ STATIC_CLEAN_ROUTES = {
     "/contributors": "/contributors.html",
     "/gsoc": "/gsoc.html",
     "/about": "/about.html",
+    "/affiliations": "/affiliations.html",
     "/terms": "/terms.html",
     "/privacy": "/privacy.html",
     "/cookies": "/cookies.html",
@@ -3881,6 +3882,19 @@ async def render_404(req, env, requested_path: str = ""):
     if content:
         try:
             content = await _render_template_source(content, env, req, {"requested_path": requested})
+            if '<div id="site-navbar"></div>' in content or '<div id="site-footer"></div>' in content:
+                navbar = await _load_static_text(env, "partials/navbar.html")
+                footer = await _load_static_text(env, "partials/footer.html")
+                if navbar:
+                    content = content.replace(
+                        '<div id="site-navbar"></div>',
+                        '<div id="site-navbar" data-inline="true">' + navbar + '</div>',
+                    )
+                if footer:
+                    content = content.replace(
+                        '<div id="site-footer"></div>',
+                        '<div id="site-footer" data-inline="true">' + footer + '</div>',
+                    )
         except Exception as exc:
             await capture_exception(exc, req, env, "render_404.template")
             content = None
