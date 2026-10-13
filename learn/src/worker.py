@@ -2852,6 +2852,59 @@ async def api_profile(req, env):
 
     return ok(None, "Profile updated")
 
+async def api_change_password(req, env):
+    """POST /api/profile/password — change password after verifying the current one."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    # Limit attempts so the current password can't be brute-forced.
+    rate_limit_resp = _check_auth_rate_limit(req, env, "change_password")
+    if rate_limit_resp:
+        return rate_limit_resp
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    current_password = body.get("current_password") or ""
+    new_password = body.get("new_password") or ""
+
+    if not current_password or not new_password:
+        return err("Current password and new password are required")
+    if len(new_password) < 8:
+        return err("Password must be at least 8 characters")
+    if new_password == current_password:
+        return err("New password must be different from your current password")
+
+    enc = env.ENCRYPTION_KEY
+    try:
+        row = await env.DB.prepare(
+            "SELECT username, password_hash FROM users WHERE id=?"
+        ).bind(user["id"]).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_change_password.lookup")
+        return err("Could not change password — please try again", 500)
+
+    if not row:
+        return err("Account not found", 404)
+
+    username = await decrypt_aes(row.username or "", enc)
+    if not username or username == "[decryption error]":
+        return err("Could not change password — please try again", 500)
+
+    if not verify_password(current_password, row.password_hash, username):
+        return err("Current password is incorrect", 400)
+
+    try:
+        await env.DB.prepare(
+            "UPDATE users SET password_hash=? WHERE id=?"
+        ).bind(hash_password(new_password, username), user["id"]).run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_change_password.update")
+        return err("Could not change password — please try again", 500)
+
+    return ok(None, "Password changed successfully")
 
 async def api_delete_account(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -7557,6 +7610,9 @@ async def _dispatch(request, env):
 
         if path == "/api/profile/avatar" and method in ("POST", "DELETE"):
             return await (api_upload_avatar(request, env) if method == "POST" else api_remove_avatar(request, env))
+        
+        if path == "/api/profile/password" and method == "POST":
+            return await api_change_password(request, env)
 
         if path == "/api/users" and method == "GET":
             return await api_list_users(request, env)
