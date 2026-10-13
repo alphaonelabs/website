@@ -100,3 +100,59 @@ class TestVerifyToken:
             tok = worker.create_token("uid", "user", role, SECRET)
             payload = worker.verify_token(tok, SECRET)
             assert payload["role"] == role
+
+    def test_payload_contains_iat_and_exp(self):
+        tok = worker.create_token("uid-1", "alice", "member", SECRET)
+        payload = worker.verify_token(tok, SECRET)
+        assert "iat" in payload
+        assert "exp" in payload
+        assert isinstance(payload["iat"], int)
+        assert isinstance(payload["exp"], int)
+        assert payload["exp"] == payload["iat"] + worker.DEFAULT_JWT_TTL_SECONDS
+
+    def test_custom_ttl_respected(self):
+        tok = worker.create_token("uid-1", "alice", "member", SECRET, ttl_seconds=3600)
+        payload = worker.verify_token(tok, SECRET)
+        assert payload["exp"] == payload["iat"] + 3600
+
+    def test_expired_token_returns_none(self):
+        # Create token with past expiration
+        tok = worker.create_token("uid-1", "alice", "member", SECRET, ttl_seconds=-10)
+        assert worker.verify_token(tok, SECRET, leeway_seconds=0) is None
+
+    def test_missing_exp_returns_none(self):
+        # Tokens must have an exp claim
+        payload_data = {"id": "uid-1", "username": "alice", "role": "member"}
+        encoded = base64.b64encode(json.dumps(payload_data).encode("utf-8")).decode("ascii")
+        sig = worker._hmac.new(SECRET.encode("utf-8"), encoded.encode("utf-8"), worker.hashlib.sha256).hexdigest()
+        raw_token = f"{encoded}.{sig}"
+        assert worker.verify_token(raw_token, SECRET) is None
+
+    def test_invalid_exp_type_returns_none(self):
+        payload_data = {"id": "uid-1", "username": "alice", "role": "member", "exp": "not-a-number"}
+        encoded = base64.b64encode(json.dumps(payload_data).encode("utf-8")).decode("ascii")
+        sig = worker._hmac.new(SECRET.encode("utf-8"), encoded.encode("utf-8"), worker.hashlib.sha256).hexdigest()
+        raw_token = f"{encoded}.{sig}"
+        assert worker.verify_token(raw_token, SECRET) is None
+
+    def test_far_future_iat_returns_none(self):
+        # Token issued in the distant future should be rejected
+        payload_data = {
+            "id": "uid-1",
+            "username": "alice",
+            "role": "member",
+            "iat": 9999999999,
+            "exp": 9999999999 + 3600,
+        }
+        encoded = base64.b64encode(json.dumps(payload_data).encode("utf-8")).decode("ascii")
+        sig = worker._hmac.new(SECRET.encode("utf-8"), encoded.encode("utf-8"), worker.hashlib.sha256).hexdigest()
+        raw_token = f"{encoded}.{sig}"
+        assert worker.verify_token(raw_token, SECRET) is None
+
+    def test_leeway_window_tolerates_minor_clock_skew(self):
+        # Token expired 10s ago, but leeway is 60s
+        tok = worker.create_token("uid-1", "alice", "member", SECRET, ttl_seconds=-10)
+        assert worker.verify_token(tok, SECRET, leeway_seconds=60) is not None
+        # Token expired 70s ago with 60s leeway -> rejected
+        tok_old = worker.create_token("uid-1", "alice", "member", SECRET, ttl_seconds=-70)
+        assert worker.verify_token(tok_old, SECRET, leeway_seconds=60) is None
