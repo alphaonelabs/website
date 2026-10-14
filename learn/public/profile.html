@@ -84,6 +84,7 @@
             <!-- Change Password -->
       <section id="change-password-card" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
         <div class="flex flex-wrap items-center justify-between gap-3">
+          <p id="password-notice" class="hidden mt-4 p-3 rounded-lg bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800 text-sm text-teal-800 dark:text-teal-200" role="status"></p>
           <h2 class="text-base font-bold flex items-center gap-2"><i class="fas fa-key text-teal-500 text-sm"></i>Password</h2>
           <button id="toggle-password-form" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition"><i class="fas fa-lock text-xs"></i>Change Password</button>
         </div>
@@ -178,7 +179,7 @@ function flash(msg, type = 'success') {
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add('hidden'), 5000);
 }
- 
+
 function setAvatarDisplay(url, name, username) {
   const imgEl = document.getElementById('avatar-img');
   const initialsEl = document.getElementById('avatar-initials');
@@ -348,12 +349,13 @@ async function loadDashboardStats() {
 
 const passwordForm = document.getElementById('password-form');
 const passwordStatus = document.getElementById('password-status');
+const passwordNotice = document.getElementById('password-notice');
 
 function showPasswordForm(show) {
   passwordForm.classList.toggle('hidden', !show);
   document.getElementById('toggle-password-form').classList.toggle('hidden', show);
   if (!show) { passwordForm.reset(); passwordStatus.textContent = ''; }
-  else document.getElementById('cp-current').focus();
+  else { passwordNotice.classList.add('hidden'); document.getElementById('cp-current').focus(); }
 }
 
 document.getElementById('toggle-password-form').addEventListener('click', () => showPasswordForm(true));
@@ -382,7 +384,9 @@ passwordForm.addEventListener('submit', async e => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not change password');
     showPasswordForm(false);
-    flash('Password changed successfully!');
+    passwordNotice.textContent = data.message || 'Check your email to confirm the password change.';
+    passwordNotice.classList.remove('hidden');
+    flash('Confirmation email sent. Check your inbox.', 'info');
   } catch (err) {
     passwordStatus.textContent = err.message;
     flash(err.message, 'error');

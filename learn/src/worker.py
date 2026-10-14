@@ -656,7 +656,7 @@ def _check_auth_rate_limit(req, env, route: str):
     if not client_ip:
         print(json.dumps({"level": "warn", "where": "auth_rate_limit", "error": "missing_cf_connecting_ip"}))
         return _too_many_requests(1)
-    
+
     key = f"{route}:{client_ip}"
     now = int(time.time())
 
@@ -910,7 +910,7 @@ def _branded_email_html(frontend_url: str, title: str, intro: str, cta_label: st
 async def send_verification_email(to_email: str, username: str, token: str, env, req=None) -> bool:
     """Send an email address verification link."""
     frontend_url = _frontend_url(env, req)
-    link    = f"{frontend_url}/verify-email?token={token}"
+    link = f"{frontend_url}/verify-email?token={token}"
     subject = "[alphaonelabs.com] Please Confirm Your Email Address"
     safe_username = username.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     email_html = _branded_email_html(
@@ -927,7 +927,7 @@ async def send_verification_email(to_email: str, username: str, token: str, env,
 async def send_password_reset_email(to_email: str, _username: str, token: str, env, req=None) -> bool:
     """Send a password reset link."""
     frontend_url = _frontend_url(env, req)
-    link    = f"{frontend_url}/reset-password?token={token}"
+    link = f"{frontend_url}/reset-password?token={token}"
     subject = "[alphaonelabs.com] Reset Your Password"
     email_html = _branded_email_html(
         frontend_url,
@@ -936,6 +936,24 @@ async def send_password_reset_email(to_email: str, _username: str, token: str, e
         "Reset password",
         link,
         "This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.",
+    )
+    return await _send_email(to_email, subject, email_html, env)
+
+
+async def send_password_change_email(to_email: str, username: str, token: str, env, req=None) -> bool:
+    """Send a link that confirms a requested password change."""
+    frontend_url = _frontend_url(env, req)
+    link = f"{frontend_url}/confirm-password-change?token={token}"
+    subject = "[alphaonelabs.com] Confirm Your Password Change"
+    email_html = _branded_email_html(
+        frontend_url,
+        "Confirm your password change",
+        f"A password change was requested for the Alpha One Labs account <strong>{_html_escape(username)}</strong>. "
+        "Your password will not change until you confirm.",
+        "Confirm password change",
+        link,
+        "This link expires in 1 hour. If you did not request this, ignore this email and change your password "
+        "right away, since someone may know it.",
     )
     return await _send_email(to_email, subject, email_html, env)
 
@@ -1078,7 +1096,7 @@ _DDL = [
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_prtoken_user ON password_reset_tokens(user_id)",
-    # Message_requests table for direct messaging 
+    # Message_requests table for direct messaging
     """CREATE TABLE IF NOT EXISTS message_requests (
         id TEXT PRIMARY KEY,
         from_user_id TEXT NOT NULL,
@@ -2852,13 +2870,17 @@ async def api_profile(req, env):
 
     return ok(None, "Profile updated")
 
+
 async def api_change_password(req, env):
-    """POST /api/profile/password — change password after verifying the current one."""
+
+    """POST /api/profile/password — start a password change.
+    The current password is verified here, but the new password is only applied
+    after the user confirms via a one-time link sent to their email address.
+    """
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
 
-    # Limit attempts so the current password can't be brute-forced.
     rate_limit_resp = _check_auth_rate_limit(req, env, "change_password")
     if rate_limit_resp:
         return rate_limit_resp
@@ -2880,7 +2902,7 @@ async def api_change_password(req, env):
     enc = env.ENCRYPTION_KEY
     try:
         row = await env.DB.prepare(
-            "SELECT username, password_hash FROM users WHERE id=?"
+            "SELECT username, email, password_hash FROM users WHERE id=?"
         ).bind(user["id"]).first()
     except Exception as exc:
         await capture_exception(exc, req, env, "api_change_password.lookup")
@@ -2890,34 +2912,112 @@ async def api_change_password(req, env):
         return err("Account not found", 404)
 
     username = await decrypt_aes(row.username or "", enc)
-    if not username or username == "[decryption error]":
+    email = await decrypt_aes(row.email or "", enc)
+    if (not username or username == "[decryption error]"
+            or not email or email == "[decryption error]"):
         return err("Could not change password — please try again", 500)
 
     if not verify_password(current_password, row.password_hash, username):
         return err("Current password is incorrect", 400)
 
+    # Per-account cooldown so the inbox can't be flooded with confirmation emails.
+    try:
+        recent = await env.DB.prepare(
+            "SELECT id FROM password_change_requests"
+            " WHERE user_id=? AND created_at > datetime('now', '-2 minutes')"
+        ).bind(user["id"]).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_change_password.cooldown_check")
+        return err("Could not change password — please try again", 500)
+    if recent:
+        return err(
+            "A confirmation email was sent recently. Check your inbox, or wait a couple of minutes and try again.",
+            429,
+        )
+    token = generate_secure_token()
+    token_hash = hash_token(token)
+    expires_at = (
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        # Only one pending request per user; a new request replaces the old one.
+        await env.DB.prepare(
+            "DELETE FROM password_change_requests WHERE user_id=?"
+        ).bind(user["id"]).run()
+        await env.DB.prepare(
+            "INSERT INTO password_change_requests"
+            " (id,user_id,token_hash,new_password_hash,expires_at) VALUES (?,?,?,?,?)"
+        ).bind(
+            new_id(), user["id"], token_hash,
+            hash_password(new_password, username), expires_at,
+        ).run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_change_password.store_request")
+        return err("Could not change password — please try again", 500)
+
+    sent = await send_password_change_email(email, username, token, env, req)
+    if not sent:
+        try:
+            await env.DB.prepare(
+                "DELETE FROM password_change_requests WHERE token_hash=?"
+            ).bind(token_hash).run()
+        except Exception:
+            pass
+        return err("Could not send the confirmation email. Please try again later.", 500)
+    return ok(None, "We've sent a confirmation link to your email. Your password will change once you confirm it.")
+
+
+async def api_confirm_password_change(req, env):
+    """POST /api/confirm-password-change — apply a pending password change using the emailed token."""
+    rate_limit_resp = _check_auth_rate_limit(req, env, "confirm_password_change")
+    if rate_limit_resp:
+        return rate_limit_resp
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    token = (body.get("token") or "").strip()
+    if not token:
+        return err("Confirmation token is required")
+
+    try:
+        row = await env.DB.prepare(
+            "SELECT id, user_id, new_password_hash FROM password_change_requests"
+            " WHERE token_hash=? AND expires_at > datetime('now')"
+        ).bind(hash_token(token)).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_confirm_password_change.lookup")
+        return err("Could not confirm the password change — please try again", 500)
+
+    if not row:
+        return err("This confirmation link is invalid or has expired.", 400)
+
     try:
         await env.DB.prepare(
             "UPDATE users SET password_hash=? WHERE id=?"
-        ).bind(hash_password(new_password, username), user["id"]).run()
+        ).bind(row.new_password_hash, row.user_id).run()
+        await env.DB.prepare(
+            "DELETE FROM password_change_requests WHERE id=?"
+        ).bind(row.id).run()
     except Exception as exc:
-        await capture_exception(exc, req, env, "api_change_password.update")
-        return err("Could not change password — please try again", 500)
+        await capture_exception(exc, req, env, "api_confirm_password_change.update")
+        return err("Could not confirm the password change — please try again", 500)
 
-    return ok(None, "Password changed successfully")
+    return ok(None, "Your password has been changed. You can now sign in with your new password.")
+
 
 async def api_delete_account(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
-
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
     confirmation = _legacy_text(body.get("confirmation")).strip().upper()
     if confirmation != "DELETE":
         return err("Type DELETE to confirm account deletion", 400)
-
     enc = env.ENCRYPTION_KEY
     uid = user["id"]
     deleted_label = f"deleted-{uid[:8]}"
@@ -2932,6 +3032,7 @@ async def api_delete_account(req, env):
             "DELETE FROM notifications WHERE user_id=?",
             "DELETE FROM email_verification_tokens WHERE user_id=?",
             "DELETE FROM password_reset_tokens WHERE user_id=?",
+            "DELETE FROM password_change_requests WHERE user_id=?",
             "DELETE FROM enrollments WHERE user_id=?",
             "DELETE FROM session_attendance WHERE user_id=?",
             "DELETE FROM activity_completions WHERE user_id=?",
@@ -3131,7 +3232,7 @@ async def api_create_session(req, env):
         "SELECT title FROM activities WHERE id = ?"
     ).bind(act_id).first()
     recipient_ids = await _activity_enrollee_ids(env, act_id, exclude_user_id=user["id"])
-    
+
     await emit_event(env, "SESSION_CREATED", {
         "session_id":    sid,
         "session_title": title,
@@ -3771,7 +3872,7 @@ SSR_RECORD_PAGES = {
         "title": "Messages",
         "description": "View direct messaging records and manage message requests.",
         "group": "community",
-        "models": ["web.Message", "web.PeerMessage"], 
+        "models": ["web.Message", "web.PeerMessage"],
         "noun": "messages",
         "private": True,
     },
@@ -3811,6 +3912,7 @@ STATIC_CLEAN_ROUTES = {
     "/status": "/status.html",
     "/teach": "/teach.html",
     "/verify-email": "/verify-email.html",
+    "/confirm-password-change": "/confirm-password-change.html",
     "/virtual-classroom": "/virtual-classroom.html",
     "/whiteboard": "/whiteboard.html",
     "/calculator": "/calculator.html",
@@ -5741,9 +5843,9 @@ async def _server_records_for_models(env, models: list, owner_user_id: Optional[
         if m not in expanded_models:
             expanded_models.append(m)
         if m in ("web.Message", "web.DirectMessage") and "web.PeerMessage" not in expanded_models:
-            expanded_models.append("web.PeerMessage")  
+            expanded_models.append("web.PeerMessage")
         elif m == "web.PeerMessage" and "web.Message" not in expanded_models:
-            expanded_models.append("web.Message")  
+            expanded_models.append("web.Message")
     models = expanded_models
     placeholders = ",".join(["?"] * len(models))
     binds = list(models)
@@ -6304,7 +6406,7 @@ class ClassroomDO(DurableObject):
             except Exception as exc:
                 await capture_exception(exc, None, self.env, "classroom.whiteboard_undo")
 
-        
+
         elif msg_type == "update_seat":
             # Classroom layout, keep in sync with DESK_ROWS/DESK_COLS in classroom_poc.html
             DESK_ROWS = 3
@@ -6848,7 +6950,7 @@ class PresenceDO(DurableObject):
             return 0.5
 
 
-# Messaging Endpoints 
+# Messaging Endpoints
 
 async def api_send_message_request(req, env):
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
@@ -7120,7 +7222,7 @@ async def api_send_thread_message(req, env, thread_id: str):
     iso_now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     payload_obj = {
-        "model": "web.Message",  
+        "model": "web.Message",
         "pk": msg_id,
         "fields": {
             "sender": user["id"],
@@ -7610,9 +7712,12 @@ async def _dispatch(request, env):
 
         if path == "/api/profile/avatar" and method in ("POST", "DELETE"):
             return await (api_upload_avatar(request, env) if method == "POST" else api_remove_avatar(request, env))
-        
+
         if path == "/api/profile/password" and method == "POST":
             return await api_change_password(request, env)
+
+        if path == "/api/confirm-password-change" and method == "POST":
+            return await api_confirm_password_change(request, env)
 
         if path == "/api/users" and method == "GET":
             return await api_list_users(request, env)
