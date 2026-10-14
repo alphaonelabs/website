@@ -5309,7 +5309,7 @@ _SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(self), payment=(self)",
+    "Permissions-Policy": "camera=(self), microphone=(), geolocation=(self), payment=(self)",
 }
 
 
