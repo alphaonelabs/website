@@ -34,6 +34,10 @@
               <span id="avatar-initials">?</span>
               <img id="avatar-img" class="hidden w-full h-full object-cover" alt="avatar" />
             </div>
+           <button id="btn-camera" type="button" onclick="openCamera()" aria-label="Take a photo" title="Take a photo"
+              class="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-gray-800 transition">
+              <i class="fas fa-camera text-sm"></i>
+            </button>
             <input id="avatar-file-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="handleAvatarFile(this)" />
           </div>
           <div class="flex-1 space-y-3">
@@ -81,6 +85,34 @@
         <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded"><i class="fas fa-save mr-2"></i>Update Profile</button>
         <p id="profile-status" class="text-sm text-gray-500 dark:text-gray-400" role="status" aria-live="polite"></p>
       </form>
+            <!-- Change Password -->
+      <section id="change-password-card" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p id="password-notice" class="hidden mt-4 p-3 rounded-lg bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800 text-sm text-teal-800 dark:text-teal-200" role="status"></p>
+          <h2 class="text-base font-bold flex items-center gap-2"><i class="fas fa-key text-teal-500 text-sm"></i>Password</h2>
+          <button id="toggle-password-form" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition"><i class="fas fa-lock text-xs"></i>Change Password</button>
+        </div>
+
+        <form id="password-form" class="hidden space-y-4 mt-5" novalidate>
+          <div>
+            <label class="block text-sm font-medium mb-1" for="cp-current">Current Password</label>
+            <input id="cp-current" type="password" autocomplete="current-password" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1" for="cp-new">New Password</label>
+            <input id="cp-new" type="password" autocomplete="new-password" minlength="8" placeholder="min 8 characters" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1" for="cp-confirm">Confirm New Password</label>
+            <input id="cp-confirm" type="password" autocomplete="new-password" minlength="8" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+          </div>
+          <p id="password-status" class="text-sm text-red-600 dark:text-red-400" role="status" aria-live="polite"></p>
+          <div class="flex flex-wrap gap-2">
+            <button id="password-submit" type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded"><i class="fas fa-save mr-2"></i>Update Password</button>
+            <button id="password-cancel" type="button" class="px-4 py-2 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium">Cancel</button>
+          </div>
+        </form>
+      </section>
 
       <!-- Danger Zone -->
       <section id="delete-account-card" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-red-200 dark:border-red-900">
@@ -133,6 +165,28 @@
     </div>
   </div>
 </main>
+<!-- Camera dialog -->
+<div id="camera-modal" class="hidden fixed inset-0 z-[110] bg-black/70 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="camera-title">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h3 id="camera-title" class="text-base font-bold">Take a profile photo</h3>
+      <button type="button" onclick="closeCamera()" aria-label="Close" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="relative aspect-square bg-black rounded-lg overflow-hidden">
+      <video id="camera-video" autoplay playsinline muted class="hidden w-full h-full object-cover"></video>
+      <img id="camera-preview" class="hidden w-full h-full object-cover" alt="Captured photo preview">
+      <div id="camera-loading" class="absolute inset-0 flex items-center justify-center text-white text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Starting camera…</div>
+    </div>
+    <p id="camera-error" class="hidden mt-3 text-sm text-red-600 dark:text-red-400" role="alert"></p>
+    <canvas id="camera-canvas" class="hidden"></canvas>
+    <div class="flex flex-wrap justify-end gap-2 mt-4">
+      <button type="button" onclick="closeCamera()" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm font-medium">Cancel</button>
+      <button id="camera-retake" type="button" onclick="startCamera()" class="hidden px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm font-medium"><i class="fas fa-redo mr-2 text-xs"></i><span id="camera-retake-label">Retake</span></button>
+      <button id="camera-capture" type="button" onclick="captureCameraPhoto()" class="hidden px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium"><i class="fas fa-camera mr-2 text-xs"></i>Capture</button>
+      <button id="camera-use" type="button" onclick="useCameraPhoto()" class="hidden px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium disabled:opacity-60"><i class="fas fa-check mr-2 text-xs"></i>Use Photo</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const token = localStorage.getItem('edu_token');
@@ -291,6 +345,132 @@ function _syncAvatarToStorage(url) {
   localStorage.setItem('edu_user', JSON.stringify(user));
   if (window.updateAuthSection) window.updateAuthSection();
 }
+// ---- Camera capture for avatar ----
+let cameraStream = null;
+let cameraBlob = null;
+let cameraPreviewUrl = '';
+let cameraReq = 0;
+
+function stopCameraStream() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('camera-video').srcObject = null;
+}
+
+function setCameraState(state) { // 'loading' | 'live' | 'preview' | 'error'
+  document.getElementById('camera-video').classList.toggle('hidden', state !== 'live');
+  document.getElementById('camera-preview').classList.toggle('hidden', state !== 'preview');
+  document.getElementById('camera-loading').classList.toggle('hidden', state !== 'loading');
+  document.getElementById('camera-capture').classList.toggle('hidden', state !== 'live');
+  document.getElementById('camera-use').classList.toggle('hidden', state !== 'preview');
+  document.getElementById('camera-retake').classList.toggle('hidden', state === 'live' || state === 'loading');
+  document.getElementById('camera-retake-label').textContent = state === 'error' ? 'Try again' : 'Retake';
+  if (state !== 'error') document.getElementById('camera-error').classList.add('hidden');
+}
+
+function showCameraError(msg) {
+  stopCameraStream();
+  setCameraState('error');
+  const el = document.getElementById('camera-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function cameraErrorMessage(err) {
+  switch (err && err.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Camera access was blocked. Allow camera permission for this site in your browser settings and try again.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No camera was found on this device.';
+    case 'NotReadableError':
+      return 'The camera is in use by another app. Close it and try again.';
+    default:
+      return 'Could not start the camera. Please try again.';
+  }
+}
+
+async function startCamera() {
+  const id = ++cameraReq;
+  stopCameraStream();
+  setCameraState('loading');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCameraError('Camera is not supported in this browser, or the page is not served over HTTPS.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    if (id !== cameraReq) { stream.getTracks().forEach(t => t.stop()); return; } // dialog closed meanwhile
+    cameraStream = stream;
+    const video = document.getElementById('camera-video');
+    video.srcObject = stream;
+    try { await video.play(); } catch (_) { /* autoplay attribute covers it */ }
+    setCameraState('live');
+  } catch (err) {
+    if (id !== cameraReq) return;
+    showCameraError(cameraErrorMessage(err));
+  }
+}
+
+function openCamera() {
+  document.getElementById('camera-modal').classList.remove('hidden');
+  startCamera();
+}
+
+function closeCamera() {
+  cameraReq++;
+  stopCameraStream();
+  cameraBlob = null;
+  if (cameraPreviewUrl) { URL.revokeObjectURL(cameraPreviewUrl); cameraPreviewUrl = ''; }
+  document.getElementById('camera-preview').removeAttribute('src');
+  document.getElementById('camera-modal').classList.add('hidden');
+}
+
+function captureCameraPhoto() {
+  const video = document.getElementById('camera-video');
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return;
+  // Centre-crop to a square so the photo fits the round avatar
+  const side = Math.min(vw, vh);
+  const size = Math.min(side, 512);
+  const canvas = document.getElementById('camera-canvas');
+  canvas.width = size; canvas.height = size;
+  canvas.getContext('2d').drawImage(video, (vw - side) / 2, (vh - side) / 2, side, side, 0, 0, size, size);
+  canvas.toBlob(blob => {
+    if (!blob) { showCameraError('Could not capture the photo. Please try again.'); return; }
+    cameraBlob = blob;
+    if (cameraPreviewUrl) URL.revokeObjectURL(cameraPreviewUrl);
+    cameraPreviewUrl = URL.createObjectURL(blob);
+    document.getElementById('camera-preview').src = cameraPreviewUrl;
+    stopCameraStream(); // turn the camera off once we have the shot
+    setCameraState('preview');
+  }, 'image/jpeg', 0.9);
+}
+
+async function useCameraPhoto() {
+  if (!cameraBlob) return;
+  const btn = document.getElementById('camera-use');
+  btn.disabled = true;
+  try {
+    const file = new File([cameraBlob], 'camera-photo.jpg', { type: 'image/jpeg' });
+    // Reuse the existing upload path: type/size checks, 256px resize, POST /api/profile/avatar
+    await handleAvatarFile({ files: [file], value: '' });
+  } finally {
+    btn.disabled = false;
+    closeCamera();
+  }
+}
+
+document.getElementById('camera-modal').addEventListener('click', e => {
+  if (e.target.id === 'camera-modal') closeCamera();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('camera-modal').classList.contains('hidden')) closeCamera();
+});
+window.addEventListener('pagehide', stopCameraStream);
 
 async function loadDashboardStats() {
   try {
@@ -318,6 +498,54 @@ async function loadDashboardStats() {
     }
   } catch (_) { /* stats stay at — */ }
 }
+
+const passwordForm = document.getElementById('password-form');
+const passwordStatus = document.getElementById('password-status');
+const passwordNotice = document.getElementById('password-notice');
+
+function showPasswordForm(show) {
+  passwordForm.classList.toggle('hidden', !show);
+  document.getElementById('toggle-password-form').classList.toggle('hidden', show);
+  if (!show) { passwordForm.reset(); passwordStatus.textContent = ''; }
+  else { passwordNotice.classList.add('hidden'); document.getElementById('cp-current').focus(); }
+}
+
+document.getElementById('toggle-password-form').addEventListener('click', () => showPasswordForm(true));
+document.getElementById('password-cancel').addEventListener('click', () => showPasswordForm(false));
+
+passwordForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  passwordStatus.textContent = '';
+  const current = document.getElementById('cp-current').value;
+  const next = document.getElementById('cp-new').value;
+  const confirmNext = document.getElementById('cp-confirm').value;
+
+  if (!current) { passwordStatus.textContent = 'Please enter your current password.'; return; }
+  if (next.length < 8) { passwordStatus.textContent = 'New password must be at least 8 characters.'; return; }
+  if (next !== confirmNext) { passwordStatus.textContent = 'New passwords do not match.'; return; }
+  if (next === current) { passwordStatus.textContent = 'New password must be different from your current password.'; return; }
+
+  const btn = document.getElementById('password-submit');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/profile/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ current_password: current, new_password: next })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not change password');
+    showPasswordForm(false);
+    passwordNotice.textContent = data.message || 'Check your email to confirm the password change.';
+    passwordNotice.classList.remove('hidden');
+    flash('Confirmation email sent. Check your inbox.', 'info');
+  } catch (err) {
+    passwordStatus.textContent = err.message;
+    flash(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 document.getElementById('delete-account-button').addEventListener('click', async () => {
   const status = document.getElementById('delete-account-status');

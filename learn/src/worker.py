@@ -9,6 +9,8 @@ API Routes
   GET  /api/activities        – list activities (?type=&format=&q=&tag=)
   POST /api/activities        – create activity              [host]
   GET  /api/activities/:id    – activity + sessions + state
+  GET  /api/activities/:id/calendar.ics – export course sessions (.ics)
+  GET  /api/calendar/user.ics – student/instructor iCal feed (?token=...)
   POST /api/join              – join an activity
   GET  /api/dashboard         – personal dashboard
   POST /api/sessions          – add a session to activity    [host]
@@ -656,7 +658,7 @@ def _check_auth_rate_limit(req, env, route: str):
     if not client_ip:
         print(json.dumps({"level": "warn", "where": "auth_rate_limit", "error": "missing_cf_connecting_ip"}))
         return _too_many_requests(1)
-    
+
     key = f"{route}:{client_ip}"
     now = int(time.time())
 
@@ -910,7 +912,7 @@ def _branded_email_html(frontend_url: str, title: str, intro: str, cta_label: st
 async def send_verification_email(to_email: str, username: str, token: str, env, req=None) -> bool:
     """Send an email address verification link."""
     frontend_url = _frontend_url(env, req)
-    link    = f"{frontend_url}/verify-email?token={token}"
+    link = f"{frontend_url}/verify-email?token={token}"
     subject = "[alphaonelabs.com] Please Confirm Your Email Address"
     safe_username = username.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     email_html = _branded_email_html(
@@ -927,7 +929,7 @@ async def send_verification_email(to_email: str, username: str, token: str, env,
 async def send_password_reset_email(to_email: str, _username: str, token: str, env, req=None) -> bool:
     """Send a password reset link."""
     frontend_url = _frontend_url(env, req)
-    link    = f"{frontend_url}/reset-password?token={token}"
+    link = f"{frontend_url}/reset-password?token={token}"
     subject = "[alphaonelabs.com] Reset Your Password"
     email_html = _branded_email_html(
         frontend_url,
@@ -936,6 +938,24 @@ async def send_password_reset_email(to_email: str, _username: str, token: str, e
         "Reset password",
         link,
         "This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.",
+    )
+    return await _send_email(to_email, subject, email_html, env)
+
+
+async def send_password_change_email(to_email: str, username: str, token: str, env, req=None) -> bool:
+    """Send a link that confirms a requested password change."""
+    frontend_url = _frontend_url(env, req)
+    link = f"{frontend_url}/confirm-password-change?token={token}"
+    subject = "[alphaonelabs.com] Confirm Your Password Change"
+    email_html = _branded_email_html(
+        frontend_url,
+        "Confirm your password change",
+        f"A password change was requested for the Alpha One Labs account <strong>{_html_escape(username)}</strong>. "
+        "Your password will not change until you confirm.",
+        "Confirm password change",
+        link,
+        "This link expires in 1 hour. If you did not request this, ignore this email and change your password "
+        "right away, since someone may know it.",
     )
     return await _send_email(to_email, subject, email_html, env)
 
@@ -1078,7 +1098,7 @@ _DDL = [
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_prtoken_user ON password_reset_tokens(user_id)",
-    # Message_requests table for direct messaging 
+    # Message_requests table for direct messaging
     """CREATE TABLE IF NOT EXISTS message_requests (
         id TEXT PRIMARY KEY,
         from_user_id TEXT NOT NULL,
@@ -2434,6 +2454,360 @@ async def api_get_activity(activity_ref: str, req, env):
     })
 
 
+# ---------------------------------------------------------------------------
+# Calendar / iCalendar (RFC 5545) helpers & endpoints
+# ---------------------------------------------------------------------------
+
+def _escape_ical_text(text: str) -> str:
+    """Escape special characters in iCalendar text values per RFC 5545."""
+    if not text:
+        return ""
+    s = str(text).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
+    s = s.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
+    return s
+
+
+def _parse_iso_datetime(val: Any) -> Optional[datetime.datetime]:
+    """Parse various ISO/SQL date/datetime strings into a UTC datetime."""
+    if not val:
+        return None
+    val_str = str(val).strip()
+    if not val_str:
+        return None
+    if " " in val_str and "T" not in val_str:
+        val_str = val_str.replace(" ", "T")
+    if val_str.endswith("Z"):
+        val_str = val_str[:-1] + "+00:00"
+    try:
+        dt = datetime.datetime.fromisoformat(val_str)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(datetime.timezone.utc)
+    except Exception:
+        try:
+            dt = datetime.datetime.strptime(val_str[:10], "%Y-%m-%d")
+            return dt.replace(tzinfo=datetime.timezone.utc)
+        except Exception:
+            return None
+
+
+def _fold_ical_line(line: str) -> str:
+    """Fold lines longer than 75 octets per RFC 5545 Section 3.1."""
+    encoded = line.encode("utf-8")
+    if len(encoded) <= 75:
+        return line
+    parts = []
+    idx = 0
+    while idx < len(encoded):
+        max_bytes = 75 if idx == 0 else 74
+        next_idx = min(idx + max_bytes, len(encoded))
+        while next_idx > idx and (encoded[next_idx - 1] & 0xC0) == 0x80:
+            next_idx -= 1
+        if next_idx == idx:
+            next_idx = min(idx + max_bytes, len(encoded))
+        piece = encoded[idx:next_idx].decode("utf-8", errors="replace")
+        if idx == 0:
+            parts.append(piece)
+        else:
+            parts.append(" " + piece)
+        idx = next_idx
+    return "\r\n".join(parts)
+
+
+def _generate_vcalendar(
+    events: list,
+    calendar_name: str = "Alpha One Labs Calendar",
+    calendar_description: str = "",
+) -> str:
+    """Build an RFC 5545 compliant VCALENDAR string."""
+    now_utc_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Alpha One Labs//Learn Calendar//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        f"X-WR-CALNAME:{_escape_ical_text(calendar_name)}",
+        "X-WR-TIMEZONE:UTC",
+    ]
+    if calendar_description:
+        lines.append(f"X-WR-CALDESC:{_escape_ical_text(calendar_description)}")
+
+    for ev in events:
+        lines.append("BEGIN:VEVENT")
+        lines.append(f"UID:{ev.get('uid', str(uuid.uuid4()) + '@alphaonelabs.com')}")
+
+        dtstamp = _parse_iso_datetime(ev.get("created_at"))
+        dtstamp_str = dtstamp.strftime("%Y%m%dT%H%M%SZ") if dtstamp else now_utc_str
+        lines.append(f"DTSTAMP:{dtstamp_str}")
+
+        start_dt = _parse_iso_datetime(ev.get("start_time"))
+        end_dt = _parse_iso_datetime(ev.get("end_time"))
+
+        if not start_dt:
+            start_dt = datetime.datetime.now(datetime.timezone.utc)
+        if not end_dt or end_dt <= start_dt:
+            end_dt = start_dt + datetime.timedelta(hours=1)
+
+        lines.append(f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%SZ')}")
+        lines.append(f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%SZ')}")
+
+        if ev.get("summary"):
+            lines.append(f"SUMMARY:{_escape_ical_text(ev['summary'])}")
+        if ev.get("description"):
+            lines.append(f"DESCRIPTION:{_escape_ical_text(ev['description'])}")
+        if ev.get("location"):
+            lines.append(f"LOCATION:{_escape_ical_text(ev['location'])}")
+        if ev.get("url"):
+            lines.append(f"URL:{ev['url']}")
+
+        lines.append("STATUS:CONFIRMED")
+        lines.append("SEQUENCE:0")
+        lines.append("END:VEVENT")
+
+    lines.append("END:VCALENDAR")
+    lines.append("")
+
+    folded_lines = [_fold_ical_line(l) for l in lines]
+    return "\r\n".join(folded_lines)
+
+
+async def api_activity_calendar_ics(activity_ref: str, req, env):
+    """GET /api/activities/:id/calendar.ics — RFC 5545 .ics download for activity sessions."""
+    enc = getattr(env, "ENCRYPTION_KEY", "")
+    jwt_secret = getattr(env, "JWT_SECRET", "")
+
+    params = parse_qs(urlparse(req.url).query)
+    token = (params.get("token") or [None])[0] or req.headers.get("Authorization")
+    user = verify_token(token or "", jwt_secret) if token and jwt_secret else None
+
+    act = await env.DB.prepare(
+        "SELECT a.*, u.name AS host_name_enc, u.id AS host_uid"
+        " FROM activities a JOIN users u ON a.host_id=u.id"
+        " WHERE a.slug=?"
+    ).bind(activity_ref).first()
+    if not act:
+        act = await env.DB.prepare(
+            "SELECT a.*, u.name AS host_name_enc, u.id AS host_uid"
+            " FROM activities a JOIN users u ON a.host_id=u.id"
+            " WHERE a.id=?"
+        ).bind(activity_ref).first()
+    if not act:
+        return Response(
+            "Activity not found\r\n",
+            status=404,
+            headers={"Content-Type": "text/plain; charset=utf-8", **_CORS},
+        )
+
+    act_id = act.id
+    act_title = act.title or "Activity"
+    act_desc = ""
+    if act.description and enc:
+        try:
+            act_desc = await decrypt_aes(act.description, enc)
+        except Exception:
+            act_desc = act.description
+
+    is_host = bool(user and act.host_uid == user.get("id"))
+    is_enrolled = False
+    if user and user.get("id") and not is_host:
+        enrollment = await env.DB.prepare(
+            "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='active'"
+        ).bind(act_id, user["id"]).first()
+        is_enrolled = enrollment is not None
+
+    has_full_access = is_host or is_enrolled
+
+    ses_res = await env.DB.prepare(
+        "SELECT id, title, description, start_time, end_time, location, created_at"
+        " FROM sessions WHERE activity_id=? ORDER BY start_time ASC"
+    ).bind(act_id).all()
+
+    origin = urlparse(req.url).scheme + "://" + urlparse(req.url).netloc
+    act_url = f"{origin}/activity/{getattr(act, 'slug', None) or act_id}"
+
+    events = []
+    sessions_list = ses_res.results or []
+
+    if sessions_list:
+        for s in sessions_list:
+            s_desc = ""
+            s_loc = ""
+            if has_full_access:
+                if s.description and enc:
+                    try:
+                        s_desc = await decrypt_aes(s.description, enc)
+                    except Exception:
+                        s_desc = s.description
+                if s.location and enc:
+                    try:
+                        s_loc = await decrypt_aes(s.location, enc)
+                    except Exception:
+                        s_loc = s.location
+            else:
+                s_desc = act_desc
+                s_loc = "Join activity to unlock meeting location/link"
+
+            summary = f"{act_title}: {s.title}" if s.title else act_title
+            desc = s_desc if s_desc else act_desc
+
+            events.append({
+                "uid": f"session-{s.id}@alphaonelabs.com",
+                "summary": summary,
+                "description": desc,
+                "location": s_loc,
+                "start_time": s.start_time,
+                "end_time": s.end_time,
+                "created_at": getattr(s, "created_at", None),
+                "url": act_url,
+            })
+    else:
+        events.append({
+            "uid": f"activity-{act_id}@alphaonelabs.com",
+            "summary": act_title,
+            "description": act_desc,
+            "location": "Online / Alpha One Labs",
+            "start_time": getattr(act, "created_at", None),
+            "end_time": None,
+            "created_at": getattr(act, "created_at", None),
+            "url": act_url,
+        })
+
+    vcal_text = _generate_vcalendar(
+        events,
+        calendar_name=f"{act_title} - Alpha One Labs",
+        calendar_description=act_desc,
+    )
+
+    clean_slug = re.sub(r"[^A-Za-z0-9_-]", "_", getattr(act, "slug", "") or act_id)
+    filename = f"activity-{clean_slug}.ics"
+
+    return Response(
+        vcal_text,
+        status=200,
+        headers={
+            "Content-Type": "text/calendar; charset=utf-8",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "public, max-age=60",
+            **_CORS,
+        },
+    )
+
+
+async def api_user_calendar_ics(req, env):
+    """GET /api/calendar/user.ics?token=... — iCal subscription feed for student/host schedule."""
+    enc = getattr(env, "ENCRYPTION_KEY", "")
+    jwt_secret = getattr(env, "JWT_SECRET", "")
+
+    params = parse_qs(urlparse(req.url).query)
+    token = (params.get("token") or [None])[0] or req.headers.get("Authorization")
+    user = verify_token(token or "", jwt_secret) if token and jwt_secret else None
+
+    if not user or not user.get("id"):
+        return Response(
+            "Authentication required. Please provide a valid 'token' query parameter or Authorization header.\r\n",
+            status=401,
+            headers={"Content-Type": "text/plain; charset=utf-8", **_CORS},
+        )
+
+    user_id = user["id"]
+
+    rows = await env.DB.prepare(
+        "SELECT DISTINCT"
+        " s.id AS session_id, s.title AS session_title, s.description AS session_desc,"
+        " s.start_time, s.end_time, s.location AS session_loc, s.created_at AS session_created,"
+        " a.id AS activity_id, a.slug AS activity_slug, a.title AS activity_title, a.description AS activity_desc,"
+        " CASE WHEN a.host_id = ? THEN 'host' ELSE 'participant' END AS user_role"
+        " FROM activities a"
+        " LEFT JOIN enrollments e ON e.activity_id = a.id AND e.user_id = ? AND e.status = 'active'"
+        " LEFT JOIN sessions s ON s.activity_id = a.id"
+        " WHERE (a.host_id = ? OR e.id IS NOT NULL)"
+        " ORDER BY s.start_time ASC"
+    ).bind(user_id, user_id, user_id).all()
+
+    origin = urlparse(req.url).scheme + "://" + urlparse(req.url).netloc
+    events = []
+    seen_uids = set()
+
+    for r in rows.results or []:
+        if not r.session_id:
+            uid = f"activity-{r.activity_id}@alphaonelabs.com"
+            if uid not in seen_uids:
+                seen_uids.add(uid)
+                act_desc = ""
+                if r.activity_desc and enc:
+                    try:
+                        act_desc = await decrypt_aes(r.activity_desc, enc)
+                    except Exception:
+                        act_desc = r.activity_desc
+                events.append({
+                    "uid": uid,
+                    "summary": f"{r.activity_title} ({r.user_role.capitalize()})",
+                    "description": act_desc,
+                    "location": "Online / Alpha One Labs",
+                    "start_time": None,
+                    "end_time": None,
+                    "created_at": None,
+                    "url": f"{origin}/activity/{r.activity_slug or r.activity_id}",
+                })
+            continue
+
+        uid = f"session-{r.session_id}@alphaonelabs.com"
+        if uid in seen_uids:
+            continue
+        seen_uids.add(uid)
+
+        s_desc = ""
+        s_loc = ""
+        if r.session_desc and enc:
+            try:
+                s_desc = await decrypt_aes(r.session_desc, enc)
+            except Exception:
+                s_desc = r.session_desc
+        if r.session_loc and enc:
+            try:
+                s_loc = await decrypt_aes(r.session_loc, enc)
+            except Exception:
+                s_loc = r.session_loc
+        if not s_desc and r.activity_desc and enc:
+            try:
+                s_desc = await decrypt_aes(r.activity_desc, enc)
+            except Exception:
+                s_desc = r.activity_desc
+
+        summary = f"{r.activity_title}: {r.session_title}" if r.session_title else r.activity_title
+        if r.user_role == "host":
+            summary = f"[Teaching] {summary}"
+
+        events.append({
+            "uid": uid,
+            "summary": summary,
+            "description": s_desc,
+            "location": s_loc,
+            "start_time": r.start_time,
+            "end_time": r.end_time,
+            "created_at": r.session_created,
+            "url": f"{origin}/activity/{r.activity_slug or r.activity_id}",
+        })
+
+    vcal_text = _generate_vcalendar(
+        events,
+        calendar_name="My Alpha One Labs Schedule",
+        calendar_description="Subscribed activity and session schedule from Alpha One Labs",
+    )
+
+    return Response(
+        vcal_text,
+        status=200,
+        headers={
+            "Content-Type": "text/calendar; charset=utf-8",
+            "Content-Disposition": 'inline; filename="my_schedule.ics"',
+            "Cache-Control": "private, max-age=180",
+            **_CORS,
+        },
+    )
+
+
 async def api_complete_activity(activity_ref: str, req, env):
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
@@ -2713,7 +3087,7 @@ async def api_dashboard(req, env):
     enc = env.ENCRYPTION_KEY
 
     res = await env.DB.prepare(
-        "SELECT a.id,a.title,a.slug,a.type,a.format,a.schedule_type,a.created_at,"
+        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,a.created_at,"
         "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
         " AS participant_count,"
         "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
@@ -2722,6 +3096,7 @@ async def api_dashboard(req, env):
 
     hosted = []
     for r in res.results or []:
+        desc = await decrypt_aes(r.description or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -2730,6 +3105,7 @@ async def api_dashboard(req, env):
             "id":                r.id,
             "slug":              getattr(r, "slug", "") or "",
             "title":             r.title,
+            "description":       desc,
             "type":              r.type,
             "format":            r.format,
             "schedule_type":     r.schedule_type,
@@ -2740,7 +3116,7 @@ async def api_dashboard(req, env):
         })
 
     res2 = await env.DB.prepare(
-        "SELECT a.id,a.title,a.slug,a.type,a.format,a.schedule_type,"
+        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,"
         "e.role AS enr_role,e.status AS enr_status,e.created_at AS joined_at,"
         "u.name AS host_name_enc"
         " FROM enrollments e"
@@ -2751,6 +3127,7 @@ async def api_dashboard(req, env):
 
     joined = []
     for r in res2.results or []:
+        desc = await decrypt_aes(r.description or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -2759,6 +3136,7 @@ async def api_dashboard(req, env):
             "id":            r.id,
             "slug":          getattr(r, "slug", "") or "",
             "title":         r.title,
+            "description":   desc,
             "type":          r.type,
             "format":        r.format,
             "schedule_type": r.schedule_type,
@@ -2853,18 +3231,153 @@ async def api_profile(req, env):
     return ok(None, "Profile updated")
 
 
-async def api_delete_account(req, env):
+async def api_change_password(req, env):
+
+    """POST /api/profile/password — start a password change.
+    The current password is verified here, but the new password is only applied
+    after the user confirms via a one-time link sent to their email address.
+    """
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
 
+    rate_limit_resp = _check_auth_rate_limit(req, env, "change_password")
+    if rate_limit_resp:
+        return rate_limit_resp
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    current_password = body.get("current_password") or ""
+    new_password = body.get("new_password") or ""
+
+    if not current_password or not new_password:
+        return err("Current password and new password are required")
+    if len(new_password) < 8:
+        return err("Password must be at least 8 characters")
+    if new_password == current_password:
+        return err("New password must be different from your current password")
+
+    enc = env.ENCRYPTION_KEY
+    try:
+        row = await env.DB.prepare(
+            "SELECT username, email, password_hash FROM users WHERE id=?"
+        ).bind(user["id"]).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_change_password.lookup")
+        return err("Could not change password — please try again", 500)
+
+    if not row:
+        return err("Account not found", 404)
+
+    username = await decrypt_aes(row.username or "", enc)
+    email = await decrypt_aes(row.email or "", enc)
+    if (not username or username == "[decryption error]"
+            or not email or email == "[decryption error]"):
+        return err("Could not change password — please try again", 500)
+
+    if not verify_password(current_password, row.password_hash, username):
+        return err("Current password is incorrect", 400)
+
+    # Per-account cooldown so the inbox can't be flooded with confirmation emails.
+    try:
+        recent = await env.DB.prepare(
+            "SELECT id FROM password_change_requests"
+            " WHERE user_id=? AND created_at > datetime('now', '-2 minutes')"
+        ).bind(user["id"]).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_change_password.cooldown_check")
+        return err("Could not change password — please try again", 500)
+    if recent:
+        return err(
+            "A confirmation email was sent recently. Check your inbox, or wait a couple of minutes and try again.",
+            429,
+        )
+    token = generate_secure_token()
+    token_hash = hash_token(token)
+    expires_at = (
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        # Only one pending request per user; a new request replaces the old one.
+        await env.DB.prepare(
+            "DELETE FROM password_change_requests WHERE user_id=?"
+        ).bind(user["id"]).run()
+        await env.DB.prepare(
+            "INSERT INTO password_change_requests"
+            " (id,user_id,token_hash,new_password_hash,expires_at) VALUES (?,?,?,?,?)"
+        ).bind(
+            new_id(), user["id"], token_hash,
+            hash_password(new_password, username), expires_at,
+        ).run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_change_password.store_request")
+        return err("Could not change password — please try again", 500)
+
+    sent = await send_password_change_email(email, username, token, env, req)
+    if not sent:
+        try:
+            await env.DB.prepare(
+                "DELETE FROM password_change_requests WHERE token_hash=?"
+            ).bind(token_hash).run()
+        except Exception:
+            pass
+        return err("Could not send the confirmation email. Please try again later.", 500)
+    return ok(None, "We've sent a confirmation link to your email. Your password will change once you confirm it.")
+
+
+async def api_confirm_password_change(req, env):
+    """POST /api/confirm-password-change — apply a pending password change using the emailed token."""
+    rate_limit_resp = _check_auth_rate_limit(req, env, "confirm_password_change")
+    if rate_limit_resp:
+        return rate_limit_resp
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    token = (body.get("token") or "").strip()
+    if not token:
+        return err("Confirmation token is required")
+
+    try:
+        row = await env.DB.prepare(
+            "SELECT id, user_id, new_password_hash FROM password_change_requests"
+            " WHERE token_hash=? AND expires_at > datetime('now')"
+        ).bind(hash_token(token)).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_confirm_password_change.lookup")
+        return err("Could not confirm the password change — please try again", 500)
+
+    if not row:
+        return err("This confirmation link is invalid or has expired.", 400)
+
+    try:
+        await env.DB.prepare(
+            "UPDATE users SET password_hash=? WHERE id=?"
+        ).bind(row.new_password_hash, row.user_id).run()
+        await env.DB.prepare(
+            "DELETE FROM password_change_requests WHERE id=?"
+        ).bind(row.id).run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_confirm_password_change.update")
+        return err("Could not confirm the password change — please try again", 500)
+
+    return ok(None, "Your password has been changed. You can now sign in with your new password.")
+
+
+async def api_delete_account(req, env):
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
     confirmation = _legacy_text(body.get("confirmation")).strip().upper()
     if confirmation != "DELETE":
         return err("Type DELETE to confirm account deletion", 400)
-
     enc = env.ENCRYPTION_KEY
     uid = user["id"]
     deleted_label = f"deleted-{uid[:8]}"
@@ -2879,6 +3392,7 @@ async def api_delete_account(req, env):
             "DELETE FROM notifications WHERE user_id=?",
             "DELETE FROM email_verification_tokens WHERE user_id=?",
             "DELETE FROM password_reset_tokens WHERE user_id=?",
+            "DELETE FROM password_change_requests WHERE user_id=?",
             "DELETE FROM enrollments WHERE user_id=?",
             "DELETE FROM session_attendance WHERE user_id=?",
             "DELETE FROM activity_completions WHERE user_id=?",
@@ -3078,7 +3592,7 @@ async def api_create_session(req, env):
         "SELECT title FROM activities WHERE id = ?"
     ).bind(act_id).first()
     recipient_ids = await _activity_enrollee_ids(env, act_id, exclude_user_id=user["id"])
-    
+
     await emit_event(env, "SESSION_CREATED", {
         "session_id":    sid,
         "session_title": title,
@@ -3718,7 +4232,7 @@ SSR_RECORD_PAGES = {
         "title": "Messages",
         "description": "View direct messaging records and manage message requests.",
         "group": "community",
-        "models": ["web.Message", "web.PeerMessage"], 
+        "models": ["web.Message", "web.PeerMessage"],
         "noun": "messages",
         "private": True,
     },
@@ -3758,6 +4272,7 @@ STATIC_CLEAN_ROUTES = {
     "/status": "/status.html",
     "/teach": "/teach.html",
     "/verify-email": "/verify-email.html",
+    "/confirm-password-change": "/confirm-password-change.html",
     "/virtual-classroom": "/virtual-classroom.html",
     "/whiteboard": "/whiteboard.html",
     "/calculator": "/calculator.html",
@@ -5309,7 +5824,7 @@ _SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(self), payment=(self)",
+    "Permissions-Policy": "camera=(self), microphone=(), geolocation=(self), payment=(self)",
 }
 
 
@@ -5688,9 +6203,9 @@ async def _server_records_for_models(env, models: list, owner_user_id: Optional[
         if m not in expanded_models:
             expanded_models.append(m)
         if m in ("web.Message", "web.DirectMessage") and "web.PeerMessage" not in expanded_models:
-            expanded_models.append("web.PeerMessage")  
+            expanded_models.append("web.PeerMessage")
         elif m == "web.PeerMessage" and "web.Message" not in expanded_models:
-            expanded_models.append("web.Message")  
+            expanded_models.append("web.Message")
     models = expanded_models
     placeholders = ",".join(["?"] * len(models))
     binds = list(models)
@@ -6251,7 +6766,7 @@ class ClassroomDO(DurableObject):
             except Exception as exc:
                 await capture_exception(exc, None, self.env, "classroom.whiteboard_undo")
 
-        
+
         elif msg_type == "update_seat":
             # Classroom layout, keep in sync with DESK_ROWS/DESK_COLS in classroom_poc.html
             DESK_ROWS = 3
@@ -6795,7 +7310,7 @@ class PresenceDO(DurableObject):
             return 0.5
 
 
-# Messaging Endpoints 
+# Messaging Endpoints
 
 async def api_send_message_request(req, env):
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
@@ -7067,7 +7582,7 @@ async def api_send_thread_message(req, env, thread_id: str):
     iso_now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     payload_obj = {
-        "model": "web.Message",  
+        "model": "web.Message",
         "pk": msg_id,
         "fields": {
             "sender": user["id"],
@@ -7542,6 +8057,10 @@ async def _dispatch(request, env):
         if m_interest and method == "POST":
             return await api_express_activity_interest(m_interest.group(1), request, env)
 
+        m_act_cal = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/calendar\.ics", path)
+        if m_act_cal and method == "GET":
+            return await api_activity_calendar_ics(m_act_cal.group(1), request, env)
+
         m = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)", path)
         if m and method == "GET":
             return await api_get_activity(m.group(1), request, env)
@@ -7552,11 +8071,20 @@ async def _dispatch(request, env):
         if path == "/api/dashboard" and method == "GET":
             return await api_dashboard(request, env)
 
+        if path == "/api/calendar/user.ics" and method == "GET":
+            return await api_user_calendar_ics(request, env)
+
         if path == "/api/profile" and method in ("GET", "PATCH", "DELETE"):
             return await (api_delete_account(request, env) if method == "DELETE" else api_profile(request, env))
 
         if path == "/api/profile/avatar" and method in ("POST", "DELETE"):
             return await (api_upload_avatar(request, env) if method == "POST" else api_remove_avatar(request, env))
+
+        if path == "/api/profile/password" and method == "POST":
+            return await api_change_password(request, env)
+
+        if path == "/api/confirm-password-change" and method == "POST":
+            return await api_confirm_password_change(request, env)
 
         if path == "/api/users" and method == "GET":
             return await api_list_users(request, env)
