@@ -32,6 +32,33 @@
             <span id="records-count" class="text-2xl font-black text-teal-600 dark:text-teal-300">{% records_count models="web.EventCalendar,web.TimeSlot" auth_required="true" %}  calendar records
           </div>
         </div>
+        <div class="mb-6 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm p-5 transition">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <i class="fa-solid fa-calendar-check text-teal-600 dark:text-teal-400"></i>Sync With Your Personal Calendar
+              </h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Subscribe to your enrolled and hosted sessions in Apple Calendar, Google Calendar, or Outlook via real-time iCal feed.
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <a id="btn-sync-export-ics" href="/api/calendar/user.ics" download class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 shadow-sm transition">
+                <i class="fa-solid fa-download text-teal-600 dark:text-teal-400"></i>Export .ics
+              </a>
+              <a id="btn-sync-google-cal" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition">
+                <i class="fa-brands fa-google"></i>Add to Google Calendar
+              </a>
+              <button id="btn-copy-feed-url" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg border border-teal-500/40 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition">
+                <i class="fa-solid fa-link"></i><span>Copy Feed URL</span>
+              </button>
+            </div>
+          </div>
+          <div id="feed-copy-alert" class="hidden mt-3 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 text-xs text-teal-800 dark:text-teal-200 flex items-center gap-2">
+            <i class="fa-solid fa-check"></i>
+            <span>Calendar feed URL copied to clipboard! Paste it into Apple Calendar, Google Calendar, or Outlook to subscribe.</span>
+          </div>
+        </div>
         <div id="records-status" class="hidden mb-4"></div>
         <div id="records-list" class="space-y-4">
           {% records_list models="web.EventCalendar,web.TimeSlot" noun="calendar records" auth_required="true" %}
@@ -40,4 +67,49 @@
     </div>
   </main>
 <script src="/js/current-records.js" defer></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const token = localStorage.getItem('edu_token') || localStorage.getItem('token');
+    const exportBtn = document.getElementById('btn-sync-export-ics');
+    const gcalBtn = document.getElementById('btn-sync-google-cal');
+    const copyBtn = document.getElementById('btn-copy-feed-url');
+    const alertBox = document.getElementById('feed-copy-alert');
+
+    if (!token) {
+      const loginUrl = '/login?next=' + encodeURIComponent(window.location.pathname);
+      if (exportBtn) exportBtn.href = loginUrl;
+      if (gcalBtn) gcalBtn.href = loginUrl;
+      if (copyBtn) copyBtn.onclick = () => window.location.href = loginUrl;
+      return;
+    }
+
+    const host = window.location.host;
+    const protocol = window.location.protocol;
+    const icsPath = '/api/calendar/user.ics?token=' + encodeURIComponent(token);
+    const httpsFeedUrl = `${protocol}//${host}${icsPath}`;
+
+    if (exportBtn) {
+      exportBtn.href = icsPath;
+    }
+    if (gcalBtn) {
+      gcalBtn.href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(httpsFeedUrl);
+    }
+    if (copyBtn) {
+      copyBtn.onclick = function() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(httpsFeedUrl).then(() => {
+            if (alertBox) {
+              alertBox.classList.remove('hidden');
+              setTimeout(() => alertBox.classList.add('hidden'), 5000);
+            }
+          }).catch(() => {
+            prompt('Copy your Calendar Feed URL:', httpsFeedUrl);
+          });
+        } else {
+          prompt('Copy your Calendar Feed URL:', httpsFeedUrl);
+        }
+      };
+    }
+  });
+</script>
 {% endblock %}

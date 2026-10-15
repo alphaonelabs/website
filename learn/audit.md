@@ -250,10 +250,10 @@ Owner note: move and make sure we have everying
 Next step: Needs validation or deeper parity work before legacy reference can be removed.
 
 3. `web/calendar_sync.py`
-Status: Likely replacement
-Current comparable: `public/calendar.html`
+Status: First-class replacement
+Current comparable: `public/calendar.html`, `public/activity-detail.html`, `/api/activities/:id/calendar.ics`, `/api/calendar/user.ics`
 Owner note: make sure we have the matched funcditonality
-Next step: Needs validation or deeper parity work before legacy reference can be removed.
+Next step: Completed. Full parity for RFC 5545 .ics downloads, personal schedule iCal feed, and Google Calendar sync.
 
 4. `web/consumers.py`
 Status: Needs review
