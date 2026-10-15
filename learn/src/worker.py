@@ -1631,6 +1631,38 @@ async def seed_db(env, enc_key: str):
 # API handlers
 # ---------------------------------------------------------------------------
 
+_COMMON_PASSWORDS = {
+    "password1!", "password123!", "password@123", "password1@", "password1#",
+    "password!1", "passw0rd!", "p@ssw0rd", "p@ssword1", "p@ssw0rd1",
+    "p@ssw0rd123", "pa$$w0rd", "pa$$word1", "qwerty123!", "qwerty@123",
+    "welcome1!", "welcome@123", "admin@123", "admin123!", "letmein1!",
+    "abc12345!", "abcd1234!", "changeme1!"
+}
+
+
+def validate_password_strength(password: str, username: str = "") -> Optional[str]:
+    """Return an error message, or None if the password is acceptable."""
+    if len(password) < 8:
+        return "Password must be at least 8 characters"
+    if len(password) > 128:
+        return "Password must be at most 128 characters"
+    if not re.search(r"[A-Z]", password):
+        return "Password must include an uppercase letter"
+    if not re.search(r"[a-z]", password):
+        return "Password must include a lowercase letter"
+    if not re.search(r"[0-9]", password):
+        return "Password must include a number"
+    if not re.search(r"[^A-Za-z0-9\s]", password):
+        return "Password must include a symbol (for example ! @ # $ %)"
+    lowered = password.lower()
+    if lowered in _COMMON_PASSWORDS:
+        return "That password is too common. Please choose something less predictable"
+    uname = (username or "").strip().lower()
+    if len(uname) >= 3 and uname in lowered:
+        return "Password must not contain your username"
+    return None
+
+
 async def api_register(req, env):
     rate_limit_resp = _check_auth_rate_limit(req, env, "register")
     if rate_limit_resp:
@@ -1648,8 +1680,9 @@ async def api_register(req, env):
 
     if not username or not email or not password:
         return err("username, email, and password are required")
-    if len(password) < 8:
-        return err("Password must be at least 8 characters")
+    password_error = validate_password_strength(password, username)
+    if password_error:
+        return err(password_error)
 
     role = "member"
 
@@ -1984,8 +2017,8 @@ async def api_reset_password(req, env):
 
     if not token:
         return err("Reset token is required")
-    if len(new_password) < 8:
-        return err("Password must be at least 8 characters")
+    if not new_password:
+        return err("New password is required")
 
     token_hash = hash_token(token)
 
@@ -2016,6 +2049,10 @@ async def api_reset_password(req, env):
     username = await decrypt_aes(user_row.username, enc)
     if not username or username == "[decryption error]":
         return err("Password reset failed — please try again", 500)
+
+    password_error = validate_password_strength(new_password, username)
+    if password_error:
+        return err(password_error)
 
     new_hash = hash_password(new_password, username)
 
@@ -3254,8 +3291,9 @@ async def api_change_password(req, env):
 
     if not current_password or not new_password:
         return err("Current password and new password are required")
-    if len(new_password) < 8:
-        return err("Password must be at least 8 characters")
+    password_error = validate_password_strength(new_password, username)
+    if password_error:
+        return err(password_error)
     if new_password == current_password:
         return err("New password must be different from your current password")
 

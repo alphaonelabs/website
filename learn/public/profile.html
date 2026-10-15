@@ -101,6 +101,7 @@
           <div>
             <label class="block text-sm font-medium mb-1" for="cp-new">New Password</label>
             <input id="cp-new" type="password" autocomplete="new-password" minlength="8" placeholder="min 8 characters" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+            <ul id="cp-new-rules" class="mt-2 space-y-0.5 text-xs"></ul>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1" for="cp-confirm">Confirm New Password</label>
@@ -188,6 +189,7 @@
   </div>
 </div>
 
+<script src="/js/password-rules.js"></script>
 <script>
 const token = localStorage.getItem('edu_token');
 if (!token) { sessionStorage.setItem('post_login_redirect', '/profile'); window.location.href = '/login'; }
@@ -503,6 +505,11 @@ const passwordForm = document.getElementById('password-form');
 const passwordStatus = document.getElementById('password-status');
 const passwordNotice = document.getElementById('password-notice');
 
+PasswordRules.attachChecklist(
+  document.getElementById('cp-new'),
+  document.getElementById('cp-new-rules')
+);
+
 function showPasswordForm(show) {
   passwordForm.classList.toggle('hidden', !show);
   document.getElementById('toggle-password-form').classList.toggle('hidden', show);
@@ -521,7 +528,11 @@ passwordForm.addEventListener('submit', async e => {
   const confirmNext = document.getElementById('cp-confirm').value;
 
   if (!current) { passwordStatus.textContent = 'Please enter your current password.'; return; }
-  if (next.length < 8) { passwordStatus.textContent = 'New password must be at least 8 characters.'; return; }
+  const strengthError = PasswordRules.validate(next, user && user.username); 
+  if (strengthError) {
+    passwordStatus.textContent = strengthError;
+    return;
+  }
   if (next !== confirmNext) { passwordStatus.textContent = 'New passwords do not match.'; return; }
   if (next === current) { passwordStatus.textContent = 'New password must be different from your current password.'; return; }
 
