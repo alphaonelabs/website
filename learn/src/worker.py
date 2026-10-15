@@ -9,6 +9,8 @@ API Routes
   GET  /api/activities        – list activities (?type=&format=&q=&tag=)
   POST /api/activities        – create activity              [host]
   GET  /api/activities/:id    – activity + sessions + state
+  GET  /api/activities/:id/calendar.ics – export course sessions (.ics)
+  GET  /api/calendar/user.ics – student/instructor iCal feed (?token=...)
   POST /api/join              – join an activity
   GET  /api/dashboard         – personal dashboard
   POST /api/sessions          – add a session to activity    [host]
@@ -2432,6 +2434,360 @@ async def api_get_activity(activity_ref: str, req, env):
             "id":     enrollment.id,
         } if enrollment else None,
     })
+
+
+# ---------------------------------------------------------------------------
+# Calendar / iCalendar (RFC 5545) helpers & endpoints
+# ---------------------------------------------------------------------------
+
+def _escape_ical_text(text: str) -> str:
+    """Escape special characters in iCalendar text values per RFC 5545."""
+    if not text:
+        return ""
+    s = str(text).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
+    s = s.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
+    return s
+
+
+def _parse_iso_datetime(val: Any) -> Optional[datetime.datetime]:
+    """Parse various ISO/SQL date/datetime strings into a UTC datetime."""
+    if not val:
+        return None
+    val_str = str(val).strip()
+    if not val_str:
+        return None
+    if " " in val_str and "T" not in val_str:
+        val_str = val_str.replace(" ", "T")
+    if val_str.endswith("Z"):
+        val_str = val_str[:-1] + "+00:00"
+    try:
+        dt = datetime.datetime.fromisoformat(val_str)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(datetime.timezone.utc)
+    except Exception:
+        try:
+            dt = datetime.datetime.strptime(val_str[:10], "%Y-%m-%d")
+            return dt.replace(tzinfo=datetime.timezone.utc)
+        except Exception:
+            return None
+
+
+def _fold_ical_line(line: str) -> str:
+    """Fold lines longer than 75 octets per RFC 5545 Section 3.1."""
+    encoded = line.encode("utf-8")
+    if len(encoded) <= 75:
+        return line
+    parts = []
+    idx = 0
+    while idx < len(encoded):
+        max_bytes = 75 if idx == 0 else 74
+        next_idx = min(idx + max_bytes, len(encoded))
+        while next_idx > idx and (encoded[next_idx - 1] & 0xC0) == 0x80:
+            next_idx -= 1
+        if next_idx == idx:
+            next_idx = min(idx + max_bytes, len(encoded))
+        piece = encoded[idx:next_idx].decode("utf-8", errors="replace")
+        if idx == 0:
+            parts.append(piece)
+        else:
+            parts.append(" " + piece)
+        idx = next_idx
+    return "\r\n".join(parts)
+
+
+def _generate_vcalendar(
+    events: list,
+    calendar_name: str = "Alpha One Labs Calendar",
+    calendar_description: str = "",
+) -> str:
+    """Build an RFC 5545 compliant VCALENDAR string."""
+    now_utc_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Alpha One Labs//Learn Calendar//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        f"X-WR-CALNAME:{_escape_ical_text(calendar_name)}",
+        "X-WR-TIMEZONE:UTC",
+    ]
+    if calendar_description:
+        lines.append(f"X-WR-CALDESC:{_escape_ical_text(calendar_description)}")
+
+    for ev in events:
+        lines.append("BEGIN:VEVENT")
+        lines.append(f"UID:{ev.get('uid', str(uuid.uuid4()) + '@alphaonelabs.com')}")
+
+        dtstamp = _parse_iso_datetime(ev.get("created_at"))
+        dtstamp_str = dtstamp.strftime("%Y%m%dT%H%M%SZ") if dtstamp else now_utc_str
+        lines.append(f"DTSTAMP:{dtstamp_str}")
+
+        start_dt = _parse_iso_datetime(ev.get("start_time"))
+        end_dt = _parse_iso_datetime(ev.get("end_time"))
+
+        if not start_dt:
+            start_dt = datetime.datetime.now(datetime.timezone.utc)
+        if not end_dt or end_dt <= start_dt:
+            end_dt = start_dt + datetime.timedelta(hours=1)
+
+        lines.append(f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%SZ')}")
+        lines.append(f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%SZ')}")
+
+        if ev.get("summary"):
+            lines.append(f"SUMMARY:{_escape_ical_text(ev['summary'])}")
+        if ev.get("description"):
+            lines.append(f"DESCRIPTION:{_escape_ical_text(ev['description'])}")
+        if ev.get("location"):
+            lines.append(f"LOCATION:{_escape_ical_text(ev['location'])}")
+        if ev.get("url"):
+            lines.append(f"URL:{ev['url']}")
+
+        lines.append("STATUS:CONFIRMED")
+        lines.append("SEQUENCE:0")
+        lines.append("END:VEVENT")
+
+    lines.append("END:VCALENDAR")
+    lines.append("")
+
+    folded_lines = [_fold_ical_line(l) for l in lines]
+    return "\r\n".join(folded_lines)
+
+
+async def api_activity_calendar_ics(activity_ref: str, req, env):
+    """GET /api/activities/:id/calendar.ics — RFC 5545 .ics download for activity sessions."""
+    enc = getattr(env, "ENCRYPTION_KEY", "")
+    jwt_secret = getattr(env, "JWT_SECRET", "")
+
+    params = parse_qs(urlparse(req.url).query)
+    token = (params.get("token") or [None])[0] or req.headers.get("Authorization")
+    user = verify_token(token or "", jwt_secret) if token and jwt_secret else None
+
+    act = await env.DB.prepare(
+        "SELECT a.*, u.name AS host_name_enc, u.id AS host_uid"
+        " FROM activities a JOIN users u ON a.host_id=u.id"
+        " WHERE a.slug=?"
+    ).bind(activity_ref).first()
+    if not act:
+        act = await env.DB.prepare(
+            "SELECT a.*, u.name AS host_name_enc, u.id AS host_uid"
+            " FROM activities a JOIN users u ON a.host_id=u.id"
+            " WHERE a.id=?"
+        ).bind(activity_ref).first()
+    if not act:
+        return Response(
+            "Activity not found\r\n",
+            status=404,
+            headers={"Content-Type": "text/plain; charset=utf-8", **_CORS},
+        )
+
+    act_id = act.id
+    act_title = act.title or "Activity"
+    act_desc = ""
+    if act.description and enc:
+        try:
+            act_desc = await decrypt_aes(act.description, enc)
+        except Exception:
+            act_desc = act.description
+
+    is_host = bool(user and act.host_uid == user.get("id"))
+    is_enrolled = False
+    if user and user.get("id") and not is_host:
+        enrollment = await env.DB.prepare(
+            "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='active'"
+        ).bind(act_id, user["id"]).first()
+        is_enrolled = enrollment is not None
+
+    has_full_access = is_host or is_enrolled
+
+    ses_res = await env.DB.prepare(
+        "SELECT id, title, description, start_time, end_time, location, created_at"
+        " FROM sessions WHERE activity_id=? ORDER BY start_time ASC"
+    ).bind(act_id).all()
+
+    origin = urlparse(req.url).scheme + "://" + urlparse(req.url).netloc
+    act_url = f"{origin}/activity/{getattr(act, 'slug', None) or act_id}"
+
+    events = []
+    sessions_list = ses_res.results or []
+
+    if sessions_list:
+        for s in sessions_list:
+            s_desc = ""
+            s_loc = ""
+            if has_full_access:
+                if s.description and enc:
+                    try:
+                        s_desc = await decrypt_aes(s.description, enc)
+                    except Exception:
+                        s_desc = s.description
+                if s.location and enc:
+                    try:
+                        s_loc = await decrypt_aes(s.location, enc)
+                    except Exception:
+                        s_loc = s.location
+            else:
+                s_desc = act_desc
+                s_loc = "Join activity to unlock meeting location/link"
+
+            summary = f"{act_title}: {s.title}" if s.title else act_title
+            desc = s_desc if s_desc else act_desc
+
+            events.append({
+                "uid": f"session-{s.id}@alphaonelabs.com",
+                "summary": summary,
+                "description": desc,
+                "location": s_loc,
+                "start_time": s.start_time,
+                "end_time": s.end_time,
+                "created_at": getattr(s, "created_at", None),
+                "url": act_url,
+            })
+    else:
+        events.append({
+            "uid": f"activity-{act_id}@alphaonelabs.com",
+            "summary": act_title,
+            "description": act_desc,
+            "location": "Online / Alpha One Labs",
+            "start_time": getattr(act, "created_at", None),
+            "end_time": None,
+            "created_at": getattr(act, "created_at", None),
+            "url": act_url,
+        })
+
+    vcal_text = _generate_vcalendar(
+        events,
+        calendar_name=f"{act_title} - Alpha One Labs",
+        calendar_description=act_desc,
+    )
+
+    clean_slug = re.sub(r"[^A-Za-z0-9_-]", "_", getattr(act, "slug", "") or act_id)
+    filename = f"activity-{clean_slug}.ics"
+
+    return Response(
+        vcal_text,
+        status=200,
+        headers={
+            "Content-Type": "text/calendar; charset=utf-8",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "public, max-age=60",
+            **_CORS,
+        },
+    )
+
+
+async def api_user_calendar_ics(req, env):
+    """GET /api/calendar/user.ics?token=... — iCal subscription feed for student/host schedule."""
+    enc = getattr(env, "ENCRYPTION_KEY", "")
+    jwt_secret = getattr(env, "JWT_SECRET", "")
+
+    params = parse_qs(urlparse(req.url).query)
+    token = (params.get("token") or [None])[0] or req.headers.get("Authorization")
+    user = verify_token(token or "", jwt_secret) if token and jwt_secret else None
+
+    if not user or not user.get("id"):
+        return Response(
+            "Authentication required. Please provide a valid 'token' query parameter or Authorization header.\r\n",
+            status=401,
+            headers={"Content-Type": "text/plain; charset=utf-8", **_CORS},
+        )
+
+    user_id = user["id"]
+
+    rows = await env.DB.prepare(
+        "SELECT DISTINCT"
+        " s.id AS session_id, s.title AS session_title, s.description AS session_desc,"
+        " s.start_time, s.end_time, s.location AS session_loc, s.created_at AS session_created,"
+        " a.id AS activity_id, a.slug AS activity_slug, a.title AS activity_title, a.description AS activity_desc,"
+        " CASE WHEN a.host_id = ? THEN 'host' ELSE 'participant' END AS user_role"
+        " FROM activities a"
+        " LEFT JOIN enrollments e ON e.activity_id = a.id AND e.user_id = ? AND e.status = 'active'"
+        " LEFT JOIN sessions s ON s.activity_id = a.id"
+        " WHERE (a.host_id = ? OR e.id IS NOT NULL)"
+        " ORDER BY s.start_time ASC"
+    ).bind(user_id, user_id, user_id).all()
+
+    origin = urlparse(req.url).scheme + "://" + urlparse(req.url).netloc
+    events = []
+    seen_uids = set()
+
+    for r in rows.results or []:
+        if not r.session_id:
+            uid = f"activity-{r.activity_id}@alphaonelabs.com"
+            if uid not in seen_uids:
+                seen_uids.add(uid)
+                act_desc = ""
+                if r.activity_desc and enc:
+                    try:
+                        act_desc = await decrypt_aes(r.activity_desc, enc)
+                    except Exception:
+                        act_desc = r.activity_desc
+                events.append({
+                    "uid": uid,
+                    "summary": f"{r.activity_title} ({r.user_role.capitalize()})",
+                    "description": act_desc,
+                    "location": "Online / Alpha One Labs",
+                    "start_time": None,
+                    "end_time": None,
+                    "created_at": None,
+                    "url": f"{origin}/activity/{r.activity_slug or r.activity_id}",
+                })
+            continue
+
+        uid = f"session-{r.session_id}@alphaonelabs.com"
+        if uid in seen_uids:
+            continue
+        seen_uids.add(uid)
+
+        s_desc = ""
+        s_loc = ""
+        if r.session_desc and enc:
+            try:
+                s_desc = await decrypt_aes(r.session_desc, enc)
+            except Exception:
+                s_desc = r.session_desc
+        if r.session_loc and enc:
+            try:
+                s_loc = await decrypt_aes(r.session_loc, enc)
+            except Exception:
+                s_loc = r.session_loc
+        if not s_desc and r.activity_desc and enc:
+            try:
+                s_desc = await decrypt_aes(r.activity_desc, enc)
+            except Exception:
+                s_desc = r.activity_desc
+
+        summary = f"{r.activity_title}: {r.session_title}" if r.session_title else r.activity_title
+        if r.user_role == "host":
+            summary = f"[Teaching] {summary}"
+
+        events.append({
+            "uid": uid,
+            "summary": summary,
+            "description": s_desc,
+            "location": s_loc,
+            "start_time": r.start_time,
+            "end_time": r.end_time,
+            "created_at": r.session_created,
+            "url": f"{origin}/activity/{r.activity_slug or r.activity_id}",
+        })
+
+    vcal_text = _generate_vcalendar(
+        events,
+        calendar_name="My Alpha One Labs Schedule",
+        calendar_description="Subscribed activity and session schedule from Alpha One Labs",
+    )
+
+    return Response(
+        vcal_text,
+        status=200,
+        headers={
+            "Content-Type": "text/calendar; charset=utf-8",
+            "Content-Disposition": 'inline; filename="my_schedule.ics"',
+            "Cache-Control": "private, max-age=180",
+            **_CORS,
+        },
+    )
 
 
 async def api_complete_activity(activity_ref: str, req, env):
@@ -7542,6 +7898,10 @@ async def _dispatch(request, env):
         if m_interest and method == "POST":
             return await api_express_activity_interest(m_interest.group(1), request, env)
 
+        m_act_cal = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/calendar\.ics", path)
+        if m_act_cal and method == "GET":
+            return await api_activity_calendar_ics(m_act_cal.group(1), request, env)
+
         m = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)", path)
         if m and method == "GET":
             return await api_get_activity(m.group(1), request, env)
@@ -7551,6 +7911,9 @@ async def _dispatch(request, env):
 
         if path == "/api/dashboard" and method == "GET":
             return await api_dashboard(request, env)
+
+        if path == "/api/calendar/user.ics" and method == "GET":
+            return await api_user_calendar_ics(request, env)
 
         if path == "/api/profile" and method in ("GET", "PATCH", "DELETE"):
             return await (api_delete_account(request, env) if method == "DELETE" else api_profile(request, env))
