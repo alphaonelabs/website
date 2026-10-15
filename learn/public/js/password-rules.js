@@ -1,10 +1,10 @@
 (function () {
   var RULES = [
-    { id: 'length', label: 'At least 8 characters', test: function (p) { return p.length >= 8; } },
-    { id: 'upper',  label: 'One uppercase letter (A-Z)', test: function (p) { return /[A-Z]/.test(p); } },
-    { id: 'lower',  label: 'One lowercase letter (a-z)', test: function (p) { return /[a-z]/.test(p); } },
-    { id: 'digit',  label: 'One number (0-9)', test: function (p) { return /[0-9]/.test(p); } },
-    { id: 'symbol', label: 'One symbol (e.g. ! @ # $ %)', test: function (p) { return /[^A-Za-z0-9\s]/.test(p); } }
+    {id: 'length',label: 'At least 8 characters', test: function (p) { return p.length >= 8; } },
+    {id: 'upper',label: 'One uppercase letter (A-Z)', test: function (p) { return /[A-Z]/.test(p); } },
+    {id: 'lower',label: 'One lowercase letter (a-z)', test: function (p) { return /[a-z]/.test(p); } },
+    {id: 'digit',label: 'One number (0-9)', test: function (p) { return /[0-9]/.test(p); } },
+    {id: 'symbol',label: 'One symbol (e.g. ! @ # $ %)', test: function (p) { return /[^A-Za-z0-9\s]/.test(p); } }
   ];
 
   // Mirrors validate_password_strength() in src/worker.py (the server also checks a common-password list).
