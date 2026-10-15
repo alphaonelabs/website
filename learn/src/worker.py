@@ -3069,7 +3069,7 @@ async def api_dashboard(req, env):
     enc = env.ENCRYPTION_KEY
 
     res = await env.DB.prepare(
-        "SELECT a.id,a.title,a.slug,a.type,a.format,a.schedule_type,a.created_at,"
+        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,a.created_at,"
         "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
         " AS participant_count,"
         "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
@@ -3078,6 +3078,7 @@ async def api_dashboard(req, env):
 
     hosted = []
     for r in res.results or []:
+        desc = await decrypt_aes(r.description or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -3086,6 +3087,7 @@ async def api_dashboard(req, env):
             "id":                r.id,
             "slug":              getattr(r, "slug", "") or "",
             "title":             r.title,
+            "description":       desc,
             "type":              r.type,
             "format":            r.format,
             "schedule_type":     r.schedule_type,
@@ -3096,7 +3098,7 @@ async def api_dashboard(req, env):
         })
 
     res2 = await env.DB.prepare(
-        "SELECT a.id,a.title,a.slug,a.type,a.format,a.schedule_type,"
+        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,"
         "e.role AS enr_role,e.status AS enr_status,e.created_at AS joined_at,"
         "u.name AS host_name_enc"
         " FROM enrollments e"
@@ -3107,6 +3109,7 @@ async def api_dashboard(req, env):
 
     joined = []
     for r in res2.results or []:
+        desc = await decrypt_aes(r.description or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -3115,6 +3118,7 @@ async def api_dashboard(req, env):
             "id":            r.id,
             "slug":          getattr(r, "slug", "") or "",
             "title":         r.title,
+            "description":   desc,
             "type":          r.type,
             "format":        r.format,
             "schedule_type": r.schedule_type,
