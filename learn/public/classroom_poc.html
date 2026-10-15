@@ -123,6 +123,12 @@
         .fade-in-up { animation: fadeInUp .3s ease-out; }
         @keyframes slideIn { from { transform:translateX(100%); } to { transform:translateX(0); } }
         .slide-in { animation: slideIn .3s ease-out; }
+        #participantsSidebar {
+            background-color: #ffffff !important;
+        }
+        .dark #participantsSidebar {
+            background-color: #0f172a !important;
+        }
     </style>
 </head>
 
@@ -143,7 +149,12 @@
                 <div>
                     <label for="lobbyRoomId" class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Room ID</label>
                     <div class="relative">
-                        <i data-lucide="hash" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500">
+                            <line x1="4" y1="9" x2="20" y2="9"></line>
+                            <line x1="4" y1="15" x2="20" y2="15"></line>
+                            <line x1="10" y1="3" x2="8" y2="21"></line>
+                            <line x1="16" y1="3" x2="14" y2="21"></line>
+                        </svg>
                         <input id="lobbyRoomId" type="text" value="demo-room" placeholder="e.g. demo-room"
                                class="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition" />
                     </div>
@@ -151,14 +162,21 @@
                 <div>
                     <label for="lobbyDisplayName" class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Display Name</label>
                     <div class="relative">
-                        <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
                         <input id="lobbyDisplayName" type="text" placeholder="Your name"
                                class="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition" />
                     </div>
                 </div>
                 <button id="btnJoin" type="button"
                         class="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-lg shadow-lg shadow-teal-600/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[.98]">
-                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
                     <span id="btnJoinLabel">Join Classroom</span>
                 </button>
             </div>
@@ -177,7 +195,12 @@
                 <span id="connText" class="text-gray-400">Connecting…</span>
             </div>
             <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-gray-800 rounded-full text-xs font-medium text-gray-300">
-                <i data-lucide="hash" class="w-3 h-3 text-teal-400"></i>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 text-teal-400">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                </svg>
                 <span id="topRoomId">—</span>
             </div>
         </div>
@@ -187,13 +210,22 @@
                     aria-label="Show active participants"
                     aria-controls="participantsSidebar"
                     aria-expanded="false"
-                    class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium text-gray-300 transition">
-                <i data-lucide="users" class="w-3.5 h-3.5 text-teal-400"></i>
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium transition">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-teal-500 dark:text-teal-400">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
                 <span id="participantCount">0</span>
             </button>
             <button id="btnLeave" type="button"
-                    class="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-medium transition">
-                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium transition">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
                 Leave
             </button>
         </div>
@@ -268,7 +300,9 @@
         <!-- Chat Sidebar -->
         <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-auto shrink-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
             <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
-                <i data-lucide="message-circle" class="w-4 h-4 text-teal-400"></i>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-teal-400">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
                 <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
             </div>
             <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
@@ -280,8 +314,11 @@
                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition" />
                 <button type="submit"
                         aria-label="Send chat message"
-                        class="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition flex items-center">
-                    <i data-lucide="send" class="w-4 h-4"></i>
+                        class="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
                 </button>
             </form>
         </div>
@@ -289,14 +326,23 @@
 </div>
 
 <!-- PARTICIPANT SIDEBAR -->
-<div id="participantsSidebar" aria-label="Active participants" class="fixed inset-y-0 right-0 w-80 bg-gray-900 border-l border-gray-800 shadow-2xl z-[60] transform translate-x-full transition-transform duration-300">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-        <h2 class="text-sm font-semibold flex items-center gap-2">
-            <i data-lucide="users" class="w-4 h-4 text-teal-400"></i>
+<div id="sidebarBackdrop" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-[55] hidden transition-opacity"></div>
+<div id="participantsSidebar" aria-label="Active participants" class="fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-[60] transform translate-x-full transition-transform duration-300">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-teal-500 dark:text-teal-400">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
             Active Participants
         </h2>
-        <button id="btnCloseParticipants" type="button" aria-label="Close active participants panel" class="p-1 hover:bg-gray-800 rounded-lg transition">
-            <i data-lucide="x" class="w-4 h-4 text-gray-400"></i>
+        <button id="btnCloseParticipants" type="button" aria-label="Close active participants panel" class="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg transition flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
         </button>
     </div>
     <div id="participantsList" class="p-3 space-y-2 overflow-y-auto" style="max-height:calc(100vh - 56px);">
@@ -333,6 +379,7 @@
     const chatSubmit          = chatForm.querySelector('button[type="submit"]');
     const btnParticipants     = document.getElementById('btnParticipants');
     const participantsSidebar = document.getElementById('participantsSidebar');
+    const sidebarBackdrop     = document.getElementById('sidebarBackdrop');
     const btnCloseParticipants= document.getElementById('btnCloseParticipants');
     const participantsList    = document.getElementById('participantsList');
     const desksContainer      = document.getElementById('desksContainer');
@@ -605,6 +652,12 @@
         btnJoinLabel.textContent = isAuthenticated() ? 'Join Classroom' : 'View Classroom';
     }
 
+    function formatRoomDisplayName(id) {
+        if (!id) return '—';
+        const cleaned = id.replace(/-\d+$/, '').replace(/-/g, ' ');
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
+
     // Join / Leave
     function joinClassroom() {
         const authenticated = Boolean(isAuthenticated());
@@ -619,7 +672,7 @@
         lobbyDisplayName.value = myDisplayName;
         myParticipantId = resolveParticipantId();
 
-        topRoomId.textContent = roomId;
+        topRoomId.textContent = formatRoomDisplayName(roomId);
         myInitial.textContent = myDisplayName.charAt(0).toUpperCase();
         myNameLabel.textContent = myDisplayName;
 
@@ -644,15 +697,23 @@
         stopGameLoop();
         isSeated = false;
         currentSeat = null;
-        classroomScreen.classList.add('hidden');
-        classroomScreen.classList.remove('flex');
-        lobby.classList.remove('hidden');
-        Object.keys(participants).forEach(k => delete participants[k]);
-        Object.keys(presenceByUser).forEach(k => delete presenceByUser[k]);
-        avatarLayer.innerHTML = '';
-        chatMessages.innerHTML = '<div class="text-center text-xs text-gray-600 py-6">No messages yet</div>';
-        chatFirstMessage = true;
-        updateLobbyActionCopy();
+
+        const storedReturn = sessionStorage.getItem('classroom_return_url');
+        if (storedReturn) {
+            sessionStorage.removeItem('classroom_return_url');
+            window.location.href = storedReturn;
+            return;
+        }
+        if (document.referrer && document.referrer.includes('/activity/')) {
+            window.location.href = document.referrer;
+            return;
+        }
+        if (roomId && roomId !== 'demo-room' && roomId !== 'lobby') {
+            const cleanSlug = roomId.replace(/-\d+$/, '');
+            window.location.href = `/activity/${encodeURIComponent(cleanSlug)}`;
+            return;
+        }
+        window.location.href = '/activities';
     });
 
     // WebSocket
@@ -1091,16 +1152,16 @@
     function makeParticipantCard(pid, name, seatId, isSelf) {
         const [c1, c2] = isSelf ? ['#0D9488', '#14b8a6'] : colorForId(pid);
         const card = document.createElement('div');
-        card.className = 'flex items-center gap-3 p-2.5 bg-gray-800/60 rounded-lg border border-gray-700/40';
+        card.className = 'flex items-center gap-3 p-2.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700/40 text-gray-900 dark:text-gray-100 transition shadow-xs';
         card.innerHTML = `
-            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow"
                  style="background: linear-gradient(135deg, ${c1}, ${c2});">
                 ${(name || '?').charAt(0).toUpperCase()}
             </div>
             <div class="min-w-0 flex-1">
-                <p class="text-xs font-medium text-gray-200 truncate">${escapeHtml(name)}${isSelf ? ' <span class="text-teal-400">(You)</span>' : ''}</p>
-                <p class="text-[10px] text-gray-500">${seatId ? 'Seat ' + escapeHtml(seatId) : 'Walking around'}</p>
-                <p class="text-[11px] text-gray-300 mt-0.5">${presenceBadge(pid)}</p>
+                <p class="text-xs font-medium text-gray-900 dark:text-gray-200 truncate">${escapeHtml(name)}${isSelf ? ' <span class="text-teal-600 dark:text-teal-400 font-semibold">(You)</span>' : ''}</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400">${seatId ? 'Seat ' + escapeHtml(seatId) : 'Walking around'}</p>
+                <p class="text-[11px] text-gray-700 dark:text-gray-300 mt-0.5">${presenceBadge(pid)}</p>
             </div>
         `;
         return card;
@@ -1190,18 +1251,42 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Participants sidebar toggle
-    btnParticipants.addEventListener('click', () => {
-        participantsSidebar.classList.toggle('translate-x-full');
-        btnParticipants.setAttribute(
-            'aria-expanded',
-            String(!participantsSidebar.classList.contains('translate-x-full'))
-        );
+    // Participants sidebar toggle, backdrop, and Escape key handling
+    function openParticipantsSidebar() {
+        participantsSidebar.classList.remove('translate-x-full');
+        if (sidebarBackdrop) sidebarBackdrop.classList.remove('hidden');
+        btnParticipants.setAttribute('aria-expanded', 'true');
         renderParticipantsList();
-    });
-    btnCloseParticipants.addEventListener('click', () => {
+        refreshIcons();
+    }
+
+    function closeParticipantsSidebar() {
         participantsSidebar.classList.add('translate-x-full');
+        if (sidebarBackdrop) sidebarBackdrop.classList.add('hidden');
         btnParticipants.setAttribute('aria-expanded', 'false');
+    }
+
+    btnParticipants.addEventListener('click', () => {
+        const isOpen = !participantsSidebar.classList.contains('translate-x-full');
+        if (isOpen) {
+            closeParticipantsSidebar();
+        } else {
+            openParticipantsSidebar();
+        }
+    });
+
+    btnCloseParticipants.addEventListener('click', closeParticipantsSidebar);
+    if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', closeParticipantsSidebar);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (!participantsSidebar.classList.contains('translate-x-full')) {
+                closeParticipantsSidebar();
+                e.preventDefault();
+            }
+        }
     });
 
     // Movement / Game Loop

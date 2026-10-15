@@ -315,9 +315,13 @@
     currentActivityData = data;
     if (a.slug) window.history.replaceState({ activityRef: a.slug }, '', activityDetailUrl(a));
 
-    document.title = a.title + ' - Alpha One Labs';
-    setText('crumb-title', a.title);
-    setText('act-title', a.title);
+    const displayTitle = (a.title || '').includes('-') && !(a.title || '').includes(' ')
+      ? (a.title || '').replace(/-/g, ' ').replace(/^./, c => c.toUpperCase())
+      : (a.title || '');
+
+    document.title = displayTitle + ' - Alpha One Labs';
+    setText('crumb-title', displayTitle);
+    setText('act-title', displayTitle);
     setText('act-description', a.description || '');
     setText('act-meta', 'by ' + (a.host_name || 'Alpha One Labs') + ' · ' + Number(a.participant_count || 0) + ' participants · ' + data.sessions.length + ' sessions' + (a.status === 'waitlist' && Number(a.interest_count || 0) > 0 ? ' · ' + Number(a.interest_count || 0) + ' interested' : ''));
     renderStatus(a);
@@ -330,7 +334,12 @@
     }
 
     const classroomLink = document.getElementById('act-classroom-link');
-    if (classroomLink) classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(a.slug || a.id || 'lobby');
+    if (classroomLink) {
+      classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(a.slug || a.id || 'lobby');
+      classroomLink.addEventListener('click', () => {
+        sessionStorage.setItem('classroom_return_url', window.location.pathname + window.location.search);
+      });
+    }
 
     document.getElementById('act-badges').innerHTML =
       '<span class="badge bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">' + (typeIcon[a.type] || '✨') + ' ' + esc(typeLabel[a.type] || a.type || 'Activity') + '</span>' +
