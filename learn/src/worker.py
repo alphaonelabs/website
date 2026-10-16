@@ -2353,25 +2353,53 @@ async def api_create_activity(req, env):
     if schedule_type not in ("one_time", "multi_session", "recurring", "ongoing"):
         schedule_type = "ongoing"
 
+    # ---- pricing (checkout is USD-only) ----
+    price_currency = (body.get("price_currency") or "USD").strip().upper()
+    if price_currency != "USD":
+        return err("Only USD pricing is supported right now")
+
+    is_free = body.get("is_free")
+    if is_free in (None, ""):
+        is_free = not (body.get("price") or body.get("price_cents"))
+    is_free = _legacy_bool(is_free) == 1
+
+    price_cents = 0
+    if not is_free:
+        if body.get("price_cents") not in (None, ""):
+            try:
+                price_cents = int(body.get("price_cents"))
+            except (TypeError, ValueError):
+                return err("Price must be a valid number")
+        else:
+            parsed_cents = _legacy_money_cents(body.get("price"))
+            if parsed_cents is None:
+                return err("Price must be a valid number")
+            price_cents = parsed_cents
+        if price_cents < 50:
+            return err("Paid activities must cost at least $0.50 (or mark the activity as free)")
+        if price_cents > 1_000_000:
+            return err("Price is too large")
+
     enc    = env.ENCRYPTION_KEY
     act_id = new_id()
     try:
         slug   = await _unique_activity_slug(env, title, act_id)
         await env.DB.prepare(
             "INSERT INTO activities "
-            "(id,title,description,type,format,schedule_type,host_id,slug)"
-            " VALUES (?,?,?,?,?,?,?,?)"
+            "(id,title,description,type,format,schedule_type,host_id,slug,price_cents,price_currency)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?)"
         ).bind(
             act_id, title,
             await encrypt_aes(description, enc) if description else "",
-            atype, fmt, schedule_type, user["id"], slug
+            atype, fmt, schedule_type, user["id"], slug,
+            price_cents, price_currency,
         ).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_create_activity.insert_activity")
         return err("Failed to create activity — please try again", 500)
 
     for tag_name in (body.get("tags") or []):
-        tag_name = tag_name.strip()
+        tag_name = str(tag_name).strip()
         if not tag_name:
             continue
         t_row = await env.DB.prepare(
@@ -2394,13 +2422,13 @@ async def api_create_activity(req, env):
             ).bind(act_id, tag_id).run()
         except Exception as e:
             await capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
-            pass
 
     await emit_event(env, "ACTIVITY_CREATED", {
         "user_id": user["id"], "activity_id": act_id, "title": title,
     })
 
-    return ok({"id": act_id, "slug": slug, "title": title}, "Activity created")
+    return ok({"id": act_id, "slug": slug, "title": title,
+               "price_cents": price_cents, "price_currency": price_currency}, "Activity created")
 
 
 async def api_classes_near_me(req, env):
@@ -3377,7 +3405,7 @@ async def api_dashboard(req, env):
     enc = env.ENCRYPTION_KEY
 
     res = await env.DB.prepare(
-        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,a.created_at,"
+        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,a.created_at,a.price_cents,"
         "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
         " AS participant_count,"
         "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
@@ -3403,6 +3431,7 @@ async def api_dashboard(req, env):
             "session_count":     r.session_count,
             "tags":              [t.name for t in (t_res.results or [])],
             "created_at":        r.created_at,
+            "price_cents":       int(getattr(r, "price_cents", 0) or 0),
         })
 
     res2 = await env.DB.prepare(
@@ -6222,11 +6251,15 @@ async def api_add_cart_item(req, env):
             return err("Guest carts are limited to 20 activities", 400)
     item_id = new_id()
     await env.DB.prepare(
-        "INSERT OR IGNORE INTO activity_cart_items"
+        "INSERT INTO activity_cart_items"
         " (id,cart_id,activity_id,session_id,quantity,unit_price_cents,title_snapshot)"
         " VALUES (?,?,?,?,?,?,?)"
+        " ON CONFLICT(cart_id,activity_id,session_id) DO UPDATE SET"
+        " unit_price_cents=excluded.unit_price_cents,"
+        " title_snapshot=excluded.title_snapshot,"
+        " updated_at=datetime('now')"
     ).bind(
-        item_id,
+        new_id(),
         cart_id,
         activity_id,
         session_id,
