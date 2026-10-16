@@ -303,8 +303,6 @@
     </div>
 </div>
 
-<!-- NOTIFICATION TOAST -->
-<div id="toastContainer" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end pointer-events-none"></div>
 
 <script>
 (function() {
@@ -336,7 +334,6 @@
     const btnCloseParticipants= document.getElementById('btnCloseParticipants');
     const participantsList    = document.getElementById('participantsList');
     const desksContainer      = document.getElementById('desksContainer');
-    const toastContainer      = document.getElementById('toastContainer');
     const btnThumbsUp         = document.getElementById('btnThumbsUp');
     const btnRaiseHand        = document.getElementById('btnRaiseHand');
     const viewerBanner        = document.getElementById('viewerBanner');
@@ -518,9 +515,17 @@
 
     function updateSeatLabel(seatId, name, pid = null) {
         if (!seatId) return;
+        if (pid) {
+            Object.keys(seatOccupants).forEach(sId => {
+                if (seatOccupants[sId]?.pid === pid && sId !== seatId) {
+                    clearSeatLabel(sId);
+                }
+            });
+        }
         seatOccupants[seatId] = { name, pid };
         renderSeatLabel(seatId);
     }
+
     function clearSeatLabel(seatId) {
         delete seatOccupants[seatId];
         const label = document.querySelector(`[data-seat-label="${seatId}"]`);
@@ -541,18 +546,7 @@
     }
 
     // Toast
-    function showToast(msg, type = 'info') {
-        const colors = { info: 'bg-blue-600', success: 'bg-emerald-600', warning: 'bg-amber-600', error: 'bg-red-600' };
-        const el = document.createElement('div');
-        el.className = `${colors[type] || colors.info} text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl pointer-events-auto fade-in-up`;
-        el.textContent = msg;
-        toastContainer.appendChild(el);
-        setTimeout(() => {
-            el.style.opacity = '0';
-            el.style.transition = 'opacity .4s';
-            setTimeout(() => el.remove(), 400);
-        }, 3500);
-    }
+    function showToast() {}
 
     function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
 
@@ -957,6 +951,7 @@
                 if (data.participant_id === myParticipantId) {
                     isSeated = false;
                     currentSeat = null;
+                    keysPressed = {};
                     myCharacter.style.display = '';
                 }
                 clearSeatLabel(data.seat_id);
@@ -968,7 +963,7 @@
             case 'seat_occupied':
                 isSeated = false;
                 currentSeat = null;
-                showToast(data.message || 'Seat is taken!', 'warning');
+                showToast('Seat already taken', 'warning');
                 break;
         }
     }
@@ -1227,14 +1222,49 @@
             return;
         }
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
-            if (!isSeated) { keysPressed[e.key] = true; e.preventDefault(); }
+            e.preventDefault();
+            if (isSeated) {
+                const seatNum = parseInt((currentSeat || 'seat-1').replace('seat-', ''), 10);
+                let r = Math.floor((seatNum - 1) / DESK_COLS);
+                let c = (seatNum - 1) % DESK_COLS;
+                let targetR = r;
+                let targetC = c;
+                if (e.key === 'ArrowUp') targetR--;
+                else if (e.key === 'ArrowDown') targetR++;
+                else if (e.key === 'ArrowLeft') targetC--;
+                else if (e.key === 'ArrowRight') targetC++;
+
+                if (targetR < 0 || targetR >= DESK_ROWS || targetC < 0 || targetC >= DESK_COLS) {
+                    return; // No desk exists -> do nothing
+                }
+                const targetSeatNum = targetR * DESK_COLS + targetC + 1;
+                const targetSeatId = `seat-${targetSeatNum}`;
+
+                const isOccupied = Boolean(seatOccupants[targetSeatId] && seatOccupants[targetSeatId].name) ||
+                                   Object.values(participants).some(p => p.seat_id === targetSeatId);
+                if (isOccupied) {
+                    showToast('Seat already taken', 'warning');
+                    return;
+                }
+
+                currentSeat = targetSeatId;
+                wsSend({ type: 'update_seat', seat_id: targetSeatId });
+            } else {
+                keysPressed[e.key] = true;
+            }
         }
-        if (e.key.toLowerCase() === 'e') handleSeatInteraction();
+        if (e.key.toLowerCase() === 'e') {
+            e.preventDefault();
+            handleSeatInteraction();
+        }
     });
     window.addEventListener('keyup', (e) => {
         if (isTypingInInput(e.target)) return;
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             keysPressed[e.key] = false;
+            e.preventDefault();
+        }
+        if (e.key.toLowerCase() === 'e') {
             e.preventDefault();
         }
     });
@@ -1243,6 +1273,10 @@
         if (!canInteract) { loginForInteraction(); return; }
         if (isSeated) {
             wsSend({ type: 'leave_seat', seat_id: currentSeat });
+            isSeated = false;
+            currentSeat = null;
+            keysPressed = {};
+            myCharacter.style.display = '';
             return;
         }
         const canvasRect = classroomCanvas.getBoundingClientRect();
@@ -1258,6 +1292,12 @@
             if (dist < nearestDist) { nearestDist = dist; nearest = seatId; }
         });
         if (nearest && nearestDist < 60) {
+            const isOccupied = Boolean(seatOccupants[nearest] && seatOccupants[nearest].name) ||
+                               Object.values(participants).some(p => p.seat_id === nearest);
+            if (isOccupied) {
+                showToast('Seat already taken', 'warning');
+                return;
+            }
             wsSend({ type: 'update_seat', seat_id: nearest });
         }
     }
