@@ -8245,6 +8245,11 @@ async def _dispatch(request, env):
             return await api_mark_notification_read(request, env, m_notif_read.group(1))
         if path == "/api/notifications/read-all" and method == "POST":
             return await api_mark_all_read(request, env)
+        if path == "/api/notifications" and method == "DELETE":
+            return await api_delete_all_notifications(request, env)
+        m_notif_del = re.fullmatch(r"/api/notifications/([A-Za-z0-9_-]+)", path)
+        if m_notif_del and method == "DELETE":
+            return await api_delete_notification(request, env, m_notif_del.group(1))
 
         # Notification Preferences
         if path == "/api/notification-preferences" and method == "GET":
@@ -8603,6 +8608,38 @@ async def api_mark_all_read(req, env):
     ).bind(user["id"]).run()
 
     return ok(msg="All notifications marked as read")
+
+
+async def api_delete_notification(req, env, notification_id: str):
+    """DELETE /api/notifications/:id — delete one of the user's notifications."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    notif = await env.DB.prepare(
+        "SELECT id FROM notifications WHERE id = ? AND user_id = ?"
+    ).bind(notification_id, user["id"]).first()
+    if not notif:
+        return err("Notification not found", 404)
+
+    await env.DB.prepare(
+        "DELETE FROM notifications WHERE id = ? AND user_id = ?"
+    ).bind(notification_id, user["id"]).run()
+
+    return ok(msg="Notification deleted")
+
+
+async def api_delete_all_notifications(req, env):
+    """DELETE /api/notifications — delete all of the user's notifications."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    await env.DB.prepare(
+        "DELETE FROM notifications WHERE user_id = ?"
+    ).bind(user["id"]).run()
+
+    return ok(msg="All notifications deleted")
 
 
 async def api_get_notification_preferences(req, env):
