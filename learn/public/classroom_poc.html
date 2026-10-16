@@ -675,7 +675,6 @@
             reconnectAttempts = 0;
             setConnStatus(true);
             connectPresenceWS();
-            showToast(canInteract ? 'Connected to classroom' : 'Viewing classroom', 'success');
         };
 
         ws.onclose = () => {
