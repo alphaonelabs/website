@@ -261,6 +261,7 @@
                         ✋
                     </button>
                 </div>
+                <span id="seatStatusMsg" class="hidden text-xs font-medium ml-2 transition-all"></span>
                 <div class="w-full sm:w-auto sm:ml-auto text-gray-500">Virtual Classroom</div>
             </div>
         </div>
@@ -546,8 +547,45 @@
         Object.keys(seatOccupants).forEach((seatId) => renderSeatLabel(seatId));
     }
 
-    // Toast
-    function showToast() {}
+    // Inline status & system messages
+    function formatSeatName(seatId) {
+        if (!seatId) return '';
+        const num = seatId.replace(/^seat-/i, '');
+        return `Seat ${num}`;
+    }
+
+    let seatStatusTimer = null;
+    function showInlineSeatStatus(msg, type = 'info') {
+        const el = document.getElementById('seatStatusMsg');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.remove('hidden', 'text-emerald-400', 'text-amber-400', 'text-red-400', 'text-gray-300');
+        if (type === 'success') el.classList.add('text-emerald-400');
+        else if (type === 'warning' || type === 'error') el.classList.add('text-amber-400');
+        else el.classList.add('text-gray-300');
+
+        if (seatStatusTimer) clearTimeout(seatStatusTimer);
+        seatStatusTimer = setTimeout(() => {
+            el.classList.add('hidden');
+        }, 4000);
+    }
+
+    function appendSystemMessage(text, type = 'info') {
+        if (chatFirstMessage) { chatMessages.innerHTML = ''; chatFirstMessage = false; }
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex justify-center my-1 fade-in-up';
+        let bgClass = 'bg-gray-800/80 text-gray-400 border border-gray-700/50';
+        if (type === 'success') bgClass = 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+        else if (type === 'warning' || type === 'error') bgClass = 'bg-amber-500/10 text-amber-300 border border-amber-500/30';
+
+        wrapper.innerHTML = `
+            <div class="px-2.5 py-1 rounded-md text-[11px] font-medium tracking-wide ${bgClass}">
+                ${escapeHtml(text)}
+            </div>
+        `;
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 
     function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
 
@@ -558,7 +596,7 @@
 
     function loginForInteraction() {
         preserveClassroomRedirect();
-        showToast('Please sign in to interact with the virtual classroom.', 'warning');
+        showInlineSeatStatus('Please sign in to interact with the virtual classroom.', 'warning');
         setTimeout(() => { window.location.href = '/login'; }, 700);
     }
 
@@ -670,7 +708,7 @@
             reconnectAttempts = 0;
             setConnStatus(true);
             connectPresenceWS();
-            showToast(canInteract ? 'Connected to classroom' : 'Viewing classroom', 'success');
+            showInlineSeatStatus(canInteract ? 'Connected to classroom' : 'Viewing classroom', 'success');
         };
 
         ws.onclose = () => {
@@ -700,7 +738,7 @@
 
     function scheduleReconnect() {
         if (reconnectAttempts >= MAX_RECONNECT) {
-            showToast('Lost connection to classroom - please rejoin.', 'error');
+            showInlineSeatStatus('Lost connection to classroom - please rejoin.', 'error');
             return;
         }
         const delay = Math.min(BASE_DELAY * Math.pow(2, reconnectAttempts), 30000);
@@ -748,12 +786,12 @@
             }
         };
         presenceWs.onerror = () => {
-            showToast('Presence channel error', 'warning');
+            showInlineSeatStatus('Presence channel error', 'warning');
         };
         presenceWs.onclose = () => {
             if (intentionalDisconnect) return;
             if (presenceReconnectAttempts >= MAX_RECONNECT) {
-                showToast('Lost connection to presence channel - please rejoin.', 'warning');
+                showInlineSeatStatus('Lost connection to presence channel - please rejoin.', 'warning');
                 return;
             }
             const delay = Math.min(BASE_DELAY * Math.pow(2, presenceReconnectAttempts), 30000);
@@ -882,12 +920,12 @@
 
             case 'participant_joined':
                 if (data.participant_id !== myParticipantId) {
-                    showToast(`${data.display_name} joined the classroom`, 'success');
+                    appendSystemMessage(`${data.display_name} joined the classroom`, 'success');
                 }
                 break;
 
             case 'participant_left':
-                showToast(`${data.display_name} left the classroom`, 'info');
+                appendSystemMessage(`${data.display_name} left the classroom`, 'info');
                 delete participants[data.participant_id];
                 delete presenceByUser[data.participant_id];
                 renderOtherAvatars();
@@ -939,7 +977,7 @@
                     myCharacter.style.display = 'none';
                 }
                 updateSeatLabel(data.seat_id, data.display_name, data.participant_id);
-                showToast(`${data.display_name} took ${data.seat_id}`, 'info');
+                showInlineSeatStatus(`${data.display_name}: ${formatSeatName(data.seat_id)}`, 'info');
                 renderOtherAvatars();
                 renderParticipantsList();
                 break;
@@ -956,7 +994,7 @@
                     myCharacter.style.display = '';
                 }
                 clearSeatLabel(data.seat_id);
-                showToast(`${data.display_name} left ${data.seat_id}`, 'info');
+                showInlineSeatStatus(`${data.display_name}: left ${formatSeatName(data.seat_id)}`, 'info');
                 renderOtherAvatars();
                 renderParticipantsList();
                 break;
@@ -964,7 +1002,7 @@
             case 'seat_occupied':
                 isSeated = false;
                 currentSeat = null;
-                showToast('Seat already taken', 'warning');
+                showInlineSeatStatus('Seat already taken', 'warning');
                 break;
         }
     }
@@ -1095,7 +1133,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-200 truncate">${escapeHtml(name)}${isSelf ? ' <span class="text-teal-400">(You)</span>' : ''}</p>
-                <p class="text-[10px] text-gray-500">${seatId ? 'Seat ' + escapeHtml(seatId) : 'Walking around'}</p>
+                <p class="text-[10px] text-gray-500">${seatId ? formatSeatName(seatId) : 'Walking around'}</p>
                 <p class="text-[11px] text-gray-300 mt-0.5">${presenceBadge(pid)}</p>
             </div>
         `;
@@ -1244,7 +1282,7 @@
                 const isOccupied = Boolean(seatOccupants[targetSeatId] && seatOccupants[targetSeatId].name) ||
                                    Object.values(participants).some(p => p.seat_id === targetSeatId);
                 if (isOccupied) {
-                    showToast('Seat already taken', 'warning');
+                    showInlineSeatStatus('Seat already taken', 'warning');
                     return;
                 }
 
@@ -1296,7 +1334,7 @@
             const isOccupied = Boolean(seatOccupants[nearest] && seatOccupants[nearest].name) ||
                                Object.values(participants).some(p => p.seat_id === nearest);
             if (isOccupied) {
-                showToast('Seat already taken', 'warning');
+                showInlineSeatStatus('Seat already taken', 'warning');
                 return;
             }
             wsSend({ type: 'update_seat', seat_id: nearest });
