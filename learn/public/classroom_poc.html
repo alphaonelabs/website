@@ -167,7 +167,7 @@
 </div>
 
 <!--CLASSROOM SCREEN-->
-<div id="classroomScreen" class="flex-1 flex-col hidden">
+<div id="classroomScreen" class="flex-1 flex-col hidden h-full overflow-hidden">
 
     <!-- Top Bar -->
     <header class="bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 px-4 py-2.5 flex items-center justify-between shrink-0">
@@ -266,15 +266,15 @@
         </div>
 
         <!-- Chat Sidebar -->
-        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-auto shrink-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
-            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-full shrink-0 lg:shrink lg:min-h-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
+            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2 shrink-0">
                 <i data-lucide="message-circle" class="w-4 h-4 text-teal-400"></i>
                 <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
             </div>
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
                 <div class="text-center text-xs text-gray-600 py-6">No messages yet!</div>
             </div>
-            <form id="chatForm" class="p-3 border-t border-gray-800 flex gap-2">
+            <form id="chatForm" class="p-3 border-t border-gray-800 flex gap-2 shrink-0">
                 <label for="chatInput" class="sr-only">Chat message</label>
                 <input id="chatInput" type="text" placeholder="Type a message…" autocomplete="off"
                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition" />
@@ -625,7 +625,8 @@
 
         lobby.classList.add('hidden');
         classroomScreen.classList.remove('hidden');
-        classroomScreen.classList.add('flex');
+        classroomScreen.classList.add('flex', 'h-full', 'overflow-hidden');
+        document.body.classList.add('h-screen', 'overflow-hidden');
 
         renderDesks();
         connectWS();
@@ -701,6 +702,8 @@
         if (ws) { ws.close(); ws = null; }
         if (presenceWs) { presenceWs.close(); presenceWs = null; }
         setConnStatus(false);
+        document.body.classList.remove('h-screen', 'overflow-hidden');
+        classroomScreen.classList.remove('h-full', 'overflow-hidden');
     }
 
     function scheduleReconnect() {
@@ -1186,8 +1189,16 @@
                 ${escapeHtml(text)}
             </div>
         `;
+
+        const isNearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 80;
         chatMessages.appendChild(wrapper);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        if (isSelf || isNearBottom) {
+            chatMessages.scrollTo({
+                top: chatMessages.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }
 
     // Participants sidebar toggle
