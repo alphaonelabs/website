@@ -1901,6 +1901,196 @@ async def api_login(req, env):
     )
 
 
+_GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+_GOOGLE_ISSUERS = {"https://accounts.google.com", "accounts.google.com"}
+_GOOGLE_JWKS_CACHE: Dict[str, Any] = {"keys": [], "fetched_at": 0.0}
+
+
+def _b64url_decode(data: str) -> bytes:
+    return base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
+
+
+async def _google_jwks(force: bool = False) -> list:
+    """Google's public signing keys, cached for an hour per isolate."""
+    now = time.time()
+    if not force and _GOOGLE_JWKS_CACHE["keys"] and now - _GOOGLE_JWKS_CACHE["fetched_at"] < 3600:
+        return _GOOGLE_JWKS_CACHE["keys"]
+    resp = await js.fetch(_GOOGLE_JWKS_URL)
+    if resp.status != 200:
+        raise RuntimeError(f"Google JWKS fetch failed with status {resp.status}")
+    data = json.loads(await resp.text())
+    _GOOGLE_JWKS_CACHE["keys"] = data.get("keys", [])
+    _GOOGLE_JWKS_CACHE["fetched_at"] = now
+    return _GOOGLE_JWKS_CACHE["keys"]
+
+
+async def verify_google_id_token(credential: str, client_id: str) -> Optional[Dict[str, Any]]:
+    """Verify a Google ID token (RS256) and return its claims, or None if it is not valid."""
+    try:
+        header_b64, payload_b64, sig_b64 = credential.split(".")
+        header = json.loads(_b64url_decode(header_b64))
+        claims = json.loads(_b64url_decode(payload_b64))
+        signature = _b64url_decode(sig_b64)
+    except Exception:
+        return None
+
+    if header.get("alg") != "RS256" or not header.get("kid"):
+        return None
+
+    try:
+        jwk = next((k for k in await _google_jwks() if k.get("kid") == header["kid"]), None)
+        if jwk is None:  # Google rotates keys; refetch once
+            jwk = next((k for k in await _google_jwks(force=True) if k.get("kid") == header["kid"]), None)
+        if jwk is None:
+            return None
+
+        algo = to_js({"name": "RSASSA-PKCS1-v1_5", "hash": "SHA-256"}, dict_converter=js.Object.fromEntries)
+        key = await js.crypto.subtle.importKey(
+            "jwk", to_js(jwk, dict_converter=js.Object.fromEntries), algo, False, to_js(["verify"])
+        )
+        signed = (header_b64 + "." + payload_b64).encode("ascii")
+        valid = await js.crypto.subtle.verify(
+            "RSASSA-PKCS1-v1_5", key,
+            to_js(signature, create_pyproxies=False), to_js(signed, create_pyproxies=False),
+        )
+    except Exception as exc:
+        await capture_exception(exc, where="verify_google_id_token")
+        return None
+    if not valid:
+        return None
+
+    if claims.get("iss") not in _GOOGLE_ISSUERS or claims.get("aud") != client_id:
+        return None
+    try:
+        if float(claims.get("exp", 0)) < time.time():
+            return None
+    except (TypeError, ValueError):
+        return None
+    if not claims.get("sub") or not claims.get("email"):
+        return None
+    if claims.get("email_verified") not in (True, "true"):
+        return None
+    return claims
+
+
+async def _create_google_user(env, enc: str, email: str, display_name: str) -> str:
+    local = re.sub(r"[^a-z0-9_]", "", email.split("@")[0].lower())[:20] or "user"
+    username = ""
+    for _ in range(10):
+        candidate = f"{local}_{os.urandom(3).hex()}"
+        taken = await env.DB.prepare(
+            "SELECT id FROM users WHERE username_hash=?"
+        ).bind(blind_index(candidate, enc)).first()
+        if not taken:
+            username = candidate
+            break
+    if not username:
+        raise RuntimeError("Could not allocate a username")
+
+    uid = new_id()
+    name = (display_name or local).strip()[:160]
+    await env.DB.prepare(
+        "INSERT INTO users "
+        "(id,username_hash,email_hash,name,username,email,password_hash,role,email_verified)"
+        " VALUES (?,?,?,?,?,?,?,?,?)"
+    ).bind(
+        uid,
+        blind_index(username, enc),
+        blind_index(email, enc),
+        await encrypt_aes(name, enc),
+        await encrypt_aes(username, enc),
+        await encrypt_aes(email, enc),
+        "oauth:" + os.urandom(24).hex(),  # unusable password hash: this account signs in with Google
+        await encrypt_aes("member", enc),
+        1,
+    ).run()
+    await _seed_notification_preferences(env, uid)
+    await _ensure_user_profile(env, uid, enc)
+    return uid
+
+
+async def api_auth_config(_req, env):
+    """GET /api/auth/config — public sign-in options (the Google client ID is not a secret)."""
+    return json_resp({"google_client_id": (getattr(env, "GOOGLE_CLIENT_ID", "") or "").strip()})
+
+
+async def api_google_login(req, env):
+    """POST /api/auth/google — exchange a Google ID token for an app login token."""
+    rate_limit_resp = _check_auth_rate_limit(req, env, "google_login")
+    if rate_limit_resp:
+        return rate_limit_resp
+
+    client_id = (getattr(env, "GOOGLE_CLIENT_ID", "") or "").strip()
+    if not client_id:
+        return err("Google sign-in is not configured", 404)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+    credential = (body.get("credential") or "").strip()
+    if not credential:
+        return err("Google credential is required")
+
+    claims = await verify_google_id_token(credential, client_id)
+    if not claims:
+        return err("Google sign-in failed — please try again", 401)
+
+    enc = env.ENCRYPTION_KEY
+    email = str(claims["email"]).strip()
+    sub_hash = blind_index(str(claims["sub"]), enc)
+
+    try:
+        link = await env.DB.prepare(
+            "SELECT user_id FROM oauth_identities WHERE provider='google' AND subject_hash=?"
+        ).bind(sub_hash).first()
+        if link:
+            user_id = link.user_id
+        else:
+            existing = await env.DB.prepare(
+                "SELECT id, email_verified FROM users WHERE email_hash=?"
+            ).bind(blind_index(email, enc)).first()
+            if existing:
+                user_id = existing.id
+                if not existing.email_verified:
+                    # Someone may have pre-registered this address with their own password.
+                    # Google has proven who owns it, so invalidate that password.
+                    await env.DB.prepare(
+                        "UPDATE users SET password_hash=?, email_verified=1 WHERE id=?"
+                    ).bind("oauth:" + os.urandom(24).hex(), user_id).run()
+            else:
+                user_id = await _create_google_user(env, enc, email, str(claims.get("name") or ""))
+            await env.DB.prepare(
+                "INSERT INTO oauth_identities (id,user_id,provider,subject_hash) VALUES (?,?,?,?)"
+            ).bind(new_id(), user_id, "google", sub_hash).run()
+
+        row = await env.DB.prepare(
+            "SELECT username, name, role FROM users WHERE id=?"
+        ).bind(user_id).first()
+        profile_row = await env.DB.prepare(
+            "SELECT avatar_url FROM user_profiles WHERE user_id=?"
+        ).bind(user_id).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_google_login")
+        return err("Google sign-in failed — please try again", 500)
+
+    if not row:
+        return err("Account not found", 404)
+    username = await decrypt_aes(row.username, enc)
+    real_name = await decrypt_aes(row.name, enc)
+    role = await decrypt_aes(row.role, enc)
+    if (not username or username == "[decryption error]"
+            or not role or role == "[decryption error]"):
+        return err("This account is unavailable", 403)
+
+    token = create_token(user_id, username, role, env.JWT_SECRET)
+    return ok(
+        {"token": token,
+         "user": {"id": user_id, "username": username, "name": real_name, "role": role,
+                  "avatar_url": (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""}},
+        "Login successful",
+    )
+
+
 async def api_verify_email(req, env):
     """GET /api/verify-email?token=... — consume token and mark account as verified."""
     parsed = urlparse(req.url)
@@ -3694,6 +3884,7 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
+            "DELETE FROM oauth_identities WHERE user_id=?",
         ]
         for sql in cleanup_sql:
             try:
@@ -6798,7 +6989,7 @@ _SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
     "Permissions-Policy": "camera=(self), microphone=(), geolocation=(self), payment=(self)",
 }
 
@@ -9053,6 +9244,12 @@ async def _dispatch(request, env):
 
         if path == "/api/login" and method == "POST":
             return await api_login(request, env)
+
+        if path == "/api/auth/config" and method == "GET":
+            return await api_auth_config(request, env)
+
+        if path == "/api/auth/google" and method == "POST":
+            return await api_google_login(request, env)
 
         if path == "/api/classes-near-me" and method == "GET":
             return await api_classes_near_me(request, env)

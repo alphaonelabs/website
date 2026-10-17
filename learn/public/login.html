@@ -224,6 +224,15 @@
             By registering, you agree to our <a href="/terms" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Terms of Service</a> and <a href="/privacy" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Privacy Policy</a>
           </p>
         </div>
+          <!-- GOOGLE SIGN-IN (hidden unless a client ID is configured) -->
+        <div id="google-signin" class="hidden px-8 pb-8 -mt-2">
+          <div class="relative flex items-center mb-4">
+            <div class="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+            <span class="mx-3 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">or</span>
+            <div class="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+          </div>
+          <div id="google-btn" class="flex justify-center"></div>
+        </div>
       </div>
 
       <!-- Footer Link -->
@@ -375,6 +384,50 @@ document.getElementById('resend-btn').addEventListener('click', async () => {
         btn.textContent = RESEND_LABEL;
     }
 });
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src; s.async = true;
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+async function handleGoogleCredential(response) {
+    try {
+        const res = await fetch(`${API}/api/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: response.credential })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Google sign-in failed');
+        storeAuth(data.data);
+    } catch (err) {
+        switchTab('login');
+        showErr('login-err', err.message);
+    }
+}
+
+async function initGoogleSignIn() {
+    try {
+        const cfg = await (await fetch(`${API}/api/auth/config`)).json();
+        if (!cfg.google_client_id) return;  // not configured: leave the button hidden
+        await loadScript('https://accounts.google.com/gsi/client');
+        google.accounts.id.initialize({
+            client_id: cfg.google_client_id,
+            callback: handleGoogleCredential
+        });
+        google.accounts.id.renderButton(document.getElementById('google-btn'), {
+            theme: 'outline', size: 'large', text: 'continue_with', width: 280
+        });
+        document.getElementById('google-signin').classList.remove('hidden');
+    } catch (err) {
+        console.error('Google sign-in unavailable:', err);
+    }
+}
+
+initGoogleSignIn();
 
 // Handle redirect after successful login
 function handlePostLoginRedirect() {
