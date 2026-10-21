@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Edit Activity - Alpha One Labs{% endblock %}
+{% block meta_description %}Edit one of your hosted activities{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block content %}
+<main class="flex-1 w-full">
+  <div class="max-w-3xl mx-auto px-4 md:px-6 py-10">
+    <a href="/dashboard" class="inline-flex items-center text-sm font-semibold text-teal-700 dark:text-teal-300 hover:underline mb-6">
+      <i class="fas fa-arrow-left mr-2"></i>Back to dashboard
+    </a>
+    <h1 class="text-3xl font-extrabold mb-1">Edit activity</h1>
+    <p id="edit-subtitle" class="text-sm text-gray-500 dark:text-gray-400 mb-8">Loading…</p>
+
+    <div id="edit-error" class="hidden mb-6 p-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm" role="alert"></div>
+
+    <form id="edit-form" class="hidden space-y-5 bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700" novalidate>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="f-title">Title</label>
+        <input id="f-title" maxlength="200" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1" for="f-description">Description</label>
+        <textarea id="f-description" rows="5" maxlength="5000" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></textarea>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="f-type">Type</label>
+          <select id="f-type" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+            <option value="course">Course</option>
+            <option value="meetup">Meetup</option>
+            <option value="workshop">Workshop</option>
+            <option value="seminar">Seminar</option>
+            <option value="club">Club</option>
+            <option value="event">Event</option>
+            <option value="video">Video</option>
+            <option value="study_group">Study group</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="f-format">Format</label>
+          <select id="f-format" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+            <option value="live">Live</option>
+            <option value="self_paced">Self-paced</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="f-schedule">Schedule</label>
+          <select id="f-schedule" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+            <option value="one_time">One-time</option>
+            <option value="multi_session">Multi-session</option>
+            <option value="recurring">Recurring</option>
+            <option value="ongoing">Ongoing</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1" for="f-level">Level</label>
+        <input id="f-level" maxlength="50" placeholder="e.g. Beginner" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1" for="f-objectives">Learning objectives</label>
+        <textarea id="f-objectives" rows="3" maxlength="2000" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1" for="f-prereq">Prerequisites</label>
+        <textarea id="f-prereq" rows="3" maxlength="2000" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1" for="f-tags">Tags</label>
+        <input id="f-tags" placeholder="Python, Web Development" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2">
+        <p class="text-xs text-gray-400 mt-1">Comma-separated, up to 10.</p>
+      </div>
+
+      <p id="edit-status" class="text-sm" role="status" aria-live="polite"></p>
+
+      <div class="flex flex-wrap gap-2">
+        <button id="edit-save" type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-5 rounded disabled:opacity-60">
+          <i class="fas fa-save mr-2"></i>Save changes
+        </button>
+        <a href="/dashboard" class="px-5 py-2 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm font-medium">Cancel</a>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script>
+const token = localStorage.getItem('edu_token');
+const activityId = new URLSearchParams(location.search).get('id');
+
+const form = document.getElementById('edit-form');
+const statusEl = document.getElementById('edit-status');
+
+function showError(msg) {
+  const el = document.getElementById('edit-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('edit-subtitle').textContent = '';
+}
+
+function setStatus(msg, isError) {
+  statusEl.textContent = msg;
+  statusEl.className = 'text-sm ' + (isError ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400');
+}
+
+function fill(a) {
+  document.getElementById('edit-subtitle').textContent = a.title || '';
+  document.getElementById('f-title').value = a.title || '';
+  document.getElementById('f-description').value = a.description || '';
+  document.getElementById('f-type').value = a.type || 'other';
+  document.getElementById('f-format').value = a.format || 'self_paced';
+  document.getElementById('f-schedule').value = a.schedule_type || 'ongoing';
+  document.getElementById('f-level').value = a.level || '';
+  document.getElementById('f-objectives').value = a.learning_objectives || '';
+  document.getElementById('f-prereq').value = a.prerequisites || '';
+  document.getElementById('f-tags').value = (a.tags || []).join(', ');
+  form.classList.remove('hidden');
+}
+
+async function init() {
+  if (!token) {
+    sessionStorage.setItem('post_login_redirect', '/edit-activity' + location.search);
+    window.location.href = '/login';
+    return;
+  }
+  if (!activityId) { showError('No activity was specified.'); return; }
+  try {
+    const res = await fetch('/api/activities/' + encodeURIComponent(activityId), {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load the activity');
+    if (!data.is_host) { showError('Only the host can edit this activity.'); return; }
+    fill(data.activity);
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { setStatus('Title is required.', true); return; }
+
+  const body = {
+    title: title,
+    description: document.getElementById('f-description').value,
+    type: document.getElementById('f-type').value,
+    format: document.getElementById('f-format').value,
+    schedule_type: document.getElementById('f-schedule').value,
+    level: document.getElementById('f-level').value,
+    learning_objectives: document.getElementById('f-objectives').value,
+    prerequisites: document.getElementById('f-prereq').value,
+    tags: document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean)
+  };
+
+  const btn = document.getElementById('edit-save');
+  btn.disabled = true;
+  setStatus('Saving…', false);
+  try {
+    const res = await fetch('/api/activities/' + encodeURIComponent(activityId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save changes');
+    setStatus('Saved. Redirecting…', false);
+    setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+  } catch (err) {
+    setStatus(err.message, true);
+    btn.disabled = false;
+  }
+});
+
+init();
+</script>
+{% endblock %}
