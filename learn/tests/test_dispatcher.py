@@ -207,6 +207,29 @@ class TestStaticFileServing:
         r = await worker._dispatch(req, env)
         assert r.status == 404
 
+    async def test_affiliations_clean_route_serves_page(self):
+        env = self._env("<html>affiliations rendered</html>")
+        req = MockRequest(method="GET", url="http://localhost/affiliations")
+        r = await worker._dispatch(req, env)
+        assert r.status == 200
+
+    async def test_missing_file_renders_404_template_without_raw_tags(self):
+        from unittest.mock import MagicMock
+        env = make_env()
+        async def mock_get(key, *args, **kwargs):
+            if key == "404.html":
+                return "{% extends 'base.html' %}{% block content %}Path: {{ requested_path }}{% endblock %}"
+            return None
+        sc = MagicMock()
+        sc.get = AsyncMock(side_effect=mock_get)
+        setattr(env, "__STATIC_CONTENT", sc)
+
+        req = MockRequest(method="GET", url="http://localhost/nonexistent-page")
+        r = await worker._dispatch(req, env)
+        assert r.status == 404
+        assert "{%" not in r.body
+        assert "{{" not in r.body
+
     async def test_html_content_type(self):
         env = self._env("<html>page</html>")
         req = MockRequest(method="GET", url="http://localhost/dashboard")
