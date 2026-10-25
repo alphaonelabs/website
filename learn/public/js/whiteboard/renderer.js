@@ -7,12 +7,29 @@ export class WhiteboardRenderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.uploadedImage = null;
-    this.imageScale = 1;
+    this.imageBounds = null; // { x, y, width, height }
+    this.lastEvents = [];
   }
 
-  setBackgroundImage(image, scale = 1) {
+  setImage(image, bounds = null) {
     this.uploadedImage = image;
-    this.imageScale = Number(scale || 1);
+    this.imageBounds = bounds;
+  }
+
+  setBackgroundImage(image, boundsOrScale = null) {
+    this.uploadedImage = image;
+    if (typeof boundsOrScale === 'object' && boundsOrScale !== null) {
+      this.imageBounds = boundsOrScale;
+    } else if (typeof boundsOrScale === 'number' && image) {
+      this.imageBounds = {
+        x: 0,
+        y: 0,
+        width: Math.round(image.width * boundsOrScale),
+        height: Math.round(image.height * boundsOrScale)
+      };
+    } else {
+      this.imageBounds = null;
+    }
   }
 
   pointFromEvent(event) {
@@ -92,21 +109,104 @@ export class WhiteboardRenderer {
     ctx.restore();
   }
 
-  drawBackground() {
+  drawBackground(drawHandles = true) {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    if (this.uploadedImage) {
-      this.ctx.drawImage(
-        this.uploadedImage,
-        0,
-        0,
-        this.uploadedImage.width * this.imageScale,
-        this.uploadedImage.height * this.imageScale
-      );
+    if (!this.uploadedImage) return;
+
+    const b = this.imageBounds || this.defaultBounds();
+    this.ctx.drawImage(
+      this.uploadedImage,
+      b.x,
+      b.y,
+      b.width,
+      b.height
+    );
+    if (drawHandles && this.imageBounds) {
+      this.drawImageHandles(this.imageBounds);
     }
   }
 
-  redrawAll(events = [], extraEvent = null) {
-    this.drawBackground();
+  defaultBounds() {
+    const img = this.uploadedImage;
+    const w = img.naturalWidth || img.width || 400;
+    const h = img.naturalHeight || img.height || 300;
+    const ar = h / w;
+    let bw = Math.min(this.canvas.width * 0.36, w);
+    let bh = bw * ar;
+    if (bh > this.canvas.height * 0.8) {
+      bh = this.canvas.height * 0.8;
+      bw = bh / ar;
+    }
+    return {
+      x: Math.round((this.canvas.width - bw) / 2),
+      y: Math.round((this.canvas.height - bh) / 2),
+      width: bw,
+      height: bh
+    };
+  }
+
+  drawImageHandles(bounds) {
+    if (!bounds) return;
+    const ctx = this.ctx;
+    ctx.save();
+
+    // Subtle dashed bounding box
+    ctx.strokeStyle = '#0f766e';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.setLineDash([]);
+
+    // Move badge at top center
+    const pillW = 60;
+    const pillH = 20;
+    const pillX = bounds.x + bounds.width / 2 - pillW / 2;
+    const pillY = bounds.y - pillH - 6;
+    if (pillY >= 4) {
+      ctx.fillStyle = '#0f766e';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(pillX, pillY, pillW, pillH, 6);
+      } else {
+        ctx.rect(pillX, pillY, pillW, pillH);
+      }
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✥ Move', pillX + pillW / 2, pillY + pillH / 2);
+    }
+
+    // Circular handle renderer
+    const drawHandle = (hx, hy) => {
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#0f766e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    };
+
+    // 4 Corner handles
+    drawHandle(bounds.x, bounds.y); // NW
+    drawHandle(bounds.x + bounds.width, bounds.y); // NE
+    drawHandle(bounds.x + bounds.width, bounds.y + bounds.height); // SE
+    drawHandle(bounds.x, bounds.y + bounds.height); // SW
+
+    // 4 Edge handles
+    drawHandle(bounds.x + bounds.width / 2, bounds.y); // N
+    drawHandle(bounds.x + bounds.width / 2, bounds.y + bounds.height); // S
+    drawHandle(bounds.x, bounds.y + bounds.height / 2); // W
+    drawHandle(bounds.x + bounds.width, bounds.y + bounds.height / 2); // E
+
+    ctx.restore();
+  }
+
+  redrawAll(events = [], extraEvent = null, drawHandles = true) {
+    this.lastEvents = events;
+    this.drawBackground(drawHandles);
     for (let i = 0; i < events.length; i++) {
       this.drawEvent(events[i]);
     }
@@ -122,7 +222,13 @@ export class WhiteboardRenderer {
     const offCtx = offscreen.getContext('2d');
     offCtx.fillStyle = '#f8f9fa';
     offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
+
+    // Render cleanly without handles for export
+    this.redrawAll(this.lastEvents || [], null, false);
     offCtx.drawImage(this.canvas, 0, 0);
+
+    // Restore interactive handle view
+    this.redrawAll(this.lastEvents || [], null, true);
 
     const safeName = filenamePrefix.replace(/[^A-Za-z0-9_-]+/g, '-');
     const link = document.createElement('a');

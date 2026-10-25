@@ -140,7 +140,7 @@ export function applyViewerRestrictions(canvas) {
   if (viewerNote) viewerNote.classList.remove('hidden');
   if (canvas) canvas.style.cursor = 'not-allowed';
 
-  ['toolSelect', 'penColor', 'penWidth', 'imageScale'].forEach((id) => {
+  ['toolSelect', 'penColor', 'penWidth'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.disabled = true;
   });
@@ -176,8 +176,6 @@ export function bindWhiteboardControls(callbacks = {}) {
   const penColorInput = document.getElementById('penColor');
   const penWidthInput = document.getElementById('penWidth');
   const penWidthValue = document.getElementById('penWidthValue');
-  const imageScaleInput = document.getElementById('imageScale');
-  const imageScaleValue = document.getElementById('imageScaleValue');
   const colorPreview = document.getElementById('color-preview');
   const loadInput = document.getElementById('loadInput');
   const container = document.getElementById('whiteboard-container');
@@ -207,12 +205,6 @@ export function bindWhiteboardControls(callbacks = {}) {
     onWidthChange(penWidthInput.value);
   });
 
-  imageScaleInput?.addEventListener('input', () => {
-    const scale = Number(imageScaleInput.value || 100) / 100;
-    if (imageScaleValue) imageScaleValue.textContent = imageScaleInput.value + '%';
-    onImageScale(scale);
-  });
-
   document.getElementById('uploadBoard')?.addEventListener('click', () => {
     if (!canInteract) { onRequireLogin(); return; }
     loadInput?.click();
@@ -220,7 +212,10 @@ export function bindWhiteboardControls(callbacks = {}) {
 
   loadInput?.addEventListener('change', (e) => {
     const file = e.target.files && e.target.files[0];
-    if (file) onImageUpload(file);
+    if (file) {
+      onImageUpload(file);
+      e.target.value = '';
+    }
   });
 
   document.getElementById('removeImage')?.addEventListener('click', () => {

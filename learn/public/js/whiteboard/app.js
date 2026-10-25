@@ -10,6 +10,7 @@ import {
   saveBackground,
   loadBackground,
   removeBackground,
+  computeInitialImageBounds,
 } from './storage.js';
 
 import { WhiteboardRenderer } from './renderer.js';
@@ -37,8 +38,6 @@ import {
   const toolSelect = document.getElementById('toolSelect');
   const penColorInput = document.getElementById('penColor');
   const penWidthInput = document.getElementById('penWidth');
-  const imageScaleInput = document.getElementById('imageScale');
-  const imageScaleValue = document.getElementById('imageScaleValue');
   const activeUsers = document.getElementById('activeUsers');
   const activeCount = document.getElementById('active-count');
   const coordinates = document.getElementById('coordinates');
@@ -50,7 +49,7 @@ import {
   let redoStack = [];
   let uploadedImage = null;
   let imageDataUrl = '';
-  let imageScale = 1;
+  let imageBounds = null;
 
   // Subsystem Instances
   const renderer = new WhiteboardRenderer(canvas);
@@ -140,6 +139,19 @@ import {
     socket.sendEvent(event);
   }
 
+  function updateImageUi() {
+    const removeBtn = document.getElementById('removeImage');
+    if (removeBtn) {
+      if (uploadedImage) {
+        removeBtn.classList.remove('hidden');
+        removeBtn.classList.add('flex');
+      } else {
+        removeBtn.classList.add('hidden');
+        removeBtn.classList.remove('flex');
+      }
+    }
+  }
+
   const drawingController = new DrawingController(canvas, renderer, textEditor, {
     canInteract,
     onSendEvent: (event) => sendEvent(event),
@@ -153,29 +165,42 @@ import {
       if (coordinates) {
         coordinates.textContent = `x: ${Math.round(point.x * canvas.width)}, y: ${Math.round(point.y * canvas.height)}`;
       }
+    },
+    onImageResize: (newBounds) => {
+      imageBounds = newBounds;
+    },
+    onImageResizeEnd: (finalBounds) => {
+      imageBounds = finalBounds;
+      if (imageDataUrl) {
+        saveBackground(getRoomName(), imageDataUrl, imageBounds);
+      }
     }
   });
 
   function loadBackgroundFromStorage() {
     uploadedImage = null;
     imageDataUrl = '';
+    imageBounds = null;
     const stored = loadBackground(getRoomName());
     if (!stored) {
-      renderer.setBackgroundImage(null, 1);
+      renderer.setImage(null, null);
       renderer.redrawAll(events);
+      updateImageUi();
       return;
     }
 
     imageDataUrl = stored.dataUrl;
-    imageScale = stored.scale;
-    if (imageScaleInput) imageScaleInput.value = Math.round(imageScale * 100);
-    if (imageScaleValue) imageScaleValue.textContent = Math.round(imageScale * 100) + '%';
-
     const img = new Image();
     img.onload = () => {
       uploadedImage = img;
-      renderer.setBackgroundImage(uploadedImage, imageScale);
+      if (stored.bounds && stored.bounds.width) {
+        imageBounds = stored.bounds;
+      } else {
+        imageBounds = computeInitialImageBounds(img, canvas);
+      }
+      renderer.setImage(uploadedImage, imageBounds);
       renderer.redrawAll(events);
+      updateImageUi();
     };
     img.src = imageDataUrl;
   }
@@ -242,26 +267,25 @@ import {
         const img = new Image();
         img.onload = () => {
           uploadedImage = img;
-          saveBackground(getRoomName(), imageDataUrl, imageScale);
-          renderer.setBackgroundImage(uploadedImage, imageScale);
+          imageBounds = computeInitialImageBounds(img, canvas);
+          saveBackground(getRoomName(), imageDataUrl, imageBounds);
+          renderer.setImage(uploadedImage, imageBounds);
           renderer.redrawAll(events);
+          updateImageUi();
         };
         img.src = imageDataUrl;
       };
       reader.readAsDataURL(file);
     },
-    onImageScale: (scale) => {
-      imageScale = scale;
-      saveBackground(getRoomName(), imageDataUrl, imageScale);
-      renderer.setBackgroundImage(uploadedImage, imageScale);
-      renderer.redrawAll(events);
-    },
+    onImageScale: () => {},
     onImageRemove: () => {
       uploadedImage = null;
       imageDataUrl = '';
+      imageBounds = null;
       removeBackground(getRoomName());
-      renderer.setBackgroundImage(null, 1);
+      renderer.setImage(null, null);
       renderer.redrawAll(events);
+      updateImageUi();
     },
     onDownload: () => renderer.exportToPng(getRoomName()),
     onClear: clearRoom,
