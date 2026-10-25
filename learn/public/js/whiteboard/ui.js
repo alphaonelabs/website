@@ -140,7 +140,7 @@ export function applyViewerRestrictions(canvas) {
   if (viewerNote) viewerNote.classList.remove('hidden');
   if (canvas) canvas.style.cursor = 'not-allowed';
 
-  ['toolSelect', 'penColorInput', 'penWidthInput', 'imageScaleInput'].forEach((id) => {
+  ['toolSelect', 'penColor', 'penWidth', 'imageScale'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.disabled = true;
   });
@@ -148,7 +148,7 @@ export function applyViewerRestrictions(canvas) {
   ['undoBoard', 'redoBoard', 'clearBoard', 'uploadBoard', 'removeImage'].forEach((id) => {
     const button = document.getElementById(id);
     if (button) {
-      button.classList.add('opacity-50', 'pointer-events-none');
+      button.classList.add('opacity-50');
       button.title = 'Sign in to use this control';
     }
   });
