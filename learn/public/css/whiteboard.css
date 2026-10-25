@@ -1,0 +1,110 @@
+/* Canvas itself — touch-action none so pointer events work on mobile */
+#whiteboard {
+  touch-action: none;
+  display: block;
+}
+
+/* Infinite pan viewport: fills its parent, clips overflow, never scrolls */
+#canvas-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: default;
+  background-color: #f8f9fa;
+  background-image: radial-gradient(circle, #cbd5e1 1.25px, transparent 1.25px);
+  background-size: 20px 20px;
+}
+
+#canvas-viewport.panning {
+  cursor: grabbing !important;
+}
+
+#canvas-viewport.pan-ready {
+  cursor: grab;
+}
+
+.dark #canvas-viewport {
+  background-color: #121212;
+  background-image: radial-gradient(circle, #334155 1.25px, transparent 1.25px);
+}
+
+/* Transform layer for pan & zoom */
+#canvas-transform-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Tool buttons active state */
+.tool-button[aria-pressed="true"] {
+  background-color: #0f766e !important;
+  color: #ffffff !important;
+}
+
+.dark .tool-button[aria-pressed="true"] {
+  background-color: #0f766e !important;
+  color: #ffffff !important;
+}
+
+/* Expandable toolbar drawer */
+.tools-expandable {
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: scaleX(0.96) translateX(-4px);
+  transform-origin: left center;
+  transition: max-width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#whiteboard-toolbar-container.is-expanded .tools-expandable {
+  max-width: min(580px, calc(100vw - 3.5rem));
+  opacity: 1;
+  pointer-events: auto;
+  transform: scaleX(1) translateX(0);
+}
+
+/* Fullscreen mode */
+#whiteboard-container:fullscreen,
+#whiteboard-container:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  z-index: 99999;
+}
+
+/* Inline text editor overlay */
+#inline-text-editor {
+  position: absolute;
+  z-index: 50;
+  background: transparent;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  font-family: sans-serif;
+  color: inherit;
+  padding: 2px 4px;
+  min-width: 120px;
+  min-height: 1.5em;
+  box-shadow: 0 0 0 1px rgba(156, 156, 156, 0.15);
+}
+
+#inline-text-editor::placeholder {
+  color: #9ca3af;
+  opacity: 0.7;
+}
+
+/* Zoom level badge */
+#zoom-display {
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+}
