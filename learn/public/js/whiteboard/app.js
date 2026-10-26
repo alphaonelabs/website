@@ -227,7 +227,6 @@ import {
       loginForWhiteboard();
       return;
     }
-    if (!confirm('Clear this whiteboard room for everyone?')) return;
     events = [];
     seenEventIds = new Set();
     redoStack = [];
