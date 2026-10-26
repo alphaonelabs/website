@@ -30,13 +30,9 @@
   <section class="flex-1 flex flex-col min-h-0">
     <div id="whiteboard-container" class="relative flex-1 w-full min-h-[580px] border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col bg-[#f8f9fa] dark:bg-[#121212] select-none">
 
-      <!-- Top-Left Floating Toolbar -->
-      <div class="absolute top-3 left-3 z-20 flex items-center pointer-events-auto">
-        <div id="whiteboard-toolbar-container" class="group flex items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-800 shadow-md p-1 transition-all duration-200 gap-1">
-          <button type="button" id="toolbar-toggle" class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Tools (hover to expand)">
-            <span id="active-tool-icon"><i class="fas fa-pen text-xs text-teal-700 dark:text-teal-400"></i></span>
-            <i class="fas fa-chevron-right text-[8px] text-gray-400 ml-1 transition-transform group-hover:rotate-180"></i>
-          </button>
+      <!-- Top-Center Floating Toolbar -->
+      <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center pointer-events-auto">
+        <div id="whiteboard-toolbar-container" class="flex items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-800 shadow-md p-1 gap-1">
 
           <select id="toolSelect" class="sr-only">
             <option value="pen">Pen</option>
@@ -49,52 +45,50 @@
             <option value="arrow">Arrow</option>
           </select>
 
-          <div class="tools-expandable flex items-center gap-1">
-            <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"></div>
-            <button type="button" data-tool="pen" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Pen" aria-pressed="true">
-              <i class="fas fa-pen"></i>
-            </button>
-            <button type="button" data-tool="highlighter" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Highlighter" aria-pressed="false">
-              <i class="fas fa-highlighter"></i>
-            </button>
-            <button type="button" data-tool="eraser" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Eraser" aria-pressed="false">
-              <i class="fas fa-eraser"></i>
-            </button>
-            <button type="button" data-tool="line" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Line" aria-pressed="false">
-              <i class="fas fa-minus"></i>
-            </button>
-            <button type="button" data-tool="rectangle" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Rectangle" aria-pressed="false">
-              <i class="far fa-square"></i>
-            </button>
-            <button type="button" data-tool="circle" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Circle" aria-pressed="false">
-              <i class="far fa-circle"></i>
-            </button>
-            <button type="button" data-tool="arrow" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Arrow" aria-pressed="false">
-              <i class="fas fa-arrow-right"></i>
-            </button>
-            <button type="button" data-tool="text" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Text" aria-pressed="false">
-              <i class="fas fa-font"></i>
-            </button>
+          <button type="button" data-tool="pen" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Pen" aria-pressed="true">
+            <i class="fas fa-pen"></i>
+          </button>
+          <button type="button" data-tool="highlighter" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Highlighter" aria-pressed="false">
+            <i class="fas fa-highlighter"></i>
+          </button>
+          <button type="button" data-tool="eraser" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Eraser" aria-pressed="false">
+            <i class="fas fa-eraser"></i>
+          </button>
+          <button type="button" data-tool="line" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Line" aria-pressed="false">
+            <i class="fas fa-minus"></i>
+          </button>
+          <button type="button" data-tool="rectangle" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Rectangle" aria-pressed="false">
+            <i class="far fa-square"></i>
+          </button>
+          <button type="button" data-tool="circle" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Circle" aria-pressed="false">
+            <i class="far fa-circle"></i>
+          </button>
+          <button type="button" data-tool="arrow" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Arrow" aria-pressed="false">
+            <i class="fas fa-arrow-right"></i>
+          </button>
+          <button type="button" data-tool="text" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Text" aria-pressed="false">
+            <i class="fas fa-font"></i>
+          </button>
 
-            <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"></div>
+          <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"></div>
 
-            <!-- Color picker -->
-            <label class="relative flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Stroke Color">
-              <input id="penColor" type="color" value="#0f766e" class="sr-only">
-              <span id="color-preview" class="w-4 h-4 rounded-full border border-black/20 dark:border-white/30 shadow-inner" style="background-color: #0f766e;"></span>
-            </label>
+          <!-- Color picker -->
+          <label class="relative flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Stroke Color">
+            <input id="penColor" type="color" value="#0f766e" class="sr-only">
+            <span id="color-preview" class="w-4 h-4 rounded-full border border-black/20 dark:border-white/30 shadow-inner" style="background-color: #0f766e;"></span>
+          </label>
 
-            <!-- Stroke width -->
-            <div class="relative group/width flex items-center">
-              <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold" title="Stroke Width">
-                <span id="penWidthValue">4</span><span class="text-[9px] text-gray-400">px</span>
-              </button>
-              <div class="absolute top-full left-0 mt-2 hidden group-hover/width:flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-3 z-30 min-w-[130px]">
-                <div class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Stroke Width</div>
-                <input id="penWidth" type="range" min="1" max="32" value="4" class="w-full accent-teal-600">
-              </div>
+          <!-- Stroke width -->
+          <div class="relative flex items-center" id="width-dropdown-wrap">
+            <button type="button" id="stroke-width-btn" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold" title="Stroke Width">
+              <span id="penWidthValue">4</span><span class="text-[9px] text-gray-400">px</span>
+            </button>
+            <div id="stroke-width-dropdown" class="absolute top-full left-0 mt-2 hidden flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-3 z-30 min-w-[130px]">
+              <div class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Stroke Width</div>
+              <input id="penWidth" type="range" min="1" max="32" value="4" class="w-full accent-teal-600">
             </div>
           </div>
+
         </div>
       </div>
 
@@ -110,12 +104,12 @@
         <input type="file" id="loadInput" accept="image/*" class="hidden">
 
         <!-- Active Users Control -->
-        <div class="relative group/users">
-          <button type="button" class="h-8 px-2.5 flex items-center gap-1.5 rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 shadow-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Active Users">
+        <div class="relative" id="users-dropdown-wrap">
+          <button type="button" id="users-btn" class="h-8 px-2.5 flex items-center gap-1.5 rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 shadow-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Active Users">
             <i class="fas fa-users text-[11px] text-gray-400"></i>
             <span id="active-count" class="font-bold text-teal-700 dark:text-teal-400">0</span>
           </button>
-          <div class="absolute top-full right-0 mt-2 hidden group-hover/users:block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-3 z-30 min-w-[200px]">
+          <div id="users-dropdown" class="absolute top-full right-0 mt-2 hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-3 z-30 min-w-[200px]">
             <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Connected Users</div>
             <div id="activeUsers" class="flex flex-wrap gap-1.5 text-xs text-gray-600 dark:text-gray-300">
               <span class="text-gray-400">No signed-in users connected.</span>

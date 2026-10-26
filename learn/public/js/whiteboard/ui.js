@@ -50,33 +50,39 @@ export function syncToolButtons(activeTool, canvas) {
   }
 }
 
-export function initToolbarDrawer() {
-  const container = document.getElementById('whiteboard-toolbar-container');
-  const toggle = document.getElementById('toolbar-toggle');
-  if (!container || !toggle) return;
+export function initClickDropdowns() {
+  // Stroke width dropdown
+  const widthBtn = document.getElementById('stroke-width-btn');
+  const widthDropdown = document.getElementById('stroke-width-dropdown');
+  if (widthBtn && widthDropdown) {
+    widthBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !widthDropdown.classList.contains('hidden');
+      widthDropdown.classList.toggle('hidden', isOpen);
+      widthDropdown.classList.toggle('flex', !isOpen);
+    });
+    document.addEventListener('click', (e) => {
+      if (!widthBtn.closest('#width-dropdown-wrap').contains(e.target)) {
+        widthDropdown.classList.add('hidden');
+        widthDropdown.classList.remove('flex');
+      }
+    });
+  }
 
-  let manuallyCollapsed = false;
-
-  toggle.addEventListener('click', () => {
-    if (container.classList.contains('is-expanded')) {
-      container.classList.remove('is-expanded');
-      manuallyCollapsed = true;
-    } else {
-      container.classList.add('is-expanded');
-      manuallyCollapsed = false;
-    }
-  });
-
-  container.addEventListener('mouseenter', () => {
-    if (!manuallyCollapsed) {
-      container.classList.add('is-expanded');
-    }
-  });
-
-  container.addEventListener('mouseleave', () => {
-    container.classList.remove('is-expanded');
-    manuallyCollapsed = false;
-  });
+  // Active users dropdown
+  const usersBtn = document.getElementById('users-btn');
+  const usersDropdown = document.getElementById('users-dropdown');
+  if (usersBtn && usersDropdown) {
+    usersBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      usersDropdown.classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!usersBtn.closest('#users-dropdown-wrap').contains(e.target)) {
+        usersDropdown.classList.add('hidden');
+      }
+    });
+  }
 }
 
 export function updateActiveUsersList(containerEl, countEl, participants) {
@@ -182,7 +188,7 @@ export function bindWhiteboardControls(callbacks = {}) {
   const fullscreenBtn = document.getElementById('fullscreen-btn');
   const fullscreenIcon = document.getElementById('fullscreen-icon');
 
-  initToolbarDrawer();
+  initClickDropdowns();
 
   document.getElementById('connect')?.addEventListener('click', onConnect);
   roomInput?.addEventListener('change', onConnect);
