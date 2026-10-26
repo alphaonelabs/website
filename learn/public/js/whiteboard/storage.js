@@ -155,3 +155,48 @@ export function removeBackground(roomName) {
     localStorage.removeItem(backgroundKey(roomName));
   } catch (_) {}
 }
+
+// --- Multi-image storage ---
+
+function backgroundsKey(roomName) {
+  return 'whiteboard_backgrounds_' + (roomName || 'main-whiteboard');
+}
+
+export function saveBackgrounds(roomName, imagesData) {
+  // imagesData: [{ dataUrl, bounds }]
+  try {
+    const items = (imagesData || []).map((item) => {
+      let dataUrl = item.dataUrl;
+      const payload = { data: dataUrl, bounds: item.bounds };
+      return payload;
+    });
+    let json;
+    try {
+      json = JSON.stringify(items);
+      localStorage.setItem(backgroundsKey(roomName), json);
+    } catch (quotaErr) {
+      // On quota error, downscale each image and retry once
+      const downscaled = items.map((item) => ({
+        data: downscaleDataUrl(item.data, 1400) || item.data,
+        bounds: item.bounds
+      }));
+      try {
+        localStorage.setItem(backgroundsKey(roomName), JSON.stringify(downscaled));
+      } catch (_) {}
+    }
+  } catch (_) {}
+}
+
+export function loadBackgrounds(roomName) {
+  try {
+    const raw = localStorage.getItem(backgroundsKey(roomName));
+    if (!raw) return [];
+    const items = JSON.parse(raw);
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter((item) => item && item.data)
+      .map((item) => ({ dataUrl: item.data, bounds: item.bounds || null }));
+  } catch (_) {
+    return [];
+  }
+}

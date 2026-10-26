@@ -7,10 +7,9 @@ import {
   preserveWhiteboardRedirect,
   getViewerId,
   generateEventId,
-  saveBackground,
-  loadBackground,
-  removeBackground,
   computeInitialImageBounds,
+  saveBackgrounds,
+  loadBackgrounds,
 } from './storage.js';
 
 import { WhiteboardRenderer } from './renderer.js';
@@ -47,9 +46,8 @@ import {
   let events = [];
   let seenEventIds = new Set();
   let redoStack = [];
-  let uploadedImage = null;
-  let imageDataUrl = '';
-  let imageBounds = null;
+  // Multi-image state: [{ img, bounds, dataUrl }]
+  let images = [];
 
   // Subsystem Instances
   const renderer = new WhiteboardRenderer(canvas);
@@ -139,17 +137,8 @@ import {
     socket.sendEvent(event);
   }
 
-  function updateImageUi() {
-    const removeBtn = document.getElementById('removeImage');
-    if (removeBtn) {
-      if (uploadedImage) {
-        removeBtn.classList.remove('hidden');
-        removeBtn.classList.add('flex');
-      } else {
-        removeBtn.classList.add('hidden');
-        removeBtn.classList.remove('flex');
-      }
-    }
+  function serializeImages() {
+    return images.map((i) => ({ dataUrl: i.dataUrl, bounds: i.bounds }));
   }
 
   const drawingController = new DrawingController(canvas, renderer, textEditor, {
@@ -161,48 +150,66 @@ import {
     getPenColor: () => penColorInput?.value || '#0f766e',
     getPenWidth: () => Number(penWidthInput?.value || 4),
     getEvents: () => events,
+    getImages: () => images.map((i) => ({ img: i.img, bounds: i.bounds })),
     onCoordinates: (point) => {
       if (coordinates) {
         coordinates.textContent = `x: ${Math.round(point.x * canvas.width)}, y: ${Math.round(point.y * canvas.height)}`;
       }
     },
-    onImageResize: (newBounds) => {
-      imageBounds = newBounds;
+    onSelectImage: (idx) => {
+      renderer.selectedImageIndex = idx;
+      renderer.redrawAll(events);
     },
-    onImageResizeEnd: (finalBounds) => {
-      imageBounds = finalBounds;
-      if (imageDataUrl) {
-        saveBackground(getRoomName(), imageDataUrl, imageBounds);
-      }
+    onImageResize: (idx, newBounds) => {
+      if (images[idx]) images[idx].bounds = newBounds;
+      if (renderer.images[idx]) renderer.images[idx].bounds = newBounds;
+    },
+    onImageResizeEnd: (idx, finalBounds) => {
+      if (images[idx]) images[idx].bounds = finalBounds;
+      if (renderer.images[idx]) renderer.images[idx].bounds = finalBounds;
+      saveBackgrounds(getRoomName(), serializeImages());
     }
   });
 
   function loadBackgroundFromStorage() {
-    uploadedImage = null;
-    imageDataUrl = '';
-    imageBounds = null;
-    const stored = loadBackground(getRoomName());
-    if (!stored) {
-      renderer.setImage(null, null);
+    images = [];
+    renderer.setImages([]);
+    renderer.selectedImageIndex = -1;
+
+    const stored = loadBackgrounds(getRoomName());
+    if (!stored || stored.length === 0) {
       renderer.redrawAll(events);
-      updateImageUi();
       return;
     }
 
-    imageDataUrl = stored.dataUrl;
-    const img = new Image();
-    img.onload = () => {
-      uploadedImage = img;
-      if (stored.bounds && stored.bounds.width) {
-        imageBounds = stored.bounds;
-      } else {
-        imageBounds = computeInitialImageBounds(img, canvas);
-      }
-      renderer.setImage(uploadedImage, imageBounds);
-      renderer.redrawAll(events);
-      updateImageUi();
-    };
-    img.src = imageDataUrl;
+    let loaded = 0;
+    stored.forEach((item, i) => {
+      const img = new Image();
+      img.onload = () => {
+        const bounds = (item.bounds && item.bounds.width)
+          ? item.bounds
+          : computeInitialImageBounds(img, canvas);
+        images[i] = { img, bounds, dataUrl: item.dataUrl };
+        loaded++;
+        if (loaded === stored.length) {
+          // Remove any gaps from out-of-order loads
+          const compact = images.filter(Boolean);
+          images = compact;
+          renderer.setImages(compact.map((im) => ({ img: im.img, bounds: im.bounds })));
+          renderer.redrawAll(events);
+        }
+      };
+      img.onerror = () => {
+        loaded++;
+        if (loaded === stored.length) {
+          const compact = images.filter(Boolean);
+          images = compact;
+          renderer.setImages(compact.map((im) => ({ img: im.img, bounds: im.bounds })));
+          renderer.redrawAll(events);
+        }
+      };
+      img.src = item.dataUrl;
+    });
   }
 
   function connectToRoom() {
@@ -251,6 +258,20 @@ import {
     sendEvent(copy);
   }
 
+  // Backspace to delete the selected image
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Backspace') return;
+    const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    const selectedIndex = renderer.selectedImageIndex;
+    if (selectedIndex < 0 || selectedIndex >= images.length) return;
+    e.preventDefault();
+    images.splice(selectedIndex, 1);
+    renderer.removeImage(selectedIndex);
+    saveBackgrounds(getRoomName(), serializeImages());
+    renderer.redrawAll(events);
+  });
+
   // Bind DOM controls
   if (loginLink) loginLink.addEventListener('click', preserveWhiteboardRedirect);
 
@@ -263,30 +284,21 @@ import {
     onImageUpload: (file) => {
       const reader = new FileReader();
       reader.onload = (loadEvent) => {
-        imageDataUrl = loadEvent.target.result;
+        const dataUrl = loadEvent.target.result;
         const img = new Image();
         img.onload = () => {
-          uploadedImage = img;
-          imageBounds = computeInitialImageBounds(img, canvas);
-          saveBackground(getRoomName(), imageDataUrl, imageBounds);
-          renderer.setImage(uploadedImage, imageBounds);
+          const bounds = computeInitialImageBounds(img, canvas);
+          images.push({ img, bounds, dataUrl });
+          renderer.addImage(img, bounds);
           renderer.redrawAll(events);
-          updateImageUi();
+          saveBackgrounds(getRoomName(), serializeImages());
         };
-        img.src = imageDataUrl;
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     },
     onImageScale: () => {},
-    onImageRemove: () => {
-      uploadedImage = null;
-      imageDataUrl = '';
-      imageBounds = null;
-      removeBackground(getRoomName());
-      renderer.setImage(null, null);
-      renderer.redrawAll(events);
-      updateImageUi();
-    },
+    onImageRemove: () => {},
     onDownload: () => renderer.exportToPng(getRoomName()),
     onClear: clearRoom,
     onUndo: undo,

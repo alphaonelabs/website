@@ -6,30 +6,24 @@ export class WhiteboardRenderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.uploadedImage = null;
-    this.imageBounds = null; // { x, y, width, height }
+    this.images = []; // [{ img, bounds }]
+    this.selectedImageIndex = -1;
     this.lastEvents = [];
   }
 
-  setImage(image, bounds = null) {
-    this.uploadedImage = image;
-    this.imageBounds = bounds;
+  setImages(images) {
+    this.images = images || [];
   }
 
-  setBackgroundImage(image, boundsOrScale = null) {
-    this.uploadedImage = image;
-    if (typeof boundsOrScale === 'object' && boundsOrScale !== null) {
-      this.imageBounds = boundsOrScale;
-    } else if (typeof boundsOrScale === 'number' && image) {
-      this.imageBounds = {
-        x: 0,
-        y: 0,
-        width: Math.round(image.width * boundsOrScale),
-        height: Math.round(image.height * boundsOrScale)
-      };
-    } else {
-      this.imageBounds = null;
-    }
+  addImage(img, bounds) {
+    this.images.push({ img, bounds });
+    this.selectedImageIndex = this.images.length - 1;
+    return this.selectedImageIndex;
+  }
+
+  removeImage(index) {
+    this.images.splice(index, 1);
+    this.selectedImageIndex = -1;
   }
 
   pointFromEvent(event) {
@@ -111,23 +105,17 @@ export class WhiteboardRenderer {
 
   drawBackground(drawHandles = true) {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    if (!this.uploadedImage) return;
-
-    const b = this.imageBounds || this.defaultBounds();
-    this.ctx.drawImage(
-      this.uploadedImage,
-      b.x,
-      b.y,
-      b.width,
-      b.height
-    );
-    if (drawHandles && this.imageBounds) {
-      this.drawImageHandles(this.imageBounds);
+    for (let i = 0; i < this.images.length; i++) {
+      const { img, bounds } = this.images[i];
+      const b = bounds || this.defaultBounds(img);
+      this.ctx.drawImage(img, b.x, b.y, b.width, b.height);
+    }
+    if (drawHandles && this.selectedImageIndex >= 0 && this.images[this.selectedImageIndex]) {
+      this.drawImageHandles(this.images[this.selectedImageIndex].bounds);
     }
   }
 
-  defaultBounds() {
-    const img = this.uploadedImage;
+  defaultBounds(img) {
     const w = img.naturalWidth || img.width || 400;
     const h = img.naturalHeight || img.height || 300;
     const ar = h / w;
