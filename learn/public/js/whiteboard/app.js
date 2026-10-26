@@ -239,11 +239,14 @@ import {
       loginForWhiteboard();
       return;
     }
-    const idx = [...events].reverse().find(
-      (ev) => !currentParticipantId || ev.participant_id === currentParticipantId || !ev.participant_id
+    // Find the last event belonging to this participant and remove it locally
+    const lastIdx = events.map((_, i) => i).reverse().find(
+      (i) => !currentParticipantId || events[i].participant_id === currentParticipantId || !events[i].participant_id
     );
-    if (idx) redoStack.push(idx);
-    socket.undo();
+    if (lastIdx === undefined) return;
+    const [removed] = events.splice(lastIdx, 1);
+    redoStack.push(removed);
+    renderer.redrawAll(events);
   }
 
   function redo() {
