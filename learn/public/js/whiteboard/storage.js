@@ -39,30 +39,8 @@ function backgroundKey(roomName) {
   return 'whiteboard_background_' + (roomName || 'main-whiteboard');
 }
 
-export function saveBackground(roomName, imageDataUrl, boundsOrScale) {
-  try {
-    if (imageDataUrl) {
-      const payload = { data: imageDataUrl };
-      if (typeof boundsOrScale === 'object' && boundsOrScale !== null) {
-        payload.bounds = boundsOrScale;
-      } else {
-        payload.scale = Number(boundsOrScale || 1);
-      }
-      const json = JSON.stringify(payload);
-      try {
-        localStorage.setItem(backgroundKey(roomName), json);
-      } catch (quotaErr) {
-        // Quota exceeded: retry with a downscaled JPEG before giving up.
-        const downscaled = downscaleDataUrl(imageDataUrl, 1400);
-        if (downscaled) {
-          payload.data = downscaled;
-          localStorage.setItem(backgroundKey(roomName), JSON.stringify(payload));
-        }
-      }
-    } else {
-      removeBackground(roomName);
-    }
-  } catch (_) {}
+function backgroundsKey(roomName) {
+  return 'whiteboard_backgrounds_' + (roomName || 'main-whiteboard');
 }
 
 // Downscale a data URL through an offscreen canvas to fit localStorage quota.
@@ -86,95 +64,51 @@ function downscaleDataUrl(dataUrl, maxSize) {
   }
 }
 
-export function loadBackground(roomName) {
-  try {
-    const raw = localStorage.getItem(backgroundKey(roomName));
-    if (!raw) return null;
-    const payload = JSON.parse(raw);
-    if (!payload || !payload.data) return null;
-    return {
-      dataUrl: payload.data,
-      bounds: payload.bounds || null,
-      scale: Number(payload.scale || 1)
-    };
-  } catch (_) {
-    return null;
-  }
-}
-
+/**
+ * Compute initial placement bounds for a newly added image.
+ * Targets ~36% of screen width, clamped to 20%–85% of canvas width and 80% of canvas height,
+ * then centered. The display-to-canvas scale factor accounts for CSS scaling of the canvas element.
+ */
 export function computeInitialImageBounds(img, canvas) {
   const naturalWidth = img.naturalWidth || img.width || 400;
   const naturalHeight = img.naturalHeight || img.height || 300;
   const aspectRatio = naturalHeight / naturalWidth;
 
-  // Set default initial width to 36% of the screen width maintaining aspect ratio
   const screenWidth = typeof window !== 'undefined' ? (window.innerWidth || 1200) : 1200;
-  const targetDisplayWidth = screenWidth * 0.36;
-
-  // Convert display CSS pixels into internal canvas coordinates
-  let scaleToCanvas = 1;
-  if (canvas && typeof canvas.getBoundingClientRect === 'function') {
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width > 0) {
-      scaleToCanvas = canvas.width / rect.width;
-    }
-  }
-  let initialWidth = targetDisplayWidth * scaleToCanvas;
-
-  // Ensure neither too small nor too big (minimum 160px, maximum 85% of canvas width)
   const canvasWidth = canvas?.width || 1500;
   const canvasHeight = canvas?.height || 800;
 
+  let scaleToCanvas = 1;
+  if (canvas && typeof canvas.getBoundingClientRect === 'function') {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0) scaleToCanvas = canvasWidth / rect.width;
+  }
+
   const minWidth = Math.min(160, canvasWidth * 0.2);
   const maxWidth = canvasWidth * 0.85;
-  initialWidth = Math.max(minWidth, Math.min(maxWidth, initialWidth));
+  let initialWidth = Math.max(minWidth, Math.min(maxWidth, screenWidth * 0.36 * scaleToCanvas));
 
   let initialHeight = initialWidth * aspectRatio;
-
-  // Clamp height if taller than canvas bounds (max 80% canvas height)
   const maxHeight = canvasHeight * 0.8;
   if (initialHeight > maxHeight) {
     initialHeight = maxHeight;
     initialWidth = initialHeight / aspectRatio;
   }
 
-  // Center on the canvas
-  const x = Math.max(20, Math.round((canvasWidth - initialWidth) / 2));
-  const y = Math.max(20, Math.round((canvasHeight - initialHeight) / 2));
-
   return {
-    x,
-    y,
+    x: Math.max(20, Math.round((canvasWidth - initialWidth) / 2)),
+    y: Math.max(20, Math.round((canvasHeight - initialHeight) / 2)),
     width: Math.round(initialWidth),
     height: Math.round(initialHeight)
   };
 }
 
-export function removeBackground(roomName) {
-  try {
-    localStorage.removeItem(backgroundKey(roomName));
-  } catch (_) {}
-}
-
-// --- Multi-image storage ---
-
-function backgroundsKey(roomName) {
-  return 'whiteboard_backgrounds_' + (roomName || 'main-whiteboard');
-}
-
 export function saveBackgrounds(roomName, imagesData) {
-  // imagesData: [{ dataUrl, bounds }]
   try {
-    const items = (imagesData || []).map((item) => {
-      let dataUrl = item.dataUrl;
-      const payload = { data: dataUrl, bounds: item.bounds };
-      return payload;
-    });
-    let json;
+    const items = (imagesData || []).map((item) => ({ data: item.dataUrl, bounds: item.bounds }));
     try {
-      json = JSON.stringify(items);
-      localStorage.setItem(backgroundsKey(roomName), json);
-    } catch (quotaErr) {
+      localStorage.setItem(backgroundsKey(roomName), JSON.stringify(items));
+    } catch (_quotaErr) {
       // On quota error, downscale each image and retry once
       const downscaled = items.map((item) => ({
         data: downscaleDataUrl(item.data, 1400) || item.data,
@@ -199,4 +133,52 @@ export function loadBackgrounds(roomName) {
   } catch (_) {
     return [];
   }
+}
+
+/** @deprecated Use saveBackgrounds for multi-image rooms. */
+export function saveBackground(roomName, imageDataUrl, boundsOrScale) {
+  try {
+    if (imageDataUrl) {
+      const payload = { data: imageDataUrl };
+      if (typeof boundsOrScale === 'object' && boundsOrScale !== null) {
+        payload.bounds = boundsOrScale;
+      } else {
+        payload.scale = Number(boundsOrScale || 1);
+      }
+      try {
+        localStorage.setItem(backgroundKey(roomName), JSON.stringify(payload));
+      } catch (_quotaErr) {
+        const downscaled = downscaleDataUrl(imageDataUrl, 1400);
+        if (downscaled) {
+          payload.data = downscaled;
+          localStorage.setItem(backgroundKey(roomName), JSON.stringify(payload));
+        }
+      }
+    } else {
+      removeBackground(roomName);
+    }
+  } catch (_) {}
+}
+
+/** @deprecated Use loadBackgrounds for multi-image rooms. */
+export function loadBackground(roomName) {
+  try {
+    const raw = localStorage.getItem(backgroundKey(roomName));
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    if (!payload || !payload.data) return null;
+    return {
+      dataUrl: payload.data,
+      bounds: payload.bounds || null,
+      scale: Number(payload.scale || 1)
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+export function removeBackground(roomName) {
+  try {
+    localStorage.removeItem(backgroundKey(roomName));
+  } catch (_) {}
 }

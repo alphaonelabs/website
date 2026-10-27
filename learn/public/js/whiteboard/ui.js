@@ -1,5 +1,5 @@
 /**
- * UI controls, toolbar drawer, fullscreen, and tool button states.
+ * UI controls, toolbar, fullscreen, and tool button states.
  */
 
 export const TOOL_ICONS = {
@@ -40,49 +40,35 @@ export function syncToolButtons(activeTool, canvas) {
   }
 
   if (canvas) {
-    if (activeTool === 'eraser') {
-      canvas.style.cursor = 'cell';
-    } else if (activeTool === 'text') {
-      canvas.style.cursor = 'text';
-    } else {
-      canvas.style.cursor = 'crosshair';
-    }
+    if (activeTool === 'eraser') canvas.style.cursor = 'cell';
+    else if (activeTool === 'text') canvas.style.cursor = 'text';
+    else canvas.style.cursor = 'crosshair';
   }
 }
 
-export function initClickDropdowns() {
-  // Stroke width dropdown
-  const widthBtn = document.getElementById('stroke-width-btn');
-  const widthDropdown = document.getElementById('stroke-width-dropdown');
-  if (widthBtn && widthDropdown) {
-    widthBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = !widthDropdown.classList.contains('hidden');
-      widthDropdown.classList.toggle('hidden', isOpen);
-      widthDropdown.classList.toggle('flex', !isOpen);
-    });
-    document.addEventListener('click', (e) => {
-      if (!widthBtn.closest('#width-dropdown-wrap').contains(e.target)) {
-        widthDropdown.classList.add('hidden');
-        widthDropdown.classList.remove('flex');
-      }
-    });
-  }
+function initToggleDropdown(btnId, dropdownId, wrapId, useFlex = false) {
+  const btn = document.getElementById(btnId);
+  const dropdown = document.getElementById(dropdownId);
+  if (!btn || !dropdown) return;
 
-  // Active users dropdown
-  const usersBtn = document.getElementById('users-btn');
-  const usersDropdown = document.getElementById('users-dropdown');
-  if (usersBtn && usersDropdown) {
-    usersBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      usersDropdown.classList.toggle('hidden');
-    });
-    document.addEventListener('click', (e) => {
-      if (!usersBtn.closest('#users-dropdown-wrap').contains(e.target)) {
-        usersDropdown.classList.add('hidden');
-      }
-    });
-  }
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !dropdown.classList.contains('hidden');
+    dropdown.classList.toggle('hidden', isOpen);
+    if (useFlex) dropdown.classList.toggle('flex', !isOpen);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!btn.closest(`#${wrapId}`).contains(e.target)) {
+      dropdown.classList.add('hidden');
+      if (useFlex) dropdown.classList.remove('flex');
+    }
+  });
+}
+
+export function initClickDropdowns() {
+  initToggleDropdown('stroke-width-btn', 'stroke-width-dropdown', 'width-dropdown-wrap', true);
+  initToggleDropdown('users-btn', 'users-dropdown', 'users-dropdown-wrap', false);
 }
 
 export function updateActiveUsersList(containerEl, countEl, participants) {
@@ -112,21 +98,11 @@ export function isFullscreen() {
 
 export function toggleFullscreen(container) {
   if (!isFullscreen()) {
-    if (container.requestFullscreen) {
-      container.requestFullscreen();
-    } else if (container.webkitRequestFullscreen) {
-      container.webkitRequestFullscreen();
-    } else if (container.msRequestFullscreen) {
-      container.msRequestFullscreen();
-    }
+    (container.requestFullscreen || container.webkitRequestFullscreen || container.msRequestFullscreen)
+      ?.call(container);
   } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
-    }
+    (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen)
+      ?.call(document);
   }
 }
 
@@ -152,10 +128,10 @@ export function applyViewerRestrictions(canvas) {
   });
 
   ['undoBoard', 'redoBoard', 'clearBoard', 'uploadBoard', 'removeImage'].forEach((id) => {
-    const button = document.getElementById(id);
-    if (button) {
-      button.classList.add('opacity-50');
-      button.title = 'Sign in to use this control';
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.classList.add('opacity-50');
+      btn.title = 'Sign in to use this control';
     }
   });
 }
@@ -168,8 +144,6 @@ export function bindWhiteboardControls(callbacks = {}) {
     onColorChange = () => {},
     onWidthChange = () => {},
     onImageUpload = () => {},
-    onImageScale = () => {},
-    onImageRemove = () => {},
     onDownload = () => {},
     onClear = () => {},
     onUndo = () => {},
@@ -217,16 +191,11 @@ export function bindWhiteboardControls(callbacks = {}) {
   });
 
   loadInput?.addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       onImageUpload(file);
       e.target.value = '';
     }
-  });
-
-  document.getElementById('removeImage')?.addEventListener('click', () => {
-    if (!canInteract) { onRequireLogin(); return; }
-    onImageRemove();
   });
 
   document.getElementById('downloadBoard')?.addEventListener('click', onDownload);
@@ -239,12 +208,10 @@ export function bindWhiteboardControls(callbacks = {}) {
     document.addEventListener(evt, () => updateFullscreenIcon(fullscreenIcon, fullscreenBtn));
   });
 
-  // Global Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
-      if (e.shiftKey) onRedo();
-      else onUndo();
+      e.shiftKey ? onRedo() : onUndo();
       e.preventDefault();
     } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
       onRedo();

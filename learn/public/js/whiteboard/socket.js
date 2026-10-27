@@ -21,9 +21,7 @@ export class WhiteboardSocket {
   }
 
   connect(roomName, token, guestViewerId) {
-    if (this.ws) {
-      this.ws.close();
-    }
+    if (this.ws) this.ws.close();
 
     const safeRoom = encodeURIComponent(roomName || 'main-whiteboard');
     const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -36,9 +34,7 @@ export class WhiteboardSocket {
       params.set('display_name', 'Viewer');
     }
 
-    const wsUrl = `${scheme}//${location.host}/api/classroom/${safeRoom}?${params.toString()}`;
-    this.ws = new WebSocket(wsUrl);
-
+    this.ws = new WebSocket(`${scheme}//${location.host}/api/classroom/${safeRoom}?${params}`);
     this.handlers.onStatusChange('Connecting...', false);
 
     this.ws.addEventListener('open', () => {
@@ -56,21 +52,24 @@ export class WhiteboardSocket {
       } catch (_) {
         return;
       }
-      if (!data || !data.type) return;
-
-      if (data.type === 'user_info') {
-        this.currentParticipantId = data.participant_id || '';
-        this.handlers.onUserInfo(this.currentParticipantId);
-      } else if (data.type === 'whiteboard_state') {
-        this.handlers.onWhiteboardState(Array.isArray(data.events) ? data.events : []);
-      } else if (data.type === 'whiteboard_event') {
-        this.handlers.onWhiteboardEvent(data.event || {});
-      } else if (data.type === 'whiteboard_clear') {
-        this.handlers.onWhiteboardClear();
-      } else if (data.type === 'room_state') {
-        this.handlers.onRoomState(Array.isArray(data.participants) ? data.participants : []);
-      }
+      if (!data?.type) return;
+      this._handleMessage(data);
     });
+  }
+
+  _handleMessage(data) {
+    const h = this.handlers;
+    const dispatch = {
+      user_info: () => {
+        this.currentParticipantId = data.participant_id || '';
+        h.onUserInfo(this.currentParticipantId);
+      },
+      whiteboard_state: () => h.onWhiteboardState(Array.isArray(data.events) ? data.events : []),
+      whiteboard_event: () => h.onWhiteboardEvent(data.event || {}),
+      whiteboard_clear: () => h.onWhiteboardClear(),
+      room_state: () => h.onRoomState(Array.isArray(data.participants) ? data.participants : []),
+    };
+    dispatch[data.type]?.();
   }
 
   disconnect() {
@@ -89,12 +88,6 @@ export class WhiteboardSocket {
   clearRoom() {
     if (this.isOpen()) {
       this.ws.send(JSON.stringify({ type: 'whiteboard_clear' }));
-    }
-  }
-
-  undo() {
-    if (this.isOpen()) {
-      this.ws.send(JSON.stringify({ type: 'whiteboard_undo' }));
     }
   }
 }

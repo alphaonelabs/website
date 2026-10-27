@@ -4,6 +4,14 @@
 
 import { generateEventId } from './storage.js';
 
+const SHAPE_TOOLS = ['line', 'rectangle', 'circle', 'arrow'];
+
+const TOOL_MODE_MAP = {
+  eraser: 'eraser',
+  highlighter: 'highlighter',
+  text: 'text',
+};
+
 export class DrawingController {
   constructor(canvas, renderer, textEditor, options = {}) {
     this.canvas = canvas;
@@ -35,11 +43,7 @@ export class DrawingController {
 
   currentMode() {
     const tool = this.getTool();
-    if (tool === 'eraser') return 'eraser';
-    if (tool === 'highlighter') return 'highlighter';
-    if (tool === 'text') return 'text';
-    if (['line', 'rectangle', 'circle', 'arrow'].includes(tool)) return 'shape';
-    return 'pen';
+    return TOOL_MODE_MAP[tool] ?? (SHAPE_TOOLS.includes(tool) ? 'shape' : 'pen');
   }
 
   makeEvent(kind, from, to, text = '') {
@@ -59,9 +63,7 @@ export class DrawingController {
 
   getCanvasPixelPoint(e) {
     const rect = this.canvas.getBoundingClientRect();
-    const touch = e.touches && e.touches[0]
-      ? e.touches[0]
-      : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e);
+    const touch = e.touches?.[0] ?? e.changedTouches?.[0] ?? e;
     const scaleX = rect.width > 0 ? (this.canvas.width / rect.width) : 1;
     const scaleY = rect.height > 0 ? (this.canvas.height / rect.height) : 1;
     return {
@@ -72,44 +74,39 @@ export class DrawingController {
 
   getImageHandleAt(point) {
     const images = this.getImages();
+    const dist = (ax, ay) => Math.hypot(point.x - ax, point.y - ay);
+    const radius = 15;
+    const edgeTol = 7;
+
     // Iterate in reverse so topmost (last-added) image takes priority
     for (let i = images.length - 1; i >= 0; i--) {
       const b = images[i].bounds;
       if (!b) continue;
 
-      // Move badge at top center
-      const pillW = 60;
-      const pillH = 20;
+      const pillW = 60, pillH = 20;
       const pillX = b.x + b.width / 2 - pillW / 2;
       const pillY = b.y - pillH - 6;
       if (point.x >= pillX && point.x <= pillX + pillW && point.y >= pillY && point.y <= pillY + pillH) {
         return { type: 'move', cursor: 'move', imageIndex: i };
       }
 
-      const radius = 15;
-      const dist = (hx, hy) => Math.hypot(point.x - hx, point.y - hy);
+      if (dist(b.x, b.y) <= radius)                       return { type: 'resize', handle: 'nw', cursor: 'nwse-resize', imageIndex: i };
+      if (dist(b.x + b.width, b.y) <= radius)             return { type: 'resize', handle: 'ne', cursor: 'nesw-resize', imageIndex: i };
+      if (dist(b.x + b.width, b.y + b.height) <= radius)  return { type: 'resize', handle: 'se', cursor: 'nwse-resize', imageIndex: i };
+      if (dist(b.x, b.y + b.height) <= radius)            return { type: 'resize', handle: 'sw', cursor: 'nesw-resize', imageIndex: i };
 
-      // 4 Corner handles
-      if (dist(b.x, b.y) <= radius) return { type: 'resize', handle: 'nw', cursor: 'nwse-resize', imageIndex: i };
-      if (dist(b.x + b.width, b.y) <= radius) return { type: 'resize', handle: 'ne', cursor: 'nesw-resize', imageIndex: i };
-      if (dist(b.x + b.width, b.y + b.height) <= radius) return { type: 'resize', handle: 'se', cursor: 'nwse-resize', imageIndex: i };
-      if (dist(b.x, b.y + b.height) <= radius) return { type: 'resize', handle: 'sw', cursor: 'nesw-resize', imageIndex: i };
-
-      // 4 Edge circular handles
-      if (dist(b.x + b.width / 2, b.y) <= radius) return { type: 'resize', handle: 'n', cursor: 'ns-resize', imageIndex: i };
+      if (dist(b.x + b.width / 2, b.y) <= radius)          return { type: 'resize', handle: 'n', cursor: 'ns-resize', imageIndex: i };
       if (dist(b.x + b.width / 2, b.y + b.height) <= radius) return { type: 'resize', handle: 's', cursor: 'ns-resize', imageIndex: i };
-      if (dist(b.x, b.y + b.height / 2) <= radius) return { type: 'resize', handle: 'w', cursor: 'ew-resize', imageIndex: i };
+      if (dist(b.x, b.y + b.height / 2) <= radius)         return { type: 'resize', handle: 'w', cursor: 'ew-resize', imageIndex: i };
       if (dist(b.x + b.width, b.y + b.height / 2) <= radius) return { type: 'resize', handle: 'e', cursor: 'ew-resize', imageIndex: i };
 
-      // Edge-dragging borders
-      const edgeTol = 7;
       const inX = point.x >= b.x - edgeTol && point.x <= b.x + b.width + edgeTol;
       const inY = point.y >= b.y - edgeTol && point.y <= b.y + b.height + edgeTol;
 
-      if (inX && Math.abs(point.y - b.y) <= edgeTol) return { type: 'resize', handle: 'n', cursor: 'ns-resize', imageIndex: i };
+      if (inX && Math.abs(point.y - b.y) <= edgeTol)              return { type: 'resize', handle: 'n', cursor: 'ns-resize', imageIndex: i };
       if (inX && Math.abs(point.y - (b.y + b.height)) <= edgeTol) return { type: 'resize', handle: 's', cursor: 'ns-resize', imageIndex: i };
-      if (inY && Math.abs(point.x - b.x) <= edgeTol) return { type: 'resize', handle: 'w', cursor: 'ew-resize', imageIndex: i };
-      if (inY && Math.abs(point.x - (b.x + b.width)) <= edgeTol) return { type: 'resize', handle: 'e', cursor: 'ew-resize', imageIndex: i };
+      if (inY && Math.abs(point.x - b.x) <= edgeTol)              return { type: 'resize', handle: 'w', cursor: 'ew-resize', imageIndex: i };
+      if (inY && Math.abs(point.x - (b.x + b.width)) <= edgeTol)  return { type: 'resize', handle: 'e', cursor: 'ew-resize', imageIndex: i };
     }
     return null;
   }
@@ -120,28 +117,21 @@ export class DrawingController {
       return;
     }
     const tool = this.getTool();
-    if (tool === 'eraser') {
-      this.canvas.style.cursor = 'cell';
-    } else if (tool === 'text') {
-      this.canvas.style.cursor = 'text';
-    } else {
-      this.canvas.style.cursor = 'crosshair';
-    }
+    if (tool === 'eraser') this.canvas.style.cursor = 'cell';
+    else if (tool === 'text') this.canvas.style.cursor = 'text';
+    else this.canvas.style.cursor = 'crosshair';
   }
 
   start(e) {
     const pixelPoint = this.getCanvasPixelPoint(e);
     const handle = this.getImageHandleAt(pixelPoint);
+
     if (handle) {
       e.preventDefault();
-      if (!this.canInteract) {
-        this.onRequireLogin();
-        return;
-      }
+      if (!this.canInteract) { this.onRequireLogin(); return; }
       this.selectedImageIndex = handle.imageIndex;
       this.onSelectImage(handle.imageIndex);
-      const images = this.getImages();
-      const b = images[handle.imageIndex].bounds;
+      const b = this.getImages()[handle.imageIndex].bounds;
       this.imageDrag = {
         type: handle.type,
         handle: handle.handle,
@@ -158,15 +148,12 @@ export class DrawingController {
     this.onSelectImage(-1);
 
     e.preventDefault();
-    if (!this.canInteract) {
-      this.onRequireLogin();
-      return;
-    }
+    if (!this.canInteract) { this.onRequireLogin(); return; }
+
     const point = this.renderer.pointFromEvent(e);
     this.onCoordinates(point);
 
-    const tool = this.getTool();
-    if (tool === 'text') {
+    if (this.getTool() === 'text') {
       const existing = this.textEditor.findTextEventAt(point, this.getEvents());
       this.textEditor.open(point, existing, this.getPenWidth(), this.getPenColor());
       return;
@@ -178,75 +165,73 @@ export class DrawingController {
     this.draftEvent = null;
   }
 
+  _handleImageDragMove(pixelPoint) {
+    const { type, handle, startPixel, startBounds, aspectRatio, imageIndex } = this.imageDrag;
+    const dx = pixelPoint.x - startPixel.x;
+    const dy = pixelPoint.y - startPixel.y;
+    let b = { ...startBounds };
+
+    if (type === 'move') {
+      b.x = Math.round(startBounds.x + dx);
+      b.y = Math.round(startBounds.y + dy);
+    } else if (handle === 'se') {
+      const w = Math.max(50, startBounds.width + dx);
+      b.width = Math.round(w);
+      b.height = Math.round(w * aspectRatio);
+    } else if (handle === 'sw') {
+      const w = Math.max(50, startBounds.width - dx);
+      b.x = Math.round(startBounds.x + (startBounds.width - w));
+      b.width = Math.round(w);
+      b.height = Math.round(w * aspectRatio);
+    } else if (handle === 'ne') {
+      const w = Math.max(50, startBounds.width + dx);
+      const h = w * aspectRatio;
+      b.y = Math.round(startBounds.y + (startBounds.height - h));
+      b.width = Math.round(w);
+      b.height = Math.round(h);
+    } else if (handle === 'nw') {
+      const w = Math.max(50, startBounds.width - dx);
+      const h = w * aspectRatio;
+      b.x = Math.round(startBounds.x + (startBounds.width - w));
+      b.y = Math.round(startBounds.y + (startBounds.height - h));
+      b.width = Math.round(w);
+      b.height = Math.round(h);
+    } else if (handle === 'e') {
+      const w = Math.max(50, startBounds.width + dx);
+      b.width = Math.round(w);
+      b.height = Math.round(w * aspectRatio);
+    } else if (handle === 'w') {
+      const w = Math.max(50, startBounds.width - dx);
+      b.x = Math.round(startBounds.x + (startBounds.width - w));
+      b.width = Math.round(w);
+      b.height = Math.round(w * aspectRatio);
+    } else if (handle === 's') {
+      const h = Math.max(40, startBounds.height + dy);
+      b.height = Math.round(h);
+      b.width = Math.round(h / aspectRatio);
+    } else if (handle === 'n') {
+      const h = Math.max(40, startBounds.height - dy);
+      b.y = Math.round(startBounds.y + (startBounds.height - h));
+      b.height = Math.round(h);
+      b.width = Math.round(h / aspectRatio);
+    }
+
+    this.onImageResize(imageIndex, b);
+    this.renderer.redrawAll(this.getEvents());
+  }
+
   move(e) {
     const pixelPoint = this.getCanvasPixelPoint(e);
 
-    // Active image resize or drag operation
     if (this.imageDrag) {
       e.preventDefault();
-      const { type, handle, startPixel, startBounds, aspectRatio, imageIndex } = this.imageDrag;
-      const dx = pixelPoint.x - startPixel.x;
-      const dy = pixelPoint.y - startPixel.y;
-      let newBounds = { ...startBounds };
-
-      if (type === 'move') {
-        newBounds.x = Math.round(startBounds.x + dx);
-        newBounds.y = Math.round(startBounds.y + dy);
-      } else if (handle === 'se') {
-        const newW = Math.max(50, startBounds.width + dx);
-        newBounds.width = Math.round(newW);
-        newBounds.height = Math.round(newW * aspectRatio);
-      } else if (handle === 'sw') {
-        const newW = Math.max(50, startBounds.width - dx);
-        newBounds.x = Math.round(startBounds.x + (startBounds.width - newW));
-        newBounds.width = Math.round(newW);
-        newBounds.height = Math.round(newW * aspectRatio);
-      } else if (handle === 'ne') {
-        const newW = Math.max(50, startBounds.width + dx);
-        const newH = newW * aspectRatio;
-        newBounds.y = Math.round(startBounds.y + (startBounds.height - newH));
-        newBounds.width = Math.round(newW);
-        newBounds.height = Math.round(newH);
-      } else if (handle === 'nw') {
-        const newW = Math.max(50, startBounds.width - dx);
-        const newH = newW * aspectRatio;
-        newBounds.x = Math.round(startBounds.x + (startBounds.width - newW));
-        newBounds.y = Math.round(startBounds.y + (startBounds.height - newH));
-        newBounds.width = Math.round(newW);
-        newBounds.height = Math.round(newH);
-      } else if (handle === 'e') {
-        const newW = Math.max(50, startBounds.width + dx);
-        newBounds.width = Math.round(newW);
-        newBounds.height = Math.round(newW * aspectRatio);
-      } else if (handle === 'w') {
-        const newW = Math.max(50, startBounds.width - dx);
-        newBounds.x = Math.round(startBounds.x + (startBounds.width - newW));
-        newBounds.width = Math.round(newW);
-        newBounds.height = Math.round(newW * aspectRatio);
-      } else if (handle === 's') {
-        const newH = Math.max(40, startBounds.height + dy);
-        newBounds.height = Math.round(newH);
-        newBounds.width = Math.round(newH / aspectRatio);
-      } else if (handle === 'n') {
-        const newH = Math.max(40, startBounds.height - dy);
-        newBounds.y = Math.round(startBounds.y + (startBounds.height - newH));
-        newBounds.height = Math.round(newH);
-        newBounds.width = Math.round(newH / aspectRatio);
-      }
-
-      this.onImageResize(imageIndex, newBounds);
-      this.renderer.redrawAll(this.getEvents());
+      this._handleImageDragMove(pixelPoint);
       return;
     }
 
-    // Dynamic cursor feedback when hovering over handles
     if (!this.drawing) {
       const handle = this.getImageHandleAt(pixelPoint);
-      if (handle) {
-        this.canvas.style.cursor = handle.cursor;
-      } else {
-        this.updateToolCursor();
-      }
+      this.canvas.style.cursor = handle ? handle.cursor : (this.updateToolCursor(), this.canvas.style.cursor);
     }
 
     const point = this.renderer.pointFromEvent(e);
@@ -268,11 +253,9 @@ export class DrawingController {
     if (this.imageDrag) {
       const { imageIndex } = this.imageDrag;
       const images = this.getImages();
-      const finalBounds = images[imageIndex] ? images[imageIndex].bounds : null;
+      const finalBounds = images[imageIndex]?.bounds ?? null;
       this.imageDrag = null;
-      if (finalBounds) {
-        this.onImageResizeEnd(imageIndex, finalBounds);
-      }
+      if (finalBounds) this.onImageResizeEnd(imageIndex, finalBounds);
       this.updateToolCursor();
       return;
     }
@@ -282,16 +265,14 @@ export class DrawingController {
 
     const hasPointer = e && (
       typeof e.clientX === 'number' ||
-      (e.touches && e.touches[0]) ||
-      (e.changedTouches && e.changedTouches[0])
+      e.touches?.[0] ||
+      e.changedTouches?.[0]
     );
-    const point = hasPointer
-      ? this.renderer.pointFromEvent(e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e)
-      : this.lastPoint;
+    const pointSource = e.changedTouches?.[0] ?? e;
+    const point = hasPointer ? this.renderer.pointFromEvent(pointSource) : this.lastPoint;
 
-    const tool = this.getTool();
-    if (['line', 'rectangle', 'circle', 'arrow'].includes(tool)) {
-      this.onSendEvent(this.makeEvent(tool, this.startPoint, point));
+    if (SHAPE_TOOLS.includes(this.getTool())) {
+      this.onSendEvent(this.makeEvent(this.getTool(), this.startPoint, point));
     }
 
     this.startPoint = null;
@@ -312,19 +293,18 @@ export class DrawingController {
     this.canvas.addEventListener('touchstart', this.start, { passive: false });
     this.canvas.addEventListener('touchmove', this.move, { passive: false });
     this.canvas.addEventListener('touchend', this.stop, { passive: false });
+
     this.canvas.addEventListener('mouseleave', (e) => {
       this.stop(e);
       this.updateToolCursor();
     });
 
-    // Double-click to edit existing text
+    // Double-click to edit existing text elements
     this.canvas.addEventListener('dblclick', (e) => {
       if (!this.canInteract) return;
       const point = this.renderer.pointFromEvent(e);
       const textEv = this.textEditor.findTextEventAt(point, this.getEvents());
-      if (textEv) {
-        this.textEditor.open(point, textEv, this.getPenWidth(), this.getPenColor());
-      }
+      if (textEv) this.textEditor.open(point, textEv, this.getPenWidth(), this.getPenColor());
     });
   }
 }

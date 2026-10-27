@@ -20,28 +20,26 @@ export class InlineTextEditor {
   }
 
   open(normalizedPoint, existingEvent = null, defaultSize = 4, defaultColor = '#0f766e') {
-    if (this.activeEditor) {
-      this.commit();
-    }
+    if (this.activeEditor) this.commit();
 
     const rect = this.canvas.getBoundingClientRect();
+    const viewportRect = this.viewportEl.getBoundingClientRect();
+
     const pixelX = normalizedPoint.x * this.canvas.width;
     const pixelY = normalizedPoint.y * this.canvas.height;
-
-    const viewportRect = this.viewportEl.getBoundingClientRect();
     const cssLeft = rect.left - viewportRect.left + (pixelX / this.canvas.width) * rect.width;
     const cssTop = rect.top - viewportRect.top + (pixelY / this.canvas.height) * rect.height;
 
     const fontSize = existingEvent
       ? InlineTextEditor.getFontSize(existingEvent)
-      : Math.max(12, Number(defaultSize || 4) * 5);
+      : InlineTextEditor.getFontSize({ size: defaultSize });
     const scaledFontSize = fontSize * (rect.width / this.canvas.width);
-    const color = existingEvent ? (existingEvent.color || '#0f766e') : defaultColor;
+    const color = existingEvent?.color || defaultColor;
 
     const textarea = document.createElement('textarea');
     textarea.id = 'inline-text-editor';
     textarea.placeholder = 'Type your text…';
-    textarea.value = existingEvent ? (existingEvent.text || '') : '';
+    textarea.value = existingEvent?.text || '';
     textarea.style.left = cssLeft + 'px';
     textarea.style.top = (cssTop - scaledFontSize) + 'px';
     textarea.style.fontSize = scaledFontSize + 'px';
@@ -59,16 +57,9 @@ export class InlineTextEditor {
     textarea.addEventListener('input', autoResize);
     autoResize();
 
-    this.activeEditor = {
-      textarea,
-      point: normalizedPoint,
-      existingEvent
-    };
+    this.activeEditor = { textarea, point: normalizedPoint, existingEvent };
 
-    textarea.addEventListener('blur', () => {
-      setTimeout(() => this.commit(), 0);
-    });
-
+    textarea.addEventListener('blur', () => setTimeout(() => this.commit(), 0));
     textarea.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Escape') {
@@ -83,10 +74,9 @@ export class InlineTextEditor {
   commit() {
     if (!this.activeEditor) return;
     const { textarea, point, existingEvent } = this.activeEditor;
-    const text = (textarea.value || '').trim();
+    const text = textarea.value.trim();
     this.activeEditor = null;
     textarea.remove();
-
     this.onCommit(text, point, existingEvent);
   }
 
@@ -106,6 +96,7 @@ export class InlineTextEditor {
     for (let i = events.length - 1; i >= 0; i--) {
       const ev = events[i];
       if (!ev || ev.kind !== 'text' || !ev.from || !ev.text) continue;
+
       const textX = ev.from.x * this.canvas.width;
       const textY = ev.from.y * this.canvas.height;
       const fontSize = InlineTextEditor.getFontSize(ev);
