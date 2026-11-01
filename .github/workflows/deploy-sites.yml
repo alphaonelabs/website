@@ -70,9 +70,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build GSoC ideas page
+      - name: Build GSoC ideas page and leaderboard
         if: matrix.project == 'gsoc'
-        run: pip install markdown && python scripts/build_ideas.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pip install markdown && python scripts/build_ideas.py
+          python scripts/generate_leaderboard.py
 
       - name: Build
         if: hashFiles(format('{0}/package.json', matrix.project)) != ''
