@@ -309,3 +309,33 @@ class TestApiLogin:
         assert limited_retry_after.isdigit()
         assert int(limited_retry_after) > 0
         assert _parse(limited).get("error") == "Too many requests"
+
+
+class TestApiChangePassword:
+    async def test_valid_change_does_not_crash_on_username(self, monkeypatch):
+        async def _email_sent(*_args, **_kwargs):
+            return True
+
+        monkeypatch.setattr(worker, "send_password_change_email", _email_sent)
+
+        username = "alice"
+        row = MockRow(
+            username=_enc(username),
+            email=_enc("alice@example.com"),
+            password_hash=worker.hash_password("Old-Password-1", username),
+        )
+        env = make_env(db=MockDB([
+            make_stmt(first=row),
+            make_stmt(first=None),
+        ]))
+        token = worker.create_token("user-1", username, "member", JWT)
+        req = json_request(
+            "/api/profile/password",
+            {"current_password": "Old-Password-1", "new_password": "New-Password-2"},
+            headers={"Authorization": "Bearer " + token},
+        )
+
+        resp = await worker.api_change_password(req, env)
+
+        assert resp.status == 200
+        assert "confirmation" in _parse(resp)["message"].lower()

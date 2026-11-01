@@ -3,7 +3,7 @@ Alpha One Labs – Cloudflare Python Worker (Activities Model)
 =========================================================
 API Routes
   POST /api/init              – initialise DB schema
-  POST /api/seed              – seed sample data
+  POST /api/seed              – seed sample data          [admin]
   POST /api/register          – register a new user
   POST /api/login             – authenticate -> signed token
   GET  /api/activities        – list activities (?type=&format=&q=&tag=)
@@ -386,22 +386,40 @@ def _verify_django_password(password: str, stored: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Auth tokens (HMAC-SHA256 signed, stateless JWT-lite)
+# Auth tokens (HMAC-SHA256 signed, stateless JWT-lite with RFC 7519 expiry)
 # ---------------------------------------------------------------------------
 
-def create_token(uid: str, username: str, role: str, secret: str) -> str:
-    payload = base64.b64encode(
-        json.dumps({"id": uid, "username": username, "role": role}).encode()
+DEFAULT_JWT_TTL_SECONDS = 60 * 60 * 24 * 7  # 7 days
+
+
+def create_token(
+    uid: str,
+    username: str,
+    role: str,
+    secret: str,
+    ttl_seconds: int = DEFAULT_JWT_TTL_SECONDS,
+) -> str:
+    """Encode user identity with iat and exp claims into a signed token."""
+    now = int(time.time())
+    payload = {
+        "id": uid,
+        "username": username,
+        "role": role,
+        "iat": now,
+        "exp": now + int(ttl_seconds),
+    }
+    encoded_payload = base64.b64encode(
+        json.dumps(payload, separators=(",", ":")).encode("utf-8")
     ).decode("ascii")
     sig = _hmac.new(
-        secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+        secret.encode("utf-8"), encoded_payload.encode("utf-8"), hashlib.sha256
     ).hexdigest()
-    return f"{payload}.{sig}"
+    return f"{encoded_payload}.{sig}"
 
 
-def verify_token(raw: str, secret: str):
-    """Return decoded payload dict or None if invalid/missing."""
-    if not raw:
+def verify_token(raw: str, secret: str, leeway_seconds: int = 60) -> Optional[Dict[str, Any]]:
+    """Return decoded payload dict or None if invalid, missing, or expired."""
+    if not raw or not secret:
         return None
     try:
         token = raw.removeprefix("Bearer ").strip()
@@ -409,13 +427,35 @@ def verify_token(raw: str, secret: str):
         if dot == -1:
             return None
         p, sig = token[:dot], token[dot + 1:]
-        exp = _hmac.new(
+        expected_sig = _hmac.new(
             secret.encode("utf-8"), p.encode("utf-8"), hashlib.sha256
         ).hexdigest()
-        if not _hmac.compare_digest(sig, exp):
+        if not _hmac.compare_digest(sig, expected_sig):
             return None
         padding = (4 - len(p) % 4) % 4
-        return json.loads(base64.b64decode(p + "=" * padding).decode("utf-8"))
+        payload = json.loads(base64.b64decode(p + "=" * padding).decode("utf-8"))
+        if not isinstance(payload, dict):
+            return None
+
+        # Require exp claim (RFC 7519 §4.1.4)
+        if "exp" not in payload:
+            return None
+        token_exp = payload["exp"]
+        if not isinstance(token_exp, (int, float)):
+            return None
+        now = int(time.time())
+        if now > int(token_exp) + max(0, int(leeway_seconds)):
+            return None
+
+        # Validate iat claim if present (RFC 7519 §4.1.6)
+        if "iat" in payload:
+            token_iat = payload["iat"]
+            if not isinstance(token_iat, (int, float)):
+                return None
+            if int(token_iat) - max(0, int(leeway_seconds)) > now:
+                return None
+
+        return payload
     except Exception:
         return None
 
@@ -1113,6 +1153,32 @@ _DDL = [
     "CREATE INDEX IF NOT EXISTS idx_message_requests_to_user ON message_requests(to_user_id, status)",
     "CREATE INDEX IF NOT EXISTS idx_message_requests_from_user ON message_requests(from_user_id)",
     "CREATE INDEX IF NOT EXISTS idx_message_requests_activity ON message_requests(activity_id)",
+    # Quizzes
+    """CREATE TABLE IF NOT EXISTS quizzes (
+        id                 TEXT PRIMARY KEY,
+        activity_id        TEXT NOT NULL,
+        title              TEXT NOT NULL,
+        description        TEXT,
+        time_limit_minutes INTEGER DEFAULT 0,
+        passing_score      INTEGER DEFAULT 70,
+        created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at         TEXT,
+        FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_quizzes_activity ON quizzes(activity_id)",
+    # Quiz Questions
+    """CREATE TABLE IF NOT EXISTS quiz_questions (
+        id                       TEXT PRIMARY KEY,
+        quiz_id                  TEXT NOT NULL,
+        prompt                   TEXT NOT NULL,
+        question_type            TEXT NOT NULL DEFAULT 'multiple_choice',
+        options_json             TEXT,
+        correct_answer_encrypted TEXT,
+        display_order            INTEGER NOT NULL DEFAULT 0,
+        created_at               TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
 ]
 
 
@@ -1797,9 +1863,12 @@ async def api_login(req, env):
         return err("Invalid username or password", 401)
 
     if not row.email_verified:
-        return err(
-            "Please verify your email before signing in. "
-            "Check your inbox for the verification link.",
+        return json_resp(
+            {
+                "error": "Please verify your email before signing in. "
+                         "Check your inbox for the verification link.",
+                "code": "email_not_verified",
+            },
             403,
         )
 
@@ -1807,7 +1876,12 @@ async def api_login(req, env):
     real_name = await decrypt_aes(name_enc, enc)
     if not real_role or real_role == "[decryption error]":
         return err("Account data corrupted — please contact support", 500)
-    token     = create_token(user_id, stored_username, real_role, env.JWT_SECRET)
+    ttl_val = getattr(env, "JWT_TTL_SECONDS", None)
+    try:
+        ttl_seconds = int(ttl_val) if ttl_val is not None else DEFAULT_JWT_TTL_SECONDS
+    except (ValueError, TypeError):
+        ttl_seconds = DEFAULT_JWT_TTL_SECONDS
+    token = create_token(user_id, stored_username, real_role, env.JWT_SECRET, ttl_seconds=ttl_seconds)
     profile_row = await env.DB.prepare(
         "SELECT avatar_url FROM user_profiles WHERE user_id=?"
     ).bind(user_id).first()
@@ -2236,8 +2310,8 @@ async def api_create_activity(req, env):
 
     enc    = env.ENCRYPTION_KEY
     act_id = new_id()
-    slug   = await _unique_activity_slug(env, title, act_id)
     try:
+        slug   = await _unique_activity_slug(env, title, act_id)
         await env.DB.prepare(
             "INSERT INTO activities "
             "(id,title,description,type,format,schedule_type,host_id,slug)"
@@ -2489,6 +2563,130 @@ async def api_get_activity(activity_ref: str, req, env):
             "id":     enrollment.id,
         } if enrollment else None,
     })
+
+_ACTIVITY_TYPES = ("course", "meetup", "workshop", "seminar", "club", "event", "video", "study_group", "other")
+_ACTIVITY_FORMATS = ("live", "self_paced", "hybrid")
+_ACTIVITY_SCHEDULES = ("one_time", "multi_session", "recurring", "ongoing")
+
+
+async def api_update_activity(activity_ref: str, req, env):
+    """PATCH /api/activities/:id — edit an activity the caller hosts (only the fields sent are changed)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    try:
+        act = await env.DB.prepare(
+            "SELECT id,host_id,slug FROM activities WHERE id=? OR slug=? LIMIT 1"
+        ).bind(activity_ref, activity_ref).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_update_activity.lookup")
+        return err("Could not update activity — please try again", 500)
+
+    if not act:
+        return err("Activity not found", 404)
+    if act.host_id != user["id"]:
+        return err("Only the host can edit this activity", 403)
+
+    enc = env.ENCRYPTION_KEY
+    sets = []
+    binds = []
+
+    if "title" in body:
+        title = _legacy_text(body.get("title")).strip()
+        if not title:
+            return err("title cannot be empty")
+        if len(title) > 200:
+            return err("title must be at most 200 characters")
+        sets.append("title=?")
+        binds.append(title)
+
+    for field, limit in (("description", 5000), ("learning_objectives", 2000), ("prerequisites", 2000)):
+        if field in body:
+            value = _legacy_text(body.get(field)).strip()
+            if len(value) > limit:
+                return err(f"{field} must be at most {limit} characters")
+            sets.append(f"{field}=?")
+            binds.append(await encrypt_aes(value, enc) if value else "")
+
+    for field, allowed in (
+        ("type", _ACTIVITY_TYPES),
+        ("format", _ACTIVITY_FORMATS),
+        ("schedule_type", _ACTIVITY_SCHEDULES),
+    ):
+        if field in body:
+            value = _legacy_text(body.get(field)).strip()
+            if value not in allowed:
+                return err(f"Invalid {field}")
+            sets.append(f"{field}=?")
+            binds.append(value)
+
+    if "level" in body:
+        level = _legacy_text(body.get("level")).strip()
+        if len(level) > 50:
+            return err("level must be at most 50 characters")
+        sets.append("level=?")
+        binds.append(level)
+
+    tag_ids = None
+    if "tags" in body:
+        raw_tags = body.get("tags")
+        if not isinstance(raw_tags, list):
+            return err("tags must be a list")
+        names = []
+        for raw in raw_tags:
+            name = _legacy_text(raw).strip()
+            if not name:
+                continue
+            if len(name) > 50:
+                return err("Each tag must be at most 50 characters")
+            if name not in names:
+                names.append(name)
+        if len(names) > 10:
+            return err("An activity can have at most 10 tags")
+        try:
+            tag_ids = []
+            for name in names:
+                await env.DB.prepare(
+                    "INSERT OR IGNORE INTO tags (id,name) VALUES (?,?)"
+                ).bind(new_id(), name).run()
+                row = await env.DB.prepare("SELECT id FROM tags WHERE name=?").bind(name).first()
+                if row:
+                    tag_ids.append(row.id)
+        except Exception as exc:
+            await capture_exception(exc, req, env, "api_update_activity.tags")
+            return err("Could not update activity — please try again", 500)
+
+    if not sets and tag_ids is None:
+        return err("No editable fields provided")
+
+    stmts = []
+    if sets:
+        stmts.append(
+            env.DB.prepare(
+                "UPDATE activities SET " + ", ".join(sets) + " WHERE id=? AND host_id=?"
+            ).bind(*binds, act.id, user["id"])
+        )
+    if tag_ids is not None:
+        stmts.append(env.DB.prepare("DELETE FROM activity_tags WHERE activity_id=?").bind(act.id))
+        for tag_id in tag_ids:
+            stmts.append(
+                env.DB.prepare(
+                    "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
+                ).bind(act.id, tag_id)
+            )
+
+    try:
+        await env.DB.batch(stmts)  # one transaction: the edit and the tag changes apply together
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_update_activity.save")
+        return err("Could not update activity — please try again", 500)
+
+    return ok({"id": act.id, "slug": getattr(act, "slug", "") or ""}, "Activity updated")
 
 
 # ---------------------------------------------------------------------------
@@ -3044,30 +3242,40 @@ async def api_join(req, env):
         return bad_resp
 
     act_id = body.get("activity_id")
-    role = (body.get("role") or "participant").strip()
 
     if not act_id:
         return err("activity_id is required")
 
-    if role not in ("participant", "instructor", "organizer"):
-        role = "participant"
-
     # 1️⃣ Get activity
     act = await env.DB.prepare(
-        "SELECT id, title, host_id FROM activities WHERE id=?"
+        "SELECT id, title, host_id, status, price_cents, invite_only, max_students"
+        " FROM activities WHERE id=?"
     ).bind(act_id).first()
 
     if not act:
         return err("Activity not found", 404)
 
-    # ❌ REMOVE existing check completely
+    status = (getattr(act, "status", None) or "published").strip()
+    if status != "published":
+        return err("This activity is not open to join")
+    if int(getattr(act, "price_cents", 0) or 0) > 0:
+        return err("This activity requires checkout")
+    if int(getattr(act, "invite_only", 0) or 0):
+        return err("This activity is invite-only")
+    max_students = int(getattr(act, "max_students", 0) or 0)
+    if max_students > 0:
+        count_row = await env.DB.prepare(
+            "SELECT COUNT(*) AS cnt FROM enrollments WHERE activity_id=? AND status='active'"
+        ).bind(act_id).first()
+        if int(getattr(count_row, "cnt", 0) or 0) >= max_students:
+            return err("This activity is full")
 
     # 2️⃣ Insert enrollment
     enr_id = new_id()
     try:
         insert_res = await env.DB.prepare(
             "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role) VALUES (?,?,?,?)"
-        ).bind(enr_id, act_id, user["id"], role).run()
+        ).bind(enr_id, act_id, user["id"], "participant").run()
     except Exception as e:
         await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
@@ -3291,11 +3499,6 @@ async def api_change_password(req, env):
 
     if not current_password or not new_password:
         return err("Current password and new password are required")
-    password_error = validate_password_strength(new_password, username)
-    if password_error:
-        return err(password_error)
-    if new_password == current_password:
-        return err("New password must be different from your current password")
 
     enc = env.ENCRYPTION_KEY
     try:
@@ -3314,6 +3517,12 @@ async def api_change_password(req, env):
     if (not username or username == "[decryption error]"
             or not email or email == "[decryption error]"):
         return err("Could not change password — please try again", 500)
+
+    password_error = validate_password_strength(new_password, username)
+    if password_error:
+        return err(password_error)
+    if new_password == current_password:
+        return err("New password must be different from your current password")
 
     if not verify_password(current_password, row.password_hash, username):
         return err("Current password is incorrect", 400)
@@ -4121,6 +4330,463 @@ async def api_survey_results(req, env, survey_id: str):
     return json_resp(payload)
 
 
+# ---------------------------------------------------------------------------
+# Quiz Data Model & Authoring API
+# ---------------------------------------------------------------------------
+
+async def _quiz_db(env, fn):
+    """Run quiz DB operation, retrying after init_db if missing tables."""
+    try:
+        return await fn()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            await init_db(env)
+            return await fn()
+        raise
+
+
+async def _require_activity_host(env, user, activity_id: str):
+    """
+    Verify caller is authenticated and is host of activity (or admin).
+    Returns (act_row, None) or (None, error_Response).
+    """
+    if not user:
+        return None, err("Authentication required", 401)
+    act = await env.DB.prepare(
+        "SELECT id, title, host_id FROM activities WHERE id=? OR slug=? LIMIT 1"
+    ).bind(activity_id, activity_id).first()
+    if not act:
+        return None, err("Activity not found", 404)
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", "")
+    host_id = getattr(act, "host_id", None)
+    if host_id != user_id and user_role != "admin":
+        return None, err("Forbidden: Only the activity host can perform this action", 403)
+    return act, None
+
+
+async def api_create_quiz(req, env, activity_id: str):
+    """POST /api/activities/:id/quizzes — Create a quiz for an activity (host only)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    act, error_resp = await _require_activity_host(env, user, activity_id)
+    if error_resp:
+        return error_resp
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    title = str(body.get("title") or "").strip()[:200]
+    if not title:
+        return err("Quiz title is required", 400)
+
+    description = str(body.get("description") or "").strip()[:2000]
+    try:
+        time_limit_minutes = int(body.get("time_limit_minutes") or 0)
+    except (ValueError, TypeError):
+        return err("time_limit_minutes must be an integer", 400)
+    if time_limit_minutes < 0:
+        return err("time_limit_minutes must be non-negative", 400)
+
+    try:
+        raw_passing = body.get("passing_score")
+        passing_score = int(70 if raw_passing is None else raw_passing)
+    except (ValueError, TypeError):
+        return err("passing_score must be an integer", 400)
+    if not (0 <= passing_score <= 100):
+        return err("passing_score must be between 0 and 100", 400)
+
+    quiz_id = new_id()
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        await env.DB.prepare(
+            "INSERT INTO quizzes (id, activity_id, title, description, time_limit_minutes, passing_score, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+        ).bind(quiz_id, act.id, title, description, time_limit_minutes, passing_score).run()
+
+        raw_questions = body.get("questions")
+        created_questions = []
+        if isinstance(raw_questions, list):
+            for idx, q in enumerate(raw_questions):
+                if not isinstance(q, dict):
+                    continue
+                prompt = str(q.get("prompt") or "").strip()
+                if not prompt:
+                    continue
+                q_type = str(q.get("question_type") or "multiple_choice").strip()
+                opts = q.get("options") or q.get("options_json")
+                if isinstance(opts, list):
+                    options_json = json.dumps(opts)
+                elif isinstance(opts, str):
+                    options_json = opts
+                else:
+                    options_json = "[]"
+
+                correct_ans = q.get("correct_answer")
+                if correct_ans is not None:
+                    enc_ans = await encrypt_aes(str(correct_ans).strip(), enc)
+                elif q.get("correct_answer_encrypted"):
+                    enc_ans = str(q["correct_answer_encrypted"]).strip()
+                else:
+                    enc_ans = ""
+
+                qid = new_id()
+                order = int(q.get("display_order") if q.get("display_order") is not None else idx)
+                await env.DB.prepare(
+                    "INSERT INTO quiz_questions (id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))"
+                ).bind(qid, quiz_id, prompt, q_type, options_json, enc_ans, order).run()
+                created_questions.append({
+                    "id": qid,
+                    "quiz_id": quiz_id,
+                    "prompt": prompt,
+                    "question_type": q_type,
+                    "options": json.loads(options_json) if options_json else [],
+                    "display_order": order,
+                })
+
+        return {
+            "id": quiz_id,
+            "activity_id": act.id,
+            "title": title,
+            "description": description,
+            "time_limit_minutes": time_limit_minutes,
+            "passing_score": passing_score,
+            "questions": created_questions,
+        }
+
+    quiz_data = await _quiz_db(env, run)
+    return ok(quiz_data, "Quiz created")
+
+
+async def api_list_activity_quizzes(req, env, activity_id: str):
+    """GET /api/activities/:id/quizzes — List all quizzes for an activity."""
+    act = await env.DB.prepare(
+        "SELECT id, title, host_id FROM activities WHERE id=? OR slug=? LIMIT 1"
+    ).bind(activity_id, activity_id).first()
+    if not act:
+        return err("Activity not found", 404)
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+    host_id = getattr(act, "host_id", None)
+    is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+            "(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS question_count "
+            "FROM quizzes q "
+            "WHERE q.activity_id = ? "
+            "ORDER BY q.created_at DESC"
+        ).bind(act.id).all()
+        quizzes = []
+        for r in (res.results or []):
+            quizzes.append({
+                "id": r.id,
+                "activity_id": r.activity_id,
+                "title": r.title,
+                "description": r.description or "",
+                "time_limit_minutes": int(r.time_limit_minutes or 0),
+                "passing_score": int(r.passing_score or 70),
+                "question_count": int(r.question_count or 0),
+                "created_at": r.created_at,
+                "updated_at": getattr(r, "updated_at", None),
+                "is_host": is_host,
+            })
+        return quizzes
+
+    quizzes = await _quiz_db(env, run)
+    return json_resp({"activity_id": act.id, "quizzes": quizzes})
+
+
+async def api_add_quiz_questions(req, env, quiz_id: str):
+    """POST /api/quizzes/:id/questions — Add question(s) to a quiz (host only)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    row = await env.DB.prepare(
+        "SELECT q.id, q.activity_id, a.host_id "
+        "FROM quizzes q "
+        "JOIN activities a ON a.id = q.activity_id "
+        "WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", "")
+    host_id = getattr(row, "host_id", None)
+    if host_id != user_id and user_role != "admin":
+        return err("Forbidden: Only the activity host can add questions", 403)
+
+    try:
+        text = await req.text()
+        raw = json.loads(text)
+    except Exception:
+        return err("Invalid JSON body", 400)
+
+    if isinstance(raw, dict):
+        if "questions" in raw and isinstance(raw["questions"], list):
+            items = raw["questions"]
+        else:
+            items = [raw]
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        return err("JSON body must be an object or list", 400)
+
+    if not items:
+        return err("At least one question is required", 400)
+
+    # Validate all questions
+    for idx, q in enumerate(items):
+        if not isinstance(q, dict) or not str(q.get("prompt") or "").strip():
+            return err(f"Question prompt is required for question {idx + 1}", 400)
+
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        created_questions = []
+        for idx, q in enumerate(items):
+            prompt = str(q.get("prompt") or "").strip()
+            q_type = str(q.get("question_type") or "multiple_choice").strip()
+            opts = q.get("options") or q.get("options_json")
+            if isinstance(opts, list):
+                options_json = json.dumps(opts)
+            elif isinstance(opts, str):
+                options_json = opts
+            else:
+                options_json = "[]"
+
+            correct_ans = q.get("correct_answer")
+            if correct_ans is not None:
+                enc_ans = await encrypt_aes(str(correct_ans).strip(), enc)
+            elif q.get("correct_answer_encrypted"):
+                enc_ans = str(q["correct_answer_encrypted"]).strip()
+            else:
+                enc_ans = ""
+
+            qid = new_id()
+            order = int(q.get("display_order") if q.get("display_order") is not None else idx)
+            await env.DB.prepare(
+                "INSERT INTO quiz_questions (id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))"
+            ).bind(qid, quiz_id, prompt, q_type, options_json, enc_ans, order).run()
+
+            created_questions.append({
+                "id": qid,
+                "quiz_id": quiz_id,
+                "prompt": prompt,
+                "question_type": q_type,
+                "options": json.loads(options_json) if options_json else [],
+                "display_order": order,
+            })
+        return created_questions
+
+    result = await _quiz_db(env, run)
+    return ok({"quiz_id": quiz_id, "questions": result}, "Questions added")
+
+
+async def api_get_quiz_questions(req, env, quiz_id: str):
+    """GET /api/quizzes/:id/questions — Retrieve questions for a quiz."""
+    row = await env.DB.prepare(
+        "SELECT q.id, q.activity_id, a.host_id "
+        "FROM quizzes q "
+        "JOIN activities a ON a.id = q.activity_id "
+        "WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+    host_id = getattr(row, "host_id", None)
+    is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at "
+            "FROM quiz_questions "
+            "WHERE quiz_id = ? "
+            "ORDER BY display_order ASC, created_at ASC"
+        ).bind(quiz_id).all()
+
+        questions = []
+        for r in (res.results or []):
+            try:
+                opts = json.loads(r.options_json) if r.options_json else []
+            except Exception:
+                opts = []
+            item = {
+                "id": r.id,
+                "quiz_id": r.quiz_id,
+                "prompt": r.prompt,
+                "question_type": r.question_type,
+                "options": opts,
+                "display_order": int(r.display_order or 0),
+                "created_at": r.created_at,
+            }
+            if is_host:
+                ans = await decrypt_aes(r.correct_answer_encrypted or "", enc) if r.correct_answer_encrypted else ""
+                item["correct_answer"] = ans
+                item["correct_answer_encrypted"] = r.correct_answer_encrypted or ""
+            questions.append(item)
+        return questions
+
+    questions = await _quiz_db(env, run)
+    return json_resp({"quiz_id": quiz_id, "questions": questions})
+
+
+async def api_get_quiz(req, env, quiz_id: str):
+    """GET /api/quizzes/:id — Retrieve quiz details with questions."""
+    row = await env.DB.prepare(
+        "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+        "a.title AS activity_title, a.host_id "
+        "FROM quizzes q "
+        "JOIN activities a ON a.id = q.activity_id "
+        "WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+    host_id = getattr(row, "host_id", None)
+    is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at "
+            "FROM quiz_questions "
+            "WHERE quiz_id = ? "
+            "ORDER BY display_order ASC, created_at ASC"
+        ).bind(quiz_id).all()
+
+        questions = []
+        for r in (res.results or []):
+            try:
+                opts = json.loads(r.options_json) if r.options_json else []
+            except Exception:
+                opts = []
+            item = {
+                "id": r.id,
+                "quiz_id": r.quiz_id,
+                "prompt": r.prompt,
+                "question_type": r.question_type,
+                "options": opts,
+                "display_order": int(r.display_order or 0),
+                "created_at": r.created_at,
+            }
+            if is_host:
+                ans = await decrypt_aes(r.correct_answer_encrypted or "", enc) if r.correct_answer_encrypted else ""
+                item["correct_answer"] = ans
+                item["correct_answer_encrypted"] = r.correct_answer_encrypted or ""
+            questions.append(item)
+
+        return {
+            "id": row.id,
+            "activity_id": row.activity_id,
+            "activity_title": getattr(row, "activity_title", "") or "",
+            "title": row.title,
+            "description": row.description or "",
+            "time_limit_minutes": int(row.time_limit_minutes or 0),
+            "passing_score": int(row.passing_score or 70),
+            "created_at": row.created_at,
+            "updated_at": getattr(row, "updated_at", None),
+            "is_host": is_host,
+            "questions": questions,
+        }
+
+    quiz_data = await _quiz_db(env, run)
+    return json_resp({"quiz": quiz_data})
+
+
+async def api_list_quizzes(req, env):
+    """GET /api/quizzes — List all quizzes, optionally filter by ?activity_id=..."""
+    parsed = urlparse(req.url)
+    qs = parse_qs(parsed.query)
+    activity_filter = qs.get("activity_id", [None])[0]
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+
+    async def run():
+        if activity_filter:
+            sql = (
+                "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+                "a.title AS activity_title, a.host_id, "
+                "(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS question_count "
+                "FROM quizzes q "
+                "JOIN activities a ON a.id = q.activity_id "
+                "WHERE q.activity_id = ? "
+                "ORDER BY q.created_at DESC LIMIT 250"
+            )
+            res = await env.DB.prepare(sql).bind(activity_filter).all()
+        else:
+            sql = (
+                "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+                "a.title AS activity_title, a.host_id, "
+                "(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS question_count "
+                "FROM quizzes q "
+                "JOIN activities a ON a.id = q.activity_id "
+                "ORDER BY q.created_at DESC LIMIT 250"
+            )
+            res = await env.DB.prepare(sql).all()
+
+        quizzes = []
+        for r in (res.results or []):
+            host_id = getattr(r, "host_id", None)
+            quizzes.append({
+                "id": r.id,
+                "activity_id": r.activity_id,
+                "activity_title": getattr(r, "activity_title", "") or "",
+                "title": r.title,
+                "description": r.description or "",
+                "time_limit_minutes": int(r.time_limit_minutes or 0),
+                "passing_score": int(r.passing_score or 70),
+                "question_count": int(r.question_count or 0),
+                "created_at": r.created_at,
+                "updated_at": getattr(r, "updated_at", None),
+                "is_host": bool(user and (user_id == host_id or user.get("role") == "admin")),
+            })
+        return quizzes
+
+    quizzes = await _quiz_db(env, run)
+    return json_resp({"quizzes": quizzes})
+
+
+async def api_delete_quiz(req, env, quiz_id: str):
+    """DELETE /api/quizzes/:id — Delete a quiz (host only)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    row = await env.DB.prepare(
+        "SELECT q.id, a.host_id FROM quizzes q JOIN activities a ON a.id = q.activity_id WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", "")
+    host_id = getattr(row, "host_id", None)
+    if host_id != user_id and user_role != "admin":
+        return err("Forbidden: Only the activity host can delete this quiz", 403)
+
+    async def run():
+        await env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id = ?").bind(quiz_id).run()
+        await env.DB.prepare("DELETE FROM quizzes WHERE id = ?").bind(quiz_id).run()
+        return True
+
+    await _quiz_db(env, run)
+    return ok(None, "Quiz deleted")
+
+
 LEGACY_FEATURE_GROUPS = {
     "community": {
         "title": "Community",
@@ -4289,6 +4955,7 @@ BLOG_RECORD_MODELS = {"web.BlogPost"}
 
 STATIC_CLEAN_ROUTES = {
     "/activity": "/activity.html",
+    "/edit-activity": "/edit-activity.html",
     "/classes-map": "/classes-map.html",
     "/requests": "/requests.html",
     "/waiting-rooms": "/waiting-rooms.html",
@@ -4317,6 +4984,7 @@ STATIC_CLEAN_ROUTES = {
     "/contributors": "/contributors.html",
     "/gsoc": "/gsoc.html",
     "/about": "/about.html",
+    "/affiliations": "/affiliations.html",
     "/terms": "/terms.html",
     "/privacy": "/privacy.html",
     "/cookies": "/cookies.html",
@@ -4434,6 +5102,19 @@ async def render_404(req, env, requested_path: str = ""):
     if content:
         try:
             content = await _render_template_source(content, env, req, {"requested_path": requested})
+            if '<div id="site-navbar"></div>' in content or '<div id="site-footer"></div>' in content:
+                navbar = await _load_static_text(env, "partials/navbar.html")
+                footer = await _load_static_text(env, "partials/footer.html")
+                if navbar:
+                    content = content.replace(
+                        '<div id="site-navbar"></div>',
+                        '<div id="site-navbar" data-inline="true">' + navbar + '</div>',
+                    )
+                if footer:
+                    content = content.replace(
+                        '<div id="site-footer"></div>',
+                        '<div id="site-footer" data-inline="true">' + footer + '</div>',
+                    )
         except Exception as exc:
             await capture_exception(exc, req, env, "render_404.template")
             content = None
@@ -8056,6 +8737,8 @@ async def _dispatch(request, env):
                 return err("Database init failed — check D1 binding", 500)
 
         if path == "/api/seed" and method == "POST":
+            if not _is_basic_auth_valid(request, env):
+                return _unauthorized_basic()
             try:
                 await init_db(env)
                 await seed_db(env, env.ENCRYPTION_KEY)
@@ -8099,9 +8782,18 @@ async def _dispatch(request, env):
         if m_act_cal and method == "GET":
             return await api_activity_calendar_ics(m_act_cal.group(1), request, env)
 
+        m_act_quizzes = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/quizzes", path)
+        if m_act_quizzes and method == "POST":
+            return await api_create_quiz(request, env, m_act_quizzes.group(1))
+        if m_act_quizzes and method == "GET":
+            return await api_list_activity_quizzes(request, env, m_act_quizzes.group(1))
+
         m = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)", path)
         if m and method == "GET":
             return await api_get_activity(m.group(1), request, env)
+
+        if m and method == "PATCH":
+            return await api_update_activity(m.group(1), request, env)
 
         if path == "/api/join" and method == "POST":
             return await api_join(request, env)
@@ -8167,6 +8859,19 @@ async def _dispatch(request, env):
             return await api_get_survey(request, env, m_survey_item.group(1))
         if m_survey_item and method == "DELETE":
             return await api_delete_survey(request, env, m_survey_item.group(1))
+
+        if path == "/api/quizzes" and method == "GET":
+            return await api_list_quizzes(request, env)
+        m_quiz_questions = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)/questions", path)
+        if m_quiz_questions and method == "POST":
+            return await api_add_quiz_questions(request, env, m_quiz_questions.group(1))
+        if m_quiz_questions and method == "GET":
+            return await api_get_quiz_questions(request, env, m_quiz_questions.group(1))
+        m_quiz_item = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)", path)
+        if m_quiz_item and method == "GET":
+            return await api_get_quiz(request, env, m_quiz_item.group(1))
+        if m_quiz_item and method == "DELETE":
+            return await api_delete_quiz(request, env, m_quiz_item.group(1))
 
         if path == "/api/cart" and method == "GET":
             return await api_get_cart(request, env)
@@ -8245,6 +8950,11 @@ async def _dispatch(request, env):
             return await api_mark_notification_read(request, env, m_notif_read.group(1))
         if path == "/api/notifications/read-all" and method == "POST":
             return await api_mark_all_read(request, env)
+        if path == "/api/notifications" and method == "DELETE":
+            return await api_delete_all_notifications(request, env)
+        m_notif_del = re.fullmatch(r"/api/notifications/([A-Za-z0-9_-]+)", path)
+        if m_notif_del and method == "DELETE":
+            return await api_delete_notification(request, env, m_notif_del.group(1))
 
         # Notification Preferences
         if path == "/api/notification-preferences" and method == "GET":
@@ -8603,6 +9313,38 @@ async def api_mark_all_read(req, env):
     ).bind(user["id"]).run()
 
     return ok(msg="All notifications marked as read")
+
+
+async def api_delete_notification(req, env, notification_id: str):
+    """DELETE /api/notifications/:id — delete one of the user's notifications."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    notif = await env.DB.prepare(
+        "SELECT id FROM notifications WHERE id = ? AND user_id = ?"
+    ).bind(notification_id, user["id"]).first()
+    if not notif:
+        return err("Notification not found", 404)
+
+    await env.DB.prepare(
+        "DELETE FROM notifications WHERE id = ? AND user_id = ?"
+    ).bind(notification_id, user["id"]).run()
+
+    return ok(msg="Notification deleted")
+
+
+async def api_delete_all_notifications(req, env):
+    """DELETE /api/notifications — delete all of the user's notifications."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    await env.DB.prepare(
+        "DELETE FROM notifications WHERE user_id = ?"
+    ).bind(user["id"]).run()
+
+    return ok(msg="All notifications deleted")
 
 
 async def api_get_notification_preferences(req, env):

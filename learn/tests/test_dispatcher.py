@@ -207,6 +207,29 @@ class TestStaticFileServing:
         r = await worker._dispatch(req, env)
         assert r.status == 404
 
+    async def test_affiliations_clean_route_serves_page(self):
+        env = self._env("<html>affiliations rendered</html>")
+        req = MockRequest(method="GET", url="http://localhost/affiliations")
+        r = await worker._dispatch(req, env)
+        assert r.status == 200
+
+    async def test_missing_file_renders_404_template_without_raw_tags(self):
+        from unittest.mock import MagicMock
+        env = make_env()
+        async def mock_get(key, *args, **kwargs):
+            if key == "404.html":
+                return "{% extends 'base.html' %}{% block content %}Path: {{ requested_path }}{% endblock %}"
+            return None
+        sc = MagicMock()
+        sc.get = AsyncMock(side_effect=mock_get)
+        setattr(env, "__STATIC_CONTENT", sc)
+
+        req = MockRequest(method="GET", url="http://localhost/nonexistent-page")
+        r = await worker._dispatch(req, env)
+        assert r.status == 404
+        assert "{%" not in r.body
+        assert "{{" not in r.body
+
     async def test_html_content_type(self):
         env = self._env("<html>page</html>")
         req = MockRequest(method="GET", url="http://localhost/dashboard")
@@ -257,6 +280,46 @@ class TestInitAndSeedRouting:
         req = MockRequest(method="GET", url="http://localhost/api/init")
         r = await worker._dispatch(req, env)
         assert r.status == 404
+
+    async def test_post_seed_without_auth_returns_401(self):
+        env = make_env()
+        req = MockRequest(method="POST", url="http://localhost/api/seed")
+        r = await worker._dispatch(req, env)
+        assert r.status == 401
+        assert env.DB._idx == 0
+
+    async def test_post_seed_wrong_basic_auth_does_not_seed(self):
+        env = make_env()
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/seed",
+            headers={"Authorization": basic_auth_header("admin", "wrong")},
+        )
+        r = await worker._dispatch(req, env)
+        assert r.status == 401
+        assert env.DB._idx == 0
+
+    async def test_post_seed_with_admin_auth_seeds(self, monkeypatch):
+        seeded = {}
+
+        async def fake_init(_env):
+            seeded["init"] = True
+
+        async def fake_seed(_env, key):
+            seeded["key"] = key
+
+        monkeypatch.setattr(worker, "init_db", fake_init)
+        monkeypatch.setattr(worker, "seed_db", fake_seed)
+        env = make_env()
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/seed",
+            headers={"Authorization": basic_auth_header("admin", "adminpass")},
+        )
+        r = await worker._dispatch(req, env)
+        assert r.status == 200
+        assert _parse(r)["success"] is True
+        assert seeded == {"init": True, "key": "test-encryption-key"}
 
 # Study groups redirection
 class TestStudyGroupRedirection:

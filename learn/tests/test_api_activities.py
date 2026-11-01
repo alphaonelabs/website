@@ -8,7 +8,10 @@ Tests for activities API handlers:
 import base64
 import json
 import pytest
-from tests.helpers import load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, json_request
+from tests.helpers import (
+    load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, json_request,
+    make_init_db_stmts,
+)
 
 worker = load_worker()
 
@@ -165,13 +168,11 @@ class TestApiListActivities:
 
         failing_stmt = make_stmt()
         failing_stmt.all.side_effect = Exception("D1_ERROR: no such table: activities: SQLITE_ERROR")
-        ddl_count = len(worker._DDL)
+        init_db_stmts = await make_init_db_stmts(worker)
 
         env = make_env(db=MockDB(
             [failing_stmt]                           # first list query fails
-            + [make_stmt() for _ in range(ddl_count)]  # init_db DDL statements
-            + [make_stmt(), make_stmt()]             # init_db: email_verified ALTER + UPDATE
-            + [make_stmt() for _ in range(8)]        # init_db: profile-fields ALTERs (0004)
+            + init_db_stmts                          # init_db schema + migration statements
             + [
                 make_stmt(all_results=[row]),        # retried list query succeeds
                 make_stmt(all_results=[]),           # tags query
@@ -245,9 +246,10 @@ class TestApiCreateActivity:
 
     async def test_tags_are_created(self):
         token = _make_host_token()
-        # Stmts: INSERT activity, tag lookup (not found), INSERT tag, INSERT activity_tag
+        # Stmts: slug lookup, INSERT activity, tag lookup (not found), INSERT tag, INSERT activity_tag
         tag_stmt = make_stmt(first=None)  # tag not found
         env = make_env(db=MockDB([
+            make_stmt(),   # slug lookup
             make_stmt(),   # INSERT activity
             tag_stmt,      # SELECT tag WHERE name=?
             make_stmt(),   # INSERT tag
@@ -262,9 +264,10 @@ class TestApiCreateActivity:
         token = _make_host_token()
         existing_tag = MockRow(id="tag-existing")
         env = make_env(db=MockDB([
-            make_stmt(),               # INSERT activity
+            make_stmt(),                    # slug lookup
+            make_stmt(),                    # INSERT activity
             make_stmt(first=existing_tag),  # SELECT tag WHERE name=? → found
-            make_stmt(),               # INSERT activity_tags
+            make_stmt(),                    # INSERT activity_tags
         ]))
         r = await worker.api_create_activity(
             self._req({"title": "T", "tags": ["Python"]}, token), env
@@ -275,6 +278,19 @@ class TestApiCreateActivity:
         token = _make_host_token()
         stmt = make_stmt()
         stmt.bind.return_value.run.side_effect = Exception("DB error")
+        env = make_env(db=MockDB([
+            make_stmt(),  # slug lookup
+            stmt,         # INSERT activities fails
+        ]))
+        r = await worker.api_create_activity(
+            self._req({"title": "Course"}, token), env
+        )
+        assert r.status == 500
+
+    async def test_slug_db_error_returns_500(self):
+        token = _make_host_token()
+        stmt = make_stmt()
+        stmt.bind.return_value.first.side_effect = Exception("DB error during slug lookup")
         env = make_env(db=MockDB([stmt]))
         r = await worker.api_create_activity(
             self._req({"title": "Course"}, token), env

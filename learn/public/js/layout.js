@@ -385,6 +385,33 @@ function applyUnreadBadgeCount(count) {
 
 window.applyUnreadBadgeCount = applyUnreadBadgeCount;
 
+function setActiveNavLink() {
+const currentPath = window.location.pathname;
+const currentKind = new URLSearchParams(window.location.search).get('kind');
+
+const links = document.querySelectorAll('.nav-link[href]');
+
+links.forEach((link) => {
+    const target = new URL(link.href);
+    const targetPath = target.pathname;
+    const targetKind = target.searchParams.get('kind');
+
+    let isActive = targetPath === currentPath;
+
+    // Learn and Teach share the same pathname
+    if (isActive && targetKind !== null) {
+        isActive = targetKind === currentKind;
+    }
+
+    if (isActive) {
+        link.setAttribute('aria-current', 'page');
+    } else {
+        link.removeAttribute('aria-current');
+    }
+});
+
+}
+
 // ── Initialize on DOM ready ───────────────────────────────────────────
 let layoutInitPromise = null;
 
@@ -397,6 +424,7 @@ async function initLayout() {
                 inject('site-footer', _footerPromise),
             ]);
             updateDarkModeIcon();
+            setActiveNavLink();
         })();
     }
     return layoutInitPromise;

@@ -167,7 +167,7 @@
 </div>
 
 <!--CLASSROOM SCREEN-->
-<div id="classroomScreen" class="flex-1 flex-col hidden">
+<div id="classroomScreen" class="flex-1 flex-col hidden h-full overflow-hidden">
 
     <!-- Top Bar -->
     <header class="bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 px-4 py-2.5 flex items-center justify-between shrink-0">
@@ -253,12 +253,14 @@
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">E</kbd>
                     <span>Sit/Stand</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="btnThumbsUp" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Send thumbs-up reaction">
-                        👍
+                <div class="flex items-center gap-1">
+                    <button id="btnThumbsUp" type="button" class="px-2 py-1 text-gray-200 transition flex items-center gap-1.5" title="Send thumbs-up reaction (T)">
+                        <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[9px] font-mono border border-gray-700 text-gray-300">T</kbd>
+                        <span>👍</span>
                     </button>
-                    <button id="btnRaiseHand" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Toggle raised hand">
-                        ✋
+                    <button id="btnRaiseHand" type="button" class="px-2 py-1 text-gray-200 transition flex items-center gap-1.5" title="Toggle raised hand (R)">
+                        <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[9px] font-mono border border-gray-700 text-gray-300">R</kbd>
+                        <span>✋</span>
                     </button>
                 </div>
                 <span id="seatStatusMsg" class="hidden text-xs font-medium ml-2 transition-all"></span>
@@ -267,15 +269,15 @@
         </div>
 
         <!-- Chat Sidebar -->
-        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-auto shrink-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
-            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-full shrink-0 lg:shrink lg:min-h-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
+            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2 shrink-0">
                 <i data-lucide="message-circle" class="w-4 h-4 text-teal-400"></i>
                 <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
             </div>
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
                 <div class="text-center text-xs text-gray-600 py-6">No messages yet!</div>
             </div>
-            <form id="chatForm" class="p-3 border-t border-gray-800 flex gap-2">
+            <form id="chatForm" class="p-3 border-t border-gray-800 flex gap-2 shrink-0">
                 <label for="chatInput" class="sr-only">Chat message</label>
                 <input id="chatInput" type="text" placeholder="Type a message…" autocomplete="off"
                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition" />
@@ -658,7 +660,8 @@
 
         lobby.classList.add('hidden');
         classroomScreen.classList.remove('hidden');
-        classroomScreen.classList.add('flex');
+        classroomScreen.classList.add('flex', 'h-full', 'overflow-hidden');
+        document.body.classList.add('h-screen', 'overflow-hidden');
 
         renderDesks();
         connectWS();
@@ -734,6 +737,8 @@
         if (ws) { ws.close(); ws = null; }
         if (presenceWs) { presenceWs.close(); presenceWs = null; }
         setConnStatus(false);
+        document.body.classList.remove('h-screen', 'overflow-hidden');
+        classroomScreen.classList.remove('h-full', 'overflow-hidden');
     }
 
     function scheduleReconnect() {
@@ -954,7 +959,7 @@
                 break;
 
             case 'chat_message':
-                appendChatMessage(data.display_name, data.text, data.participant_id === myParticipantId);
+                appendChatMessage(data.display_name, data.text, data.participant_id === myParticipantId, data.participant_id);
                 break;
 
             case 'seat_updated':
@@ -1152,10 +1157,6 @@
 
     function updatePresenceControls() {
         const self = presenceByUser[myParticipantId] || { emoji: '', hand_raised: false };
-        btnThumbsUp.classList.toggle('bg-teal-700', self.emoji === '👍');
-        btnThumbsUp.classList.toggle('border-teal-500', self.emoji === '👍');
-        btnRaiseHand.classList.toggle('bg-teal-700', self.hand_raised === true);
-        btnRaiseHand.classList.toggle('border-teal-500', self.hand_raised === true);
         myPresenceBadge.textContent = presenceBadge(myParticipantId);
         renderSeatLabels();
     }
@@ -1208,20 +1209,41 @@
         chatInput.value = '';
     });
 
-    function appendChatMessage(name, text, isSelf) {
+    function appendChatMessage(name, text, isSelf, participantId = '', isReply = false) {
         if (chatFirstMessage) { chatMessages.innerHTML = ''; chatFirstMessage = false; }
 
+        const senderId = participantId || (isSelf ? (myParticipantId || 'self') : name);
+        const existingMessageEls = chatMessages.querySelectorAll('[data-participant-id]');
+        const lastMsgEl = existingMessageEls.length > 0 ? existingMessageEls[existingMessageEls.length - 1] : null;
+        const lastParticipantId = lastMsgEl ? lastMsgEl.getAttribute('data-participant-id') : null;
+
+        const showHeader = !lastMsgEl || lastParticipantId !== senderId || isReply;
+
         const wrapper = document.createElement('div');
-        wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} fade-in-up`;
+        wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} ${showHeader ? 'mt-2.5' : 'mt-1'} fade-in-up`;
+        wrapper.setAttribute('data-participant-id', senderId);
+
         const [c1] = isSelf ? ['#0D9488'] : colorForId(name.toLowerCase().replace(/\s+/g, '-'));
+        const headerHtml = showHeader
+            ? `<span class="text-[10px] font-medium mb-0.5 px-1" style="color:${c1};">${escapeHtml(name)}</span>`
+            : '';
+
         wrapper.innerHTML = `
-            <span class="text-[10px] font-medium mb-0.5 px-1" style="color:${c1};">${escapeHtml(name)}</span>
+            ${headerHtml}
             <div class="max-w-[85%] px-3 py-1.5 rounded-xl text-xs leading-relaxed ${isSelf ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-gray-800 text-gray-200 rounded-bl-sm'}">
                 ${escapeHtml(text)}
             </div>
         `;
+
+        const isNearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 80;
         chatMessages.appendChild(wrapper);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        if (isSelf || isNearBottom) {
+            chatMessages.scrollTo({
+                top: chatMessages.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }
 
     // Participants sidebar toggle
@@ -1257,7 +1279,7 @@
         if (isTypingInInput(e.target)) return;
         if (!canInteract) {
             if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-            if (e.key.toLowerCase() === 'e') { e.preventDefault(); loginForInteraction(); }
+            if (['e', 't', 'r'].includes(e.key.toLowerCase()) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); loginForInteraction(); }
             return;
         }
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
@@ -1296,6 +1318,10 @@
             e.preventDefault();
             handleSeatInteraction();
         }
+        const key = e.key.toLowerCase();
+        if (e.ctrlKey || e.metaKey) return;
+        if (key === 't') { e.preventDefault(); btnThumbsUp.click(); }
+        if (key === 'r') { e.preventDefault(); btnRaiseHand.click(); }
     });
     window.addEventListener('keyup', (e) => {
         if (isTypingInInput(e.target)) return;
