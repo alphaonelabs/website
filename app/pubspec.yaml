@@ -1,0 +1,46 @@
+name: video_app
+description: "A Flutter app for P2P video meetings and MP3 playback."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  webrtc_interface: ^1.1.1
+  flutter_webrtc: ^0.9.47
+  http: ^1.1.0
+  provider: ^6.0.5
+  shared_preferences: ^2.2.2
+  json_annotation: ^4.8.1
+  audioplayers: ^5.2.1
+  file_picker: ^6.1.1
+  flutter_audio_waveforms: ^1.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  json_serializable: ^6.7.1
+  build_runner: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  platforms:
+    android:
+    ios:
+    linux:
+    macos:
+    web:
+    windows:
+
+# Override file_picker for desktop platforms to fix warnings
+dependency_overrides:
+  file_picker:
+    git:
+      url: https://github.com/miguelpruivo/flutter_file_picker.git
+      ref: master 
