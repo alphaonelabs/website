@@ -2493,6 +2493,130 @@ async def api_get_activity(activity_ref: str, req, env):
         } if enrollment else None,
     })
 
+_ACTIVITY_TYPES = ("course", "meetup", "workshop", "seminar", "club", "event", "video", "study_group", "other")
+_ACTIVITY_FORMATS = ("live", "self_paced", "hybrid")
+_ACTIVITY_SCHEDULES = ("one_time", "multi_session", "recurring", "ongoing")
+
+
+async def api_update_activity(activity_ref: str, req, env):
+    """PATCH /api/activities/:id — edit an activity the caller hosts (only the fields sent are changed)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    try:
+        act = await env.DB.prepare(
+            "SELECT id,host_id,slug FROM activities WHERE id=? OR slug=? LIMIT 1"
+        ).bind(activity_ref, activity_ref).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_update_activity.lookup")
+        return err("Could not update activity — please try again", 500)
+
+    if not act:
+        return err("Activity not found", 404)
+    if act.host_id != user["id"]:
+        return err("Only the host can edit this activity", 403)
+
+    enc = env.ENCRYPTION_KEY
+    sets = []
+    binds = []
+
+    if "title" in body:
+        title = _legacy_text(body.get("title")).strip()
+        if not title:
+            return err("title cannot be empty")
+        if len(title) > 200:
+            return err("title must be at most 200 characters")
+        sets.append("title=?")
+        binds.append(title)
+
+    for field, limit in (("description", 5000), ("learning_objectives", 2000), ("prerequisites", 2000)):
+        if field in body:
+            value = _legacy_text(body.get(field)).strip()
+            if len(value) > limit:
+                return err(f"{field} must be at most {limit} characters")
+            sets.append(f"{field}=?")
+            binds.append(await encrypt_aes(value, enc) if value else "")
+
+    for field, allowed in (
+        ("type", _ACTIVITY_TYPES),
+        ("format", _ACTIVITY_FORMATS),
+        ("schedule_type", _ACTIVITY_SCHEDULES),
+    ):
+        if field in body:
+            value = _legacy_text(body.get(field)).strip()
+            if value not in allowed:
+                return err(f"Invalid {field}")
+            sets.append(f"{field}=?")
+            binds.append(value)
+
+    if "level" in body:
+        level = _legacy_text(body.get("level")).strip()
+        if len(level) > 50:
+            return err("level must be at most 50 characters")
+        sets.append("level=?")
+        binds.append(level)
+
+    tag_ids = None
+    if "tags" in body:
+        raw_tags = body.get("tags")
+        if not isinstance(raw_tags, list):
+            return err("tags must be a list")
+        names = []
+        for raw in raw_tags:
+            name = _legacy_text(raw).strip()
+            if not name:
+                continue
+            if len(name) > 50:
+                return err("Each tag must be at most 50 characters")
+            if name not in names:
+                names.append(name)
+        if len(names) > 10:
+            return err("An activity can have at most 10 tags")
+        try:
+            tag_ids = []
+            for name in names:
+                await env.DB.prepare(
+                    "INSERT OR IGNORE INTO tags (id,name) VALUES (?,?)"
+                ).bind(new_id(), name).run()
+                row = await env.DB.prepare("SELECT id FROM tags WHERE name=?").bind(name).first()
+                if row:
+                    tag_ids.append(row.id)
+        except Exception as exc:
+            await capture_exception(exc, req, env, "api_update_activity.tags")
+            return err("Could not update activity — please try again", 500)
+
+    if not sets and tag_ids is None:
+        return err("No editable fields provided")
+
+    stmts = []
+    if sets:
+        stmts.append(
+            env.DB.prepare(
+                "UPDATE activities SET " + ", ".join(sets) + " WHERE id=? AND host_id=?"
+            ).bind(*binds, act.id, user["id"])
+        )
+    if tag_ids is not None:
+        stmts.append(env.DB.prepare("DELETE FROM activity_tags WHERE activity_id=?").bind(act.id))
+        for tag_id in tag_ids:
+            stmts.append(
+                env.DB.prepare(
+                    "INSERT OR IGNORE INTO activity_tags (activity_id,tag_id) VALUES (?,?)"
+                ).bind(act.id, tag_id)
+            )
+
+    try:
+        await env.DB.batch(stmts)  # one transaction: the edit and the tag changes apply together
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_update_activity.save")
+        return err("Could not update activity — please try again", 500)
+
+    return ok({"id": act.id, "slug": getattr(act, "slug", "") or ""}, "Activity updated")
+
 
 # ---------------------------------------------------------------------------
 # Calendar / iCalendar (RFC 5545) helpers & endpoints
@@ -4303,6 +4427,7 @@ BLOG_RECORD_MODELS = {"web.BlogPost"}
 
 STATIC_CLEAN_ROUTES = {
     "/activity": "/activity.html",
+    "/edit-activity": "/edit-activity.html",
     "/classes-map": "/classes-map.html",
     "/requests": "/requests.html",
     "/waiting-rooms": "/waiting-rooms.html",
@@ -8132,6 +8257,9 @@ async def _dispatch(request, env):
         m = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)", path)
         if m and method == "GET":
             return await api_get_activity(m.group(1), request, env)
+
+        if m and method == "PATCH":
+            return await api_update_activity(m.group(1), request, env)
 
         if path == "/api/join" and method == "POST":
             return await api_join(request, env)

@@ -348,6 +348,9 @@ function renderDashboard(data) {
                         <a href="/teach?activity_id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             <i class="fas fa-sliders-h mr-1"></i>Manage
                         </a>
+                        <a href="/edit-activity?id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                            <i class="fas fa-pen mr-1"></i>Edit
+                        </a>
                     </div>
                 </article>
             `;
