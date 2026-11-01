@@ -4,6 +4,7 @@ name: Project checks
 
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
 
@@ -22,7 +23,7 @@ jobs:
           fetch-depth: 0
       - id: pick
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: |
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             changed=$(git diff --name-only "$BASE" "$GITHUB_SHA" | cut -d/ -f1 | sort -u)
@@ -81,3 +82,17 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter test
+
+  # The one required status check: passes only when every check that ran passed.
+  result:
+    name: Project checks result
+    needs: [changes, worker, app]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
