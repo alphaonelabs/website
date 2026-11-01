@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantaLab — Virtual Science Laboratory</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="logo">
+      <span class="logo-icon">⚗️</span>
+      <span class="logo-text">Quanta<strong>Lab</strong></span>
+    </div>
+    <nav class="domain-nav" id="domainNav">
+      <button class="domain-btn active" data-domain="physics">⚛️ Physics</button>
+      <button class="domain-btn" data-domain="chemistry">🧪 Chemistry</button>
+      <button class="domain-btn" data-domain="biology">🧬 Biology</button>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-btn" id="toggleMentorBtn" title="Toggle AI Mentor">🤖 Mentor</button>
+    </div>
+  </header>
+
+  <!-- ── Main Layout ─────────────────────────────────────────── -->
+  <main class="app-layout">
+
+    <!-- Experiment Sidebar -->
+    <aside class="experiment-sidebar" id="experimentSidebar">
+      <h2 class="sidebar-title">Experiments</h2>
+      <ul class="experiment-list" id="experimentList">
+        <li class="skeleton-item"></li>
+        <li class="skeleton-item"></li>
+        <li class="skeleton-item"></li>
+      </ul>
+    </aside>
+
+    <!-- Lab Canvas Area -->
+    <section class="lab-area" id="labArea">
+      <!-- Welcome Screen -->
+      <div class="welcome-screen" id="welcomeScreen">
+        <div class="welcome-content">
+          <div class="welcome-icon">🔬</div>
+          <h1>Welcome to QuantaLab</h1>
+          <p>Select an experiment from the sidebar to begin your scientific exploration.</p>
+          <p class="welcome-hint">Your AI mentor is always ready to answer questions and guide you through each experiment.</p>
+          <div class="feature-grid">
+            <div class="feature-card">
+              <span>⚛️</span>
+              <strong>Physics</strong>
+              <small>Pendulums, projectiles, circuits</small>
+            </div>
+            <div class="feature-card">
+              <span>🧪</span>
+              <strong>Chemistry</strong>
+              <small>pH, gas laws, titrations</small>
+            </div>
+            <div class="feature-card">
+              <span>🧬</span>
+              <strong>Biology</strong>
+              <small>Cell division, evolution, photosynthesis</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Experiment Panel (hidden until experiment selected) -->
+      <div class="experiment-panel" id="experimentPanel" hidden>
+        <div class="experiment-header">
+          <div>
+            <h2 id="expTitle">Experiment</h2>
+            <p id="expDescription" class="exp-description"></p>
+          </div>
+          <button class="btn-secondary" id="resetBtn">↺ Reset</button>
+        </div>
+
+        <!-- Simulation Canvas -->
+        <div class="simulation-wrapper">
+          <canvas id="simCanvas" width="700" height="400"></canvas>
+          <div class="sim-overlay" id="simOverlay"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-panel" id="controlsPanel"></div>
+
+        <!-- Measurements / Results -->
+        <div class="results-panel" id="resultsPanel">
+          <h3>📊 Measurements</h3>
+          <div class="measurements" id="measurements"></div>
+        </div>
+
+        <!-- Learning Objectives -->
+        <div class="objectives-panel" id="objectivesPanel">
+          <h3>🎯 Learning Objectives</h3>
+          <ul id="objectivesList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Mentor Panel -->
+    <aside class="mentor-panel" id="mentorPanel">
+      <div class="mentor-header">
+        <span class="mentor-avatar">🤖</span>
+        <div>
+          <strong>QuantaMentor</strong>
+          <small>Your AI Science Guide</small>
+        </div>
+        <button class="icon-btn close-mentor" id="closeMentorBtn">✕</button>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-message assistant">
+          <div class="message-content">
+            Hi there! 👋 I'm <strong>QuantaMentor</strong>, your AI science guide.<br /><br />
+            Select an experiment and feel free to ask me <em>anything</em> — from basic concepts to deeper theory. Let's explore science together! 🔬
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <textarea
+          id="chatInput"
+          placeholder="Ask me anything about science..."
+          rows="2"
+        ></textarea>
+        <button class="btn-primary send-btn" id="sendBtn">Send ↗</button>
+      </div>
+      <p class="mentor-hint">Tip: Ask me to explain concepts, suggest experiments, or check your understanding!</p>
+    </aside>
+
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
