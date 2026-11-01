@@ -1153,6 +1153,32 @@ _DDL = [
     "CREATE INDEX IF NOT EXISTS idx_message_requests_to_user ON message_requests(to_user_id, status)",
     "CREATE INDEX IF NOT EXISTS idx_message_requests_from_user ON message_requests(from_user_id)",
     "CREATE INDEX IF NOT EXISTS idx_message_requests_activity ON message_requests(activity_id)",
+    # Quizzes
+    """CREATE TABLE IF NOT EXISTS quizzes (
+        id                 TEXT PRIMARY KEY,
+        activity_id        TEXT NOT NULL,
+        title              TEXT NOT NULL,
+        description        TEXT,
+        time_limit_minutes INTEGER DEFAULT 0,
+        passing_score      INTEGER DEFAULT 70,
+        created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at         TEXT,
+        FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_quizzes_activity ON quizzes(activity_id)",
+    # Quiz Questions
+    """CREATE TABLE IF NOT EXISTS quiz_questions (
+        id                       TEXT PRIMARY KEY,
+        quiz_id                  TEXT NOT NULL,
+        prompt                   TEXT NOT NULL,
+        question_type            TEXT NOT NULL DEFAULT 'multiple_choice',
+        options_json             TEXT,
+        correct_answer_encrypted TEXT,
+        display_order            INTEGER NOT NULL DEFAULT 0,
+        created_at               TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
 ]
 
 
@@ -4302,6 +4328,463 @@ async def api_survey_results(req, env, survey_id: str):
     if payload is None:
         return err("Survey not found", 404)
     return json_resp(payload)
+
+
+# ---------------------------------------------------------------------------
+# Quiz Data Model & Authoring API
+# ---------------------------------------------------------------------------
+
+async def _quiz_db(env, fn):
+    """Run quiz DB operation, retrying after init_db if missing tables."""
+    try:
+        return await fn()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            await init_db(env)
+            return await fn()
+        raise
+
+
+async def _require_activity_host(env, user, activity_id: str):
+    """
+    Verify caller is authenticated and is host of activity (or admin).
+    Returns (act_row, None) or (None, error_Response).
+    """
+    if not user:
+        return None, err("Authentication required", 401)
+    act = await env.DB.prepare(
+        "SELECT id, title, host_id FROM activities WHERE id=? OR slug=? LIMIT 1"
+    ).bind(activity_id, activity_id).first()
+    if not act:
+        return None, err("Activity not found", 404)
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", "")
+    host_id = getattr(act, "host_id", None)
+    if host_id != user_id and user_role != "admin":
+        return None, err("Forbidden: Only the activity host can perform this action", 403)
+    return act, None
+
+
+async def api_create_quiz(req, env, activity_id: str):
+    """POST /api/activities/:id/quizzes — Create a quiz for an activity (host only)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    act, error_resp = await _require_activity_host(env, user, activity_id)
+    if error_resp:
+        return error_resp
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    title = str(body.get("title") or "").strip()[:200]
+    if not title:
+        return err("Quiz title is required", 400)
+
+    description = str(body.get("description") or "").strip()[:2000]
+    try:
+        time_limit_minutes = int(body.get("time_limit_minutes") or 0)
+    except (ValueError, TypeError):
+        return err("time_limit_minutes must be an integer", 400)
+    if time_limit_minutes < 0:
+        return err("time_limit_minutes must be non-negative", 400)
+
+    try:
+        raw_passing = body.get("passing_score")
+        passing_score = int(70 if raw_passing is None else raw_passing)
+    except (ValueError, TypeError):
+        return err("passing_score must be an integer", 400)
+    if not (0 <= passing_score <= 100):
+        return err("passing_score must be between 0 and 100", 400)
+
+    quiz_id = new_id()
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        await env.DB.prepare(
+            "INSERT INTO quizzes (id, activity_id, title, description, time_limit_minutes, passing_score, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+        ).bind(quiz_id, act.id, title, description, time_limit_minutes, passing_score).run()
+
+        raw_questions = body.get("questions")
+        created_questions = []
+        if isinstance(raw_questions, list):
+            for idx, q in enumerate(raw_questions):
+                if not isinstance(q, dict):
+                    continue
+                prompt = str(q.get("prompt") or "").strip()
+                if not prompt:
+                    continue
+                q_type = str(q.get("question_type") or "multiple_choice").strip()
+                opts = q.get("options") or q.get("options_json")
+                if isinstance(opts, list):
+                    options_json = json.dumps(opts)
+                elif isinstance(opts, str):
+                    options_json = opts
+                else:
+                    options_json = "[]"
+
+                correct_ans = q.get("correct_answer")
+                if correct_ans is not None:
+                    enc_ans = await encrypt_aes(str(correct_ans).strip(), enc)
+                elif q.get("correct_answer_encrypted"):
+                    enc_ans = str(q["correct_answer_encrypted"]).strip()
+                else:
+                    enc_ans = ""
+
+                qid = new_id()
+                order = int(q.get("display_order") if q.get("display_order") is not None else idx)
+                await env.DB.prepare(
+                    "INSERT INTO quiz_questions (id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))"
+                ).bind(qid, quiz_id, prompt, q_type, options_json, enc_ans, order).run()
+                created_questions.append({
+                    "id": qid,
+                    "quiz_id": quiz_id,
+                    "prompt": prompt,
+                    "question_type": q_type,
+                    "options": json.loads(options_json) if options_json else [],
+                    "display_order": order,
+                })
+
+        return {
+            "id": quiz_id,
+            "activity_id": act.id,
+            "title": title,
+            "description": description,
+            "time_limit_minutes": time_limit_minutes,
+            "passing_score": passing_score,
+            "questions": created_questions,
+        }
+
+    quiz_data = await _quiz_db(env, run)
+    return ok(quiz_data, "Quiz created")
+
+
+async def api_list_activity_quizzes(req, env, activity_id: str):
+    """GET /api/activities/:id/quizzes — List all quizzes for an activity."""
+    act = await env.DB.prepare(
+        "SELECT id, title, host_id FROM activities WHERE id=? OR slug=? LIMIT 1"
+    ).bind(activity_id, activity_id).first()
+    if not act:
+        return err("Activity not found", 404)
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+    host_id = getattr(act, "host_id", None)
+    is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+            "(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS question_count "
+            "FROM quizzes q "
+            "WHERE q.activity_id = ? "
+            "ORDER BY q.created_at DESC"
+        ).bind(act.id).all()
+        quizzes = []
+        for r in (res.results or []):
+            quizzes.append({
+                "id": r.id,
+                "activity_id": r.activity_id,
+                "title": r.title,
+                "description": r.description or "",
+                "time_limit_minutes": int(r.time_limit_minutes or 0),
+                "passing_score": int(r.passing_score or 70),
+                "question_count": int(r.question_count or 0),
+                "created_at": r.created_at,
+                "updated_at": getattr(r, "updated_at", None),
+                "is_host": is_host,
+            })
+        return quizzes
+
+    quizzes = await _quiz_db(env, run)
+    return json_resp({"activity_id": act.id, "quizzes": quizzes})
+
+
+async def api_add_quiz_questions(req, env, quiz_id: str):
+    """POST /api/quizzes/:id/questions — Add question(s) to a quiz (host only)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    row = await env.DB.prepare(
+        "SELECT q.id, q.activity_id, a.host_id "
+        "FROM quizzes q "
+        "JOIN activities a ON a.id = q.activity_id "
+        "WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", "")
+    host_id = getattr(row, "host_id", None)
+    if host_id != user_id and user_role != "admin":
+        return err("Forbidden: Only the activity host can add questions", 403)
+
+    try:
+        text = await req.text()
+        raw = json.loads(text)
+    except Exception:
+        return err("Invalid JSON body", 400)
+
+    if isinstance(raw, dict):
+        if "questions" in raw and isinstance(raw["questions"], list):
+            items = raw["questions"]
+        else:
+            items = [raw]
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        return err("JSON body must be an object or list", 400)
+
+    if not items:
+        return err("At least one question is required", 400)
+
+    # Validate all questions
+    for idx, q in enumerate(items):
+        if not isinstance(q, dict) or not str(q.get("prompt") or "").strip():
+            return err(f"Question prompt is required for question {idx + 1}", 400)
+
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        created_questions = []
+        for idx, q in enumerate(items):
+            prompt = str(q.get("prompt") or "").strip()
+            q_type = str(q.get("question_type") or "multiple_choice").strip()
+            opts = q.get("options") or q.get("options_json")
+            if isinstance(opts, list):
+                options_json = json.dumps(opts)
+            elif isinstance(opts, str):
+                options_json = opts
+            else:
+                options_json = "[]"
+
+            correct_ans = q.get("correct_answer")
+            if correct_ans is not None:
+                enc_ans = await encrypt_aes(str(correct_ans).strip(), enc)
+            elif q.get("correct_answer_encrypted"):
+                enc_ans = str(q["correct_answer_encrypted"]).strip()
+            else:
+                enc_ans = ""
+
+            qid = new_id()
+            order = int(q.get("display_order") if q.get("display_order") is not None else idx)
+            await env.DB.prepare(
+                "INSERT INTO quiz_questions (id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))"
+            ).bind(qid, quiz_id, prompt, q_type, options_json, enc_ans, order).run()
+
+            created_questions.append({
+                "id": qid,
+                "quiz_id": quiz_id,
+                "prompt": prompt,
+                "question_type": q_type,
+                "options": json.loads(options_json) if options_json else [],
+                "display_order": order,
+            })
+        return created_questions
+
+    result = await _quiz_db(env, run)
+    return ok({"quiz_id": quiz_id, "questions": result}, "Questions added")
+
+
+async def api_get_quiz_questions(req, env, quiz_id: str):
+    """GET /api/quizzes/:id/questions — Retrieve questions for a quiz."""
+    row = await env.DB.prepare(
+        "SELECT q.id, q.activity_id, a.host_id "
+        "FROM quizzes q "
+        "JOIN activities a ON a.id = q.activity_id "
+        "WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+    host_id = getattr(row, "host_id", None)
+    is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at "
+            "FROM quiz_questions "
+            "WHERE quiz_id = ? "
+            "ORDER BY display_order ASC, created_at ASC"
+        ).bind(quiz_id).all()
+
+        questions = []
+        for r in (res.results or []):
+            try:
+                opts = json.loads(r.options_json) if r.options_json else []
+            except Exception:
+                opts = []
+            item = {
+                "id": r.id,
+                "quiz_id": r.quiz_id,
+                "prompt": r.prompt,
+                "question_type": r.question_type,
+                "options": opts,
+                "display_order": int(r.display_order or 0),
+                "created_at": r.created_at,
+            }
+            if is_host:
+                ans = await decrypt_aes(r.correct_answer_encrypted or "", enc) if r.correct_answer_encrypted else ""
+                item["correct_answer"] = ans
+                item["correct_answer_encrypted"] = r.correct_answer_encrypted or ""
+            questions.append(item)
+        return questions
+
+    questions = await _quiz_db(env, run)
+    return json_resp({"quiz_id": quiz_id, "questions": questions})
+
+
+async def api_get_quiz(req, env, quiz_id: str):
+    """GET /api/quizzes/:id — Retrieve quiz details with questions."""
+    row = await env.DB.prepare(
+        "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+        "a.title AS activity_title, a.host_id "
+        "FROM quizzes q "
+        "JOIN activities a ON a.id = q.activity_id "
+        "WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+    host_id = getattr(row, "host_id", None)
+    is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    enc = env.ENCRYPTION_KEY
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT id, quiz_id, prompt, question_type, options_json, correct_answer_encrypted, display_order, created_at "
+            "FROM quiz_questions "
+            "WHERE quiz_id = ? "
+            "ORDER BY display_order ASC, created_at ASC"
+        ).bind(quiz_id).all()
+
+        questions = []
+        for r in (res.results or []):
+            try:
+                opts = json.loads(r.options_json) if r.options_json else []
+            except Exception:
+                opts = []
+            item = {
+                "id": r.id,
+                "quiz_id": r.quiz_id,
+                "prompt": r.prompt,
+                "question_type": r.question_type,
+                "options": opts,
+                "display_order": int(r.display_order or 0),
+                "created_at": r.created_at,
+            }
+            if is_host:
+                ans = await decrypt_aes(r.correct_answer_encrypted or "", enc) if r.correct_answer_encrypted else ""
+                item["correct_answer"] = ans
+                item["correct_answer_encrypted"] = r.correct_answer_encrypted or ""
+            questions.append(item)
+
+        return {
+            "id": row.id,
+            "activity_id": row.activity_id,
+            "activity_title": getattr(row, "activity_title", "") or "",
+            "title": row.title,
+            "description": row.description or "",
+            "time_limit_minutes": int(row.time_limit_minutes or 0),
+            "passing_score": int(row.passing_score or 70),
+            "created_at": row.created_at,
+            "updated_at": getattr(row, "updated_at", None),
+            "is_host": is_host,
+            "questions": questions,
+        }
+
+    quiz_data = await _quiz_db(env, run)
+    return json_resp({"quiz": quiz_data})
+
+
+async def api_list_quizzes(req, env):
+    """GET /api/quizzes — List all quizzes, optionally filter by ?activity_id=..."""
+    parsed = urlparse(req.url)
+    qs = parse_qs(parsed.query)
+    activity_filter = qs.get("activity_id", [None])[0]
+
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user_id = user.get("id") if user else None
+
+    async def run():
+        if activity_filter:
+            sql = (
+                "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+                "a.title AS activity_title, a.host_id, "
+                "(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS question_count "
+                "FROM quizzes q "
+                "JOIN activities a ON a.id = q.activity_id "
+                "WHERE q.activity_id = ? "
+                "ORDER BY q.created_at DESC LIMIT 250"
+            )
+            res = await env.DB.prepare(sql).bind(activity_filter).all()
+        else:
+            sql = (
+                "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
+                "a.title AS activity_title, a.host_id, "
+                "(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id) AS question_count "
+                "FROM quizzes q "
+                "JOIN activities a ON a.id = q.activity_id "
+                "ORDER BY q.created_at DESC LIMIT 250"
+            )
+            res = await env.DB.prepare(sql).all()
+
+        quizzes = []
+        for r in (res.results or []):
+            host_id = getattr(r, "host_id", None)
+            quizzes.append({
+                "id": r.id,
+                "activity_id": r.activity_id,
+                "activity_title": getattr(r, "activity_title", "") or "",
+                "title": r.title,
+                "description": r.description or "",
+                "time_limit_minutes": int(r.time_limit_minutes or 0),
+                "passing_score": int(r.passing_score or 70),
+                "question_count": int(r.question_count or 0),
+                "created_at": r.created_at,
+                "updated_at": getattr(r, "updated_at", None),
+                "is_host": bool(user and (user_id == host_id or user.get("role") == "admin")),
+            })
+        return quizzes
+
+    quizzes = await _quiz_db(env, run)
+    return json_resp({"quizzes": quizzes})
+
+
+async def api_delete_quiz(req, env, quiz_id: str):
+    """DELETE /api/quizzes/:id — Delete a quiz (host only)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    row = await env.DB.prepare(
+        "SELECT q.id, a.host_id FROM quizzes q JOIN activities a ON a.id = q.activity_id WHERE q.id = ?"
+    ).bind(quiz_id).first()
+    if not row:
+        return err("Quiz not found", 404)
+
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+    user_role = user.get("role") if isinstance(user, dict) else getattr(user, "role", "")
+    host_id = getattr(row, "host_id", None)
+    if host_id != user_id and user_role != "admin":
+        return err("Forbidden: Only the activity host can delete this quiz", 403)
+
+    async def run():
+        await env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id = ?").bind(quiz_id).run()
+        await env.DB.prepare("DELETE FROM quizzes WHERE id = ?").bind(quiz_id).run()
+        return True
+
+    await _quiz_db(env, run)
+    return ok(None, "Quiz deleted")
 
 
 LEGACY_FEATURE_GROUPS = {
@@ -8299,6 +8782,12 @@ async def _dispatch(request, env):
         if m_act_cal and method == "GET":
             return await api_activity_calendar_ics(m_act_cal.group(1), request, env)
 
+        m_act_quizzes = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/quizzes", path)
+        if m_act_quizzes and method == "POST":
+            return await api_create_quiz(request, env, m_act_quizzes.group(1))
+        if m_act_quizzes and method == "GET":
+            return await api_list_activity_quizzes(request, env, m_act_quizzes.group(1))
+
         m = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)", path)
         if m and method == "GET":
             return await api_get_activity(m.group(1), request, env)
@@ -8370,6 +8859,19 @@ async def _dispatch(request, env):
             return await api_get_survey(request, env, m_survey_item.group(1))
         if m_survey_item and method == "DELETE":
             return await api_delete_survey(request, env, m_survey_item.group(1))
+
+        if path == "/api/quizzes" and method == "GET":
+            return await api_list_quizzes(request, env)
+        m_quiz_questions = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)/questions", path)
+        if m_quiz_questions and method == "POST":
+            return await api_add_quiz_questions(request, env, m_quiz_questions.group(1))
+        if m_quiz_questions and method == "GET":
+            return await api_get_quiz_questions(request, env, m_quiz_questions.group(1))
+        m_quiz_item = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)", path)
+        if m_quiz_item and method == "GET":
+            return await api_get_quiz(request, env, m_quiz_item.group(1))
+        if m_quiz_item and method == "DELETE":
+            return await api_delete_quiz(request, env, m_quiz_item.group(1))
 
         if path == "/api/cart" and method == "GET":
             return await api_get_cart(request, env)
