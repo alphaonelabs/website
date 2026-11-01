@@ -93,24 +93,24 @@ class TestCleanPath:
 # ---------------------------------------------------------------------------
 
 class TestCaptureException:
-    def test_does_not_raise_without_request(self):
+    async def test_does_not_raise_without_request(self):
         # Should never propagate exceptions
         try:
-            worker.capture_exception(ValueError("oops"), where="test")
+            await worker.capture_exception(ValueError("oops"), where="test")
         except Exception:
             pytest.fail("capture_exception raised unexpectedly")
 
-    def test_does_not_raise_with_mock_request(self):
+    async def test_does_not_raise_with_mock_request(self):
         from tests.helpers import MockRequest
         req = MockRequest(method="POST", url="http://localhost/api/register")
         try:
-            worker.capture_exception(RuntimeError("bad"), req=req, where="test")
+            await worker.capture_exception(RuntimeError("bad"), req=req, where="test")
         except Exception:
             pytest.fail("capture_exception raised unexpectedly with request")
 
-    def test_handles_exception_with_no_traceback(self):
+    async def test_handles_exception_with_no_traceback(self):
         exc = ValueError("no traceback")
         try:
-            worker.capture_exception(exc)
+            await worker.capture_exception(exc)
         except Exception:
             pytest.fail("capture_exception raised unexpectedly")
