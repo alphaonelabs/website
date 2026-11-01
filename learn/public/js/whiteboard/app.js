@@ -1,0 +1,295 @@
+/**
+ * Main application coordinator for the collaborative whiteboard.
+ */
+
+import {
+  getAuthToken,
+  preserveWhiteboardRedirect,
+  getViewerId,
+  generateEventId,
+  computeInitialImageBounds,
+  saveBackgrounds,
+  loadBackgrounds,
+} from './storage.js';
+
+import { WhiteboardRenderer } from './renderer.js';
+import { InlineTextEditor } from './text-editor.js';
+import { WhiteboardSocket } from './socket.js';
+import { DrawingController } from './drawing-controller.js';
+import {
+  setStatus,
+  syncToolButtons,
+  updateActiveUsersList,
+  applyViewerRestrictions,
+  bindWhiteboardControls,
+} from './ui.js';
+
+(function initWhiteboardApp() {
+  const token = getAuthToken();
+  const canInteract = Boolean(token);
+
+  // DOM elements
+  const canvas = document.getElementById('whiteboard');
+  const viewportEl = document.getElementById('canvas-viewport');
+  const roomInput = document.getElementById('room');
+  const statusEl = document.getElementById('status');
+  const loginLink = document.getElementById('whiteboard-login');
+  const toolSelect = document.getElementById('toolSelect');
+  const penColorInput = document.getElementById('penColor');
+  const penWidthInput = document.getElementById('penWidth');
+  const activeUsers = document.getElementById('activeUsers');
+  const activeCount = document.getElementById('active-count');
+  const coordinates = document.getElementById('coordinates');
+
+  // App state
+  let currentParticipantId = '';
+  let events = [];
+  let seenEventIds = new Set();
+  let redoStack = [];
+  let images = []; // [{ img, bounds, dataUrl }]
+
+  // --- Helpers ---
+
+  function getRoomName() {
+    return (roomInput?.value || 'main-whiteboard').trim() || 'main-whiteboard';
+  }
+
+  function loginForWhiteboard() {
+    preserveWhiteboardRedirect();
+    window.location.href = '/login';
+  }
+
+  function serializeImages() {
+    return images.map((i) => ({ dataUrl: i.dataUrl, bounds: i.bounds }));
+  }
+
+  /** Add an event to the local log, deduplicating and capping at 1000 entries. */
+  function recordEvent(event) {
+    if (event.event_id) {
+      if (seenEventIds.has(event.event_id)) return false;
+      seenEventIds.add(event.event_id);
+    }
+    events.push(event);
+    if (events.length > 1000) events = events.slice(-1000);
+    return true;
+  }
+
+  // --- Subsystems ---
+
+  const renderer = new WhiteboardRenderer(canvas);
+
+  const textEditor = new InlineTextEditor(viewportEl, canvas, {
+    onCommit(text, point, existingEvent) {
+      if (!text) {
+        if (existingEvent?.event_id) {
+          events = events.filter((e) => e.event_id !== existingEvent.event_id);
+          renderer.redrawAll(events);
+        }
+        return;
+      }
+
+      if (existingEvent?.event_id) {
+        const idx = events.findIndex((e) => e.event_id === existingEvent.event_id);
+        if (idx !== -1) {
+          events[idx] = { ...events[idx], text };
+          renderer.redrawAll(events);
+          socket.sendEvent(events[idx]);
+        }
+      } else {
+        const textEvent = drawingController.makeEvent('text', point, point, text);
+        sendEvent(textEvent);
+      }
+    },
+    onCancel() {}
+  });
+
+  const socket = new WhiteboardSocket({
+    onStatusChange(text, isConnected) {
+      setStatus(statusEl, text, isConnected);
+    },
+    onUserInfo(participantId) {
+      currentParticipantId = participantId;
+    },
+    onWhiteboardState(incomingEvents) {
+      events = incomingEvents;
+      seenEventIds = new Set(events.map((e) => e?.event_id).filter(Boolean));
+      renderer.redrawAll(events);
+    },
+    onWhiteboardEvent(event) {
+      if (recordEvent(event)) renderer.drawEvent(event);
+    },
+    onWhiteboardClear() {
+      events = [];
+      seenEventIds = new Set();
+      redoStack = [];
+      renderer.redrawAll(events);
+    },
+    onRoomState(participants) {
+      updateActiveUsersList(activeUsers, activeCount, participants);
+    }
+  });
+
+  function sendEvent(event) {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    if (!socket.isOpen()) return;
+
+    redoStack = [];
+    if (currentParticipantId) event.participant_id = currentParticipantId;
+    recordEvent(event);
+    renderer.drawEvent(event);
+    socket.sendEvent(event);
+  }
+
+  const drawingController = new DrawingController(canvas, renderer, textEditor, {
+    canInteract,
+    onSendEvent: sendEvent,
+    onPreview: (draftEvent) => renderer.redrawAll(events, draftEvent),
+    onRequireLogin: loginForWhiteboard,
+    getTool: () => toolSelect?.value || 'pen',
+    getPenColor: () => penColorInput?.value || '#0f766e',
+    getPenWidth: () => Number(penWidthInput?.value || 4),
+    getEvents: () => events,
+    getImages: () => images.map((i) => ({ img: i.img, bounds: i.bounds })),
+    onCoordinates: (point) => {
+      if (coordinates) {
+        coordinates.textContent = `x: ${Math.round(point.x * canvas.width)}, y: ${Math.round(point.y * canvas.height)}`;
+      }
+    },
+    onSelectImage: (idx) => {
+      renderer.selectedImageIndex = idx;
+      renderer.redrawAll(events);
+    },
+    onImageResize: (idx, newBounds) => {
+      if (images[idx]) images[idx].bounds = newBounds;
+      if (renderer.images[idx]) renderer.images[idx].bounds = newBounds;
+    },
+    onImageResizeEnd: (idx, finalBounds) => {
+      if (images[idx]) images[idx].bounds = finalBounds;
+      if (renderer.images[idx]) renderer.images[idx].bounds = finalBounds;
+      saveBackgrounds(getRoomName(), serializeImages());
+    }
+  });
+
+  // --- Room & image management ---
+
+  function loadBackgroundFromStorage() {
+    images = [];
+    renderer.setImages([]);
+    renderer.selectedImageIndex = -1;
+
+    const stored = loadBackgrounds(getRoomName());
+    if (!stored.length) {
+      renderer.redrawAll(events);
+      return;
+    }
+
+    let settled = 0;
+    function onImageSettled() {
+      settled++;
+      if (settled === stored.length) {
+        images = images.filter(Boolean);
+        renderer.setImages(images.map((im) => ({ img: im.img, bounds: im.bounds })));
+        renderer.redrawAll(events);
+      }
+    }
+
+    stored.forEach((item, i) => {
+      const img = new Image();
+      img.onload = () => {
+        const bounds = item.bounds?.width ? item.bounds : computeInitialImageBounds(img, canvas);
+        images[i] = { img, bounds, dataUrl: item.dataUrl };
+        onImageSettled();
+      };
+      img.onerror = onImageSettled;
+      img.src = item.dataUrl;
+    });
+  }
+
+  function connectToRoom() {
+    socket.disconnect();
+    events = [];
+    seenEventIds = new Set();
+    redoStack = [];
+    renderer.redrawAll(events);
+    loadBackgroundFromStorage();
+    socket.connect(getRoomName(), token, getViewerId());
+  }
+
+  function clearRoom() {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    events = [];
+    seenEventIds = new Set();
+    redoStack = [];
+    renderer.redrawAll(events);
+    socket.clearRoom();
+  }
+
+  function undo() {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    const lastIdx = events.map((_, i) => i).reverse().find(
+      (i) => !currentParticipantId || events[i].participant_id === currentParticipantId || !events[i].participant_id
+    );
+    if (lastIdx === undefined) return;
+    const [removed] = events.splice(lastIdx, 1);
+    redoStack.push(removed);
+    renderer.redrawAll(events);
+  }
+
+  function redo() {
+    if (!canInteract) { loginForWhiteboard(); return; }
+    const event = redoStack.pop();
+    if (!event) return;
+    sendEvent({ ...event, event_id: generateEventId() });
+  }
+
+  // --- Event bindings ---
+
+  // Backspace to delete the selected image
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Backspace') return;
+    const tag = document.activeElement?.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    const idx = renderer.selectedImageIndex;
+    if (idx < 0 || idx >= images.length) return;
+    e.preventDefault();
+    images.splice(idx, 1);
+    renderer.removeImage(idx);
+    saveBackgrounds(getRoomName(), serializeImages());
+    renderer.redrawAll(events);
+  });
+
+  if (loginLink) loginLink.addEventListener('click', preserveWhiteboardRedirect);
+
+  bindWhiteboardControls({
+    canInteract,
+    onConnect: connectToRoom,
+    onToolChange: (tool) => syncToolButtons(tool, canvas),
+    onImageUpload: (file) => {
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        const dataUrl = loadEvent.target.result;
+        const img = new Image();
+        img.onload = () => {
+          const bounds = computeInitialImageBounds(img, canvas);
+          images.push({ img, bounds, dataUrl });
+          renderer.addImage(img, bounds);
+          renderer.redrawAll(events);
+          saveBackgrounds(getRoomName(), serializeImages());
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    },
+    onDownload: () => renderer.exportToPng(getRoomName()),
+    onClear: clearRoom,
+    onUndo: undo,
+    onRedo: redo,
+    onRequireLogin: loginForWhiteboard
+  });
+
+  if (!canInteract) applyViewerRestrictions(canvas);
+
+  syncToolButtons(toolSelect?.value || 'pen', canvas);
+  renderer.redrawAll(events);
+  connectToRoom();
+})();
