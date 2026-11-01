@@ -1,0 +1,200 @@
+-- Education Platform Database Schema (Activities Model)
+-- Run with: wrangler d1 execute education_db --file=schema.sql
+
+-- USERS
+-- ALL PII (username, email, name, role) is stored encrypted.
+-- username_hash and email_hash are HMAC-SHA256 blind indexes used for O(1)
+-- lookups so no plaintext ever needs to be stored in an indexed column.
+CREATE TABLE IF NOT EXISTS users (
+    id                TEXT PRIMARY KEY,
+    username_hash     TEXT NOT NULL UNIQUE,   -- HMAC(username) for lookups
+    email_hash        TEXT NOT NULL UNIQUE,   -- HMAC(email)    for lookups
+    name              TEXT NOT NULL,          -- encrypt(display_name)
+    username          TEXT NOT NULL,          -- encrypt(login_username)
+    email             TEXT NOT NULL,          -- encrypt(email)
+    password_hash     TEXT NOT NULL,          -- PBKDF2-SHA256, per-user salt
+    role              TEXT NOT NULL,          -- encrypt('host' | 'member')
+    email_verified    INTEGER NOT NULL DEFAULT 0,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ACTIVITIES (courses, meetups, workshops, seminars, etc.)
+-- description is encrypted at rest.
+CREATE TABLE IF NOT EXISTS activities (
+    id            TEXT PRIMARY KEY,
+    title         TEXT NOT NULL,
+    description   TEXT,                   -- encrypted
+    type          TEXT NOT NULL DEFAULT 'course',      -- course | meetup | workshop | seminar | other
+    format        TEXT NOT NULL DEFAULT 'self_paced',  -- live | self_paced | hybrid
+    schedule_type TEXT NOT NULL DEFAULT 'ongoing',     -- one_time | multi_session | recurring | ongoing
+    host_id       TEXT NOT NULL,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (host_id) REFERENCES users(id)
+);
+
+-- SESSIONS (optional scheduled instances of an activity)
+-- description and location are encrypted at rest.
+CREATE TABLE IF NOT EXISTS sessions (
+    id          TEXT PRIMARY KEY,
+    activity_id TEXT NOT NULL,
+    title       TEXT,
+    description TEXT,                     -- encrypted
+    start_time  TEXT,
+    end_time    TEXT,
+    location    TEXT,                     -- encrypted
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (activity_id) REFERENCES activities(id)
+);
+
+-- ENROLLMENTS (people joining activities)
+CREATE TABLE IF NOT EXISTS enrollments (
+    id          TEXT PRIMARY KEY,
+    activity_id TEXT NOT NULL,
+    user_id     TEXT NOT NULL,
+    role        TEXT NOT NULL DEFAULT 'participant', -- participant | instructor | organizer
+    status      TEXT NOT NULL DEFAULT 'active',     -- active | cancelled | completed
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (activity_id, user_id),
+    FOREIGN KEY (activity_id) REFERENCES activities(id),
+    FOREIGN KEY (user_id)     REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS certificates (
+    id            TEXT PRIMARY KEY,
+    enrollment_id TEXT NOT NULL UNIQUE,
+    issued_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
+);
+
+-- SESSION ATTENDANCE (optional per-session tracking)
+CREATE TABLE IF NOT EXISTS session_attendance (
+    id         TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    user_id    TEXT NOT NULL,
+    status     TEXT NOT NULL DEFAULT 'registered', -- registered | attended | missed
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (session_id, user_id),
+    FOREIGN KEY (session_id) REFERENCES sessions(id),
+    FOREIGN KEY (user_id)    REFERENCES users(id)
+);
+
+-- TAGS (flexible categorisation)
+CREATE TABLE IF NOT EXISTS tags (
+    id   TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+);
+
+-- ACTIVITY TAGS (many-to-many)
+CREATE TABLE IF NOT EXISTS activity_tags (
+    activity_id TEXT NOT NULL,
+    tag_id      TEXT NOT NULL,
+    PRIMARY KEY (activity_id, tag_id),
+    FOREIGN KEY (activity_id) REFERENCES activities(id),
+    FOREIGN KEY (tag_id)      REFERENCES tags(id)
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_activities_host      ON activities(host_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_activity ON enrollments(activity_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_user     ON enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_activity    ON sessions(activity_id);
+CREATE INDEX IF NOT EXISTS idx_sa_session           ON session_attendance(session_id);
+CREATE INDEX IF NOT EXISTS idx_sa_user              ON session_attendance(user_id);
+CREATE INDEX IF NOT EXISTS idx_at_activity          ON activity_tags(activity_id);
+
+-- NOTIFICATIONS
+CREATE TABLE IF NOT EXISTS notifications (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    type       TEXT NOT NULL,
+    title      TEXT NOT NULL,
+    message    TEXT NOT NULL,
+    is_read    INTEGER NOT NULL DEFAULT 0,
+    related_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notif_unread  ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(user_id, created_at DESC);
+
+-- NOTIFICATION PREFERENCES
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    user_id           TEXT PRIMARY KEY,
+    enrollment_notify INTEGER NOT NULL DEFAULT 1,
+    session_notify    INTEGER NOT NULL DEFAULT 1,
+    system_notify     INTEGER NOT NULL DEFAULT 1,
+    updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- EMAIL VERIFICATION TOKENS
+-- token_hash is SHA-256(plaintext_token) — never store plaintext tokens.
+-- expires_at is UTC datetime string 'YYYY-MM-DD HH:MM:SS'.
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_evtoken_user ON email_verification_tokens(user_id);
+
+-- PASSWORD RESET TOKENS
+-- token_hash is SHA-256(plaintext_token) — never store plaintext tokens.
+-- expires_at is UTC datetime string 'YYYY-MM-DD HH:MM:SS'.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_prtoken_user ON password_reset_tokens(user_id);
+
+-- Messaging: privacy-first direct message requests
+CREATE TABLE IF NOT EXISTS message_requests (
+    id TEXT PRIMARY KEY,
+    from_user_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',   
+    source TEXT NOT NULL DEFAULT 'email',     
+    activity_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_requests_to_user ON message_requests(to_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_message_requests_from_user ON message_requests(from_user_id);
+CREATE INDEX IF NOT EXISTS idx_message_requests_activity ON message_requests(activity_id);
+
+-- QUIZZES & QUIZ QUESTIONS
+CREATE TABLE IF NOT EXISTS quizzes (
+    id                 TEXT PRIMARY KEY,
+    activity_id        TEXT NOT NULL,
+    title              TEXT NOT NULL,
+    description        TEXT,
+    time_limit_minutes INTEGER DEFAULT 0,
+    passing_score      INTEGER DEFAULT 70,
+    created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at         TEXT,
+    FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_quizzes_activity ON quizzes(activity_id);
+
+CREATE TABLE IF NOT EXISTS quiz_questions (
+    id                       TEXT PRIMARY KEY,
+    quiz_id                  TEXT NOT NULL,
+    prompt                   TEXT NOT NULL,
+    question_type            TEXT NOT NULL DEFAULT 'multiple_choice',
+    options_json             TEXT,
+    correct_answer_encrypted TEXT,
+    display_order            INTEGER NOT NULL DEFAULT 0,
+    created_at               TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id);

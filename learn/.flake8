@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 120
+exclude = .git,__pycache__,build,dist
+# Ignore certain errors/warnings
+ignore =
+    # E203: whitespace before ':' - Black handles this
+    E203,
+    # W503: line break before binary operator - Black handles this
+    W503,
+    # E231: missing whitespace after ',' - Black handles this
+    E231

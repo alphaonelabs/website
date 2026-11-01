@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Certificate - Alpha One Labs</title>
+  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+    function initializeDarkMode() {
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.documentElement.classList.add('dark');
+      } else if (localStorage.getItem('darkMode') === null) {
+        localStorage.setItem('darkMode', 'false');
+      }
+    }
+    initializeDarkMode();
+    document.addEventListener('DOMContentLoaded', initializeDarkMode);
+  </script>
+  <style>
+    .dark { color-scheme: dark; }
+    :root  { color-scheme: light; }
+
+    /* ── PRINT ──────────────────────────────────────────────────────────── */
+    @media print {
+      @page { size: landscape; margin: 0; }
+
+      /* Hide every screen element */
+      #site-navbar,
+      #site-footer,
+      main { display: none !important; }
+
+      /* Show the print-only root */
+      #print-root {
+        display: block !important;
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      #print-certificate-card {
+        display: flex !important;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: calc(100% - 48px);
+        height: calc(100% - 48px);
+        margin: 24px;
+        padding: 32px 48px;
+        box-sizing: border-box;
+        background: #ffffff;
+        color: #111827;
+        font-family: Georgia, 'Times New Roman', serif;
+        /* Outer decorative double border */
+        border: 3px solid #0f766e;
+        outline: 8px solid #0f766e;
+        outline-offset: -16px;
+      }
+
+      #print-certificate-card p,
+      #print-certificate-card h1,
+      #print-certificate-card h2,
+      #print-certificate-card h3 { color: #111827 !important; }
+
+      .print-divider {
+        border-top: 1px solid #d1d5db;
+        width: 100%;
+        margin: 16px 0;
+      }
+
+      /* The cloned QR image injected at print time */
+      #print-qr-slot img {
+        display: block !important;
+        width: 100px !important;
+        height: 100px !important;
+        background: #ffffff !important;
+      }
+    }
+
+    @media screen {
+      #print-root { display: none !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300">
+
+  <!-- ── SCREEN VIEW ─────────────────────────────────────────────────── -->
+  <div id="site-navbar"></div>
+
+  <main class="flex-1 max-w-6xl mx-auto w-full px-4 md:px-6 py-10 md:py-14">
+    <div class="flex items-center justify-between gap-4 mb-8">
+      <a href="/activity.html" class="inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 font-semibold hover:underline">
+        <i class="fas fa-arrow-left"></i>Back to Activities
+      </a>
+      <button id="download-btn" type="button" class="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold px-5 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
+        <i class="fas fa-download"></i>Download as PDF
+      </button>
+    </div>
+
+    <div id="status" class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md p-8 text-center text-gray-600 dark:text-gray-300">
+      <i class="fas fa-spinner fa-spin mr-2"></i>Loading certificate...
+    </div>
+
+    <section id="certificate-view" class="hidden">
+      <div id="certificate-card" class="relative overflow-hidden rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl p-8 md:p-14">
+        <div class="absolute inset-0 pointer-events-none opacity-5">
+          <div class="absolute inset-0 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500"></div>
+        </div>
+        <div class="relative">
+          <div class="text-center mb-10">
+            <p class="text-sm uppercase tracking-[0.35em] text-teal-600 dark:text-teal-400 font-bold mb-4">Alpha One Labs</p>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">Certificate of Completion</h1>
+            <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300">This certifies that</p>
+          </div>
+          <div class="text-center mb-10">
+            <h2 id="student-name" class="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-5">—</h2>
+            <p class="text-lg md:text-2xl text-gray-600 dark:text-gray-300 mb-4">has successfully completed the activity</p>
+            <h3 id="activity-title" class="text-2xl md:text-4xl font-semibold text-teal-700 dark:text-teal-300">—</h3>
+          </div>
+          <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-8 border-t border-gray-200 dark:border-gray-700 pt-8">
+            <div>
+              <p class="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Issued on</p>
+              <p id="issued-at" class="text-xl font-semibold text-gray-900 dark:text-white">—</p>
+              <p id="cert-id" class="mt-4 text-xs md:text-sm font-mono text-gray-500 dark:text-gray-400 break-all">Certificate ID: —</p>
+            </div>
+            <div class="flex flex-col items-center md:items-end">
+              <!-- Single QR instance — cloned into print card at print time -->
+              <div id="qr-code" class="bg-white p-2 rounded-xl"></div>
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Scan to verify</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a id="share-linkedin" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold transition-colors">
+          <i class="fab fa-linkedin"></i>Share on LinkedIn
+        </a>
+        <a id="share-twitter" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-900 hover:bg-black text-white font-semibold transition-colors">
+          <i class="fab fa-x-twitter"></i>Share on Twitter/X
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <!-- ── PRINT-ONLY VIEW ─────────────────────────────────────────────── -->
+  <div id="print-root" aria-hidden="true">
+    <div id="print-certificate-card">
+
+      <div style="text-align:center; margin-bottom:20px;">
+        <p style="font-size:11px; letter-spacing:0.3em; text-transform:uppercase; color:#0f766e; font-weight:700; margin-bottom:10px;">
+          Alpha One Labs
+        </p>
+        <h1 style="font-size:36px; font-weight:900; margin:0 0 10px;">Certificate of Completion</h1>
+        <p style="font-size:16px; color:#4b5563; margin:0;">This certifies that</p>
+      </div>
+
+      <div style="text-align:center; margin-bottom:20px;">
+        <h2 id="print-student-name" style="font-size:40px; font-weight:700; margin:0 0 12px;">—</h2>
+        <p style="font-size:16px; color:#4b5563; margin:0 0 8px;">has successfully completed the activity</p>
+        <h3 id="print-activity-title" style="font-size:28px; font-weight:600; color:#0f766e; margin:0;">—</h3>
+      </div>
+
+      <div class="print-divider"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; width:100%; margin-top:12px;">
+        <div>
+          <p style="font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#6b7280; margin:0 0 4px;">Issued on</p>
+          <p id="print-issued-at" style="font-size:18px; font-weight:600; margin:0 0 10px;">—</p>
+          <p id="print-cert-id" style="font-size:10px; font-family:monospace; color:#6b7280; margin:0; word-break:break-all; max-width:420px;">Certificate ID: —</p>
+        </div>
+        <!-- QR image is injected here by beforeprint handler -->
+        <div id="print-qr-slot" style="background:#fff; padding:6px; display:inline-block;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/js/layout.js" defer></script>
+  <script>
+    function formatDate(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+    }
+
+    function showError(message) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'text-red-600 dark:text-red-400 font-semibold';
+      wrapper.textContent = message;
+      const status = document.getElementById('status');
+      status.innerHTML = '';
+      status.appendChild(wrapper);
+    }
+
+    // Before printing: extract the QR <img> from the screen QR container and
+    // place a copy in the print slot. qrcodejs renders both a <canvas> and an
+    // <img>; we use the <img> because canvas pixels may not survive the print
+    // rasteriser in all browsers.
+    function syncQrForPrint() {
+      const slot = document.getElementById('print-qr-slot');
+      slot.innerHTML = '';
+      const srcImg = document.querySelector('#qr-code img');
+      if (srcImg) {
+        const img = document.createElement('img');
+        img.src    = srcImg.src;
+        img.width  = 100;
+        img.height = 100;
+        img.style.display = 'block';
+        slot.appendChild(img);
+      }
+    }
+
+    window.addEventListener('beforeprint', syncQrForPrint);
+
+    async function loadCertificate() {
+      const uuid = new URLSearchParams(window.location.search).get('uuid');
+      if (!uuid) { showError('No certificate ID provided'); return; }
+
+      try {
+        const res     = await fetch(`/api/certificates/${encodeURIComponent(uuid)}`);
+        const payload = await res.json();
+
+        if (res.status === 404) { showError('Certificate not found'); return; }
+        if (!res.ok)            { showError(payload.error || 'Failed to load certificate'); return; }
+
+        const data          = payload.data;
+        const verifyUrl     = `${window.location.origin}/certificate.html?uuid=${encodeURIComponent(data.uuid)}`;
+        const formattedDate = formatDate(data.issued_at);
+        const shareText     = `🎓 I just earned a certificate for "${data.activity_title}" on Alpha One Labs! Check it out:`;
+
+        document.title = `Certificate – ${data.activity_title} – Alpha One Labs`;
+
+        // Screen card
+        document.getElementById('student-name').textContent   = data.student_name;
+        document.getElementById('activity-title').textContent = data.activity_title;
+        document.getElementById('issued-at').textContent      = formattedDate;
+        document.getElementById('cert-id').textContent        = `Certificate ID: ${data.uuid}`;
+
+        // Single QR instance (screen only; cloned to print slot via beforeprint)
+        new QRCode(document.getElementById('qr-code'), {
+          text: verifyUrl, width: 128, height: 128,
+        });
+
+        // Share buttons
+        const linkedInUrl = 'https://www.linkedin.com/shareArticle?mini=true'
+          + `&url=${encodeURIComponent(verifyUrl)}`
+          + `&title=${encodeURIComponent('Certificate of Completion – ' + data.activity_title)}`
+          + `&summary=${encodeURIComponent(shareText)}`;
+        document.getElementById('share-linkedin').href = linkedInUrl;
+        document.getElementById('share-twitter').href  =
+          `https://twitter.com/intent/tweet?url=${encodeURIComponent(verifyUrl)}&text=${encodeURIComponent(shareText)}`;
+
+        // Print card text (no QR here — handled by beforeprint)
+        document.getElementById('print-student-name').textContent   = data.student_name;
+        document.getElementById('print-activity-title').textContent = data.activity_title;
+        document.getElementById('print-issued-at').textContent      = formattedDate;
+        document.getElementById('print-cert-id').textContent        = `Certificate ID: ${data.uuid}`;
+
+        document.getElementById('status').classList.add('hidden');
+        document.getElementById('certificate-view').classList.remove('hidden');
+
+      } catch (_err) {
+        showError('Failed to load certificate');
+      }
+    }
+
+    document.getElementById('download-btn').addEventListener('click', () => window.print());
+    document.addEventListener('DOMContentLoaded', loadCertificate);
+  </script>
+</body>
+</html>

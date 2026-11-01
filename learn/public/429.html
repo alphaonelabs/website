@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Too Many Requests - Alpha One Labs{% endblock %}
+{% block meta_description %}You have made too many requests in a short period.{% endblock %}
+{% block content %}
+<main class="flex-1 container mx-auto px-4 py-16">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-2xl mx-auto text-center border border-gray-200 dark:border-gray-700">
+    <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Too Many Requests</h1>
+    <p class="text-gray-600 dark:text-gray-300 mb-6">You've made too many requests in a short period. Please wait a moment before trying again.</p>
+    <a href="/" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200"><i class="fas fa-home mr-2"></i>Return to Home</a>
+  </div>
+</main>
+{% endblock %}

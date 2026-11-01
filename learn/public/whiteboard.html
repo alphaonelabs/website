@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Whiteboard - Alpha One Labs{% endblock %}
+{% block meta_description %}Realtime collaborative whiteboard with Excalidraw-inspired minimal UI, drawing tools, shapes, text, room replay, and image export.{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 overflow-hidden{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/css/whiteboard.css">
+{% endblock %}
+{% block content %}
+<main class="flex-1 flex flex-col bg-gray-50 dark:bg-gray-950">
+  <!-- Minimal App Header -->
+  <header class="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+        <h1 class="font-bold text-sm tracking-tight text-gray-900 dark:text-gray-100">Whiteboard</h1>
+      </div>
+      <div class="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-800">
+        <label for="room" class="sr-only">Room</label>
+        <input id="room" class="text-xs bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-teal-500 rounded-lg px-2.5 py-1 text-gray-800 dark:text-gray-200 w-36 font-mono" value="main-whiteboard" placeholder="Room name" autocomplete="off" title="Room name">
+        <button id="connect" class="text-xs font-semibold px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition" title="Connect to room">Connect</button>
+        <span id="status" class="text-xs text-gray-500 dark:text-gray-400">Disconnected</span>
+      </div>
+    </div>
+    <div id="viewer-note" class="hidden rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 text-xs text-amber-800 dark:text-amber-100">
+      Viewing only. <a id="whiteboard-login" href="/login" class="font-bold underline underline-offset-2">Sign in to draw.</a>
+    </div>
+  </header>
+
+  <!-- Canvas Workspace Area -->
+  <section class="flex-1 flex flex-col min-h-0">
+    <div id="whiteboard-container" class="relative flex-1 w-full min-h-[580px] border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col bg-[#f8f9fa] dark:bg-[#121212] select-none">
+
+      <!-- Top-Center Floating Toolbar -->
+      <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center pointer-events-auto">
+        <div id="whiteboard-toolbar-container" class="flex items-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-800 shadow-md p-1 gap-1">
+
+          <select id="toolSelect" class="sr-only">
+            <option value="pen">Pen</option>
+            <option value="eraser">Eraser</option>
+            <option value="highlighter">Highlighter</option>
+            <option value="line">Line</option>
+            <option value="rectangle">Rectangle</option>
+            <option value="circle">Circle</option>
+            <option value="text">Text</option>
+            <option value="arrow">Arrow</option>
+          </select>
+
+          <button type="button" data-tool="pen" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Pen" aria-pressed="true">
+            <i class="fas fa-pen"></i>
+          </button>
+          <button type="button" data-tool="highlighter" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Highlighter" aria-pressed="false">
+            <i class="fas fa-highlighter"></i>
+          </button>
+          <button type="button" data-tool="eraser" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Eraser" aria-pressed="false">
+            <i class="fas fa-eraser"></i>
+          </button>
+          <button type="button" data-tool="line" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Line" aria-pressed="false">
+            <i class="fas fa-minus"></i>
+          </button>
+          <button type="button" data-tool="rectangle" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Rectangle" aria-pressed="false">
+            <i class="far fa-square"></i>
+          </button>
+          <button type="button" data-tool="circle" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Circle" aria-pressed="false">
+            <i class="far fa-circle"></i>
+          </button>
+          <button type="button" data-tool="arrow" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Arrow" aria-pressed="false">
+            <i class="fas fa-arrow-right"></i>
+          </button>
+          <button type="button" data-tool="text" class="tool-button w-8 h-8 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Text" aria-pressed="false">
+            <i class="fas fa-font"></i>
+          </button>
+
+          <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5"></div>
+
+          <!-- Color picker -->
+          <label class="relative flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Stroke Color">
+            <input id="penColor" type="color" value="#0f766e" class="sr-only">
+            <span id="color-preview" class="w-4 h-4 rounded-full border border-black/20 dark:border-white/30 shadow-inner" style="background-color: #0f766e;"></span>
+          </label>
+
+          <!-- Stroke width -->
+          <div class="relative flex items-center" id="width-dropdown-wrap">
+            <button type="button" id="stroke-width-btn" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold" title="Stroke Width">
+              <span id="penWidthValue">4</span><span class="text-[9px] text-gray-400">px</span>
+            </button>
+            <div id="stroke-width-dropdown" class="absolute top-full left-0 mt-2 hidden flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg p-3 z-30 min-w-[130px]">
+              <div class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Stroke Width</div>
+              <input id="penWidth" type="range" min="1" max="32" value="4" class="w-full accent-teal-600">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Top-Right Floating Actions -->
+      <div class="absolute top-3 right-3 z-20 flex items-center gap-1.5 pointer-events-auto">
+        <!-- Upload Image Control -->
+        <button id="uploadBoard" type="button" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 shadow-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Upload Image">
+          <i class="far fa-image"></i>
+        </button>
+        <input type="file" id="loadInput" accept="image/*" class="hidden">
+
+        <!-- Active Users Control -->
+        <div class="relative" id="users-dropdown-wrap">
+          <button type="button" id="users-btn" class="h-8 px-2.5 flex items-center gap-1.5 rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 shadow-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Active Users">
+            <i class="fas fa-users text-[11px] text-gray-400"></i>
+            <span id="active-count" class="font-bold text-teal-700 dark:text-teal-400">0</span>
+          </button>
+          <div id="users-dropdown" class="absolute top-full right-0 mt-2 hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl p-3 z-30 min-w-[200px]">
+            <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Connected Users</div>
+            <div id="activeUsers" class="flex flex-wrap gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+              <span class="text-gray-400">No signed-in users connected.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Download Canvas -->
+        <button id="downloadBoard" type="button" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 shadow-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Download Canvas">
+          <i class="fas fa-download"></i>
+        </button>
+
+        <!-- Clear Canvas -->
+        <button id="clearBoard" type="button" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 shadow-md text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Clear Canvas">
+          <i class="far fa-trash-alt"></i>
+        </button>
+      </div>
+
+      <!-- Canvas Scroll Viewport -->
+      <div id="canvas-viewport" class="relative w-full h-full overflow-auto excalidraw-grid flex">
+        <canvas id="whiteboard" width="1500" height="800" class="block m-auto rounded-xl border border-gray-200/60 dark:border-gray-800/60 shadow-sm bg-transparent">
+          Your browser does not support the HTML5 canvas.
+        </canvas>
+      </div>
+
+      <!-- Bottom-Left Floating Island -->
+      <div class="absolute bottom-3 left-3 z-20 flex items-center gap-1 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-800 shadow-md p-1 pointer-events-auto">
+        <button id="undoBoard" type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Undo (Ctrl+Z)">
+          <i class="fas fa-undo"></i>
+        </button>
+        <button id="redoBoard" type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs" title="Redo (Ctrl+Y)">
+          <i class="fas fa-redo"></i>
+        </button>
+        <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-0.5"></div>
+        <div id="coordinates" class="px-2 text-[11px] font-mono text-gray-500 dark:text-gray-400 select-none">x: 0, y: 0</div>
+      </div>
+
+      <!-- Bottom-Right Floating Fullscreen Button -->
+      <button id="fullscreen-btn" type="button" class="absolute bottom-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200 dark:border-gray-800 shadow-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition pointer-events-auto" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+        <i id="fullscreen-icon" class="fas fa-expand text-xs"></i>
+      </button>
+
+    </div>
+  </section>
+</main>
+
+<script type="module" src="/js/whiteboard/app.js"></script>
+{% endblock %}

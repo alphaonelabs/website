@@ -1,0 +1,41 @@
+# Node / Wrangler
+node_modules/
+.wrangler/
+dist/
+*.tgz
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+
+# Environment & secrets
+.env
+.env.local
+.dev.vars
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.env*
+
+# Local reference folder
+_django_ref/
+todo.md
+migration.md
+
+# Local legacy migration backups (contains secrets/data dumps)
+legacy-backups/
+legacy-site-source/
+.env.production
+.secrets/
+*447605*.json

@@ -1,0 +1,621 @@
+{% extends "base.html" %}
+{% block title %}Quizzes - Alpha One Labs{% endblock %}
+{% block meta_description %}Create, take, and manage interactive quizzes and assessments on Alpha One Labs.{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 w-full max-w-[90rem] mx-auto px-0 md:px-0">
+  <div class="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)]">
+    <!-- Sidebar Navigation -->
+    <aside class="w-full lg:w-64 xl:w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 lg:p-6">
+      <div class="mb-6">
+        <h1 class="text-xl font-bold flex items-center text-gray-800 dark:text-gray-100">
+          <i class="fa-solid fa-layer-group text-teal-500 mr-2"></i>Assessments
+        </h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Quizzes & Evaluations</p>
+      </div>
+      <nav class="space-y-2 text-sm">
+        <a href="/forum" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-comments text-teal-500 mr-2"></i>Forum</a>
+        <a href="/blog" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-blog text-teal-500 mr-2"></i>Blog</a>
+        <a href="/study-groups" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-users text-teal-500 mr-2"></i>Study Groups</a>
+        <a href="/quizzes" class="flex items-center py-2 px-3 text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 rounded-lg font-semibold"><i class="fa-solid fa-circle-question text-teal-500 mr-2"></i>Quizzes</a>
+        <a href="/surveys" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-square-poll-vertical text-teal-500 mr-2"></i>Surveys</a>
+        <a href="/challenges" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-trophy text-teal-500 mr-2"></i>Challenges</a>
+        <a href="/progress" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-chart-line text-teal-500 mr-2"></i>Progress</a>
+        <a href="/calendar" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-calendar-days text-teal-500 mr-2"></i>Calendar</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <section class="flex-1 bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
+      <div id="quiz-app">
+        <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">
+          <i class="fa-solid fa-circle-notch fa-spin text-teal-500 text-2xl mb-2"></i>
+          <p>Loading quizzes&hellip;</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  const app = document.getElementById('quiz-app');
+  const params = new URLSearchParams(location.search);
+  const token = localStorage.getItem('edu_token');
+  const authHeaders = token ? { Authorization: 'Bearer ' + token } : {};
+
+  function esc(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    const headers = Object.assign({}, authHeaders, opts.body ? { 'Content-Type': 'application/json' } : {});
+    const res = await fetch(path, Object.assign({}, opts, { headers }));
+    let body = {};
+    try { body = await res.json(); } catch (e) { /* no json body */ }
+    if (!res.ok) throw new Error(body.error || 'Request failed (' + res.status + ')');
+    return body;
+  }
+
+  function typeLabel(type) {
+    const labels = {
+      multiple_choice: 'Multiple Choice',
+      true_false: 'True / False',
+      short_answer: 'Short Answer'
+    };
+    return labels[type] || type;
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIEW: Quiz List
+  // ---------------------------------------------------------------------------
+  async function renderList() {
+    app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400"><i class="fa-solid fa-circle-notch fa-spin text-teal-500 text-2xl mb-2"></i><p>Loading quizzes&hellip;</p></div>';
+
+    let quizzes = [];
+    try {
+      const data = await api('/api/quizzes');
+      quizzes = data.quizzes || [];
+    } catch (err) {
+      app.innerHTML = '<div class="rounded-lg border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-6 text-red-700 dark:text-red-300 flex items-center gap-3"><i class="fa-solid fa-triangle-exclamation text-xl"></i><div><h4 class="font-bold">Error loading quizzes</h4><p class="text-sm">' + esc(err.message) + '</p></div></div>';
+      return;
+    }
+
+    const createBtn = token
+      ? '<a href="/quizzes?create=1" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center shadow-sm transition"><i class="fa-solid fa-plus mr-2"></i>Create New Quiz</a>'
+      : '<a href="/login?redirect=/quizzes" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center shadow-sm transition"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in to Create</a>';
+
+    let listHtml = '';
+    if (!quizzes.length) {
+      listHtml = '<div class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 p-12 text-center text-gray-500 dark:text-gray-400 shadow-sm">' +
+        '<i class="fa-solid fa-book-open-reader text-teal-500 text-5xl mb-4"></i>' +
+        '<h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">No quizzes available yet</h3>' +
+        '<p class="text-sm max-w-md mx-auto mb-6 text-gray-600 dark:text-gray-400">Instructors can create interactive quizzes with automated grading, time limits, and custom passing scores.</p>' +
+        createBtn +
+        '</div>';
+    } else {
+      listHtml = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">' + quizzes.map(function (q) {
+        const hostBadge = q.is_host
+          ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200"><i class="fa-solid fa-shield-halved mr-1"></i>Your Quiz</span>'
+          : '';
+        const timeLimit = q.time_limit_minutes > 0 ? q.time_limit_minutes + ' mins' : 'Untimed';
+        const deleteBtn = q.is_host
+          ? '<button data-delete-id="' + esc(q.id) + '" class="text-xs text-red-600 dark:text-red-400 hover:underline inline-flex items-center p-1"><i class="fa-solid fa-trash mr-1"></i>Delete</button>'
+          : '';
+
+        return '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition flex flex-col justify-between p-5">' +
+          '<div>' +
+            '<div class="flex items-start justify-between gap-2 mb-3">' +
+              '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300">' +
+                '<i class="fa-solid fa-graduation-cap mr-1"></i>' + esc(q.activity_title || 'Course Quiz') +
+              '</span>' +
+              hostBadge +
+            '</div>' +
+            '<h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1 hover:text-teal-600 dark:hover:text-teal-400 transition">' +
+              '<a href="/quizzes?id=' + esc(q.id) + '">' + esc(q.title) + '</a>' +
+            '</h3>' +
+            '<p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-4">' + (esc(q.description) || 'Test your knowledge on key topics from this course.') + '</p>' +
+          '</div>' +
+          '<div>' +
+            '<div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-4 pt-3 border-t border-gray-100 dark:border-gray-700">' +
+              '<span><i class="fa-solid fa-circle-question text-teal-500 mr-1"></i>' + q.question_count + ' question' + (q.question_count === 1 ? '' : 's') + '</span>' +
+              '<span><i class="fa-solid fa-clock text-amber-500 mr-1"></i>' + esc(timeLimit) + '</span>' +
+              '<span><i class="fa-solid fa-trophy text-emerald-500 mr-1"></i>Pass: ' + q.passing_score + '%</span>' +
+            '</div>' +
+            '<div class="flex items-center justify-between gap-2">' +
+              '<a href="/quizzes?id=' + esc(q.id) + '" class="flex-1 text-center bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold py-2 px-3 rounded-lg shadow-sm transition"><i class="fa-solid fa-list-check mr-1.5"></i>' + (q.is_host ? 'Manage & Questions' : 'View Quiz') + '</a>' +
+              deleteBtn +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+
+    app.innerHTML = '<div class="space-y-6">' +
+      '<div class="flex flex-wrap justify-between items-start gap-4 mb-2">' +
+        '<div>' +
+          '<p class="text-xs uppercase tracking-wider text-teal-600 dark:text-teal-400 font-extrabold">Learning Parity</p>' +
+          '<h2 class="text-3xl font-extrabold text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-2">' +
+            '<i class="fa-solid fa-circle-question text-teal-500"></i> Quizzes & Assessments' +
+          '</h2>' +
+          '<p class="text-gray-600 dark:text-gray-400 mt-1 max-w-2xl text-sm">Author, configure, and manage graded assessments across learning activities.</p>' +
+        '</div>' +
+        '<div class="flex items-center gap-3">' +
+          createBtn +
+        '</div>' +
+      '</div>' +
+      listHtml +
+    '</div>';
+
+    // Hook up delete buttons
+    app.querySelectorAll('[data-delete-id]').forEach(function (btn) {
+      btn.addEventListener('click', async function (e) {
+        e.preventDefault();
+        const qid = btn.getAttribute('data-delete-id');
+        if (!confirm('Are you sure you want to delete this quiz and all its questions? This cannot be undone.')) return;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Deleting...';
+        try {
+          await api('/api/quizzes/' + encodeURIComponent(qid), { method: 'DELETE' });
+          renderList();
+        } catch (err) {
+          alert('Failed to delete quiz: ' + err.message);
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Delete';
+        }
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIEW: Create Quiz (Authoring)
+  // ---------------------------------------------------------------------------
+  async function renderCreate() {
+    if (!token) {
+      location.href = '/login?redirect=' + encodeURIComponent('/quizzes?create=1');
+      return;
+    }
+
+    app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400"><i class="fa-solid fa-circle-notch fa-spin text-teal-500 text-2xl mb-2"></i><p>Preparing quiz authoring studio&hellip;</p></div>';
+
+    // Fetch activities hosted by user or all activities
+    let activities = [];
+    try {
+      const actRes = await api('/api/activities');
+      activities = actRes.activities || [];
+    } catch (e) {
+      /* ignore */
+    }
+
+    const activityOptions = activities.length
+      ? activities.map(function (a) {
+          return '<option value="' + esc(a.id) + '">' + esc(a.title) + '</option>';
+        }).join('')
+      : '<option value="">No existing activities found (or enter manually below)</option>';
+
+    app.innerHTML = '<div class="max-w-4xl mx-auto space-y-6">' +
+      '<div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">' +
+        '<div>' +
+          '<a href="/quizzes" class="text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center mb-1"><i class="fa-solid fa-arrow-left mr-1.5"></i>Back to Quizzes</a>' +
+          '<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Create New Quiz</h2>' +
+          '<p class="text-sm text-gray-600 dark:text-gray-400">Configure quiz parameters and define initial questions.</p>' +
+        '</div>' +
+      '</div>' +
+
+      '<div id="create-error" class="hidden rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 p-4 text-red-700 dark:text-red-300 text-sm"></div>' +
+
+      '<form id="create-quiz-form" class="space-y-6">' +
+        '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-sm space-y-4">' +
+          '<h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><i class="fa-solid fa-sliders text-teal-500"></i>General Settings</h3>' +
+
+          '<div>' +
+            '<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Target Activity *</label>' +
+            '<select id="quiz-activity-select" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+              activityOptions +
+            '</select>' +
+            '<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Or enter custom Activity ID: <input type="text" id="quiz-activity-custom" placeholder="e.g. act-123" class="ml-1 px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"></p>' +
+          '</div>' +
+
+          '<div>' +
+            '<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Quiz Title *</label>' +
+            '<input type="text" id="quiz-title" required placeholder="e.g. Midterm Evaluation: Data Structures" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+          '</div>' +
+
+          '<div>' +
+            '<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Description</label>' +
+            '<textarea id="quiz-desc" rows="3" placeholder="Brief description of the topics covered and grading criteria..." class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500"></textarea>' +
+          '</div>' +
+
+          '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
+            '<div>' +
+              '<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Time Limit (Minutes)</label>' +
+              '<input type="number" id="quiz-time-limit" min="0" value="30" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+              '<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Set to 0 for unlimited time.</p>' +
+            '</div>' +
+            '<div>' +
+              '<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Passing Score (%)</label>' +
+              '<input type="number" id="quiz-passing-score" min="0" max="100" value="70" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+              '<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum score required to earn a certificate.</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Initial Questions Builder -->' +
+        '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-sm space-y-4">' +
+          '<div class="flex items-center justify-between">' +
+            '<h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><i class="fa-solid fa-list-ol text-teal-500"></i>Quiz Questions</h3>' +
+            '<button type="button" id="add-question-card-btn" class="text-xs bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 hover:bg-teal-100 font-semibold px-3 py-1.5 rounded-lg border border-teal-200 dark:border-teal-700 transition"><i class="fa-solid fa-plus mr-1"></i>Add Question</button>' +
+          '</div>' +
+          '<div id="questions-container" class="space-y-4"></div>' +
+        '</div>' +
+
+        '<div class="flex items-center justify-end gap-3">' +
+          '<a href="/quizzes" class="px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm font-medium transition">Cancel</a>' +
+          '<button type="submit" id="submit-quiz-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-2.5 rounded-lg shadow-sm text-sm transition inline-flex items-center"><i class="fa-solid fa-check mr-2"></i>Publish Quiz</button>' +
+        '</div>' +
+      '</form>' +
+    '</div>';
+
+    const container = document.getElementById('questions-container');
+    let qCount = 0;
+
+    function addQuestionCard(defaultPrompt) {
+      qCount++;
+      const id = qCount;
+      const card = document.createElement('div');
+      card.className = 'question-card rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 p-4 relative space-y-3';
+      card.setAttribute('data-qid', id);
+      card.innerHTML = '<div class="flex items-center justify-between">' +
+        '<span class="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Question ' + id + '</span>' +
+        '<button type="button" class="remove-q-btn text-xs text-red-500 hover:text-red-700"><i class="fa-solid fa-trash-can mr-1"></i>Remove</button>' +
+      '</div>' +
+      '<div>' +
+        '<input type="text" class="q-prompt w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100" placeholder="Question prompt or problem statement..." value="' + esc(defaultPrompt || '') + '" required>' +
+      '</div>' +
+      '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">' +
+        '<div>' +
+          '<label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Question Type</label>' +
+          '<select class="q-type w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-100">' +
+            '<option value="multiple_choice">Multiple Choice</option>' +
+            '<option value="true_false">True / False</option>' +
+            '<option value="short_answer">Short Answer</option>' +
+          '</select>' +
+        '</div>' +
+        '<div>' +
+          '<label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Correct Answer (Encrypted in DB) *</label>' +
+          '<input type="text" class="q-correct w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-100" placeholder="Exact correct answer string" required>' +
+        '</div>' +
+      '</div>' +
+      '<div class="q-options-wrapper">' +
+        '<label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Options (comma-separated for choices)</label>' +
+        '<input type="text" class="q-options w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-100" placeholder="e.g. Option A, Option B, Option C, Option D">' +
+      '</div>';
+
+      card.querySelector('.remove-q-btn').addEventListener('click', function () {
+        card.remove();
+      });
+
+      const qTypeSelect = card.querySelector('.q-type');
+      const qOptionsWrapper = card.querySelector('.q-options-wrapper');
+      const qCorrectInput = card.querySelector('.q-correct');
+      const qOptionsInput = card.querySelector('.q-options');
+
+      qTypeSelect.addEventListener('change', function () {
+        if (qTypeSelect.value === 'true_false') {
+          qOptionsWrapper.classList.add('hidden');
+          qOptionsInput.value = 'True, False';
+          qCorrectInput.placeholder = 'True or False';
+        } else if (qTypeSelect.value === 'short_answer') {
+          qOptionsWrapper.classList.add('hidden');
+          qOptionsInput.value = '';
+          qCorrectInput.placeholder = 'Acceptable answer phrase';
+        } else {
+          qOptionsWrapper.classList.remove('hidden');
+          qOptionsInput.value = '';
+          qCorrectInput.placeholder = 'Exact matching option';
+        }
+      });
+
+      container.appendChild(card);
+    }
+
+    // Add first default question card
+    addQuestionCard('What is the primary benefit of version control?');
+
+    document.getElementById('add-question-card-btn').addEventListener('click', function () {
+      addQuestionCard();
+    });
+
+    // Handle Form Submit
+    document.getElementById('create-quiz-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const errBox = document.getElementById('create-error');
+      errBox.classList.add('hidden');
+      const submitBtn = document.getElementById('submit-quiz-btn');
+
+      const customAct = document.getElementById('quiz-activity-custom').value.trim();
+      const selectAct = document.getElementById('quiz-activity-select').value.trim();
+      const activityId = customAct || selectAct;
+
+      if (!activityId) {
+        errBox.textContent = 'Please specify a valid Activity ID.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      const title = document.getElementById('quiz-title').value.trim();
+      const description = document.getElementById('quiz-desc').value.trim();
+      const timeLimit = parseInt(document.getElementById('quiz-time-limit').value || '0', 10);
+      const passingScore = parseInt(document.getElementById('quiz-passing-score').value || '70', 10);
+
+      const cards = container.querySelectorAll('.question-card');
+      const questions = [];
+      cards.forEach(function (c, idx) {
+        const prompt = c.querySelector('.q-prompt').value.trim();
+        const type = c.querySelector('.q-type').value;
+        const correct = c.querySelector('.q-correct').value.trim();
+        const rawOpts = c.querySelector('.q-options').value.trim();
+        let opts = [];
+        if (rawOpts) {
+          opts = rawOpts.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+        if (prompt) {
+          questions.push({
+            prompt: prompt,
+            question_type: type,
+            options: opts,
+            correct_answer: correct,
+            display_order: idx + 1
+          });
+        }
+      });
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Publishing...';
+
+      try {
+        const payload = {
+          title: title,
+          description: description,
+          time_limit_minutes: timeLimit,
+          passing_score: passingScore,
+          questions: questions
+        };
+        const res = await api('/api/activities/' + encodeURIComponent(activityId) + '/quizzes', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        const createdId = res.data ? res.data.id : null;
+        if (createdId) {
+          location.href = '/quizzes?id=' + encodeURIComponent(createdId);
+        } else {
+          location.href = '/quizzes';
+        }
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Publish Quiz';
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIEW: Quiz Detail & Question Management
+  // ---------------------------------------------------------------------------
+  async function renderDetail(quizId) {
+    app.innerHTML = '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400"><i class="fa-solid fa-circle-notch fa-spin text-teal-500 text-2xl mb-2"></i><p>Loading quiz details&hellip;</p></div>';
+
+    let quiz;
+    try {
+      const data = await api('/api/quizzes/' + encodeURIComponent(quizId));
+      quiz = data.quiz;
+    } catch (err) {
+      app.innerHTML = '<div class="rounded-lg border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-6 text-red-700 dark:text-red-300">' + esc(err.message) + '</div>';
+      return;
+    }
+
+    const questions = quiz.questions || [];
+    const isHost = quiz.is_host;
+    const timeLimit = quiz.time_limit_minutes > 0 ? quiz.time_limit_minutes + ' minutes' : 'Untimed';
+
+    let questionsHtml = '';
+    if (!questions.length) {
+      questionsHtml = '<div class="p-8 text-center border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400">' +
+        '<i class="fa-solid fa-clipboard-question text-3xl mb-2 text-gray-400"></i>' +
+        '<p class="font-medium">No questions defined in this quiz yet.</p>' +
+        (isHost ? '<p class="text-xs mt-1">Use the authoring form below to add questions.</p>' : '') +
+      '</div>';
+    } else {
+      questionsHtml = '<div class="space-y-4">' + questions.map(function (q, idx) {
+        const typeBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">' + esc(typeLabel(q.question_type)) + '</span>';
+        let optionsHtml = '';
+        if (q.options && q.options.length) {
+          optionsHtml = '<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">' + q.options.map(function (opt) {
+            const isCorrect = isHost && q.correct_answer && q.correct_answer.toLowerCase() === opt.toLowerCase();
+            const optClass = isCorrect
+              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 font-semibold'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+            return '<div class="px-3 py-2 rounded-lg border text-xs flex items-center justify-between ' + optClass + '">' +
+              '<span>' + esc(opt) + '</span>' +
+              (isCorrect ? '<i class="fa-solid fa-check text-emerald-600 dark:text-emerald-400 ml-2"></i>' : '') +
+            '</div>';
+          }).join('') + '</div>';
+        }
+
+        const answerReveal = isHost
+          ? '<div class="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs flex items-center justify-between text-gray-500 dark:text-gray-400">' +
+              '<span><strong class="text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-key mr-1"></i>Answer:</strong> ' + esc(q.correct_answer || '[Encrypted]') + '</span>' +
+              '<span class="text-2xs text-gray-400"><i class="fa-solid fa-lock mr-1"></i>Encrypted in D1</span>' +
+            '</div>'
+          : '';
+
+        return '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-sm">' +
+          '<div class="flex items-start justify-between gap-3 mb-2">' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 text-xs font-bold flex items-center justify-center">' + (idx + 1) + '</span>' +
+              '<h4 class="text-base font-bold text-gray-900 dark:text-gray-100">' + esc(q.prompt) + '</h4>' +
+            '</div>' +
+            typeBadge +
+          '</div>' +
+          optionsHtml +
+          answerReveal +
+        '</div>';
+      }).join('') + '</div>';
+    }
+
+    // Host question authoring form
+    let authoringBox = '';
+    if (isHost) {
+      authoringBox = '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 shadow-sm space-y-4">' +
+        '<h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"><i class="fa-solid fa-circle-plus text-teal-500"></i>Add Question to this Quiz</h3>' +
+        '<div id="add-q-error" class="hidden rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 p-3 text-red-700 dark:text-red-300 text-xs"></div>' +
+        '<form id="add-question-form" class="space-y-4">' +
+          '<div>' +
+            '<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Question Prompt *</label>' +
+            '<input type="text" id="new-q-prompt" required placeholder="Enter the question prompt..." class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+          '</div>' +
+          '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
+            '<div>' +
+              '<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Question Type</label>' +
+              '<select id="new-q-type" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+                '<option value="multiple_choice">Multiple Choice</option>' +
+                '<option value="true_false">True / False</option>' +
+                '<option value="short_answer">Short Answer</option>' +
+              '</select>' +
+            '</div>' +
+            '<div>' +
+              '<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Correct Answer (Encrypted) *</label>' +
+              '<input type="text" id="new-q-correct" required placeholder="Exact correct answer" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+            '</div>' +
+          '</div>' +
+          '<div id="new-q-options-wrapper">' +
+            '<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Options (comma-separated for choices)</label>' +
+            '<input type="text" id="new-q-options" placeholder="Option 1, Option 2, Option 3, Option 4" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500">' +
+          '</div>' +
+          '<div class="flex justify-end">' +
+            '<button type="submit" id="add-q-submit-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition inline-flex items-center"><i class="fa-solid fa-plus mr-1.5"></i>Add Question</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+    }
+
+    app.innerHTML = '<div class="max-w-4xl mx-auto space-y-6">' +
+      '<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">' +
+        '<div>' +
+          '<a href="/quizzes" class="text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center mb-1"><i class="fa-solid fa-arrow-left mr-1.5"></i>Back to Quizzes</a>' +
+          '<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">' + esc(quiz.title) + '</h2>' +
+          '<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Activity: <strong class="text-gray-700 dark:text-gray-300">' + esc(quiz.activity_title || quiz.activity_id) + '</strong></p>' +
+        '</div>' +
+        '<div class="flex items-center gap-2">' +
+          (isHost ? '<span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200"><i class="fa-solid fa-user-gear mr-1"></i>Host Authoring Mode</span>' : '') +
+        '</div>' +
+      '</div>' +
+
+      '<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">' +
+        '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-center">' +
+          '<span class="text-xs text-gray-500 dark:text-gray-400 block mb-1 font-medium">Questions</span>' +
+          '<span class="text-2xl font-extrabold text-teal-600 dark:text-teal-400">' + questions.length + '</span>' +
+        '</div>' +
+        '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-center">' +
+          '<span class="text-xs text-gray-500 dark:text-gray-400 block mb-1 font-medium">Time Limit</span>' +
+          '<span class="text-lg font-bold text-gray-800 dark:text-gray-200">' + esc(timeLimit) + '</span>' +
+        '</div>' +
+        '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-center">' +
+          '<span class="text-xs text-gray-500 dark:text-gray-400 block mb-1 font-medium">Passing Score</span>' +
+          '<span class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">' + quiz.passing_score + '%</span>' +
+        '</div>' +
+        '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-center">' +
+          '<span class="text-xs text-gray-500 dark:text-gray-400 block mb-1 font-medium">Status</span>' +
+          '<span class="text-sm font-bold text-teal-600 dark:text-teal-400"><i class="fa-solid fa-circle-check mr-1"></i>Active</span>' +
+        '</div>' +
+      '</div>' +
+
+      (quiz.description ? '<div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 text-sm text-gray-700 dark:text-gray-300">' + esc(quiz.description) + '</div>' : '') +
+
+      '<div class="space-y-4">' +
+        '<h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center justify-between">' +
+          '<span>Questions (' + questions.length + ')</span>' +
+        '</h3>' +
+        questionsHtml +
+      '</div>' +
+
+      authoringBox +
+    '</div>';
+
+    if (isHost) {
+      const qTypeSelect = document.getElementById('new-q-type');
+      const qOptionsWrapper = document.getElementById('new-q-options-wrapper');
+      const qOptionsInput = document.getElementById('new-q-options');
+      const qCorrectInput = document.getElementById('new-q-correct');
+
+      qTypeSelect.addEventListener('change', function () {
+        if (qTypeSelect.value === 'true_false') {
+          qOptionsWrapper.classList.add('hidden');
+          qOptionsInput.value = 'True, False';
+          qCorrectInput.placeholder = 'True or False';
+        } else if (qTypeSelect.value === 'short_answer') {
+          qOptionsWrapper.classList.add('hidden');
+          qOptionsInput.value = '';
+          qCorrectInput.placeholder = 'Expected keyword or phrase';
+        } else {
+          qOptionsWrapper.classList.remove('hidden');
+          qOptionsInput.value = '';
+          qCorrectInput.placeholder = 'Exact matching option';
+        }
+      });
+
+      document.getElementById('add-question-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const errBox = document.getElementById('add-q-error');
+        errBox.classList.add('hidden');
+        const submitBtn = document.getElementById('add-q-submit-btn');
+
+        const prompt = document.getElementById('new-q-prompt').value.trim();
+        const qType = qTypeSelect.value;
+        const correct = qCorrectInput.value.trim();
+        const rawOpts = qOptionsInput.value.trim();
+        let opts = [];
+        if (rawOpts) {
+          opts = rawOpts.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Adding...';
+
+        try {
+          await api('/api/quizzes/' + encodeURIComponent(quizId) + '/questions', {
+            method: 'POST',
+            body: JSON.stringify({
+              prompt: prompt,
+              question_type: qType,
+              options: opts,
+              correct_answer: correct
+            })
+          });
+          renderDetail(quizId);
+        } catch (err) {
+          errBox.textContent = err.message;
+          errBox.classList.remove('hidden');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i>Add Question';
+        }
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Router dispatcher based on query parameters
+  // ---------------------------------------------------------------------------
+  if (params.get('create')) {
+    renderCreate();
+  } else if (params.get('id')) {
+    renderDetail(params.get('id'));
+  } else {
+    renderList();
+  }
+})();
+</script>
+{% endblock %}

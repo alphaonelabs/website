@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+{% block title %}Login / Register{% endblock %}
+{% block meta_description %}Login or register for your account{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}
+{% block head %}
+<meta name="keywords" content="education, login, register, activities">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} }
+    }
+
+    const DEBUG = false;
+    function log(message) {
+      if (DEBUG) console.log(`[DarkMode] ${message}`);
+    }
+
+    function initializeDarkMode() {
+      log('Initializing dark mode');
+      const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+      if (darkModeEnabled) {
+        document.documentElement.classList.add('dark');
+        log('Added dark class');
+      } else if (localStorage.getItem('darkMode') === null) {
+        localStorage.setItem('darkMode', 'false');
+        log('Defaulting to light mode');
+      }
+      updateDarkModeIcon();
+    }
+
+    function toggleDarkMode() {
+      log('Toggle dark mode called');
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark.toString());
+      log(`Dark mode toggled to: ${isDark}`);
+      updateDarkModeIcon();
+    }
+
+    function updateDarkModeIcon() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const icon = document.getElementById('darkModeIcon');
+      const iconMobile = document.getElementById('darkModeIconMobile');
+      
+      if (icon) {
+        icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      }
+      if (iconMobile) {
+        iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
+      }
+    }
+
+    initializeDarkMode();
+    document.addEventListener('DOMContentLoaded', initializeDarkMode);
+  </script>
+
+  <style>
+    html, body {
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    
+    .dark { color-scheme: dark; }
+    :root { color-scheme: light; }
+  </style>
+{% endblock %}
+{% block content %}
+<!-- ===== MAIN CONTENT ===== -->
+  <main class="flex-1 w-full flex items-center justify-center py-12 px-4">
+    <div class="w-full max-w-md">
+      <!-- Security Note -->
+      <div class="text-center mb-8">
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          <i class="fas fa-shield-alt mr-1"></i>All user data encrypted at rest - zero plaintext PII stored
+        </p>
+      </div>
+
+      <!-- Auth Card -->
+      <div class="rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <button id="tab-login" onclick="switchTab('login')"
+            class="flex-1 py-4 text-sm font-semibold border-b-2 border-teal-500 text-teal-600 dark:text-teal-400 transition">
+            <i class="fas fa-sign-in-alt mr-2"></i>Login
+          </button>
+          <button id="tab-register" onclick="switchTab('register')"
+            class="flex-1 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition">
+            <i class="fas fa-user-plus mr-2"></i>Register
+          </button>
+        </div>
+
+        <!-- LOGIN PANEL -->
+        <div id="panel-login" class="p-8">
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Welcome back!</h2>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Sign in to your account</p>
+          
+          <form id="form-login" class="space-y-4" novalidate>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-user mr-1.5 text-teal-600 dark:text-teal-400"></i>Username or Email
+              </label>
+              <input id="l-username" type="text" autocomplete="username" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="username or email" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-lock mr-1.5 text-teal-600 dark:text-teal-400"></i>Password
+              </label>
+              <input id="l-password" type="password" autocomplete="current-password" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="••••••••" />
+            </div>
+
+            <div id="login-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm flex items-start gap-2 animate-pulse">
+              <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+              <span id="login-err-msg"></span>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95">
+              <i class="fas fa-arrow-right mr-2"></i>Sign In
+            </button>
+          </form>
+          <div id="resend-box" class="hidden mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm space-y-3">
+            <p class="text-amber-800 dark:text-amber-200">
+              <i class="fas fa-envelope mr-1"></i>Your email address isn't verified yet. Enter it below and we'll send a new verification link.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input id="resend-email" type="email" autocomplete="email" aria-label="Email address" placeholder="you@example.com"
+                class="flex-1 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              <button id="resend-btn" type="button"
+                class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed">
+                Resend email
+              </button>
+            </div>
+            <p id="resend-msg" class="hidden text-xs" role="status" aria-live="polite"></p>
+          </div>
+
+          <div class="mt-4 text-center">
+            <a href="/forgot-password" class="text-sm text-teal-600 dark:text-teal-400 hover:underline font-semibold">
+              <i class="fas fa-key mr-1"></i>Forgot your password?
+            </a>
+          </div>
+
+        </div>
+
+        <!-- REGISTER PANEL -->
+        <div id="panel-register" class="p-8 hidden">
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Create your account</h2>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">Create an account and start learning today</p>
+          
+          <form id="form-register" class="space-y-4" novalidate>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-id-card mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Display Name
+              </label>
+              <input id="r-name" type="text" autocomplete="name"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="Your Full Name" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-user mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Username
+              </label>
+              <input id="r-username" type="text" autocomplete="username" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="choose_a_username" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-envelope mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Email
+              </label>
+              <input id="r-email" type="email" autocomplete="email" required
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="you@example.com" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-lock mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Password
+              </label>
+              <input id="r-password" type="password" autocomplete="new-password" required minlength="8"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="min 8 characters" />
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                <i class="fas fa-shield-alt mr-1"></i>Passwords are encrypted at rest
+              </p>
+              <ul id="r-password-rules" class="mt-2 space-y-0.5 text-xs"></ul>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-check-circle mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Confirm Password
+              </label>
+              <input id="r-confirm-password" type="password" autocomplete="new-password" required minlength="8"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition" 
+                placeholder="confirm password" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fas fa-gift mr-1.5 text-cyan-600 dark:text-cyan-400"></i>Referral Code
+              </label>
+              <input id="r-referral-code" type="text" autocomplete="off"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 dark:bg-gray-700 dark:text-white text-sm transition uppercase" 
+                placeholder="optional" />
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Use this if someone invited you through the referral program.</p>
+            </div>
+
+            <div id="register-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm flex items-start gap-2 animate-pulse">
+              <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+              <span id="register-err-msg"></span>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95">
+              <i class="fas fa-user-check mr-2"></i>Create Account
+            </button>
+          </form>
+
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
+            By registering, you agree to our <a href="/terms" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Terms of Service</a> and <a href="/privacy" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">Privacy Policy</a>
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer Link -->
+      <p class="text-center text-gray-500 dark:text-gray-400 text-xs mt-6">
+        <a href="/" class="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline inline-flex items-center justify-center gap-1 font-semibold transition">
+          <i class="fas fa-arrow-left"></i>Back to activities
+        </a>
+      </p>
+    </div>
+  </main>
+<script src="/js/password-rules.js"></script>
+<script>
+    const API = '';
+
+    PasswordRules.attachChecklist(
+    document.getElementById('r-password'),
+    document.getElementById('r-password-rules')
+);
+
+// Check if already logged in
+if (localStorage.getItem('edu_token')) {
+    window.location.href = '/dashboard';
+}
+
+// Tab switching
+function switchTab(tab) {
+    const isLogin = tab === 'login';
+    
+    document.getElementById('panel-login').classList.toggle('hidden', !isLogin);
+    document.getElementById('panel-register').classList.toggle('hidden', isLogin);
+    
+    document.getElementById('tab-login').className = 
+        'flex-1 py-4 text-sm font-semibold border-b-2 transition ' +
+        (isLogin 
+            ? 'border-teal-500 text-teal-600 dark:text-teal-400' 
+            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
+    
+    document.getElementById('tab-register').className = 
+        'flex-1 py-4 text-sm font-semibold border-b-2 transition ' +
+        (!isLogin 
+            ? 'border-teal-500 text-teal-600 dark:text-teal-400' 
+            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300');
+}
+
+// Store authentication data and handle post-login flow
+function storeAuth(data) {
+    localStorage.setItem('edu_token', data.token);
+    localStorage.setItem('edu_user', JSON.stringify(data.user));
+    
+    // Show success toast
+    showToast('Redirecting...');
+    
+    // Wait a few seconds then redirect
+    setTimeout(() => {
+        handlePostLoginRedirect();
+    }, 500);
+}
+
+// Show success toast message
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300 text-sm flex items-start gap-2 animate-pulse shadow-lg z-50';
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-check-circle mt-0.5 flex-shrink-0';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    toast.append(icon, span);
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Show error message
+function showErr(id, msg) {
+    const el = document.getElementById(id);
+    const msgEl = document.getElementById(id + '-msg');
+    msgEl.textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => {
+        el.classList.add('hidden');
+    }, 5000);
+}
+// The server ignores repeat requests for the same account within 5 minutes,
+// so the button is locked for the same period instead of pretending to send.
+const RESEND_COOLDOWN_SECONDS = 300;
+const RESEND_LABEL = 'Resend email';
+
+async function requestVerificationEmail(email) {
+    const res = await fetch(`${API}/api/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Could not send the email. Please try again.');
+    return data.message || 'If an unverified account with that email exists, a new verification link has been sent.';
+}
+
+function startResendCooldown(btn, label, seconds) {
+    clearInterval(btn._timer);
+    let left = seconds;
+    btn.disabled = true;
+    const tick = () => {
+        if (left <= 0) {
+            clearInterval(btn._timer);
+            btn.disabled = false;
+            btn.textContent = label;
+            return;
+        }
+        const m = Math.floor(left / 60);
+        const s = String(left % 60).padStart(2, '0');
+        btn.textContent = `${label} (${m}:${s})`;
+        left -= 1;
+    };
+    tick();
+    btn._timer = setInterval(tick, 1000);
+}
+
+function setResendMessage(el, text, isError) {
+    el.textContent = text;
+    el.className = 'text-xs ' + (isError ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400');
+}
+
+function showResendBox(prefillEmail) {
+    const input = document.getElementById('resend-email');
+    if (prefillEmail && !input.value) input.value = prefillEmail;
+    document.getElementById('resend-box').classList.remove('hidden');
+}
+
+document.getElementById('resend-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('resend-btn');
+    const msg = document.getElementById('resend-msg');
+    const email = document.getElementById('resend-email').value.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setResendMessage(msg, 'Please enter a valid email address.', true);
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+        const text = await requestVerificationEmail(email);
+        setResendMessage(msg, text + ' Check your spam folder too.', false);
+        startResendCooldown(btn, RESEND_LABEL, RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+        setResendMessage(msg, err.message, true);
+        btn.disabled = false;
+        btn.textContent = RESEND_LABEL;
+    }
+});
+
+// Handle redirect after successful login
+function handlePostLoginRedirect() {
+    const redirectUrl = sessionStorage.getItem('post_login_redirect');
+    sessionStorage.removeItem('post_login_redirect');
+    // Only honor same-origin, path-only redirects to prevent open-redirect abuse.
+    const safe = redirectUrl && /^\/(?!\/)/.test(redirectUrl);
+    window.location.href = safe ? redirectUrl : '/dashboard';
+}
+
+// Handle tab parameter in URL
+const params = new URLSearchParams(location.search);
+if (params.get('tab') === 'register') {
+    switchTab('register');
+}
+if (params.get('referral_code')) {
+    switchTab('register');
+    const referralInput = document.getElementById('r-referral-code');
+    if (referralInput) referralInput.value = params.get('referral_code');
+}
+
+// Handle next parameter for post-login redirect.
+// URLSearchParams.get() already performs percent-decoding — no need to decode again.
+const nextParam = params.get('next');
+if (nextParam) {
+    sessionStorage.setItem('post_login_redirect', nextParam);
+}
+
+// Login form submission
+document.getElementById('form-login').addEventListener('submit', async e => {
+    e.preventDefault();
+    document.getElementById('login-err').classList.add('hidden');
+    document.getElementById('resend-box').classList.add('hidden');
+    
+    const btn = e.target.querySelector('button[type=submit]');
+    const originalText = btn.textContent;
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    
+    try {
+        const username = document.getElementById('l-username').value.trim();
+        const password = document.getElementById('l-password').value;
+        
+        if (!username || !password) {
+            throw new Error('Please enter both username and password');
+        }
+        
+        const res = await fetch(`${API}/api/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          if (data.code === 'email_not_verified' || res.status === 403) {
+            showResendBox(username.includes('@') ? username : '');
+          }
+          throw new Error(data.error || 'Login failed');
+        }
+        
+        storeAuth(data.data);
+    } catch (err) {
+        console.error('Login error:', err);
+        showErr('login-err', err.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
+
+// Register form submission
+document.getElementById('form-register').addEventListener('submit', async e => {
+    e.preventDefault();
+    document.getElementById('register-err').classList.add('hidden');
+    
+    const btn = e.target.querySelector('button[type=submit]');
+    const originalText = btn.textContent;
+    btn.textContent = 'Creating...';
+    btn.disabled = true;
+    
+    try {
+        const name = document.getElementById('r-name').value.trim();
+        const username = document.getElementById('r-username').value.trim();
+        const email = document.getElementById('r-email').value.trim();
+        const password = document.getElementById('r-password').value;
+        const confirmPassword = document.getElementById('r-confirm-password').value;
+        const referralCode = document.getElementById('r-referral-code').value.trim();
+        
+        if (!username || !email || !password) {
+            throw new Error('Please fill in all required fields');
+        }
+        const passwordError = PasswordRules.validate(password, username);
+        if (passwordError) throw new Error(passwordError);
+
+        if (password !== confirmPassword) {
+            throw new Error('Passwords do not match');
+        }
+        
+        const res = await fetch(`${API}/api/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                username: username,
+                email: email,
+                password: password,
+                referral_code: referralCode
+            })
+        });
+        
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Registration failed');
+        }
+
+        // Account created — user must verify email before they can sign in.
+        showRegisterSuccess(data.message || 'Registration successful! Please check your email to verify your account.',email);
+    } catch (err) {
+        console.error('Register error:', err);
+        showErr('register-err', err.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
+
+function showRegisterSuccess(msg, email) {
+    // Replace the register form with a success banner
+    const panel = document.getElementById('panel-register');
+
+    const container = document.createElement('div');
+    container.className = 'text-center py-8';
+
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'w-16 h-16 bg-teal-100 dark:bg-teal-900/40 rounded-full flex items-center justify-center mx-auto mb-4';
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-envelope-open-text text-3xl text-teal-600 dark:text-teal-400';
+    iconDiv.appendChild(icon);
+
+    const heading = document.createElement('h2');
+    heading.className = 'text-xl font-bold text-gray-800 dark:text-gray-200 mb-2';
+    heading.textContent = 'Check your email';
+
+    const msgPara = document.createElement('p');
+    msgPara.className = 'text-gray-600 dark:text-gray-400 text-sm mb-6';
+    msgPara.textContent = msg;
+
+    const actionPara = document.createElement('p');
+    actionPara.className = 'text-xs text-gray-500 dark:text-gray-400';
+    actionPara.innerHTML = 'Once verified, you can <button onclick="switchTab(\'login\')" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">sign in here</button>.';
+
+    container.appendChild(iconDiv);
+    container.appendChild(heading);
+    container.appendChild(msgPara);
+    container.appendChild(actionPara);
+
+    if (email) {
+        const resendWrap = document.createElement('div');
+        resendWrap.className = 'mt-6';
+
+        const resendBtn = document.createElement('button');
+        resendBtn.type = 'button';
+        resendBtn.className = 'text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline disabled:opacity-60 disabled:no-underline disabled:cursor-not-allowed';
+        resendBtn.textContent = "Didn't get the email? Resend";
+
+        const resendMsg = document.createElement('p');
+        resendMsg.className = 'mt-2 text-xs';
+        resendMsg.setAttribute('role', 'status');
+        resendMsg.setAttribute('aria-live', 'polite');
+
+        resendBtn.addEventListener('click', async () => {
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Sending…';
+            try {
+                const text = await requestVerificationEmail(email);
+                setResendMessage(resendMsg, text + ' Check your spam folder too.', false);
+                startResendCooldown(resendBtn, "Didn't get the email? Resend", RESEND_COOLDOWN_SECONDS);
+            } catch (err) {
+                setResendMessage(resendMsg, err.message, true);
+                resendBtn.disabled = false;
+                resendBtn.textContent = "Didn't get the email? Resend";
+            }
+        });
+
+        resendWrap.appendChild(resendBtn);
+        resendWrap.appendChild(resendMsg);
+        container.appendChild(resendWrap);
+    }
+
+    panel.innerHTML = '';
+    panel.appendChild(container);
+}
+  </script>
+{% endblock %}

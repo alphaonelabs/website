@@ -1,0 +1,74 @@
+name = "learn"
+main = "src/worker.py"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["python_workers"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/media/*", "/admin", "/admin/*", "/admin-*", "/ref/*", "/activity/*", "/blog/*", "/en/*", "/es/*", "/fr/*", "/de/*", "/zh/*", "/*.html", "/", "/activity", "/edit-activity", "/classes-map", "/requests", "/waiting-rooms", "/cart", "/checkout-success", "/dashboard", "/donate", "/feedback", "/forgot-password", "/login", "/notification-preferences", "/notifications", "/profile", "/users", "/public-profile", "/referral-leaderboard", "/reset-password", "/status", "/teach", "/verify-email", "/confirm-password-change", "/virtual-classroom", "/whiteboard", "/calculator", "/contributors", "/gsoc", "/about", "/affiliations", "/terms", "/privacy", "/cookies", "/429", "/500", "/features", "/legacy-features", "/forum", "/blog", "/study-groups", "/quizzes", "/surveys", "/challenges", "/progress", "/grade-links", "/calendar", "/memes", "/success-stories", "/feature-votes", "/messages"]
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
+
+
+# Run `wrangler d1 create education_db` and paste the returned UUID below.
+[[d1_databases]]
+binding = "DB"
+database_name = "education_db"
+database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
+migrations_dir = "migrations"
+
+
+# To enable R2 avatar storage:
+#   1. Create the bucket:  wrangler r2 bucket create learn-avatars
+#   2. Enable public access in the Cloudflare dashboard for the bucket
+#   3. Add R2_PUBLIC_URL as an environment variable (Workers → Settings → Variables)
+#      e.g. https://pub-xxxxx.r2.dev  or your custom domain
+#   Without R2_PUBLIC_URL, the worker falls back to base64 data-URLs stored in D1.
+# [[r2_buckets]]
+# binding  = "R2"
+# bucket_name = "learn-avatars"
+
+
+# Virtual Classroom Durable Object
+[[durable_objects.bindings]]
+name = "CLASSROOM_DO"
+class_name = "ClassroomDO"
+
+[[durable_objects.bindings]]
+name = "PRESENCE_DO"
+class_name = "PresenceDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ClassroomDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["PresenceDO"]
+
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "alphaonelabs-production"
+
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
+[build]
+command = "bash migrate.sh"
+
+[triggers]
+crons = ["0 13 * * *"]
