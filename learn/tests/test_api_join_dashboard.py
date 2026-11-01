@@ -77,17 +77,57 @@ class TestApiJoin:
         )
         assert r.status == 200
 
-    async def test_valid_role_instructor(self):
+    async def test_instructor_role_is_forced_to_participant(self):
         tok = _token()
-        act_row = MockRow(id="act-1")
+        insert_stmt = make_stmt()
         env = make_env(db=MockDB([
-            make_stmt(first=act_row),
-            make_stmt(),
+            make_stmt(first=MockRow(id="act-1")),
+            insert_stmt,
         ]))
         r = await worker.api_join(
             self._req({"activity_id": "act-1", "role": "instructor"}, token=tok), env
         )
         assert r.status == 200
+        assert insert_stmt.bind.call_args[0][3] == "participant"
+
+    async def test_paid_activity_returns_400(self):
+        tok = _token()
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(id="act-1", price_cents=1500)),
+        ]))
+        r = await worker.api_join(self._req({"activity_id": "act-1"}, token=tok), env)
+        assert r.status == 400
+        assert "checkout" in _parse(r)["error"].lower()
+        assert env.DB._idx == 1
+
+    async def test_draft_activity_returns_400(self):
+        tok = _token()
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(id="act-1", status="draft")),
+        ]))
+        r = await worker.api_join(self._req({"activity_id": "act-1"}, token=tok), env)
+        assert r.status == 400
+        assert env.DB._idx == 1
+
+    async def test_invite_only_returns_400(self):
+        tok = _token()
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(id="act-1", invite_only=1)),
+        ]))
+        r = await worker.api_join(self._req({"activity_id": "act-1"}, token=tok), env)
+        assert r.status == 400
+        assert env.DB._idx == 1
+
+    async def test_full_activity_returns_400(self):
+        tok = _token()
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(id="act-1", max_students=2)),
+            make_stmt(first=MockRow(cnt=2)),
+        ]))
+        r = await worker.api_join(self._req({"activity_id": "act-1"}, token=tok), env)
+        assert r.status == 400
+        assert "full" in _parse(r)["error"].lower()
+        assert env.DB._idx == 2
 
     async def test_db_error_returns_500(self):
         tok = _token()

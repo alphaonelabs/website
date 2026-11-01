@@ -3,7 +3,10 @@ Tests for api_admin_table_counts() and admin-path access in _dispatch().
 """
 
 import json
-from tests.helpers import load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, basic_auth_header
+from tests.helpers import (
+    load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, basic_auth_header,
+    make_init_db_stmts,
+)
 
 worker = load_worker()
 
@@ -78,16 +81,14 @@ class TestApiAdminTableCounts:
         count_row = MockRow(cnt=5)
         failing_count_stmt = make_stmt()
         failing_count_stmt.first.side_effect = Exception("D1_ERROR: no such table: users: SQLITE_ERROR")
-        ddl_count = len(worker._DDL)
+        init_db_stmts = await make_init_db_stmts(worker)
 
         env = make_env(db=MockDB(
             [
                 make_stmt(all_results=[tables_row]),  # initial sqlite_master query
                 failing_count_stmt,                   # initial users count fails
             ]
-            + [make_stmt() for _ in range(ddl_count)]  # init_db DDL statements
-            + [make_stmt(), make_stmt()]               # init_db: email_verified ALTER + UPDATE
-            + [make_stmt() for _ in range(8)]          # init_db: profile-fields ALTERs (0004)
+            + init_db_stmts                           # init_db schema + migration statements
             + [
                 make_stmt(all_results=[tables_row]),  # retried sqlite_master query
                 make_stmt(first=count_row),           # retried users count succeeds

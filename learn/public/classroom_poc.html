@@ -185,7 +185,7 @@
 </div>
 
 <!--CLASSROOM SCREEN-->
-<div id="classroomScreen" class="flex-1 flex-col hidden">
+<div id="classroomScreen" class="flex-1 flex-col hidden h-full overflow-hidden">
 
     <!-- Top Bar -->
     <header class="bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 px-4 py-2.5 flex items-center justify-between shrink-0">
@@ -285,30 +285,33 @@
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">E</kbd>
                     <span>Sit/Stand</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="btnThumbsUp" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Send thumbs-up reaction">
-                        👍
+                <div class="flex items-center gap-1">
+                    <button id="btnThumbsUp" type="button" class="px-2 py-1 text-gray-200 transition flex items-center gap-1.5" title="Send thumbs-up reaction (T)">
+                        <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[9px] font-mono border border-gray-700 text-gray-300">T</kbd>
+                        <span>👍</span>
                     </button>
-                    <button id="btnRaiseHand" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Toggle raised hand">
-                        ✋
+                    <button id="btnRaiseHand" type="button" class="px-2 py-1 text-gray-200 transition flex items-center gap-1.5" title="Toggle raised hand (R)">
+                        <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[9px] font-mono border border-gray-700 text-gray-300">R</kbd>
+                        <span>✋</span>
                     </button>
                 </div>
+                <span id="seatStatusMsg" class="hidden text-xs font-medium ml-2 transition-all"></span>
                 <div class="w-full sm:w-auto sm:ml-auto text-gray-500">Virtual Classroom</div>
             </div>
         </div>
 
         <!-- Chat Sidebar -->
-        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-auto shrink-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
-            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+        <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-full shrink-0 lg:shrink lg:min-h-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
+            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2 shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-teal-400">
                     <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                 </svg>
                 <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
             </div>
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
                 <div class="text-center text-xs text-gray-600 py-6">No messages yet!</div>
             </div>
-            <form id="chatForm" class="p-3 border-t border-gray-800 flex gap-2">
+            <form id="chatForm" class="p-3 border-t border-gray-800 flex gap-2 shrink-0">
                 <label for="chatInput" class="sr-only">Chat message</label>
                 <input id="chatInput" type="text" placeholder="Type a message…" autocomplete="off"
                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition" />
@@ -349,8 +352,6 @@
     </div>
 </div>
 
-<!-- NOTIFICATION TOAST -->
-<div id="toastContainer" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end pointer-events-none"></div>
 
 <script>
 (function() {
@@ -383,7 +384,6 @@
     const btnCloseParticipants= document.getElementById('btnCloseParticipants');
     const participantsList    = document.getElementById('participantsList');
     const desksContainer      = document.getElementById('desksContainer');
-    const toastContainer      = document.getElementById('toastContainer');
     const btnThumbsUp         = document.getElementById('btnThumbsUp');
     const btnRaiseHand        = document.getElementById('btnRaiseHand');
     const viewerBanner        = document.getElementById('viewerBanner');
@@ -540,13 +540,14 @@
     const DESK_COLS = 5;
     function renderDesks() {
         desksContainer.innerHTML = '';
-        const gapRow = 100 / (DESK_ROWS + 1);
+        const startTop = 20;
+        const rowStep = 28;
         const gapCol = 100 / (DESK_COLS + 1);
         for (let r = 0; r < DESK_ROWS; r++) {
             for (let c = 0; c < DESK_COLS; c++) {
                 const seatNum = r * DESK_COLS + c + 1;
                 const seatId  = `seat-${seatNum}`;
-                const top  = gapRow * (r + 1) - 4;
+                const top  = startTop + (r * rowStep);
                 const left = gapCol * (c + 1) - 4;
                 const desk = document.createElement('div');
                 desk.className = 'absolute flex flex-col items-center';
@@ -565,9 +566,17 @@
 
     function updateSeatLabel(seatId, name, pid = null) {
         if (!seatId) return;
+        if (pid) {
+            Object.keys(seatOccupants).forEach(sId => {
+                if (seatOccupants[sId]?.pid === pid && sId !== seatId) {
+                    clearSeatLabel(sId);
+                }
+            });
+        }
         seatOccupants[seatId] = { name, pid };
         renderSeatLabel(seatId);
     }
+
     function clearSeatLabel(seatId) {
         delete seatOccupants[seatId];
         const label = document.querySelector(`[data-seat-label="${seatId}"]`);
@@ -587,18 +596,44 @@
         Object.keys(seatOccupants).forEach((seatId) => renderSeatLabel(seatId));
     }
 
-    // Toast
-    function showToast(msg, type = 'info') {
-        const colors = { info: 'bg-blue-600', success: 'bg-emerald-600', warning: 'bg-amber-600', error: 'bg-red-600' };
-        const el = document.createElement('div');
-        el.className = `${colors[type] || colors.info} text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl pointer-events-auto fade-in-up`;
+    // Inline status & system messages
+    function formatSeatName(seatId) {
+        if (!seatId) return '';
+        const num = seatId.replace(/^seat-/i, '');
+        return `Seat ${num}`;
+    }
+
+    let seatStatusTimer = null;
+    function showInlineSeatStatus(msg, type = 'info') {
+        const el = document.getElementById('seatStatusMsg');
+        if (!el) return;
         el.textContent = msg;
-        toastContainer.appendChild(el);
-        setTimeout(() => {
-            el.style.opacity = '0';
-            el.style.transition = 'opacity .4s';
-            setTimeout(() => el.remove(), 400);
-        }, 3500);
+        el.classList.remove('hidden', 'text-emerald-400', 'text-amber-400', 'text-red-400', 'text-gray-300');
+        if (type === 'success') el.classList.add('text-emerald-400');
+        else if (type === 'warning' || type === 'error') el.classList.add('text-amber-400');
+        else el.classList.add('text-gray-300');
+
+        if (seatStatusTimer) clearTimeout(seatStatusTimer);
+        seatStatusTimer = setTimeout(() => {
+            el.classList.add('hidden');
+        }, 4000);
+    }
+
+    function appendSystemMessage(text, type = 'info') {
+        if (chatFirstMessage) { chatMessages.innerHTML = ''; chatFirstMessage = false; }
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex justify-center my-1 fade-in-up';
+        let bgClass = 'bg-gray-800/80 text-gray-400 border border-gray-700/50';
+        if (type === 'success') bgClass = 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+        else if (type === 'warning' || type === 'error') bgClass = 'bg-amber-500/10 text-amber-300 border border-amber-500/30';
+
+        wrapper.innerHTML = `
+            <div class="px-2.5 py-1 rounded-md text-[11px] font-medium tracking-wide ${bgClass}">
+                ${escapeHtml(text)}
+            </div>
+        `;
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
@@ -610,7 +645,7 @@
 
     function loginForInteraction() {
         preserveClassroomRedirect();
-        showToast('Please sign in to interact with the virtual classroom.', 'warning');
+        showInlineSeatStatus('Please sign in to interact with the virtual classroom.', 'warning');
         setTimeout(() => { window.location.href = '/login'; }, 700);
     }
 
@@ -678,7 +713,8 @@
 
         lobby.classList.add('hidden');
         classroomScreen.classList.remove('hidden');
-        classroomScreen.classList.add('flex');
+        classroomScreen.classList.add('flex', 'h-full', 'overflow-hidden');
+        document.body.classList.add('h-screen', 'overflow-hidden');
 
         renderDesks();
         connectWS();
@@ -736,7 +772,7 @@
             reconnectAttempts = 0;
             setConnStatus(true);
             connectPresenceWS();
-            showToast(canInteract ? 'Connected to classroom' : 'Viewing classroom', 'success');
+            showInlineSeatStatus(canInteract ? 'Connected to classroom' : 'Viewing classroom', 'success');
         };
 
         ws.onclose = () => {
@@ -762,11 +798,13 @@
         if (ws) { ws.close(); ws = null; }
         if (presenceWs) { presenceWs.close(); presenceWs = null; }
         setConnStatus(false);
+        document.body.classList.remove('h-screen', 'overflow-hidden');
+        classroomScreen.classList.remove('h-full', 'overflow-hidden');
     }
 
     function scheduleReconnect() {
         if (reconnectAttempts >= MAX_RECONNECT) {
-            showToast('Lost connection to classroom - please rejoin.', 'error');
+            showInlineSeatStatus('Lost connection to classroom - please rejoin.', 'error');
             return;
         }
         const delay = Math.min(BASE_DELAY * Math.pow(2, reconnectAttempts), 30000);
@@ -814,12 +852,12 @@
             }
         };
         presenceWs.onerror = () => {
-            showToast('Presence channel error', 'warning');
+            showInlineSeatStatus('Presence channel error', 'warning');
         };
         presenceWs.onclose = () => {
             if (intentionalDisconnect) return;
             if (presenceReconnectAttempts >= MAX_RECONNECT) {
-                showToast('Lost connection to presence channel - please rejoin.', 'warning');
+                showInlineSeatStatus('Lost connection to presence channel - please rejoin.', 'warning');
                 return;
             }
             const delay = Math.min(BASE_DELAY * Math.pow(2, presenceReconnectAttempts), 30000);
@@ -948,12 +986,12 @@
 
             case 'participant_joined':
                 if (data.participant_id !== myParticipantId) {
-                    showToast(`${data.display_name} joined the classroom`, 'success');
+                    appendSystemMessage(`${data.display_name} joined the classroom`, 'success');
                 }
                 break;
 
             case 'participant_left':
-                showToast(`${data.display_name} left the classroom`, 'info');
+                appendSystemMessage(`${data.display_name} left the classroom`, 'info');
                 delete participants[data.participant_id];
                 delete presenceByUser[data.participant_id];
                 renderOtherAvatars();
@@ -982,7 +1020,7 @@
                 break;
 
             case 'chat_message':
-                appendChatMessage(data.display_name, data.text, data.participant_id === myParticipantId);
+                appendChatMessage(data.display_name, data.text, data.participant_id === myParticipantId, data.participant_id);
                 break;
 
             case 'seat_updated':
@@ -1005,7 +1043,7 @@
                     myCharacter.style.display = 'none';
                 }
                 updateSeatLabel(data.seat_id, data.display_name, data.participant_id);
-                showToast(`${data.display_name} took ${data.seat_id}`, 'info');
+                showInlineSeatStatus(`${data.display_name}: ${formatSeatName(data.seat_id)}`, 'info');
                 renderOtherAvatars();
                 renderParticipantsList();
                 break;
@@ -1018,10 +1056,11 @@
                 if (data.participant_id === myParticipantId) {
                     isSeated = false;
                     currentSeat = null;
+                    keysPressed = {};
                     myCharacter.style.display = '';
                 }
                 clearSeatLabel(data.seat_id);
-                showToast(`${data.display_name} left ${data.seat_id}`, 'info');
+                showInlineSeatStatus(`${data.display_name}: left ${formatSeatName(data.seat_id)}`, 'info');
                 renderOtherAvatars();
                 renderParticipantsList();
                 break;
@@ -1029,7 +1068,7 @@
             case 'seat_occupied':
                 isSeated = false;
                 currentSeat = null;
-                showToast(data.message || 'Seat is taken!', 'warning');
+                showInlineSeatStatus('Seat already taken', 'warning');
                 break;
         }
     }
@@ -1160,7 +1199,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium text-gray-900 dark:text-gray-200 truncate">${escapeHtml(name)}${isSelf ? ' <span class="text-teal-600 dark:text-teal-400 font-semibold">(You)</span>' : ''}</p>
-                <p class="text-[10px] text-gray-500 dark:text-gray-400">${seatId ? 'Seat ' + escapeHtml(seatId) : 'Walking around'}</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400">${seatId ? formatSeatName(seatId) : 'Walking around'}</p>
                 <p class="text-[11px] text-gray-700 dark:text-gray-300 mt-0.5">${presenceBadge(pid)}</p>
             </div>
         `;
@@ -1179,10 +1218,6 @@
 
     function updatePresenceControls() {
         const self = presenceByUser[myParticipantId] || { emoji: '', hand_raised: false };
-        btnThumbsUp.classList.toggle('bg-teal-700', self.emoji === '👍');
-        btnThumbsUp.classList.toggle('border-teal-500', self.emoji === '👍');
-        btnRaiseHand.classList.toggle('bg-teal-700', self.hand_raised === true);
-        btnRaiseHand.classList.toggle('border-teal-500', self.hand_raised === true);
         myPresenceBadge.textContent = presenceBadge(myParticipantId);
         renderSeatLabels();
     }
@@ -1235,20 +1270,41 @@
         chatInput.value = '';
     });
 
-    function appendChatMessage(name, text, isSelf) {
+    function appendChatMessage(name, text, isSelf, participantId = '', isReply = false) {
         if (chatFirstMessage) { chatMessages.innerHTML = ''; chatFirstMessage = false; }
 
+        const senderId = participantId || (isSelf ? (myParticipantId || 'self') : name);
+        const existingMessageEls = chatMessages.querySelectorAll('[data-participant-id]');
+        const lastMsgEl = existingMessageEls.length > 0 ? existingMessageEls[existingMessageEls.length - 1] : null;
+        const lastParticipantId = lastMsgEl ? lastMsgEl.getAttribute('data-participant-id') : null;
+
+        const showHeader = !lastMsgEl || lastParticipantId !== senderId || isReply;
+
         const wrapper = document.createElement('div');
-        wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} fade-in-up`;
+        wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} ${showHeader ? 'mt-2.5' : 'mt-1'} fade-in-up`;
+        wrapper.setAttribute('data-participant-id', senderId);
+
         const [c1] = isSelf ? ['#0D9488'] : colorForId(name.toLowerCase().replace(/\s+/g, '-'));
+        const headerHtml = showHeader
+            ? `<span class="text-[10px] font-medium mb-0.5 px-1" style="color:${c1};">${escapeHtml(name)}</span>`
+            : '';
+
         wrapper.innerHTML = `
-            <span class="text-[10px] font-medium mb-0.5 px-1" style="color:${c1};">${escapeHtml(name)}</span>
+            ${headerHtml}
             <div class="max-w-[85%] px-3 py-1.5 rounded-xl text-xs leading-relaxed ${isSelf ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-gray-800 text-gray-200 rounded-bl-sm'}">
                 ${escapeHtml(text)}
             </div>
         `;
+
+        const isNearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 80;
         chatMessages.appendChild(wrapper);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        if (isSelf || isNearBottom) {
+            chatMessages.scrollTo({
+                top: chatMessages.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }
 
     // Participants sidebar toggle, backdrop, and Escape key handling
@@ -1308,18 +1364,57 @@
         if (isTypingInInput(e.target)) return;
         if (!canInteract) {
             if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-            if (e.key.toLowerCase() === 'e') { e.preventDefault(); loginForInteraction(); }
+            if (['e', 't', 'r'].includes(e.key.toLowerCase()) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); loginForInteraction(); }
             return;
         }
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
-            if (!isSeated) { keysPressed[e.key] = true; e.preventDefault(); }
+            e.preventDefault();
+            if (isSeated) {
+                const seatNum = parseInt((currentSeat || 'seat-1').replace('seat-', ''), 10);
+                let r = Math.floor((seatNum - 1) / DESK_COLS);
+                let c = (seatNum - 1) % DESK_COLS;
+                let targetR = r;
+                let targetC = c;
+                if (e.key === 'ArrowUp') targetR--;
+                else if (e.key === 'ArrowDown') targetR++;
+                else if (e.key === 'ArrowLeft') targetC--;
+                else if (e.key === 'ArrowRight') targetC++;
+
+                if (targetR < 0 || targetR >= DESK_ROWS || targetC < 0 || targetC >= DESK_COLS) {
+                    return; // No desk exists -> do nothing
+                }
+                const targetSeatNum = targetR * DESK_COLS + targetC + 1;
+                const targetSeatId = `seat-${targetSeatNum}`;
+
+                const isOccupied = Boolean(seatOccupants[targetSeatId] && seatOccupants[targetSeatId].name) ||
+                                   Object.values(participants).some(p => p.seat_id === targetSeatId);
+                if (isOccupied) {
+                    showInlineSeatStatus('Seat already taken', 'warning');
+                    return;
+                }
+
+                currentSeat = targetSeatId;
+                wsSend({ type: 'update_seat', seat_id: targetSeatId });
+            } else {
+                keysPressed[e.key] = true;
+            }
         }
-        if (e.key.toLowerCase() === 'e') handleSeatInteraction();
+        if (e.key.toLowerCase() === 'e') {
+            e.preventDefault();
+            handleSeatInteraction();
+        }
+        const key = e.key.toLowerCase();
+        if (e.ctrlKey || e.metaKey) return;
+        if (key === 't') { e.preventDefault(); btnThumbsUp.click(); }
+        if (key === 'r') { e.preventDefault(); btnRaiseHand.click(); }
     });
     window.addEventListener('keyup', (e) => {
         if (isTypingInInput(e.target)) return;
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             keysPressed[e.key] = false;
+            e.preventDefault();
+        }
+        if (e.key.toLowerCase() === 'e') {
             e.preventDefault();
         }
     });
@@ -1328,6 +1423,10 @@
         if (!canInteract) { loginForInteraction(); return; }
         if (isSeated) {
             wsSend({ type: 'leave_seat', seat_id: currentSeat });
+            isSeated = false;
+            currentSeat = null;
+            keysPressed = {};
+            myCharacter.style.display = '';
             return;
         }
         const canvasRect = classroomCanvas.getBoundingClientRect();
@@ -1343,6 +1442,12 @@
             if (dist < nearestDist) { nearestDist = dist; nearest = seatId; }
         });
         if (nearest && nearestDist < 60) {
+            const isOccupied = Boolean(seatOccupants[nearest] && seatOccupants[nearest].name) ||
+                               Object.values(participants).some(p => p.seat_id === nearest);
+            if (isOccupied) {
+                showInlineSeatStatus('Seat already taken', 'warning');
+                return;
+            }
             wsSend({ type: 'update_seat', seat_id: nearest });
         }
     }
