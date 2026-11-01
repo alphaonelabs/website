@@ -3044,30 +3044,40 @@ async def api_join(req, env):
         return bad_resp
 
     act_id = body.get("activity_id")
-    role = (body.get("role") or "participant").strip()
 
     if not act_id:
         return err("activity_id is required")
 
-    if role not in ("participant", "instructor", "organizer"):
-        role = "participant"
-
     # 1️⃣ Get activity
     act = await env.DB.prepare(
-        "SELECT id, title, host_id FROM activities WHERE id=?"
+        "SELECT id, title, host_id, status, price_cents, invite_only, max_students"
+        " FROM activities WHERE id=?"
     ).bind(act_id).first()
 
     if not act:
         return err("Activity not found", 404)
 
-    # ❌ REMOVE existing check completely
+    status = (getattr(act, "status", None) or "published").strip()
+    if status != "published":
+        return err("This activity is not open to join")
+    if int(getattr(act, "price_cents", 0) or 0) > 0:
+        return err("This activity requires checkout")
+    if int(getattr(act, "invite_only", 0) or 0):
+        return err("This activity is invite-only")
+    max_students = int(getattr(act, "max_students", 0) or 0)
+    if max_students > 0:
+        count_row = await env.DB.prepare(
+            "SELECT COUNT(*) AS cnt FROM enrollments WHERE activity_id=? AND status='active'"
+        ).bind(act_id).first()
+        if int(getattr(count_row, "cnt", 0) or 0) >= max_students:
+            return err("This activity is full")
 
     # 2️⃣ Insert enrollment
     enr_id = new_id()
     try:
         insert_res = await env.DB.prepare(
             "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role) VALUES (?,?,?,?)"
-        ).bind(enr_id, act_id, user["id"], role).run()
+        ).bind(enr_id, act_id, user["id"], "participant").run()
     except Exception as e:
         await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
