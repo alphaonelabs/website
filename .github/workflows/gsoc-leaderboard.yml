@@ -1,39 +1,47 @@
 name: Generate GSoC leaderboard
 
+# main is protected, so the leaderboard is not committed. It is generated and
+# deployed straight to gsoc.alphaonelabs.com every 6 hours (and on every gsoc
+# deploy, see deploy-sites.yml).
+
 on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: deploy-gsoc
+  cancel-in-progress: false
 
 jobs:
-  generate:
+  generate-and-deploy:
     if: github.repository == 'alphaonelabs/website'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gsoc
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Generate leaderboard data
-        working-directory: gsoc
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/generate_leaderboard.py
 
-      - name: Commit and push if changed
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- gsoc/data/leaderboard.json; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          git add gsoc/data/leaderboard.json
-          git commit -m "chore(gsoc): update leaderboard data"
-          git pull --rebase --autostash origin main
-          git push origin HEAD:main
+      - name: Build GSoC ideas page
+        run: pip install markdown && python scripts/build_ideas.py
+
+      - name: Deploy
+        run: npx --yes wrangler@4.40.0 deploy
