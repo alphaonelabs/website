@@ -1,0 +1,18 @@
+# Dependencies and build output
+node_modules/
+dist/
+.wrangler/
+__pycache__/
+*.pyc
+.venv/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+.dev.vars
+
+# OS and editor files
+.DS_Store
+*.log
