@@ -1,0 +1,637 @@
+/**
+ * Canvas Module
+ * Handles canvas rendering and interactions
+ */
+
+class Canvas {
+    constructor(state, canvasElement, canvasContent) {
+        this.state = state;
+        this.canvas = canvasElement;
+        this.content = canvasContent;
+        
+        this.isDragging = false;
+        this.isResizing = false;
+        this.dragStart = null;
+        this.resizeStart = null;
+        this.resizeHandle = null;
+        
+        // Direct-DOM drag/resize state for smooth touch performance
+        this.dragElementNode = null;
+        this.dragCurrentX = null;
+        this.dragCurrentY = null;
+        this.resizeElementNode = null;
+        this.resizeCurrentX = null;
+        this.resizeCurrentY = null;
+        this.resizeCurrentWidth = null;
+        this.resizeCurrentHeight = null;
+        
+        // Pinch zoom state
+        this.lastPinchDistance = null;
+        this.isPinching = false;
+        
+        // Canvas panning state
+        this.isCanvasPanning = false;
+        this.panStart = null;
+        
+        this.init();
+    }
+
+    init() {
+        // Canvas click/touch to deselect
+        this.canvas.addEventListener('click', (e) => {
+            if (e.target === this.canvas || e.target === this.content) {
+                this.state.deselectElement();
+            }
+        });
+
+        this.canvas.addEventListener('touchstart', (e) => {
+            // Check if touch is on empty canvas area (not on an element)
+            if (e.target === this.canvas || e.target === this.content || e.target.classList.contains('grid')) {
+                // Single finger - start canvas panning
+                if (e.touches.length === 1) {
+                    this.state.deselectElement();
+                    this.isCanvasPanning = true;
+                    const touch = e.touches[0];
+                    this.panStart = {
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        scrollLeft: this.canvas.scrollLeft,
+                        scrollTop: this.canvas.scrollTop
+                    };
+                }
+            }
+        });
+
+        // Drag and drop handlers for components
+        const dropHandler = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const componentType = e.dataTransfer.getData('componentType');
+            if (componentType) {
+                // Calculate position relative to canvas and zoom
+                const rect = this.canvas.getBoundingClientRect();
+                const scrollLeft = this.canvas.scrollLeft;
+                const scrollTop = this.canvas.scrollTop;
+                const x = (e.clientX - rect.left + scrollLeft) / this.state.zoom;
+                const y = (e.clientY - rect.top + scrollTop) / this.state.zoom;
+                
+                this.state.addElementAtPosition(componentType, x, y);
+            }
+        };
+        
+        const dragOverHandler = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        };
+        
+        this.canvas.addEventListener('dragover', dragOverHandler);
+        this.canvas.addEventListener('drop', dropHandler);
+
+        // Context menu for z-index management
+        this.content.addEventListener('contextmenu', (e) => {
+            const element = e.target.closest('.element');
+            if (element) {
+                e.preventDefault();
+                const elementId = element.dataset.id;
+                this.showContextMenu(e.clientX, e.clientY, elementId);
+            }
+        });
+
+        // Global mouse handlers
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+
+        // Global touch handlers
+        document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+        document.addEventListener('touchend', this.handleTouchEnd.bind(this));
+        
+        // Pinch-to-zoom on canvas
+        this.canvas.addEventListener('touchstart', this.handleCanvasTouchStart.bind(this), { passive: false });
+        
+        // Update grid on window resize with debouncing
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => this.updateGridScale(), 150);
+        });
+        
+        // Initialize grid scale using requestAnimationFrame for reliable timing
+        requestAnimationFrame(() => this.updateGridScale());
+    }
+
+    render() {
+        const page = this.state.getCurrentPage();
+        if (!page) return;
+
+        // Clear existing elements
+        const elements = this.content.querySelectorAll('.element');
+        elements.forEach(el => el.remove());
+
+        // Apply zoom
+        this.content.style.transform = `scale(${this.state.zoom})`;
+        
+        // Update grid to scale with zoom and extend beyond viewport
+        this.updateGridScale();
+
+        // Render elements sorted by z-index
+        const sortedElements = [...page.elements].sort((a, b) => a.zIndex - b.zIndex);
+        sortedElements.forEach(element => {
+            this.renderElement(element);
+        });
+    }
+    
+    updateGridScale() {
+        const grid = document.getElementById('grid');
+        if (!grid) return;
+        
+        const zoom = this.state.zoom;
+        const baseGridSize = 20; // Base grid size in pixels
+        const scaledGridSize = baseGridSize * zoom;
+        
+        // Make grid much larger than viewport to prevent edge visibility
+        // Use a large multiplier to ensure grid covers canvas at all zoom levels
+        const viewportWidth = this.canvas.clientWidth;
+        const viewportHeight = this.canvas.clientHeight;
+        
+        // Calculate required grid size based on zoom
+        // When zoomed in (zoom > 1), we need LESS coverage
+        // When zoomed out (zoom < 1), we need MORE coverage
+        const widthMultiplier = Math.max(3, 10 / zoom);
+        const heightMultiplier = Math.max(3, 10 / zoom);
+        
+        grid.style.width = (viewportWidth * widthMultiplier) + 'px';
+        grid.style.height = (viewportHeight * heightMultiplier) + 'px';
+        grid.style.backgroundSize = `${scaledGridSize}px ${scaledGridSize}px`;
+    }
+
+    renderElement(element) {
+        const el = document.createElement('div');
+        el.className = 'element';
+        el.dataset.id = element.id;
+        
+        if (element.id === this.state.selectedElementId) {
+            el.classList.add('selected');
+        }
+
+        el.style.left = element.x + 'px';
+        el.style.top = element.y + 'px';
+        el.style.width = element.width + 'px';
+        el.style.height = element.height + 'px';
+        el.style.zIndex = element.zIndex;
+
+        const content = document.createElement('div');
+        content.className = `element-content ${element.type}`;
+
+        if (element.type === 'table') {
+            for (let i = 1; i <= 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'table-cell';
+                cell.textContent = `Cell ${i}`;
+                content.appendChild(cell);
+            }
+        } else if (element.type === 'browser') {
+            // Browser window structure
+            const browserBar = document.createElement('div');
+            browserBar.className = 'browser-bar';
+            browserBar.innerHTML = '<div class="browser-controls"><span>○</span><span>○</span><span>○</span></div><div class="browser-address">https://example.com</div>';
+            content.appendChild(browserBar);
+            
+            const browserContent = document.createElement('div');
+            browserContent.className = 'browser-content';
+            browserContent.textContent = element.text;
+            content.appendChild(browserContent);
+        } else if (element.type === 'mobile') {
+            // Mobile app structure
+            const mobileHeader = document.createElement('div');
+            mobileHeader.className = 'mobile-header';
+            content.appendChild(mobileHeader);
+            
+            const mobileContent = document.createElement('div');
+            mobileContent.className = 'mobile-content';
+            mobileContent.textContent = element.text;
+            content.appendChild(mobileContent);
+            
+            const mobileFooter = document.createElement('div');
+            mobileFooter.className = 'mobile-footer';
+            content.appendChild(mobileFooter);
+        } else {
+            content.textContent = element.text;
+        }
+
+        el.appendChild(content);
+
+        // Add resize handles if selected
+        if (element.id === this.state.selectedElementId) {
+            this.addResizeHandles(el);
+        }
+
+        // Drag handlers
+        el.addEventListener('mousedown', (e) => this.handleElementMouseDown(e, element.id));
+        el.addEventListener('touchstart', (e) => this.handleElementTouchStart(e, element.id));
+
+        this.content.appendChild(el);
+    }
+
+    addResizeHandles(el) {
+        const handles = ['nw', 'ne', 'sw', 'se', 'n', 's', 'w', 'e'];
+        handles.forEach(handle => {
+            const div = document.createElement('div');
+            div.className = `resize-handle ${handle}`;
+            div.addEventListener('mousedown', (e) => this.handleResizeMouseDown(e, handle));
+            div.addEventListener('touchstart', (e) => this.handleResizeTouchStart(e, handle));
+            el.appendChild(div);
+        });
+    }
+
+    handleElementMouseDown(e, elementId) {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        
+        this.state.selectElement(elementId);
+        this.isDragging = true;
+        
+        // Get the (re-rendered) DOM node after selectElement triggers render
+        this.dragElementNode = this.content.querySelector(`[data-id="${elementId}"]`);
+
+        const element = this.state.getCurrentPage().elements.find(el => el.id === elementId);
+        this.dragStart = {
+            x: e.clientX - element.x * this.state.zoom,
+            y: e.clientY - element.y * this.state.zoom
+        };
+        this.dragCurrentX = element.x;
+        this.dragCurrentY = element.y;
+    }
+
+    handleResizeMouseDown(e, handle) {
+        e.stopPropagation();
+        
+        this.isResizing = true;
+        this.resizeHandle = handle;
+        
+        const element = this.state.getSelectedElement();
+        this.resizeElementNode = this.content.querySelector(`[data-id="${element.id}"]`);
+        this.resizeStart = {
+            x: e.clientX,
+            y: e.clientY,
+            elementX: element.x,
+            elementY: element.y,
+            elementWidth: element.width,
+            elementHeight: element.height
+        };
+        this.resizeCurrentX = element.x;
+        this.resizeCurrentY = element.y;
+        this.resizeCurrentWidth = element.width;
+        this.resizeCurrentHeight = element.height;
+    }
+
+    handleMouseMove(e) {
+        if (this.isDragging && this.state.selectedElementId && this.dragStart) {
+            const newX = (e.clientX - this.dragStart.x) / this.state.zoom;
+            const newY = (e.clientY - this.dragStart.y) / this.state.zoom;
+
+            // Update DOM directly for smooth, lag-free dragging
+            if (this.dragElementNode) {
+                this.dragElementNode.style.left = newX + 'px';
+                this.dragElementNode.style.top = newY + 'px';
+            }
+            this.dragCurrentX = newX;
+            this.dragCurrentY = newY;
+
+        } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
+            const dx = e.clientX - this.resizeStart.x;
+            const dy = e.clientY - this.resizeStart.y;
+
+            let newX = this.resizeStart.elementX;
+            let newY = this.resizeStart.elementY;
+            let newWidth = this.resizeStart.elementWidth;
+            let newHeight = this.resizeStart.elementHeight;
+
+            if (this.resizeHandle.includes('e')) {
+                newWidth = Math.max(20, this.resizeStart.elementWidth + dx / this.state.zoom);
+            }
+            if (this.resizeHandle.includes('w')) {
+                newWidth = Math.max(20, this.resizeStart.elementWidth - dx / this.state.zoom);
+                newX = this.resizeStart.elementX + (this.resizeStart.elementWidth - newWidth);
+            }
+            if (this.resizeHandle.includes('s')) {
+                newHeight = Math.max(20, this.resizeStart.elementHeight + dy / this.state.zoom);
+            }
+            if (this.resizeHandle.includes('n')) {
+                newHeight = Math.max(20, this.resizeStart.elementHeight - dy / this.state.zoom);
+                newY = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
+            }
+
+            // Update DOM directly for smooth, lag-free resizing
+            if (this.resizeElementNode) {
+                this.resizeElementNode.style.left = newX + 'px';
+                this.resizeElementNode.style.top = newY + 'px';
+                this.resizeElementNode.style.width = newWidth + 'px';
+                this.resizeElementNode.style.height = newHeight + 'px';
+            }
+            this.resizeCurrentX = newX;
+            this.resizeCurrentY = newY;
+            this.resizeCurrentWidth = newWidth;
+            this.resizeCurrentHeight = newHeight;
+        }
+
+        // Update cursor
+        if (this.isDragging && !this.canvas.classList.contains('grabbing')) {
+            this.canvas.classList.add('grabbing');
+        }
+    }
+
+    handleMouseUp() {
+        if (this.isDragging || this.isResizing) {
+            // Persist final position/size to state (triggers one re-render on drag end)
+            if (this.isDragging && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.dragCurrentX,
+                    y: this.dragCurrentY
+                });
+            } else if (this.isResizing && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.resizeCurrentX,
+                    y: this.resizeCurrentY,
+                    width: this.resizeCurrentWidth,
+                    height: this.resizeCurrentHeight
+                });
+            }
+            this.state.saveHistory();
+            this.isDragging = false;
+            this.isResizing = false;
+            this.dragStart = null;
+            this.resizeStart = null;
+            this.resizeHandle = null;
+            this.dragElementNode = null;
+            this.resizeElementNode = null;
+            this.dragCurrentX = null;
+            this.dragCurrentY = null;
+            this.resizeCurrentX = null;
+            this.resizeCurrentY = null;
+            this.resizeCurrentWidth = null;
+            this.resizeCurrentHeight = null;
+            this.canvas.classList.remove('grabbing');
+        }
+    }
+
+    handleElementTouchStart(e, elementId) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Ensure canvas panning is not active when dragging an element
+        this.isCanvasPanning = false;
+        this.panStart = null;
+        
+        this.state.selectElement(elementId);
+        this.isDragging = true;
+
+        // Get the (re-rendered) DOM node after selectElement triggers render
+        this.dragElementNode = this.content.querySelector(`[data-id="${elementId}"]`);
+
+        const touch = e.touches[0];
+        const element = this.state.getCurrentPage().elements.find(el => el.id === elementId);
+        this.dragStart = {
+            x: touch.clientX - element.x * this.state.zoom,
+            y: touch.clientY - element.y * this.state.zoom
+        };
+        this.dragCurrentX = element.x;
+        this.dragCurrentY = element.y;
+    }
+
+    handleResizeTouchStart(e, handle) {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        this.isResizing = true;
+        this.resizeHandle = handle;
+        
+        const touch = e.touches[0];
+        const element = this.state.getSelectedElement();
+        this.resizeElementNode = this.content.querySelector(`[data-id="${element.id}"]`);
+        this.resizeStart = {
+            x: touch.clientX,
+            y: touch.clientY,
+            elementX: element.x,
+            elementY: element.y,
+            elementWidth: element.width,
+            elementHeight: element.height
+        };
+        this.resizeCurrentX = element.x;
+        this.resizeCurrentY = element.y;
+        this.resizeCurrentWidth = element.width;
+        this.resizeCurrentHeight = element.height;
+    }
+
+    handleTouchMove(e) {
+        // Handle pinch zoom first
+        if (this.isPinching && e.touches.length === 2) {
+            this.handlePinchZoom(e);
+            return;
+        }
+        
+        // Handle canvas panning
+        if (this.isCanvasPanning && this.panStart && e.touches.length === 1) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - this.panStart.x;
+            const deltaY = touch.clientY - this.panStart.y;
+            
+            this.canvas.scrollLeft = this.panStart.scrollLeft - deltaX;
+            this.canvas.scrollTop = this.panStart.scrollTop - deltaY;
+            return;
+        }
+        
+        if (this.isDragging && this.state.selectedElementId && this.dragStart) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const newX = (touch.clientX - this.dragStart.x) / this.state.zoom;
+            const newY = (touch.clientY - this.dragStart.y) / this.state.zoom;
+
+            // Update DOM directly for smooth, lag-free touch dragging
+            if (this.dragElementNode) {
+                this.dragElementNode.style.left = newX + 'px';
+                this.dragElementNode.style.top = newY + 'px';
+            }
+            this.dragCurrentX = newX;
+            this.dragCurrentY = newY;
+
+        } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const dx = touch.clientX - this.resizeStart.x;
+            const dy = touch.clientY - this.resizeStart.y;
+
+            let newX = this.resizeStart.elementX;
+            let newY = this.resizeStart.elementY;
+            let newWidth = this.resizeStart.elementWidth;
+            let newHeight = this.resizeStart.elementHeight;
+
+            if (this.resizeHandle.includes('e')) {
+                newWidth = Math.max(20, this.resizeStart.elementWidth + dx / this.state.zoom);
+            }
+            if (this.resizeHandle.includes('w')) {
+                newWidth = Math.max(20, this.resizeStart.elementWidth - dx / this.state.zoom);
+                newX = this.resizeStart.elementX + (this.resizeStart.elementWidth - newWidth);
+            }
+            if (this.resizeHandle.includes('s')) {
+                newHeight = Math.max(20, this.resizeStart.elementHeight + dy / this.state.zoom);
+            }
+            if (this.resizeHandle.includes('n')) {
+                newHeight = Math.max(20, this.resizeStart.elementHeight - dy / this.state.zoom);
+                newY = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
+            }
+
+            // Update DOM directly for smooth, lag-free touch resizing
+            if (this.resizeElementNode) {
+                this.resizeElementNode.style.left = newX + 'px';
+                this.resizeElementNode.style.top = newY + 'px';
+                this.resizeElementNode.style.width = newWidth + 'px';
+                this.resizeElementNode.style.height = newHeight + 'px';
+            }
+            this.resizeCurrentX = newX;
+            this.resizeCurrentY = newY;
+            this.resizeCurrentWidth = newWidth;
+            this.resizeCurrentHeight = newHeight;
+        }
+
+        // Update cursor
+        if ((this.isDragging || this.isCanvasPanning) && !this.canvas.classList.contains('grabbing')) {
+            this.canvas.classList.add('grabbing');
+        }
+    }
+
+    handleTouchEnd() {
+        if (this.isDragging || this.isResizing) {
+            // Persist final position/size to state (triggers one re-render on drag end)
+            if (this.isDragging && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.dragCurrentX,
+                    y: this.dragCurrentY
+                });
+            } else if (this.isResizing && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.resizeCurrentX,
+                    y: this.resizeCurrentY,
+                    width: this.resizeCurrentWidth,
+                    height: this.resizeCurrentHeight
+                });
+            }
+            this.state.saveHistory();
+            this.isDragging = false;
+            this.isResizing = false;
+            this.dragStart = null;
+            this.resizeStart = null;
+            this.resizeHandle = null;
+            this.dragElementNode = null;
+            this.resizeElementNode = null;
+            this.dragCurrentX = null;
+            this.dragCurrentY = null;
+            this.resizeCurrentX = null;
+            this.resizeCurrentY = null;
+            this.resizeCurrentWidth = null;
+            this.resizeCurrentHeight = null;
+            this.canvas.classList.remove('grabbing');
+        }
+        
+        // Reset canvas panning state
+        if (this.isCanvasPanning) {
+            this.isCanvasPanning = false;
+            this.panStart = null;
+            this.canvas.classList.remove('grabbing');
+        }
+        
+        // Reset pinch zoom state
+        this.lastPinchDistance = null;
+        this.isPinching = false;
+    }
+
+    handleCanvasTouchStart(e) {
+        // Detect pinch gesture (two fingers)
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            this.isPinching = true;
+            this.lastPinchDistance = this.getPinchDistance(e.touches);
+        }
+    }
+
+    getPinchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    handlePinchZoom(e) {
+        if (this.isPinching && e.touches.length === 2) {
+            e.preventDefault();
+            
+            const currentDistance = this.getPinchDistance(e.touches);
+            
+            if (this.lastPinchDistance) {
+                const delta = currentDistance - this.lastPinchDistance;
+                const zoomFactor = 1 + (delta / 500); // Adjust sensitivity
+                
+                let newZoom = this.state.zoom * zoomFactor;
+                newZoom = Math.max(0.1, Math.min(3, newZoom)); // Clamp between 0.1 and 3
+                
+                this.state.setZoom(newZoom);
+            }
+            
+            this.lastPinchDistance = currentDistance;
+        }
+    }
+
+    showContextMenu(x, y, elementId) {
+        // Remove existing context menu
+        const existingMenu = document.querySelector('.context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+
+        // Create context menu
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+
+        const menuItems = [
+            { label: 'Bring Forward', action: () => this.state.bringForward(elementId) },
+            { label: 'Send Backward', action: () => this.state.sendBackward(elementId) },
+            { label: 'Bring to Front', action: () => this.state.bringToFront(elementId) },
+            { label: 'Send to Back', action: () => this.state.sendToBack(elementId) },
+        ];
+
+        menuItems.forEach(item => {
+            const menuItem = document.createElement('div');
+            menuItem.className = 'context-menu-item';
+            menuItem.textContent = item.label;
+            menuItem.addEventListener('click', () => {
+                item.action();
+                menu.remove();
+            });
+            menu.appendChild(menuItem);
+        });
+
+        document.body.appendChild(menu);
+
+        // Close menu on click outside
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        
+        // Also remove listener when menu is removed by other means
+        const observer = new MutationObserver((mutations) => {
+            if (!document.body.contains(menu)) {
+                document.removeEventListener('click', closeMenu);
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
+        
+        setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    }
+}
+
+export default Canvas;

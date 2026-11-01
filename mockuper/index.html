@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wireframe Studio</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <div>Wireframe Studio</div>
+                <div class="version" id="version">Loading...</div>
+            </div>
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <button class="btn" id="undo-btn" disabled>↶ Undo</button>
+                    <button class="btn" id="redo-btn" disabled>↷ Redo</button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="btn" id="grid-toggle-btn">◫ Hide Grid</button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="btn" id="bring-front-btn" disabled>⬆ Front</button>
+                    <button class="btn" id="send-back-btn" disabled>⬇ Back</button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="btn" id="delete-btn" disabled>🗑 Delete</button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="btn" id="export-png-btn">📷 PNG</button>
+                    <button class="btn" id="export-pdf-btn">📄 PDF</button>
+                    <button class="btn" id="export-json-btn">💾 Export JSON</button>
+                    <button class="btn" id="import-json-btn">📁 Import JSON</button>
+                </div>
+                <div class="toolbar-group">
+                    <a href="https://github.com/alphaonelabs/alphaonelabs-mockups" target="_blank" rel="noopener noreferrer" class="btn collaborate-btn">🤝 Collaborate</a>
+                    <a href="https://github.com/alphaonelabs/mockuper" target="_blank" rel="noopener noreferrer" class="btn contribute-btn">🛠 Contribute</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar" id="left-sidebar">
+                <button class="collapse-btn" id="left-collapse-btn" title="Collapse sidebar">‹</button>
+                <h3>Pages</h3>
+                <div class="pages-list" id="pages-list"></div>
+                <button class="btn" id="add-page-btn" style="width: 100%; margin-top: 8px;">+ Add Page</button>
+
+                <h3 style="margin-top: 24px;">Components</h3>
+                <div class="components-list" id="components-grid">
+                    <button class="component-btn" data-type="button" draggable="true">
+                        <div class="component-preview button-preview"></div>
+                        <span>Button</span>
+                    </button>
+                    <button class="component-btn" data-type="input" draggable="true">
+                        <div class="component-preview input-preview"></div>
+                        <span>Input</span>
+                    </button>
+                    <button class="component-btn" data-type="text" draggable="true">
+                        <div class="component-preview text-preview"></div>
+                        <span>Text</span>
+                    </button>
+                    <button class="component-btn" data-type="image" draggable="true">
+                        <div class="component-preview image-preview"></div>
+                        <span>Image</span>
+                    </button>
+                    <button class="component-btn" data-type="navbar" draggable="true">
+                        <div class="component-preview navbar-preview"></div>
+                        <span>Nav Bar</span>
+                    </button>
+                    <button class="component-btn" data-type="table" draggable="true">
+                        <div class="component-preview table-preview"></div>
+                        <span>Table</span>
+                    </button>
+                    <button class="component-btn" data-type="modal" draggable="true">
+                        <div class="component-preview modal-preview"></div>
+                        <span>Modal</span>
+                    </button>
+                    <button class="component-btn" data-type="frame" draggable="true">
+                        <div class="component-preview frame-preview"></div>
+                        <span>Frame</span>
+                    </button>
+                    <button class="component-btn" data-type="browser" draggable="true">
+                        <div class="component-preview browser-preview"></div>
+                        <span>Browser Window</span>
+                    </button>
+                    <button class="component-btn" data-type="mobile" draggable="true">
+                        <div class="component-preview mobile-preview"></div>
+                        <span>Mobile App</span>
+                    </button>
+                </div>
+            </aside>
+
+            <div class="canvas-container">
+                <div class="canvas" id="canvas">
+                    <div class="canvas-content" id="canvas-content">
+                        <div class="grid" id="grid"></div>
+                    </div>
+                </div>
+
+                <div class="zoom-control">
+                    <button class="zoom-btn" id="zoom-out-btn">-</button>
+                    <div class="zoom-level" id="zoom-level">100%</div>
+                    <button class="zoom-btn" id="zoom-in-btn">+</button>
+                    <button class="zoom-btn" id="zoom-reset-btn">Reset</button>
+                </div>
+            </div>
+
+            <aside class="property-panel" id="property-panel" style="display: none;">
+                <button class="collapse-btn" id="right-collapse-btn" title="Collapse panel">›</button>
+                <h3>Properties</h3>
+                <div class="property-group">
+                    <label>Text</label>
+                    <textarea id="prop-text"></textarea>
+                </div>
+                <div class="property-group">
+                    <label>X Position</label>
+                    <input type="number" id="prop-x">
+                </div>
+                <div class="property-group">
+                    <label>Y Position</label>
+                    <input type="number" id="prop-y">
+                </div>
+                <div class="property-group">
+                    <label>Width</label>
+                    <input type="number" id="prop-width">
+                </div>
+                <div class="property-group">
+                    <label>Height</label>
+                    <input type="number" id="prop-height">
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <input type="file" id="json-file-input" accept=".json" style="display: none;">
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
