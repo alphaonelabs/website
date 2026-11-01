@@ -576,13 +576,16 @@ class TestApiCompleteCheckout:
             assert "Payment is not complete yet" in data["error"]
 
     async def test_successful_paid_completion_for_user_creates_enrollments(self):
-        stripe_mock = AsyncMock(return_value={
-            "metadata": {"owner_kind": "user", "user_id": "usr-1", "cart_id": "cart-paid"},
-            "payment_status": "paid",
-            "amount_total": 4500,
-        })
+        stripe_mock = AsyncMock(side_effect=[
+            {
+                "metadata": {"owner_kind": "user", "user_id": "usr-1", "cart_id": "cart-paid"},
+                "payment_status": "paid",
+                "amount_total": 4500,
+            },
+            {"data": [{"price": {"product": {"metadata": {"activity_id": "act-paid-1"}}}}]},
+        ])
 
-        item_row = MockRow(activity_id="act-paid-1")
+        item_row = MockRow(activity_id="act-paid-1", unit_price_cents=4500)
         mock_enroll_stmt = make_stmt()
         mock_enroll_stmt.bind.return_value.run = AsyncMock(
             return_value=MockRow(meta={"changes": 1})
@@ -604,6 +607,42 @@ class TestApiCompleteCheckout:
             assert data["success"] is True
             assert data["data"]["enrolled"] == 1
             assert data["data"]["guest"] is False
+
+    async def test_items_added_after_checkout_started_are_not_enrolled(self):
+        stripe_mock = AsyncMock(side_effect=[
+            {
+                "metadata": {"owner_kind": "user", "user_id": "usr-1", "cart_id": "cart-paid"},
+                "payment_status": "paid",
+                "amount_total": 500,
+            },
+            {"data": [{"price": {"product": {"metadata": {"activity_id": "act-cheap"}}}}]},
+        ])
+
+        rows = [
+            MockRow(activity_id="act-cheap", unit_price_cents=500),
+            MockRow(activity_id="act-expensive", unit_price_cents=50000),  # added after paying
+            MockRow(activity_id="act-free", unit_price_cents=0),
+        ]
+        enroll_stmt = make_stmt()
+        enroll_stmt.bind.return_value.run = AsyncMock(return_value=MockRow(meta={"changes": 1}))
+
+        env = make_env(db=MockDB([
+            make_stmt(all_results=rows),  # 1. SELECT activity_id,unit_price_cents FROM activity_cart_items
+            enroll_stmt,                  # 2. INSERT OR IGNORE INTO enrollments (act-cheap)
+            enroll_stmt,                  # 3. INSERT OR IGNORE INTO enrollments (act-free)
+            make_stmt(),                  # 4. UPDATE activity_carts SET status='checked_out'
+            make_stmt(),                  # 5. UPDATE activity_checkout_sessions SET status='paid'
+        ]))
+
+        with patch.object(worker, "_stripe_get_request", new=stripe_mock):
+            r = await worker.api_complete_checkout(
+                self._req({"session_id": "cs_test_12345"}, headers=_user_headers(uid="usr-1")), env
+            )
+        assert r.status == 200
+        assert _parse(r)["data"]["enrolled"] == 2
+        enrolled_ids = [c.args[1] for c in enroll_stmt.bind.call_args_list]
+        assert "act-expensive" not in enrolled_ids
+        assert set(enrolled_ids) == {"act-cheap", "act-free"}
 
     async def test_successful_paid_completion_for_guest(self):
         guest_id = worker._guest_cart_id(MockRequest(method="POST", headers=_guest_headers()), make_env())

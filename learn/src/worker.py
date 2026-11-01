@@ -6379,11 +6379,27 @@ async def api_complete_checkout(req, env):
             return err("Payment is not complete yet", 400)
         cart_id = metadata.get("cart_id") or ""
         res = await env.DB.prepare(
-            "SELECT activity_id FROM activity_cart_items WHERE cart_id=?"
+            "SELECT activity_id,unit_price_cents FROM activity_cart_items WHERE cart_id=?"
         ).bind(cart_id).all()
         enrolled = 0
         if owner["kind"] == "user":
+            # The cart stays editable while the buyer is on Stripe, so only
+            # enroll paid activities Stripe actually charged for (plus free ones).
+            line_items = await _stripe_get_request(
+                env,
+                "/checkout/sessions/" + quote(session_id, safe="")
+                + "/line_items?limit=100&expand[]=data.price.product",
+            )
+            paid_activity_ids = set()
+            for li in line_items.get("data") or []:
+                product = (li.get("price") or {}).get("product") or {}
+                activity_id = (product.get("metadata") or {}).get("activity_id") if isinstance(product, dict) else None
+                if activity_id:
+                    paid_activity_ids.add(activity_id)
             for row in res.results or []:
+                is_free = int(getattr(row, "unit_price_cents", 0) or 0) <= 0
+                if not is_free and row.activity_id not in paid_activity_ids:
+                    continue
                 try:
                     insert_res = await env.DB.prepare(
                         "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status) VALUES (?,?,?,?,?)"
