@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virtual Robotics Playground - Alpha One Labs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Space Grotesk"', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Google Fonts: Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <style>
+      body {
+        font-family: 'Space Grotesk', sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        animation: fadeInPage 0.6s ease-out forwards;
+      }
+
+      @keyframes fadeInPage {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-gray-900 h-screen font-sans">
+      <section id="playground" class="h-full">
+        <div class="h-full">
+          <div class="bg-gray-900 flex flex-col lg:flex-row h-full">
+            <div class="w-full lg:w-52 bg-gray-800 border-b lg:border-b-0 lg:border-r border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
+              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-xs lg:text-sm">🧰 Toolbox</div>
+              <div class="grid grid-cols-3 gap-1 lg:flex lg:flex-col lg:gap-2 flex-1">
+                <button onclick="addPart('chassis')"
+                        class="w-full bg-teal-700 hover:bg-teal-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-cube"></i> Chassis
+                </button>
+                <button onclick="addPart('wheels')"
+                        class="w-full bg-orange-600 hover:bg-orange-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-circle-notch"></i>
+                  <span class="hidden lg:inline">Wheels (WASD)</span>
+                  <span class="lg:hidden">Wheels</span>
+                </button>
+                <button onclick="addPart('lidar')"
+                        class="w-full bg-red-600 hover:bg-red-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-satellite-dish"></i> Lidar
+                </button>
+                <button onclick="addPart('camera')"
+                        class="w-full bg-blue-600 hover:bg-blue-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-video"></i>
+                  <span class="hidden lg:inline">Camera (View)</span>
+                  <span class="lg:hidden">Camera</span>
+                </button>
+                <button onclick="addPart('arm')"
+                        class="w-full bg-purple-600 hover:bg-purple-500 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                  <i class="fas fa-hand-paper"></i>
+                  <span class="hidden lg:inline">Arm (SPACE)</span>
+                  <span class="lg:hidden">Arm</span>
+                </button>
+              </div>
+              <a href="/3D/index.html"
+                 class="mt-2 lg:mt-3 w-full rounded-lg border border-emerald-400/50 bg-emerald-950/80 px-2 py-2 text-[10px] lg:text-xs text-emerald-100 flex items-center justify-center gap-2 transition hover:bg-emerald-900/80 hover:border-emerald-300 tracking-[0.18em] uppercase font-semibold no-underline shadow-[0_0_0_1px_rgba(16,185,129,0.12)]">
+                <i class="fas fa-arrow-right"></i>
+                <span>Switch to 3D</span>
+              </a>
+              <div class="grid grid-cols-2 gap-1 mt-1 lg:block lg:mt-0">
+                <button onclick="resetAll()"
+                        class="w-full lg:mt-3 bg-gray-700 hover:bg-gray-600 p-1.5 lg:p-2 rounded text-gray-300 text-[10px] lg:text-xs flex items-center justify-center gap-1 lg:gap-2 transition">
+                  <i class="fas fa-redo"></i>
+                  <span class="hidden lg:inline">Reset All</span>
+                  <span class="lg:hidden">Reset</span>
+                </button>
+                <a href="https://github.com/alphaonelabs/botlab"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="lg:mt-2 w-full bg-indigo-700 hover:bg-indigo-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex items-center justify-center gap-2 transition font-medium">
+                  <i class="fas fa-code-branch"></i> Contribute
+                </a>
+              </div>
+            </div>
+            <div class="flex-1 relative bg-gray-950" id="viewport-wrapper">
+              <canvas id="sim-canvas"
+                      class="bg-gray-900 w-full h-full"
+                      role="img"
+                      aria-label="Robot simulation canvas where you can control and view your robot"></canvas>
+              <div class="absolute top-2 right-2 lg:top-3 lg:right-3 bg-black/80 text-green-400 font-mono text-[9px] lg:text-xs p-1.5 lg:p-2 rounded-lg border border-green-900">
+                <div>
+                  <span class="text-gray-500">POS:</span> <span id="pos-display">0, 0</span>
+                </div>
+                <div>
+                  <span class="text-gray-500">ANGLE:</span> <span id="angle-display">0°</span>
+                </div>
+                <div>
+                  <span class="text-gray-500">SPEED:</span> <span id="speed-display">0</span>
+                </div>
+                <div class="mt-1 pt-1 border-t border-gray-700 text-gray-400 text-[10px]">
+                  Move: <span class="text-white">WASD</span> | Pick: <span class="text-purple-400">SPACE</span>
+                </div>
+              </div>
+              <div id="camera-feed"
+                   class="hidden absolute top-3 left-3 w-44 h-28 bg-black border-2 border-blue-500 rounded overflow-hidden shadow-xl">
+                <canvas id="cam-canvas"
+                        class="w-full h-full"
+                        role="img"
+                        aria-label="Robot camera view showing first-person perspective"></canvas>
+                <div class="absolute bottom-1 left-2 text-blue-400 text-[10px] font-mono flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> LIVE
+                </div>
+              </div>
+              <!-- Action Message -->
+              <div id="action-msg"
+                   class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-4 py-2 rounded-full text-sm font-bold transition-opacity duration-500 opacity-0 pointer-events-none">
+                Block picked!
+              </div>
+              <!-- Prompt -->
+              <div id="start-prompt"
+                   class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 pointer-events-none">
+                <i class="fas fa-plus-circle text-3xl mb-2 opacity-50"></i>
+                <div class="text-sm">
+                  Add a <strong>Chassis</strong> to start
+                </div>
+              </div>
+              <!-- Touch Controls - mobile only -->
+              <div class="lg:hidden absolute bottom-3 inset-x-3 flex justify-between items-end pointer-events-none">
+                <!-- D-pad -->
+                <div class="grid grid-cols-3 gap-1 pointer-events-auto select-none" style="width:92px">
+                  <div></div>
+                  <button id="btn-up"    aria-label="Move forward"  class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-up text-[10px]"></i></button>
+                  <div></div>
+                  <button id="btn-left"  aria-label="Turn left"     class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-left text-[10px]"></i></button>
+                  <div class="w-7 h-7 bg-gray-900/50 rounded"></div>
+                  <button id="btn-right" aria-label="Turn right"    class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-right text-[10px]"></i></button>
+                  <div></div>
+                  <button id="btn-down"  aria-label="Move backward" class="w-7 h-7 bg-gray-800/80 active:bg-gray-500 rounded text-white flex items-center justify-center"><i class="fas fa-chevron-down text-[10px]"></i></button>
+                  <div></div>
+                </div>
+                <!-- Pick/Drop button -->
+                <button id="btn-space" aria-label="Pick or drop object" class="w-11 h-11 bg-purple-700/80 active:bg-purple-500 rounded-full text-white flex items-center justify-center pointer-events-auto select-none">
+                  <i class="fas fa-hand-paper text-sm"></i>
+                </button>
+              </div>
+            </div>
+            <!-- Right Sidebar: Properties -->
+            <div class="w-full lg:w-52 bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
+              <div class="font-bold text-gray-300 mb-1 lg:mb-2 text-xs lg:text-sm">⚙️ Settings</div>
+              <div class="grid grid-cols-2 gap-x-3 gap-y-1 lg:block lg:space-y-3 flex-1">
+                <div>
+                  <label class="text-gray-400 text-xs flex justify-between">
+                    <span>Power</span><span id="power-val" class="text-teal-400">50%</span>
+                  </label>
+                  <input type="range"
+                         id="power-slider"
+                         min="10"
+                         max="100"
+                         value="50"
+                         class="w-full accent-teal-500 mt-0.5 lg:mt-1"
+                         oninput="updatePower()" />
+                </div>
+                <div>
+                  <label class="text-gray-400 text-xs flex justify-between">
+                    <span>Turn</span><span id="turn-val" class="text-teal-400">5°</span>
+                  </label>
+                  <input type="range"
+                         id="turn-slider"
+                         min="1"
+                         max="15"
+                         value="5"
+                         class="w-full accent-teal-500 mt-0.5 lg:mt-1"
+                         oninput="updateTurn()" />
+                </div>
+                <div class="col-span-2 lg:col-span-1">
+                  <label class="text-gray-400 text-xs">Color</label>
+                  <input type="color"
+                         id="color-picker"
+                         value="#0d9488"
+                         class="w-full h-5 lg:h-6 rounded mt-0.5 lg:mt-1 cursor-pointer"
+                         oninput="updateColor()" />
+                </div>
+              </div>
+              <!-- Parts & Info -->
+              <div class="mt-1.5 lg:mt-3 pt-1.5 lg:pt-3 border-t border-gray-700 grid grid-cols-2 lg:block gap-x-3">
+                <div>
+                  <div class="text-gray-400 text-xs mb-0.5 lg:mb-1">Parts:</div>
+                  <div id="parts-list" class="text-gray-500 text-xs">None</div>
+                  <div class="mt-1 text-gray-500 text-[10px]">
+                    Blocks: <span id="block-count">0</span>
+                  </div>
+                </div>
+                <!-- LiDAR Detection Panel -->
+                <div class="lg:mt-3 lg:pt-3 lg:border-t lg:border-gray-700">
+                  <div class="text-gray-400 text-xs mb-0.5 lg:mb-1 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse hidden" id="detection-indicator"></span>
+                    📡 Detection:
+                  </div>
+                  <div id="detection-info" class="text-[10px] space-y-0.5">
+                    <div class="text-gray-500">LiDAR not installed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      // ========== CANVAS SETUP ==========
+      const canvas = document.getElementById('sim-canvas');
+      const ctx = canvas.getContext('2d');
+      const camCanvas = document.getElementById('cam-canvas');
+      const camCtx = camCanvas.getContext('2d');
+
+      // Error handling for canvas context
+      if (!ctx || !camCtx) {
+        console.error('Canvas 2D context not supported');
+        document.getElementById('start-prompt').innerHTML =
+          '<div class="text-red-500">Your browser does not support canvas. Please use a modern browser.</div>';
+      }
+
+      function resizeCanvas() {
+        const wrapper = document.getElementById('viewport-wrapper');
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+        camCanvas.width = 176;
+        camCanvas.height = 112;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // ========== ROBOT STATE ==========
+      let robot = {
+        x: 0,
+        y: 0,
+        angle: 0,
+        speed: 0,
+        color: '#0d9488',
+        holdingBlock: null,
+        gripAnim: 0, // 0 = open, 1 = closed; animated smoothly
+        parts: {
+          chassis: false,
+          wheels: false,
+          lidar: false,
+          camera: false,
+          arm: false,
+        },
+      };
+
+      let motorPower = 50;
+      let turnSpeed = 5;
+
+      // ========== BLOCKS ==========
+      let blocks = [];
+      const STORAGE_KEY = 'robotics_playground_state';
+      let lastSaveTime = 0;
+
+      // ========== HUMANS ==========
+      let humans = [];
+
+      function generateBlocks() {
+        blocks = [];
+        const shapes = ['square', 'circle', 'triangle'];
+        for (let i = 0; i < 12; i++) {
+          blocks.push({
+            id: i,
+            x: 80 + Math.random() * (canvas.width - 160),
+            y: 80 + Math.random() * (canvas.height - 160),
+            size: 25,
+            color: `hsl(${i * 30}, 70%, 55%)`,
+            shape: shapes[Math.floor(Math.random() * shapes.length)],
+            held: false,
+          });
+        }
+        document.getElementById('block-count').textContent = blocks.length;
+      }
+
+      function generateHumans() {
+        humans = [];
+        for (let i = 0; i < 5; i++) {
+          humans.push({
+            id: 'human_' + i,
+            x: 80 + Math.random() * (canvas.width - 160),
+            y: 80 + Math.random() * (canvas.height - 160),
+            angle: Math.random() * Math.PI * 2,
+            speed: 0.4 + Math.random() * 0.6,
+            size: 18,
+          });
+        }
+      }
+
+      function updateHumans() {
+        humans.forEach((h) => {
+          if (Math.random() < 0.02) h.angle += (Math.random() - 0.5) * Math.PI * 0.5;
+          h.x += Math.sin(h.angle) * h.speed;
+          h.y -= Math.cos(h.angle) * h.speed;
+          if (h.x < 30 || h.x > canvas.width - 30) h.angle = Math.PI - h.angle;
+          if (h.y < 30 || h.y > canvas.height - 30) h.angle = -h.angle;
+          h.x = Math.max(30, Math.min(canvas.width - 30, h.x));
+          h.y = Math.max(30, Math.min(canvas.height - 30, h.y));
+        });
+      }
+
+      // ========== INPUT ==========
+      let keys = {};
+      let spaceJustPressed = false;
+
+      document.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        keys[k] = true;
+        if (e.code === 'Space' && !spaceJustPressed) {
+          spaceJustPressed = true;
+          handlePickDrop();
+        }
+        if (
+          ['w', 'a', 's', 'd', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k) ||
+          e.code === 'Space'
+        ) {
+          e.preventDefault();
+        }
+      });
+      document.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+        if (e.code === 'Space') spaceJustPressed = false;
+      });
+
+      // ========== PICK / DROP ==========
+      function handlePickDrop() {
+        if (!robot.parts.arm || !robot.parts.chassis) return;
+
+        const gripX = robot.x + Math.sin(robot.angle) * 68;
+        const gripY = robot.y - Math.cos(robot.angle) * 68;
+
+        if (robot.holdingBlock !== null) {
+          // DROP
+          const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+          if (b) {
+            b.x = gripX - b.size / 2;
+            b.y = gripY - b.size / 2;
+            b.held = false;
+          }
+          robot.holdingBlock = null;
+          showMsg('Dropped!');
+          saveState();
+        } else {
+          // PICK
+          for (let b of blocks) {
+            if (b.held) continue;
+            const cx = b.x + b.size / 2;
+            const cy = b.y + b.size / 2;
+            const dist = Math.hypot(gripX - cx, gripY - cy);
+            if (dist < 45) {
+              b.held = true;
+              robot.holdingBlock = b.id;
+              showMsg('Grabbed! SPACE to drop');
+              saveState();
+              break;
+            }
+          }
+        }
+      }
+
+      function showMsg(txt) {
+        const el = document.getElementById('action-msg');
+        el.textContent = txt;
+        el.classList.remove('opacity-0');
+        setTimeout(() => el.classList.add('opacity-0'), 1500);
+      }
+
+      // ========== PARTS ==========
+      function addPart(type) {
+        if (type !== 'chassis' && !robot.parts.chassis) {
+          alert('Add Chassis first!');
+          return;
+        }
+
+        // Toggle: if part is already added, remove it
+        if (robot.parts[type]) {
+          removePart(type);
+          return;
+        }
+
+        robot.parts[type] = true;
+
+        if (type === 'chassis') {
+          robot.x = canvas.width / 2;
+          robot.y = canvas.height / 2;
+          document.getElementById('start-prompt').classList.add('hidden');
+          generateBlocks();
+          generateHumans();
+        }
+        if (type === 'camera') {
+          document.getElementById('camera-feed').classList.remove('hidden');
+        }
+        if (type === 'lidar') {
+          lastDetectedId = null;
+          updateDetectionUI(null);
+        }
+        updatePartsList();
+        showMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} added!`);
+        saveState();
+      }
+
+      function removePart(type) {
+        // Removing chassis removes everything
+        if (type === 'chassis') {
+          resetAll();
+          return;
+        }
+
+        robot.parts[type] = false;
+
+        // Handle camera removal: hide the camera feed
+        if (type === 'camera') {
+          document.getElementById('camera-feed').classList.add('hidden');
+        }
+
+        // Handle arm removal: drop any held block
+        if (type === 'arm' && robot.holdingBlock !== null) {
+          const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+          if (b) {
+            b.x = robot.x + Math.sin(robot.angle) * 68 - b.size / 2;
+            b.y = robot.y - Math.cos(robot.angle) * 68 - b.size / 2;
+            b.held = false;
+          }
+          robot.holdingBlock = null;
+        }
+
+        // Handle lidar removal: clear detection
+        if (type === 'lidar') {
+          lastDetectedId = null;
+          document.getElementById('detection-info').innerHTML = '<div class="text-gray-500">LiDAR not installed</div>';
+          document.getElementById('detection-indicator').classList.add('hidden');
+        }
+
+        // Handle wheels removal: stop the robot
+        if (type === 'wheels') {
+          robot.speed = 0;
+        }
+
+        updatePartsList();
+        showMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} removed!`);
+        saveState();
+      }
+
+      function resetAll() {
+        robot = {
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          angle: 0,
+          speed: 0,
+          color: document.getElementById('color-picker').value,
+          holdingBlock: null,
+          gripAnim: 0,
+          parts: {
+            chassis: false,
+            wheels: false,
+            lidar: false,
+            camera: false,
+            arm: false,
+          },
+        };
+        blocks = [];
+        humans = [];
+        document.getElementById('start-prompt').classList.remove('hidden');
+        document.getElementById('camera-feed').classList.add('hidden');
+        document.getElementById('block-count').textContent = '0';
+        lastDetectedId = null;
+        document.getElementById('detection-info').innerHTML = '<div class="text-gray-500">LiDAR not installed</div>';
+        document.getElementById('detection-indicator').classList.add('hidden');
+        updatePartsList();
+        localStorage.removeItem(STORAGE_KEY);
+      }
+
+      function updatePartsList() {
+        const list = Object.keys(robot.parts).filter((k) => robot.parts[k]);
+        document.getElementById('parts-list').textContent = list.length ? list.join(', ') : 'None';
+      }
+
+      function updatePower() {
+        motorPower = +document.getElementById('power-slider').value;
+        document.getElementById('power-val').textContent = motorPower + '%';
+        saveState();
+      }
+
+      function updateTurn() {
+        turnSpeed = +document.getElementById('turn-slider').value;
+        document.getElementById('turn-val').textContent = turnSpeed + '°';
+        saveState();
+      }
+
+      function updateColor() {
+        robot.color = document.getElementById('color-picker').value;
+        saveState();
+      }
+
+      // ========== GAME LOOP ==========
+      function update() {
+        if (!robot.parts.chassis) return;
+
+        if (robot.parts.wheels) {
+          const acc = motorPower / 400;
+          if (keys['w'] || keys['arrowup']) robot.speed = Math.min(robot.speed + acc, motorPower / 8);
+          else if (keys['s'] || keys['arrowdown']) robot.speed = Math.max(robot.speed - acc, -motorPower / 15);
+          else robot.speed *= 0.92;
+
+          if (keys['a'] || keys['arrowleft']) robot.angle -= turnSpeed * 0.015;
+          if (keys['d'] || keys['arrowright']) robot.angle += turnSpeed * 0.015;
+        }
+
+        robot.x += Math.sin(robot.angle) * robot.speed;
+        robot.y -= Math.cos(robot.angle) * robot.speed;
+        robot.x = Math.max(35, Math.min(canvas.width - 35, robot.x));
+        robot.y = Math.max(35, Math.min(canvas.height - 35, robot.y));
+
+        // Move held block (arm now extends 68 units forward)
+        if (robot.holdingBlock !== null) {
+          const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+          if (b) {
+            b.x = robot.x + Math.sin(robot.angle) * 68 - b.size / 2;
+            b.y = robot.y - Math.cos(robot.angle) * 68 - b.size / 2;
+          }
+        }
+
+        // Animate robotic gripper smoothly
+        if (robot.parts.arm) {
+          const targetGrip = robot.holdingBlock !== null ? 1 : 0;
+          const gripSpeed = 0.1;
+          if (robot.gripAnim < targetGrip) robot.gripAnim = Math.min(robot.gripAnim + gripSpeed, targetGrip);
+          else if (robot.gripAnim > targetGrip) robot.gripAnim = Math.max(robot.gripAnim - gripSpeed, targetGrip);
+        }
+
+        document.getElementById('pos-display').textContent = `${Math.round(robot.x)}, ${Math.round(robot.y)}`;
+        document.getElementById('angle-display').textContent = `${Math.round((robot.angle * 180) / Math.PI)}°`;
+        document.getElementById('speed-display').textContent = robot.speed.toFixed(1);
+
+        // LiDAR object detection
+        if (robot.parts.lidar) {
+          const detected = getLidarDetection();
+          const newId = detected ? detected.id : null;
+          if (newId !== lastDetectedId) {
+            lastDetectedId = newId;
+            updateDetectionUI(detected);
+          }
+        }
+
+        updateHumans();
+      }
+
+      function drawGrid() {
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 50) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 50) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+      }
+
+      function drawBlocks() {
+        blocks.forEach((b) => {
+          if (b.held) return; // draw held block with robot
+          ctx.fillStyle = b.color;
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+
+          if (b.shape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(b.x + b.size / 2, b.y + b.size / 2, b.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          } else if (b.shape === 'triangle') {
+            ctx.beginPath();
+            ctx.moveTo(b.x + b.size / 2, b.y);
+            ctx.lineTo(b.x, b.y + b.size);
+            ctx.lineTo(b.x + b.size, b.y + b.size);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.fillRect(b.x, b.y, b.size, b.size);
+            ctx.strokeRect(b.x, b.y, b.size, b.size);
+          }
+
+          // Glow if near gripper and arm attached
+          if (robot.parts.arm && robot.holdingBlock === null) {
+            const gx = robot.x + Math.sin(robot.angle) * 68;
+            const gy = robot.y - Math.cos(robot.angle) * 68;
+            if (Math.hypot(gx - (b.x + b.size / 2), gy - (b.y + b.size / 2)) < 45) {
+              ctx.shadowColor = '#fff';
+              ctx.shadowBlur = 12;
+              if (b.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(b.x + b.size / 2, b.y + b.size / 2, b.size / 2, 0, Math.PI * 2);
+                ctx.stroke();
+              } else if (b.shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(b.x + b.size / 2, b.y);
+                ctx.lineTo(b.x, b.y + b.size);
+                ctx.lineTo(b.x + b.size, b.y + b.size);
+                ctx.closePath();
+                ctx.stroke();
+              } else {
+                ctx.strokeRect(b.x, b.y, b.size, b.size);
+              }
+              ctx.shadowBlur = 0;
+            }
+          }
+        });
+      }
+
+      function drawRobot() {
+        if (!robot.parts.chassis) return;
+        ctx.save();
+        ctx.translate(robot.x, robot.y);
+        ctx.rotate(robot.angle);
+
+        // Chassis
+        ctx.fillStyle = robot.color;
+        ctx.fillRect(-22, -28, 44, 56);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-22, -28, 44, 56);
+
+        // Arm – drawn at the FRONT of the robot (before lidar/camera so sensors render on top)
+        if (robot.parts.arm) {
+          ctx.save();
+
+          // Mount bracket at chassis front
+          ctx.fillStyle = '#7c3aed';
+          ctx.fillRect(-8, -31, 16, 7);
+
+          // Upper arm segment (shoulder → elbow)
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, -28);
+          ctx.lineTo(0, -44);
+          ctx.stroke();
+
+          // Elbow joint
+          ctx.fillStyle = '#c084fc';
+          ctx.beginPath();
+          ctx.arc(0, -44, 4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Lower arm segment (elbow → wrist)
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(0, -44);
+          ctx.lineTo(0, -60);
+          ctx.stroke();
+
+          // Wrist joint
+          ctx.fillStyle = '#c084fc';
+          ctx.beginPath();
+          ctx.arc(0, -60, 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Robotic gripper fingers (animated via gripAnim: 0=open, 1=closed)
+          const openSpread = 0.55;
+          const closedSpread = 0.08;
+          const spread = openSpread - (openSpread - closedSpread) * robot.gripAnim;
+          const fingerLen = 16;
+
+          // Left finger
+          ctx.save();
+          ctx.translate(0, -60);
+          ctx.rotate(-spread);
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -fingerLen);
+          ctx.stroke();
+          ctx.strokeStyle = '#e9d5ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, -fingerLen);
+          ctx.lineTo(-4, -fingerLen - 4);
+          ctx.stroke();
+          ctx.restore();
+
+          // Right finger
+          ctx.save();
+          ctx.translate(0, -60);
+          ctx.rotate(spread);
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -fingerLen);
+          ctx.stroke();
+          ctx.strokeStyle = '#e9d5ff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, -fingerLen);
+          ctx.lineTo(4, -fingerLen - 4);
+          ctx.stroke();
+          ctx.restore();
+
+          // Draw held block between the gripper fingers
+          if (robot.holdingBlock !== null) {
+            const b = blocks.find((bl) => bl.id === robot.holdingBlock);
+            if (b) {
+              ctx.fillStyle = b.color;
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2;
+              if (b.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(0, -68, b.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+              } else if (b.shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(0, -68 - b.size / 2);
+                ctx.lineTo(-b.size / 2, -68 + b.size / 2);
+                ctx.lineTo(b.size / 2, -68 + b.size / 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+              } else {
+                ctx.fillRect(-b.size / 2, -68 - b.size / 2, b.size, b.size);
+                ctx.strokeRect(-b.size / 2, -68 - b.size / 2, b.size, b.size);
+              }
+            }
+          }
+
+          ctx.restore();
+        }
+
+        // Wheels
+        if (robot.parts.wheels) {
+          ctx.fillStyle = '#2a2a2a';
+          ctx.fillRect(-30, -18, 9, 36);
+          ctx.fillRect(21, -18, 9, 36);
+          ctx.strokeStyle = '#444';
+          const wo = ((Date.now() / 40) * Math.abs(robot.speed)) % 12;
+          for (let i = -18; i < 18; i += 12) {
+            ctx.beginPath();
+            ctx.moveTo(-30, i + (wo % 12));
+            ctx.lineTo(-21, i + (wo % 12));
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(21, i + (wo % 12));
+            ctx.lineTo(30, i + (wo % 12));
+            ctx.stroke();
+          }
+        }
+
+        // Lidar
+        if (robot.parts.lidar) {
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(0, -32, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(239,68,68,0.5)';
+          ctx.lineWidth = 2;
+          const sw = (((Date.now() / 15) % 360) * Math.PI) / 180;
+          ctx.beginPath();
+          ctx.moveTo(0, -32);
+          ctx.lineTo(Math.cos(sw - Math.PI / 2) * 100, -32 + Math.sin(sw - Math.PI / 2) * 100);
+          ctx.stroke();
+        }
+
+        // Camera
+        if (robot.parts.camera) {
+          ctx.fillStyle = '#3b82f6';
+          ctx.beginPath();
+          ctx.arc(0, -18, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#1e3a5f';
+          ctx.beginPath();
+          ctx.arc(0, -18, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      function drawCameraView() {
+        if (!robot.parts.camera) return;
+
+        const camW = 176, camH = 112, horizon = 56;
+        const fov = Math.PI / 2;
+        const detectionPad = 3;
+
+        // Sky gradient
+        const sky = camCtx.createLinearGradient(0, 0, 0, horizon);
+        sky.addColorStop(0, '#0c1929');
+        sky.addColorStop(1, '#1e3a5f');
+        camCtx.fillStyle = sky;
+        camCtx.fillRect(0, 0, camW, horizon);
+
+        // Ground gradient
+        const gnd = camCtx.createLinearGradient(0, horizon, 0, camH);
+        gnd.addColorStop(0, '#374151');
+        gnd.addColorStop(1, '#1f2937');
+        camCtx.fillStyle = gnd;
+        camCtx.fillRect(0, horizon, camW, horizon);
+
+        // Helper: project a world position into camera screen coordinates
+        function project(wx, wy) {
+          const dx = wx - robot.x;
+          const dy = wy - robot.y;
+          const dist = Math.hypot(dx, dy);
+          let worldAng = Math.atan2(dx, -dy);
+          let relAng = worldAng - robot.angle;
+          while (relAng > Math.PI) relAng -= 2 * Math.PI;
+          while (relAng < -Math.PI) relAng += 2 * Math.PI;
+          if (Math.abs(relAng) >= fov / 2 || dist > 400 || dist < 20) return null;
+          const screenX = 88 + (relAng / (fov / 2)) * 88;
+          const sz = Math.max(6, 600 / dist);
+          const screenY = horizon - sz / 2 + dist / 30;
+          return { screenX, screenY, sz, dist };
+        }
+
+        // Render blocks with detection bounding boxes
+        blocks.forEach((b) => {
+          if (b.held) return;
+          const proj = project(b.x + b.size / 2, b.y + b.size / 2);
+          if (!proj) return;
+          const { screenX, screenY, sz } = proj;
+          const sy = Math.max(5, screenY);
+
+          camCtx.fillStyle = b.color;
+          camCtx.fillRect(screenX - sz / 2, sy, sz, sz);
+          camCtx.strokeStyle = '#fff';
+          camCtx.lineWidth = 1;
+          camCtx.strokeRect(screenX - sz / 2, sy, sz, sz);
+
+          // Detection bounding box (cyan)
+          const bx = screenX - sz / 2 - detectionPad;
+          const by = sy - detectionPad;
+          const bw = sz + detectionPad * 2;
+          const bh = sz + detectionPad * 2;
+          camCtx.strokeStyle = '#22d3ee';
+          camCtx.lineWidth = 1;
+          camCtx.strokeRect(bx, by, bw, bh);
+
+          // Label
+          const label = b.shape.charAt(0).toUpperCase() + b.shape.slice(1);
+          camCtx.fillStyle = '#22d3ee';
+          camCtx.font = 'bold 6px monospace';
+          const ly = by - 1;
+          camCtx.fillText(label, bx, ly > 6 ? ly : by + bh + 7);
+        });
+
+        // Render humans with detection bounding boxes (orange)
+        humans.forEach((h) => {
+          const proj = project(h.x, h.y);
+          if (!proj) return;
+          const { screenX, screenY, sz } = proj;
+          const sy = Math.max(5, screenY);
+          const hw = Math.max(6, sz * 0.7);
+          const headR = hw / 3;
+          const bodyH = Math.max(4, sz * 0.6);
+
+          // Silhouette: head + body
+          camCtx.fillStyle = '#94a3b8';
+          camCtx.beginPath();
+          camCtx.arc(screenX, sy, headR, 0, Math.PI * 2);
+          camCtx.fill();
+          camCtx.fillRect(screenX - hw / 3, sy, (hw * 2) / 3, bodyH);
+
+          // Detection bounding box (orange)
+          const bx = screenX - hw / 2 - detectionPad;
+          const by = sy - headR - detectionPad;
+          const bw = hw + detectionPad * 2;
+          const bh = headR + bodyH + detectionPad * 2;
+          camCtx.strokeStyle = '#fb923c';
+          camCtx.lineWidth = 1;
+          camCtx.strokeRect(bx, by, bw, bh);
+
+          // Label
+          camCtx.fillStyle = '#fb923c';
+          camCtx.font = 'bold 6px monospace';
+          const ly = by - 1;
+          camCtx.fillText('Human', bx, ly > 6 ? ly : by + bh + 7);
+        });
+
+        // Crosshair
+        camCtx.strokeStyle = '#22d3ee';
+        camCtx.lineWidth = 1;
+        camCtx.beginPath();
+        camCtx.moveTo(88, 46);
+        camCtx.lineTo(88, 66);
+        camCtx.moveTo(78, 56);
+        camCtx.lineTo(98, 56);
+        camCtx.stroke();
+      }
+
+      function drawHumans() {
+        humans.forEach((h) => {
+          ctx.save();
+          ctx.translate(h.x, h.y);
+          ctx.rotate(h.angle);
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.fillStyle = '#e2e8f0';
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          // Head
+          ctx.beginPath();
+          ctx.arc(0, -14, 5, 0, Math.PI * 2);
+          ctx.fill();
+          // Body
+          ctx.beginPath();
+          ctx.moveTo(0, -9);
+          ctx.lineTo(0, 4);
+          ctx.stroke();
+          // Arms
+          ctx.beginPath();
+          ctx.moveTo(-8, -4);
+          ctx.lineTo(8, -4);
+          ctx.stroke();
+          // Legs
+          ctx.beginPath();
+          ctx.moveTo(0, 4);
+          ctx.lineTo(-6, 14);
+          ctx.moveTo(0, 4);
+          ctx.lineTo(6, 14);
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
+      function render() {
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawBlocks();
+        drawHumans();
+        drawRobot();
+        drawCameraView();
+      }
+
+      function loop() {
+        update();
+        render();
+        const now = Date.now();
+        if (robot.parts.chassis && now - lastSaveTime > 1000) {
+          saveState();
+          lastSaveTime = now;
+        }
+        requestAnimationFrame(loop);
+      }
+
+      // ========== LIDAR DETECTION ==========
+      let lastDetectedId = null;
+
+      loadState();
+      loop();
+
+      function segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+        const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (denom === 0) return false;
+        const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+        const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+        return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+      }
+
+      function segmentIntersectsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+        if (x2 >= rx && x2 <= rx + rw && y2 >= ry && y2 <= ry + rh) return true;
+        return (
+          segmentsIntersect(x1, y1, x2, y2, rx, ry, rx + rw, ry) ||
+          segmentsIntersect(x1, y1, x2, y2, rx + rw, ry, rx + rw, ry + rh) ||
+          segmentsIntersect(x1, y1, x2, y2, rx, ry + rh, rx + rw, ry + rh) ||
+          segmentsIntersect(x1, y1, x2, y2, rx, ry, rx, ry + rh)
+        );
+      }
+
+      function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+        const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+        const lenSq = C * C + D * D;
+        const param = lenSq !== 0 ? Math.max(0, Math.min(1, (A * C + B * D) / lenSq)) : 0;
+        return Math.hypot(px - (x1 + param * C), py - (y1 + param * D));
+      }
+
+      function beamIntersectsBlock(x1, y1, x2, y2, b) {
+        const cx = b.x + b.size / 2, cy = b.y + b.size / 2;
+        if (b.shape === 'circle') {
+          return pointToSegmentDist(cx, cy, x1, y1, x2, y2) < b.size / 2;
+        } else if (b.shape === 'triangle') {
+          const tx1 = b.x + b.size / 2, ty1 = b.y;
+          const tx2 = b.x, ty2 = b.y + b.size;
+          const tx3 = b.x + b.size, ty3 = b.y + b.size;
+          // Check all three edges, or if beam endpoint is inside triangle
+          return (
+            segmentsIntersect(x1, y1, x2, y2, tx1, ty1, tx2, ty2) ||
+            segmentsIntersect(x1, y1, x2, y2, tx2, ty2, tx3, ty3) ||
+            segmentsIntersect(x1, y1, x2, y2, tx3, ty3, tx1, ty1)
+          );
+        } else {
+          return segmentIntersectsRect(x1, y1, x2, y2, b.x, b.y, b.size, b.size);
+        }
+      }
+
+      function getLidarDetection() {
+        if (!robot.parts.lidar || (blocks.length === 0 && humans.length === 0)) return null;
+        const sw = (((Date.now() / 15) % 360) * Math.PI) / 180;
+        // Lidar center in world coordinates (local offset: 0, -32)
+        const lidarX = robot.x + 32 * Math.sin(robot.angle);
+        const lidarY = robot.y - 32 * Math.cos(robot.angle);
+        // World beam direction angle
+        const worldBeamAngle = sw - Math.PI / 2 + robot.angle;
+        const beamRange = 100;
+        const beamEndX = lidarX + Math.cos(worldBeamAngle) * beamRange;
+        const beamEndY = lidarY + Math.sin(worldBeamAngle) * beamRange;
+        for (const b of blocks) {
+          if (b.held) continue;
+          if (beamIntersectsBlock(lidarX, lidarY, beamEndX, beamEndY, b)) return { ...b, type: 'block' };
+        }
+        for (const h of humans) {
+          if (pointToSegmentDist(h.x, h.y, lidarX, lidarY, beamEndX, beamEndY) < h.size / 2) {
+            return { ...h, type: 'human' };
+          }
+        }
+        return null;
+      }
+
+      function getColorName(hslColor) {
+        const match = hslColor.match(/hsl\((\d+)/);
+        if (!match) return hslColor;
+        const hue = parseInt(match[1]);
+        const names = [
+          [15, 'Red'], [45, 'Orange'], [75, 'Yellow'], [105, 'Yellow-Green'],
+          [135, 'Green'], [165, 'Teal'], [195, 'Cyan'], [225, 'Sky Blue'],
+          [255, 'Blue'], [285, 'Purple'], [315, 'Magenta'], [345, 'Pink'],
+        ];
+        for (const [max, name] of names) {
+          if (hue < max) return name;
+        }
+        return 'Red';
+      }
+
+      function updateDetectionUI(detected) {
+        const el = document.getElementById('detection-info');
+        const indicator = document.getElementById('detection-indicator');
+        if (detected) {
+          indicator.classList.remove('hidden');
+          if (detected.type === 'human') {
+            el.innerHTML =
+              '<div class="text-orange-400 font-semibold">● HUMAN DETECTED</div>' +
+              '<div class="text-gray-300 mt-0.5">Type: <span class="text-orange-300">Human</span></div>';
+          } else {
+            const colorName = getColorName(detected.color);
+            const shapeName = detected.shape.charAt(0).toUpperCase() + detected.shape.slice(1);
+            el.innerHTML =
+              '<div class="text-green-400 font-semibold">● OBJECT DETECTED</div>' +
+              '<div class="text-gray-300 mt-0.5">Shape: <span class="text-yellow-300">' + shapeName + '</span></div>' +
+              '<div class="text-gray-300">Color: <span style="color:' + detected.color + ';font-weight:600">' + colorName + '</span></div>';
+          }
+        } else {
+          el.innerHTML = '<div class="text-gray-500">No objects detected</div>';
+          indicator.classList.add('hidden');
+        }
+      }
+
+      // ========== STATE PERSISTENCE ==========
+      function saveState() {
+        try {
+          const state = {
+            robot: {
+              x: robot.x,
+              y: robot.y,
+              angle: robot.angle,
+              color: robot.color,
+              holdingBlock: robot.holdingBlock,
+              parts: { ...robot.parts },
+            },
+            motorPower,
+            turnSpeed,
+            blocks: blocks.map(b => ({ ...b })),
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+          // localStorage may be unavailable
+        }
+      }
+
+      function loadState() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (!saved) return;
+          const state = JSON.parse(saved);
+          if (!state) return;
+
+          if (state.robot) {
+            robot.x = typeof state.robot.x === 'number' ? Math.max(35, Math.min(canvas.width - 35, state.robot.x)) : canvas.width / 2;
+            robot.y = typeof state.robot.y === 'number' ? Math.max(35, Math.min(canvas.height - 35, state.robot.y)) : canvas.height / 2;
+            robot.angle = typeof state.robot.angle === 'number' ? state.robot.angle : 0;
+            robot.color = state.robot.color || '#0d9488';
+            robot.holdingBlock = state.robot.holdingBlock !== undefined ? state.robot.holdingBlock : null;
+            if (state.robot.parts) {
+              robot.parts = { ...robot.parts, ...state.robot.parts };
+            }
+          }
+
+          if (typeof state.motorPower === 'number') {
+            motorPower = state.motorPower;
+            document.getElementById('power-slider').value = motorPower;
+            document.getElementById('power-val').textContent = motorPower + '%';
+          }
+          if (typeof state.turnSpeed === 'number') {
+            turnSpeed = state.turnSpeed;
+            document.getElementById('turn-slider').value = turnSpeed;
+            document.getElementById('turn-val').textContent = turnSpeed + '°';
+          }
+
+          if (Array.isArray(state.blocks) && state.blocks.length > 0) {
+            blocks = state.blocks;
+            document.getElementById('block-count').textContent = blocks.length;
+          }
+
+          document.getElementById('color-picker').value = robot.color;
+
+          if (robot.parts.chassis) {
+            document.getElementById('start-prompt').classList.add('hidden');
+          }
+          if (robot.parts.camera) {
+            document.getElementById('camera-feed').classList.remove('hidden');
+          }
+          if (robot.parts.lidar) {
+            updateDetectionUI(null);
+          }
+          updatePartsList();
+        } catch (e) {
+          // Corrupted state, ignore
+        }
+      }
+
+      // ========== TOUCH CONTROLS ==========
+      (function setupTouchControls() {
+        const btnKeyMap = { 'btn-up': 'w', 'btn-down': 's', 'btn-left': 'a', 'btn-right': 'd' };
+        Object.entries(btnKeyMap).forEach(([id, key]) => {
+          const btn = document.getElementById(id);
+          if (!btn) return;
+          const handlePress   = (e) => { e.preventDefault(); keys[key] = true; };
+          const handleRelease = (e) => { e.preventDefault(); keys[key] = false; };
+          btn.addEventListener('touchstart',  handlePress,   { passive: false });
+          btn.addEventListener('touchend',    handleRelease, { passive: false });
+          btn.addEventListener('touchcancel', handleRelease, { passive: false });
+          btn.addEventListener('mousedown',  handlePress);
+          btn.addEventListener('mouseup',    handleRelease);
+          btn.addEventListener('mouseleave', handleRelease);
+        });
+
+        const spaceBtn = document.getElementById('btn-space');
+        if (spaceBtn) {
+          const triggerPick = (e) => {
+            e.preventDefault();
+            if (!spaceJustPressed) {
+              spaceJustPressed = true;
+              handlePickDrop();
+              setTimeout(() => { spaceJustPressed = false; }, 300);
+            }
+          };
+          spaceBtn.addEventListener('touchstart', triggerPick, { passive: false });
+          spaceBtn.addEventListener('mousedown',  triggerPick);
+        }
+      })();
+    </script>
+  </body>
+</html>
