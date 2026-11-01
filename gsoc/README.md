@@ -37,8 +37,8 @@ To view the site locally, simply open `index.html` in your web browser:
 
 ```bash
 # Clone the repository
-git clone https://github.com/alphaonelabs/alphaonelabs-gsoc.git
-cd alphaonelabs-gsoc
+git clone https://github.com/alphaonelabs/website.git
+cd website/gsoc
 
 # Open in browser (macOS)
 open index.html
@@ -85,7 +85,7 @@ For major changes to the GSoC page content or structure, please open an issue fi
 
 ## 🔗 Related Links
 
-- [Alpha One Labs Educational Website](https://github.com/alphaonelabs/alphaonelabs-education-website) - Our main project repository
+- [Alpha One Labs Educational Website](https://github.com/alphaonelabs/website) - Our main project repository
 - [GSoC 2026 Official Website](https://summerofcode.withgoogle.com/) - Google Summer of Code program information
 - [Join our Slack Community](https://t.co/Uskb6jkZKz) - Connect with mentors and contributors
 
@@ -99,7 +99,7 @@ If you have questions or need help:
 
 - Join our [Slack community](https://t.co/Uskb6jkZKz)
 - Open an issue in this repository
-- Check out our [main repository](https://github.com/alphaonelabs/alphaonelabs-education-website)
+- Check out our [main repository](https://github.com/alphaonelabs/website)
 
 ---
 

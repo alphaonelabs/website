@@ -233,7 +233,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   <footer>
     EarthMind &mdash; Open-source environmental intelligence &bull;
-    <a href="https://github.com/alphaonelabs/earthmind" target="_blank">GitHub</a> &bull;
+    <a href="https://github.com/alphaonelabs/website/tree/main/earthmind" target="_blank">GitHub</a> &bull;
     Powered by <a href="https://workers.cloudflare.com" target="_blank">Cloudflare Workers</a> &amp;
     <a href="https://developers.cloudflare.com/workers-ai/" target="_blank">Workers AI</a>
   </footer>

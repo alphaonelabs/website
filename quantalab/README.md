@@ -56,8 +56,8 @@ npm install -g wrangler
 
 ```bash
 # Clone the repo
-git clone https://github.com/alphaonelabs/quantalab.git
-cd quantalab
+git clone https://github.com/alphaonelabs/website.git
+cd website/quantalab
 
 # Install local test dependencies
 pip install -r requirements.txt

@@ -27,8 +27,8 @@ npm install -g wrangler
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/alphaonelabs/learn.git
-cd learn
+git clone https://github.com/alphaonelabs/website.git
+cd website/learn
 ```
 
 ### Login to Cloudflare (One time)

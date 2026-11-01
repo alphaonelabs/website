@@ -58,8 +58,8 @@ earthmind/
 ### 1. Clone & configure
 
 ```bash
-git clone https://github.com/alphaonelabs/earthmind.git
-cd earthmind
+git clone https://github.com/alphaonelabs/website.git
+cd website/earthmind
 ```
 
 Edit `wrangler.toml` and replace the placeholder IDs:

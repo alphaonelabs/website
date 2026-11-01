@@ -52,7 +52,7 @@ Enforcement decisions are made at the discretion of the **Alpha One Labs moderat
 If you experience or witness **unacceptable behavior**, please report it to:
 
 📧 **Email:** [info@alphaonelabs.org]
-🔗 **Issue Tracker:** [GitHub Issues](https://github.com/alphaonelabs/education-website/issues)
+🔗 **Issue Tracker:** [GitHub Issues](https://github.com/alphaonelabs/website/issues)
 
 All reports will be reviewed confidentially, and appropriate action will be taken.
 
