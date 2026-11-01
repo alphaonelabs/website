@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+tone_instructions: "Be constructive, educational, and encouraging. This is an open-source educational technology organization — favor clear explanations when suggesting improvements."
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  review_status: true
+  high_level_summary: true
+  high_level_summary_instructions: |
+    Provide a concise summary of the changes, highlighting the purpose, key modifications,
+    and any potential impact on functionality or user experience.
+  poem: false
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+      - "master"
+      - "develop"
+  path_filters:
+    # General build artifacts and dependencies
+    - "!**/*.lock"
+    - "!**/build/**"
+    - "!**/coverage/**"
+    - "!**/dist/**"
+    # Python-specific
+    - "!**/__pycache__/**"
+    - "!**/.venv/**"
+    - "!**/migrations/**"
+    - "!**/staticfiles/**"
+    - "!**/static/vendor/**"
+    - "!**/venv/**"
+    # JavaScript-specific
+    - "!**/*.min.css"
+    - "!**/*.min.js"
+    - "!**/node_modules/**"
+    # Dart/Flutter-specific
+    - "!**/.dart_tool/**"
+  path_instructions:
+    - path: "**/*.py"
+      instructions: |
+        Review Python code for PEP 8 compliance, proper type hints, and Django best practices
+        where applicable. Check for security vulnerabilities such as SQL injection, XSS, and
+        insecure use of eval(). Ensure proper error handling and logging. Verify tests cover
+        the key logic paths.
+    - path: "**/*.js"
+      instructions: |
+        Review JavaScript/TypeScript for modern ES6+ patterns, proper async/await usage, and
+        potential XSS vulnerabilities. Ensure DOM interactions are safe. Look for opportunities
+        to improve readability and maintainability.
+    - path: "**/*.html"
+      instructions: |
+        Review HTML templates for accessibility (ARIA attributes, semantic elements), XSS
+        risks from unescaped user content, and proper use of template inheritance. Check that
+        forms include CSRF protection tokens.
+    - path: "**/*.dart"
+      instructions: |
+        Review Dart/Flutter code for proper state management patterns, widget tree efficiency,
+        and null safety. Follow Flutter best practices for performance and responsiveness.
+    - path: "**/tests/**"
+      instructions: |
+        Ensure tests are descriptive, cover edge cases, and follow the project's existing
+        test patterns. Verify test isolation and meaningful assertions.
+  tools:
+    github-checks:
+      enabled: true
+    ast-grep:
+      enabled: true
+    shellcheck:
+      enabled: true
+    ruff:
+      enabled: true
+    eslint:
+      enabled: true
+    semgrep:
+      enabled: true
+    gitleaks:
+      enabled: true
+    hadolint:
+      enabled: true
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: "auto"
+  issues:
+    scope: "auto"
+  jira:
+    project_keys: []  # Not currently used; add project keys if Jira is adopted
+  linear:
+    team_keys: []     # Not currently used; add team keys if Linear is adopted
+  pull_requests:
+    scope: "auto"
+
