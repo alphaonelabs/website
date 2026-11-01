@@ -3301,11 +3301,6 @@ async def api_change_password(req, env):
 
     if not current_password or not new_password:
         return err("Current password and new password are required")
-    password_error = validate_password_strength(new_password, username)
-    if password_error:
-        return err(password_error)
-    if new_password == current_password:
-        return err("New password must be different from your current password")
 
     enc = env.ENCRYPTION_KEY
     try:
@@ -3324,6 +3319,12 @@ async def api_change_password(req, env):
     if (not username or username == "[decryption error]"
             or not email or email == "[decryption error]"):
         return err("Could not change password — please try again", 500)
+
+    password_error = validate_password_strength(new_password, username)
+    if password_error:
+        return err(password_error)
+    if new_password == current_password:
+        return err("New password must be different from your current password")
 
     if not verify_password(current_password, row.password_hash, username):
         return err("Current password is incorrect", 400)
