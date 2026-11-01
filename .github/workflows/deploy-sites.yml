@@ -1,0 +1,90 @@
+name: Deploy sites
+
+# Every top-level folder with a wrangler.toml is a site. On push to main, each
+# folder that changed is deployed to Cloudflare. A site whose wrangler.toml has
+# no routes is served at <folder>.alphaonelabs.com automatically.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "Folder to deploy, or 'all'"
+        required: true
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.pick.outputs.projects }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          INPUT: ${{ github.event.inputs.project }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          sites=$(for f in */wrangler.toml; do dirname "$f"; done)
+          if [ -n "$INPUT" ] && [ "$INPUT" != all ]; then
+            echo "$sites" | grep -qx "$INPUT" || { echo "::error::$INPUT has no wrangler.toml"; exit 1; }
+            picked="$INPUT"
+          elif [ "$INPUT" = all ] || [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            picked="$sites"
+          else
+            changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" | cut -d/ -f1 | sort -u)
+            picked=$(comm -12 <(echo "$sites" | sort) <(echo "$changed"))
+          fi
+          echo "projects=$(echo "$picked" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+          echo "Deploying: $(echo $picked)"
+
+  deploy:
+    needs: plan
+    if: needs.plan.outputs.projects != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.plan.outputs.projects) }}
+    concurrency:
+      group: deploy-${{ matrix.project }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build GSoC ideas page
+        if: matrix.project == 'gsoc'
+        run: pip install markdown && python scripts/build_ideas.py
+
+      - name: Build
+        if: hashFiles(format('{0}/package.json', matrix.project)) != ''
+        run: |
+          npm ci
+          if jq -e '.scripts.build' package.json >/dev/null; then npm run build; fi
+
+      - name: Deploy
+        run: |
+          args=()
+          # learn's domains (learn., apex, www) are attached in Cloudflare; leave them alone.
+          if [ "${{ matrix.project }}" != learn ] && ! grep -qE '^\s*routes?\s*=' wrangler.toml; then
+            args+=(--domain "${{ matrix.project }}.alphaonelabs.com")
+          fi
+          npx --yes wrangler@4.40.0 deploy "${args[@]}"

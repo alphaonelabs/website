@@ -1,0 +1,83 @@
+name: Project checks
+
+# Checks for each project, run only when that project's folder changes.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      workers: ${{ steps.pick.outputs.workers }}
+      app: ${{ steps.pick.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            changed=$(git diff --name-only "$BASE" "$GITHUB_SHA" | cut -d/ -f1 | sort -u)
+          else
+            changed=$(ls -d */ | tr -d /)
+          fi
+          workers=$(for d in $changed; do [ -f "$d/wrangler.toml" ] && echo "$d"; done)
+          echo "workers=$(echo "$workers" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+          echo "app=$(echo "$changed" | grep -qx app && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  worker:
+    needs: changes
+    if: needs.changes.outputs.workers != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.changes.outputs.workers) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Python syntax check
+        run: |
+          files=$(git ls-files '*.py')
+          [ -z "$files" ] || python -m py_compile $files
+      - name: Build
+        if: hashFiles(format('{0}/package.json', matrix.project)) != ''
+        run: |
+          npm ci
+          if jq -e '.scripts.build' package.json >/dev/null; then npm run build; fi
+      - name: Build GSoC ideas page
+        if: matrix.project == 'gsoc'
+        run: pip install markdown && python scripts/build_ideas.py
+      - name: Wrangler dry run
+        run: npx --yes wrangler@4.40.0 deploy --dry-run --outdir /tmp/wrangler-dry-run
+
+  app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter test

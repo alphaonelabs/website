@@ -1,0 +1,39 @@
+name: Generate GSoC leaderboard
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.repository == 'alphaonelabs/website'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate leaderboard data
+        working-directory: gsoc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/generate_leaderboard.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- gsoc/data/leaderboard.json; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git add gsoc/data/leaderboard.json
+          git commit -m "chore(gsoc): update leaderboard data"
+          git pull --rebase --autostash origin main
+          git push origin HEAD:main
