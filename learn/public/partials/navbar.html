@@ -1,5 +1,12 @@
 <!-- ===== HEADER ===== -->
 <header class=" fixed top-0 left-0 z-50 w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md">
+  <style>
+    a.nav-link[aria-current="page"] {
+      background-color: #115e59;
+      color: #ffffff;
+    }
+  </style>
+
   <div class="max-w-[90rem] mx-auto px-4 md:px-6 flex items-center justify-between min-h-[70px] relative gap-3 py-3">
     <a href="/" class="flex items-center space-x-2 min-w-[170px]">
       <img src="/images/logo.png" alt="Alpha One Labs Logo" height="40" width="40" class="h-10 w-10">
@@ -7,10 +14,10 @@
     </a>
 
     <nav class="hidden xl:flex items-center gap-1" aria-label="Primary navigation">
-      <a href="/activity" class="min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-book-open mr-1"></i>Browse</a>
-      <a href="/requests?kind=learn" class="min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-graduation-cap mr-1"></i>Learn</a>
-      <a href="/requests?kind=teach" class="min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-chalkboard-user mr-1"></i>Teach</a>
-      <a href="/waiting-rooms" class="min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-door-open mr-1"></i>Wait</a>
+      <a href="/activity" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-book-open mr-1"></i>Browse</a>
+      <a href="/requests?kind=learn" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-graduation-cap mr-1"></i>Learn</a>
+      <a href="/requests?kind=teach" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-chalkboard-user mr-1"></i>Teach</a>
+      <a href="/waiting-rooms" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-door-open mr-1"></i>Wait</a>
     </nav>
 
     <div class="relative hidden lg:block w-[260px]">
@@ -90,10 +97,10 @@
         <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-gray-600" aria-label="Search"><i class="fas fa-search"></i></button>
       </form>
       <div class="grid grid-cols-1 gap-1 text-sm font-semibold">
-        <a href="/activity" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-book-open mr-2"></i>Browse</a>
-        <a href="/requests?kind=learn" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-graduation-cap mr-2"></i>Learn</a>
-        <a href="/requests?kind=teach" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-chalkboard-user mr-2"></i>Teach</a>
-        <a href="/waiting-rooms" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-door-open mr-2"></i>Wait</a>
+        <a href="/activity" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-book-open mr-2"></i>Browse</a>
+        <a href="/requests?kind=learn" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-graduation-cap mr-2"></i>Learn</a>
+        <a href="/requests?kind=teach" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-chalkboard-user mr-2"></i>Teach</a>
+        <a href="/waiting-rooms" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-door-open mr-2"></i>Wait</a>
         <a href="/cart" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-shopping-cart mr-2"></i>Cart</a>
         <a href="#site-footer" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-compass mr-2"></i>All Site Links</a>
       </div>
