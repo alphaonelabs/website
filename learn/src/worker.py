@@ -1797,9 +1797,12 @@ async def api_login(req, env):
         return err("Invalid username or password", 401)
 
     if not row.email_verified:
-        return err(
-            "Please verify your email before signing in. "
-            "Check your inbox for the verification link.",
+        return json_resp(
+            {
+                "error": "Please verify your email before signing in. "
+                         "Check your inbox for the verification link.",
+                "code": "email_not_verified",
+            },
             403,
         )
 

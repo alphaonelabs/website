@@ -122,6 +122,20 @@
               <i class="fas fa-arrow-right mr-2"></i>Sign In
             </button>
           </form>
+          <div id="resend-box" class="hidden mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm space-y-3">
+            <p class="text-amber-800 dark:text-amber-200">
+              <i class="fas fa-envelope mr-1"></i>Your email address isn't verified yet. Enter it below and we'll send a new verification link.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input id="resend-email" type="email" autocomplete="email" aria-label="Email address" placeholder="you@example.com"
+                class="flex-1 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              <button id="resend-btn" type="button"
+                class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed">
+                Resend email
+              </button>
+            </div>
+            <p id="resend-msg" class="hidden text-xs" role="status" aria-live="polite"></p>
+          </div>
 
           <div class="mt-4 text-center">
             <a href="/forgot-password" class="text-sm text-teal-600 dark:text-teal-400 hover:underline font-semibold">
@@ -293,6 +307,74 @@ function showErr(id, msg) {
         el.classList.add('hidden');
     }, 5000);
 }
+// The server ignores repeat requests for the same account within 5 minutes,
+// so the button is locked for the same period instead of pretending to send.
+const RESEND_COOLDOWN_SECONDS = 300;
+const RESEND_LABEL = 'Resend email';
+
+async function requestVerificationEmail(email) {
+    const res = await fetch(`${API}/api/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Could not send the email. Please try again.');
+    return data.message || 'If an unverified account with that email exists, a new verification link has been sent.';
+}
+
+function startResendCooldown(btn, label, seconds) {
+    clearInterval(btn._timer);
+    let left = seconds;
+    btn.disabled = true;
+    const tick = () => {
+        if (left <= 0) {
+            clearInterval(btn._timer);
+            btn.disabled = false;
+            btn.textContent = label;
+            return;
+        }
+        const m = Math.floor(left / 60);
+        const s = String(left % 60).padStart(2, '0');
+        btn.textContent = `${label} (${m}:${s})`;
+        left -= 1;
+    };
+    tick();
+    btn._timer = setInterval(tick, 1000);
+}
+
+function setResendMessage(el, text, isError) {
+    el.textContent = text;
+    el.className = 'text-xs ' + (isError ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400');
+}
+
+function showResendBox(prefillEmail) {
+    const input = document.getElementById('resend-email');
+    if (prefillEmail && !input.value) input.value = prefillEmail;
+    document.getElementById('resend-box').classList.remove('hidden');
+}
+
+document.getElementById('resend-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('resend-btn');
+    const msg = document.getElementById('resend-msg');
+    const email = document.getElementById('resend-email').value.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setResendMessage(msg, 'Please enter a valid email address.', true);
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+        const text = await requestVerificationEmail(email);
+        setResendMessage(msg, text + ' Check your spam folder too.', false);
+        startResendCooldown(btn, RESEND_LABEL, RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+        setResendMessage(msg, err.message, true);
+        btn.disabled = false;
+        btn.textContent = RESEND_LABEL;
+    }
+});
 
 // Handle redirect after successful login
 function handlePostLoginRedirect() {
@@ -325,6 +407,7 @@ if (nextParam) {
 document.getElementById('form-login').addEventListener('submit', async e => {
     e.preventDefault();
     document.getElementById('login-err').classList.add('hidden');
+    document.getElementById('resend-box').classList.add('hidden');
     
     const btn = e.target.querySelector('button[type=submit]');
     const originalText = btn.textContent;
@@ -353,7 +436,10 @@ document.getElementById('form-login').addEventListener('submit', async e => {
         const data = await res.json();
         
         if (!res.ok) {
-            throw new Error(data.error || 'Login failed');
+          if (data.code === 'email_not_verified' || res.status === 403) {
+            showResendBox(username.includes('@') ? username : '');
+          }
+          throw new Error(data.error || 'Login failed');
         }
         
         storeAuth(data.data);
@@ -415,7 +501,7 @@ document.getElementById('form-register').addEventListener('submit', async e => {
         }
 
         // Account created — user must verify email before they can sign in.
-        showRegisterSuccess(data.message || 'Registration successful! Please check your email to verify your account.');
+        showRegisterSuccess(data.message || 'Registration successful! Please check your email to verify your account.',email);
     } catch (err) {
         console.error('Register error:', err);
         showErr('register-err', err.message);
@@ -425,37 +511,69 @@ document.getElementById('form-register').addEventListener('submit', async e => {
     }
 });
 
-function showRegisterSuccess(msg) {
+function showRegisterSuccess(msg, email) {
     // Replace the register form with a success banner
     const panel = document.getElementById('panel-register');
-    
-    // Build HTML structure safely using DOM APIs
+
     const container = document.createElement('div');
     container.className = 'text-center py-8';
-    
+
     const iconDiv = document.createElement('div');
     iconDiv.className = 'w-16 h-16 bg-teal-100 dark:bg-teal-900/40 rounded-full flex items-center justify-center mx-auto mb-4';
     const icon = document.createElement('i');
     icon.className = 'fas fa-envelope-open-text text-3xl text-teal-600 dark:text-teal-400';
     iconDiv.appendChild(icon);
-    
+
     const heading = document.createElement('h2');
     heading.className = 'text-xl font-bold text-gray-800 dark:text-gray-200 mb-2';
     heading.textContent = 'Check your email';
-    
+
     const msgPara = document.createElement('p');
     msgPara.className = 'text-gray-600 dark:text-gray-400 text-sm mb-6';
-    msgPara.textContent = msg;  // Safe: uses textContent for user message
-    
+    msgPara.textContent = msg;
+
     const actionPara = document.createElement('p');
     actionPara.className = 'text-xs text-gray-500 dark:text-gray-400';
     actionPara.innerHTML = 'Once verified, you can <button onclick="switchTab(\'login\')" class="text-teal-600 dark:text-teal-400 hover:underline font-semibold">sign in here</button>.';
-    
+
     container.appendChild(iconDiv);
     container.appendChild(heading);
     container.appendChild(msgPara);
     container.appendChild(actionPara);
-    
+
+    if (email) {
+        const resendWrap = document.createElement('div');
+        resendWrap.className = 'mt-6';
+
+        const resendBtn = document.createElement('button');
+        resendBtn.type = 'button';
+        resendBtn.className = 'text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline disabled:opacity-60 disabled:no-underline disabled:cursor-not-allowed';
+        resendBtn.textContent = "Didn't get the email? Resend";
+
+        const resendMsg = document.createElement('p');
+        resendMsg.className = 'mt-2 text-xs';
+        resendMsg.setAttribute('role', 'status');
+        resendMsg.setAttribute('aria-live', 'polite');
+
+        resendBtn.addEventListener('click', async () => {
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Sending…';
+            try {
+                const text = await requestVerificationEmail(email);
+                setResendMessage(resendMsg, text + ' Check your spam folder too.', false);
+                startResendCooldown(resendBtn, "Didn't get the email? Resend", RESEND_COOLDOWN_SECONDS);
+            } catch (err) {
+                setResendMessage(resendMsg, err.message, true);
+                resendBtn.disabled = false;
+                resendBtn.textContent = "Didn't get the email? Resend";
+            }
+        });
+
+        resendWrap.appendChild(resendBtn);
+        resendWrap.appendChild(resendMsg);
+        container.appendChild(resendWrap);
+    }
+
     panel.innerHTML = '';
     panel.appendChild(container);
 }
