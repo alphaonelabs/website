@@ -23,6 +23,8 @@ reviews:
       - "master"
       - "develop"
   path_filters:
+    # Retired Django site, kept for reference only
+    - "!website-django/**"
     # General build artifacts and dependencies
     - "!**/*.lock"
     - "!**/build/**"
@@ -31,7 +33,6 @@ reviews:
     # Python-specific
     - "!**/__pycache__/**"
     - "!**/.venv/**"
-    - "!**/migrations/**"
     - "!**/staticfiles/**"
     - "!**/static/vendor/**"
     - "!**/venv/**"

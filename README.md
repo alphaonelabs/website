@@ -26,7 +26,6 @@ Each top-level folder is a project. Folders with a live site deploy automaticall
 | [`app/`](app) | The Flutter education app | — |
 | [`design-system/`](design-system) | Shared UI and brand | — |
 | [`learnpilot/`](learnpilot), [`scholarai/`](scholarai), [`syntharia/`](syntharia), [`virtual-labs/`](virtual-labs) | Projects in early planning (see [GSoC ideas](https://gsoc.alphaonelabs.com/ideas)) | — |
-| [`coderabbit/`](coderabbit) | Code review configuration | — |
 | [`website-django/`](website-django) | The original Django site. **Retired**, kept for reference. | — |
 
 ## Getting started
