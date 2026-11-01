@@ -44,9 +44,11 @@ body {
 
 @media (max-width: 768px) {
   .header {
-    padding: 8px 12px;
+    padding: 4px 8px;
     height: auto;
-    min-height: 50px;
+    min-height: 44px;
+    flex-wrap: nowrap;
+    align-items: center;
   }
 }
 
@@ -61,7 +63,9 @@ body {
 
 @media (max-width: 768px) {
   .logo {
-    font-size: 16px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   
   .logo .version {
@@ -84,10 +88,11 @@ body {
 
 @media (max-width: 768px) {
   .toolbar {
-    gap: 4px;
-    max-height: 80px;
+    gap: 2px;
     overflow-x: auto;
     overflow-y: hidden;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -104,8 +109,9 @@ body {
 
 @media (max-width: 768px) {
   .toolbar-group {
-    padding: 0 4px;
+    padding: 0 3px;
     gap: 2px;
+    flex-shrink: 0;
   }
 }
 
@@ -123,9 +129,10 @@ body {
 
 @media (max-width: 768px) {
   .btn {
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 3px 6px;
+    font-size: 10px;
     border-width: 1px;
+    white-space: nowrap;
   }
 }
 
@@ -148,7 +155,8 @@ body {
   cursor: not-allowed;
 }
 
-.collaborate-btn {
+.collaborate-btn,
+.contribute-btn {
   text-decoration: none;
   display: inline-block;
 }

@@ -15,6 +15,16 @@ class Canvas {
         this.resizeStart = null;
         this.resizeHandle = null;
         
+        // Direct-DOM drag/resize state for smooth touch performance
+        this.dragElementNode = null;
+        this.dragCurrentX = null;
+        this.dragCurrentY = null;
+        this.resizeElementNode = null;
+        this.resizeCurrentX = null;
+        this.resizeCurrentY = null;
+        this.resizeCurrentWidth = null;
+        this.resizeCurrentHeight = null;
+        
         // Pinch zoom state
         this.lastPinchDistance = null;
         this.isPinching = false;
@@ -240,11 +250,16 @@ class Canvas {
         this.state.selectElement(elementId);
         this.isDragging = true;
         
+        // Get the (re-rendered) DOM node after selectElement triggers render
+        this.dragElementNode = this.content.querySelector(`[data-id="${elementId}"]`);
+
         const element = this.state.getCurrentPage().elements.find(el => el.id === elementId);
         this.dragStart = {
             x: e.clientX - element.x * this.state.zoom,
             y: e.clientY - element.y * this.state.zoom
         };
+        this.dragCurrentX = element.x;
+        this.dragCurrentY = element.y;
     }
 
     handleResizeMouseDown(e, handle) {
@@ -254,6 +269,7 @@ class Canvas {
         this.resizeHandle = handle;
         
         const element = this.state.getSelectedElement();
+        this.resizeElementNode = this.content.querySelector(`[data-id="${element.id}"]`);
         this.resizeStart = {
             x: e.clientX,
             y: e.clientY,
@@ -262,38 +278,60 @@ class Canvas {
             elementWidth: element.width,
             elementHeight: element.height
         };
+        this.resizeCurrentX = element.x;
+        this.resizeCurrentY = element.y;
+        this.resizeCurrentWidth = element.width;
+        this.resizeCurrentHeight = element.height;
     }
 
     handleMouseMove(e) {
         if (this.isDragging && this.state.selectedElementId && this.dragStart) {
             const newX = (e.clientX - this.dragStart.x) / this.state.zoom;
             const newY = (e.clientY - this.dragStart.y) / this.state.zoom;
-            this.state.updateElement(this.state.selectedElementId, { x: newX, y: newY });
-            
+
+            // Update DOM directly for smooth, lag-free dragging
+            if (this.dragElementNode) {
+                this.dragElementNode.style.left = newX + 'px';
+                this.dragElementNode.style.top = newY + 'px';
+            }
+            this.dragCurrentX = newX;
+            this.dragCurrentY = newY;
+
         } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
             const dx = e.clientX - this.resizeStart.x;
             const dy = e.clientY - this.resizeStart.y;
-            
-            const updates = {};
-            
+
+            let newX = this.resizeStart.elementX;
+            let newY = this.resizeStart.elementY;
+            let newWidth = this.resizeStart.elementWidth;
+            let newHeight = this.resizeStart.elementHeight;
+
             if (this.resizeHandle.includes('e')) {
-                updates.width = Math.max(20, this.resizeStart.elementWidth + dx / this.state.zoom);
+                newWidth = Math.max(20, this.resizeStart.elementWidth + dx / this.state.zoom);
             }
             if (this.resizeHandle.includes('w')) {
-                const newWidth = Math.max(20, this.resizeStart.elementWidth - dx / this.state.zoom);
-                updates.width = newWidth;
-                updates.x = this.resizeStart.elementX + (this.resizeStart.elementWidth - newWidth);
+                newWidth = Math.max(20, this.resizeStart.elementWidth - dx / this.state.zoom);
+                newX = this.resizeStart.elementX + (this.resizeStart.elementWidth - newWidth);
             }
             if (this.resizeHandle.includes('s')) {
-                updates.height = Math.max(20, this.resizeStart.elementHeight + dy / this.state.zoom);
+                newHeight = Math.max(20, this.resizeStart.elementHeight + dy / this.state.zoom);
             }
             if (this.resizeHandle.includes('n')) {
-                const newHeight = Math.max(20, this.resizeStart.elementHeight - dy / this.state.zoom);
-                updates.height = newHeight;
-                updates.y = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
+                newHeight = Math.max(20, this.resizeStart.elementHeight - dy / this.state.zoom);
+                newY = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
             }
-            
-            this.state.updateElement(this.state.selectedElementId, updates);
+
+            // Update DOM directly for smooth, lag-free resizing
+            if (this.resizeElementNode) {
+                this.resizeElementNode.style.left = newX + 'px';
+                this.resizeElementNode.style.top = newY + 'px';
+                this.resizeElementNode.style.width = newWidth + 'px';
+                this.resizeElementNode.style.height = newHeight + 'px';
+            }
+            this.resizeCurrentX = newX;
+            this.resizeCurrentY = newY;
+            this.resizeCurrentWidth = newWidth;
+            this.resizeCurrentHeight = newHeight;
         }
 
         // Update cursor
@@ -304,12 +342,34 @@ class Canvas {
 
     handleMouseUp() {
         if (this.isDragging || this.isResizing) {
+            // Persist final position/size to state (triggers one re-render on drag end)
+            if (this.isDragging && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.dragCurrentX,
+                    y: this.dragCurrentY
+                });
+            } else if (this.isResizing && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.resizeCurrentX,
+                    y: this.resizeCurrentY,
+                    width: this.resizeCurrentWidth,
+                    height: this.resizeCurrentHeight
+                });
+            }
             this.state.saveHistory();
             this.isDragging = false;
             this.isResizing = false;
             this.dragStart = null;
             this.resizeStart = null;
             this.resizeHandle = null;
+            this.dragElementNode = null;
+            this.resizeElementNode = null;
+            this.dragCurrentX = null;
+            this.dragCurrentY = null;
+            this.resizeCurrentX = null;
+            this.resizeCurrentY = null;
+            this.resizeCurrentWidth = null;
+            this.resizeCurrentHeight = null;
             this.canvas.classList.remove('grabbing');
         }
     }
@@ -324,13 +384,18 @@ class Canvas {
         
         this.state.selectElement(elementId);
         this.isDragging = true;
-        
+
+        // Get the (re-rendered) DOM node after selectElement triggers render
+        this.dragElementNode = this.content.querySelector(`[data-id="${elementId}"]`);
+
         const touch = e.touches[0];
         const element = this.state.getCurrentPage().elements.find(el => el.id === elementId);
         this.dragStart = {
             x: touch.clientX - element.x * this.state.zoom,
             y: touch.clientY - element.y * this.state.zoom
         };
+        this.dragCurrentX = element.x;
+        this.dragCurrentY = element.y;
     }
 
     handleResizeTouchStart(e, handle) {
@@ -342,6 +407,7 @@ class Canvas {
         
         const touch = e.touches[0];
         const element = this.state.getSelectedElement();
+        this.resizeElementNode = this.content.querySelector(`[data-id="${element.id}"]`);
         this.resizeStart = {
             x: touch.clientX,
             y: touch.clientY,
@@ -350,6 +416,10 @@ class Canvas {
             elementWidth: element.width,
             elementHeight: element.height
         };
+        this.resizeCurrentX = element.x;
+        this.resizeCurrentY = element.y;
+        this.resizeCurrentWidth = element.width;
+        this.resizeCurrentHeight = element.height;
     }
 
     handleTouchMove(e) {
@@ -376,34 +446,52 @@ class Canvas {
             const touch = e.touches[0];
             const newX = (touch.clientX - this.dragStart.x) / this.state.zoom;
             const newY = (touch.clientY - this.dragStart.y) / this.state.zoom;
-            this.state.updateElement(this.state.selectedElementId, { x: newX, y: newY });
-            
+
+            // Update DOM directly for smooth, lag-free touch dragging
+            if (this.dragElementNode) {
+                this.dragElementNode.style.left = newX + 'px';
+                this.dragElementNode.style.top = newY + 'px';
+            }
+            this.dragCurrentX = newX;
+            this.dragCurrentY = newY;
+
         } else if (this.isResizing && this.state.selectedElementId && this.resizeStart) {
             e.preventDefault();
             const touch = e.touches[0];
             const dx = touch.clientX - this.resizeStart.x;
             const dy = touch.clientY - this.resizeStart.y;
-            
-            const updates = {};
-            
+
+            let newX = this.resizeStart.elementX;
+            let newY = this.resizeStart.elementY;
+            let newWidth = this.resizeStart.elementWidth;
+            let newHeight = this.resizeStart.elementHeight;
+
             if (this.resizeHandle.includes('e')) {
-                updates.width = Math.max(20, this.resizeStart.elementWidth + dx / this.state.zoom);
+                newWidth = Math.max(20, this.resizeStart.elementWidth + dx / this.state.zoom);
             }
             if (this.resizeHandle.includes('w')) {
-                const newWidth = Math.max(20, this.resizeStart.elementWidth - dx / this.state.zoom);
-                updates.width = newWidth;
-                updates.x = this.resizeStart.elementX + (this.resizeStart.elementWidth - newWidth);
+                newWidth = Math.max(20, this.resizeStart.elementWidth - dx / this.state.zoom);
+                newX = this.resizeStart.elementX + (this.resizeStart.elementWidth - newWidth);
             }
             if (this.resizeHandle.includes('s')) {
-                updates.height = Math.max(20, this.resizeStart.elementHeight + dy / this.state.zoom);
+                newHeight = Math.max(20, this.resizeStart.elementHeight + dy / this.state.zoom);
             }
             if (this.resizeHandle.includes('n')) {
-                const newHeight = Math.max(20, this.resizeStart.elementHeight - dy / this.state.zoom);
-                updates.height = newHeight;
-                updates.y = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
+                newHeight = Math.max(20, this.resizeStart.elementHeight - dy / this.state.zoom);
+                newY = this.resizeStart.elementY + (this.resizeStart.elementHeight - newHeight);
             }
-            
-            this.state.updateElement(this.state.selectedElementId, updates);
+
+            // Update DOM directly for smooth, lag-free touch resizing
+            if (this.resizeElementNode) {
+                this.resizeElementNode.style.left = newX + 'px';
+                this.resizeElementNode.style.top = newY + 'px';
+                this.resizeElementNode.style.width = newWidth + 'px';
+                this.resizeElementNode.style.height = newHeight + 'px';
+            }
+            this.resizeCurrentX = newX;
+            this.resizeCurrentY = newY;
+            this.resizeCurrentWidth = newWidth;
+            this.resizeCurrentHeight = newHeight;
         }
 
         // Update cursor
@@ -414,12 +502,34 @@ class Canvas {
 
     handleTouchEnd() {
         if (this.isDragging || this.isResizing) {
+            // Persist final position/size to state (triggers one re-render on drag end)
+            if (this.isDragging && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.dragCurrentX,
+                    y: this.dragCurrentY
+                });
+            } else if (this.isResizing && this.state.selectedElementId) {
+                this.state.updateElement(this.state.selectedElementId, {
+                    x: this.resizeCurrentX,
+                    y: this.resizeCurrentY,
+                    width: this.resizeCurrentWidth,
+                    height: this.resizeCurrentHeight
+                });
+            }
             this.state.saveHistory();
             this.isDragging = false;
             this.isResizing = false;
             this.dragStart = null;
             this.resizeStart = null;
             this.resizeHandle = null;
+            this.dragElementNode = null;
+            this.resizeElementNode = null;
+            this.dragCurrentX = null;
+            this.dragCurrentY = null;
+            this.resizeCurrentX = null;
+            this.resizeCurrentY = null;
+            this.resizeCurrentWidth = null;
+            this.resizeCurrentHeight = null;
             this.canvas.classList.remove('grabbing');
         }
         

@@ -208,8 +208,9 @@ class UIController {
         
         // Components - Click to add (fallback)
         this.componentsGrid.addEventListener('click', (e) => {
-            if (e.target.classList.contains('component-btn')) {
-                const type = e.target.dataset.type;
+            const btn = e.target.closest('.component-btn');
+            if (btn) {
+                const type = btn.dataset.type;
                 this.state.addElement(type);
             }
         });
