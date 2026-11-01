@@ -1,0 +1,6 @@
+# Local development and testing dependencies
+# The 'workers' package is pre-installed in the Cloudflare Python runtime
+# and does not need to be listed here.
+
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

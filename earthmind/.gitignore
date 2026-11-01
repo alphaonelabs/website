@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.coveragerc
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Cloudflare / Wrangler
+.wrangler/
+worker-dist/
+
+# Node (for wrangler CLI)
+node_modules/
+.npm/
+
+# Environment variables
+.env
+.env.local
+.dev.vars
+
+# Logs
+*.log
