@@ -386,22 +386,40 @@ def _verify_django_password(password: str, stored: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Auth tokens (HMAC-SHA256 signed, stateless JWT-lite)
+# Auth tokens (HMAC-SHA256 signed, stateless JWT-lite with RFC 7519 expiry)
 # ---------------------------------------------------------------------------
 
-def create_token(uid: str, username: str, role: str, secret: str) -> str:
-    payload = base64.b64encode(
-        json.dumps({"id": uid, "username": username, "role": role}).encode()
+DEFAULT_JWT_TTL_SECONDS = 60 * 60 * 24 * 7  # 7 days
+
+
+def create_token(
+    uid: str,
+    username: str,
+    role: str,
+    secret: str,
+    ttl_seconds: int = DEFAULT_JWT_TTL_SECONDS,
+) -> str:
+    """Encode user identity with iat and exp claims into a signed token."""
+    now = int(time.time())
+    payload = {
+        "id": uid,
+        "username": username,
+        "role": role,
+        "iat": now,
+        "exp": now + int(ttl_seconds),
+    }
+    encoded_payload = base64.b64encode(
+        json.dumps(payload, separators=(",", ":")).encode("utf-8")
     ).decode("ascii")
     sig = _hmac.new(
-        secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+        secret.encode("utf-8"), encoded_payload.encode("utf-8"), hashlib.sha256
     ).hexdigest()
-    return f"{payload}.{sig}"
+    return f"{encoded_payload}.{sig}"
 
 
-def verify_token(raw: str, secret: str):
-    """Return decoded payload dict or None if invalid/missing."""
-    if not raw:
+def verify_token(raw: str, secret: str, leeway_seconds: int = 60) -> Optional[Dict[str, Any]]:
+    """Return decoded payload dict or None if invalid, missing, or expired."""
+    if not raw or not secret:
         return None
     try:
         token = raw.removeprefix("Bearer ").strip()
@@ -409,13 +427,35 @@ def verify_token(raw: str, secret: str):
         if dot == -1:
             return None
         p, sig = token[:dot], token[dot + 1:]
-        exp = _hmac.new(
+        expected_sig = _hmac.new(
             secret.encode("utf-8"), p.encode("utf-8"), hashlib.sha256
         ).hexdigest()
-        if not _hmac.compare_digest(sig, exp):
+        if not _hmac.compare_digest(sig, expected_sig):
             return None
         padding = (4 - len(p) % 4) % 4
-        return json.loads(base64.b64decode(p + "=" * padding).decode("utf-8"))
+        payload = json.loads(base64.b64decode(p + "=" * padding).decode("utf-8"))
+        if not isinstance(payload, dict):
+            return None
+
+        # Require exp claim (RFC 7519 §4.1.4)
+        if "exp" not in payload:
+            return None
+        token_exp = payload["exp"]
+        if not isinstance(token_exp, (int, float)):
+            return None
+        now = int(time.time())
+        if now > int(token_exp) + max(0, int(leeway_seconds)):
+            return None
+
+        # Validate iat claim if present (RFC 7519 §4.1.6)
+        if "iat" in payload:
+            token_iat = payload["iat"]
+            if not isinstance(token_iat, (int, float)):
+                return None
+            if int(token_iat) - max(0, int(leeway_seconds)) > now:
+                return None
+
+        return payload
     except Exception:
         return None
 
@@ -1810,7 +1850,12 @@ async def api_login(req, env):
     real_name = await decrypt_aes(name_enc, enc)
     if not real_role or real_role == "[decryption error]":
         return err("Account data corrupted — please contact support", 500)
-    token     = create_token(user_id, stored_username, real_role, env.JWT_SECRET)
+    ttl_val = getattr(env, "JWT_TTL_SECONDS", None)
+    try:
+        ttl_seconds = int(ttl_val) if ttl_val is not None else DEFAULT_JWT_TTL_SECONDS
+    except (ValueError, TypeError):
+        ttl_seconds = DEFAULT_JWT_TTL_SECONDS
+    token = create_token(user_id, stored_username, real_role, env.JWT_SECRET, ttl_seconds=ttl_seconds)
     profile_row = await env.DB.prepare(
         "SELECT avatar_url FROM user_profiles WHERE user_id=?"
     ).bind(user_id).first()
