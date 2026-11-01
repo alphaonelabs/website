@@ -253,12 +253,14 @@
                     <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] font-mono border border-gray-700">E</kbd>
                     <span>Sit/Stand</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="btnThumbsUp" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Send thumbs-up reaction">
-                        👍
+                <div class="flex items-center gap-1">
+                    <button id="btnThumbsUp" type="button" class="px-2 py-1 text-gray-200 transition flex items-center gap-1.5" title="Send thumbs-up reaction (T)">
+                        <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[9px] font-mono border border-gray-700 text-gray-300">T</kbd>
+                        <span>👍</span>
                     </button>
-                    <button id="btnRaiseHand" type="button" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-200 transition" title="Toggle raised hand">
-                        ✋
+                    <button id="btnRaiseHand" type="button" class="px-2 py-1 text-gray-200 transition flex items-center gap-1.5" title="Toggle raised hand (R)">
+                        <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-[9px] font-mono border border-gray-700 text-gray-300">R</kbd>
+                        <span>✋</span>
                     </button>
                 </div>
                 <div class="w-full sm:w-auto sm:ml-auto text-gray-500">Virtual Classroom</div>
@@ -675,7 +677,6 @@
             reconnectAttempts = 0;
             setConnStatus(true);
             connectPresenceWS();
-            showToast(canInteract ? 'Connected to classroom' : 'Viewing classroom', 'success');
         };
 
         ws.onclose = () => {
@@ -1118,10 +1119,6 @@
 
     function updatePresenceControls() {
         const self = presenceByUser[myParticipantId] || { emoji: '', hand_raised: false };
-        btnThumbsUp.classList.toggle('bg-teal-700', self.emoji === '👍');
-        btnThumbsUp.classList.toggle('border-teal-500', self.emoji === '👍');
-        btnRaiseHand.classList.toggle('bg-teal-700', self.hand_raised === true);
-        btnRaiseHand.classList.toggle('border-teal-500', self.hand_raised === true);
         myPresenceBadge.textContent = presenceBadge(myParticipantId);
         renderSeatLabels();
     }
@@ -1223,13 +1220,17 @@
         if (isTypingInInput(e.target)) return;
         if (!canInteract) {
             if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-            if (e.key.toLowerCase() === 'e') { e.preventDefault(); loginForInteraction(); }
+            if (['e', 't', 'r'].includes(e.key.toLowerCase()) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); loginForInteraction(); }
             return;
         }
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             if (!isSeated) { keysPressed[e.key] = true; e.preventDefault(); }
         }
-        if (e.key.toLowerCase() === 'e') handleSeatInteraction();
+        const key = e.key.toLowerCase();
+        if (e.ctrlKey || e.metaKey) return;
+        if (key === 'e') handleSeatInteraction();
+        if (key === 't') { e.preventDefault(); btnThumbsUp.click(); }
+        if (key === 'r') { e.preventDefault(); btnRaiseHand.click(); }
     });
     window.addEventListener('keyup', (e) => {
         if (isTypingInInput(e.target)) return;
