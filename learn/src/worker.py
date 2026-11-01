@@ -2236,8 +2236,8 @@ async def api_create_activity(req, env):
 
     enc    = env.ENCRYPTION_KEY
     act_id = new_id()
-    slug   = await _unique_activity_slug(env, title, act_id)
     try:
+        slug   = await _unique_activity_slug(env, title, act_id)
         await env.DB.prepare(
             "INSERT INTO activities "
             "(id,title,description,type,format,schedule_type,host_id,slug)"
