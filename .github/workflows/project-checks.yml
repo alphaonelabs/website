@@ -29,7 +29,7 @@ jobs:
           else
             changed=$(ls -d */ | tr -d /)
           fi
-          workers=$(for d in $changed; do [ -f "$d/wrangler.toml" ] && echo "$d"; done)
+          workers=$(for d in $changed; do if [ -f "$d/wrangler.toml" ]; then echo "$d"; fi; done)
           echo "workers=$(echo "$workers" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
           echo "app=$(echo "$changed" | grep -qx app && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
