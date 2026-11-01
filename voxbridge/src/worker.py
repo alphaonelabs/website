@@ -311,7 +311,8 @@ _ROUTES: dict[tuple[str, str], object] = {
 class VoxBridgeWorker(WorkerEntrypoint):
     """Cloudflare Python Worker entry point."""
 
-    async def fetch(self, request: object, env: object, ctx: object) -> Response:  # noqa: ARG002
+    async def fetch(self, request: object) -> Response:
+        env = self.env
         method: str = request.method
         url: str = request.url
         # Extract path (everything between host and query string)
@@ -333,3 +334,11 @@ class VoxBridgeWorker(WorkerEntrypoint):
             return await env.ASSETS.fetch(request)
 
         return _json({"error": "Not found", "path": path}, status=404)
+
+
+async def on_fetch(request, env, ctx=None):
+    """Module-level handler: this compatibility date dispatches to on_fetch, not entrypoint classes."""
+    entry = VoxBridgeWorker.__new__(VoxBridgeWorker)
+    entry.env = env
+    entry.ctx = ctx
+    return await entry.fetch(request)

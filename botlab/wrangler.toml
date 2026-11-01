@@ -1,0 +1,10 @@
+# Static site served from Workers static assets.
+# Deployed by .github/workflows/deploy-sites.yml on changes to botlab/.
+name = "botlab"
+compatibility_date = "2026-10-01"
+
+routes = [{ pattern = "botlab.alphaonelabs.com", custom_domain = true }]
+
+[assets]
+directory = "."
+not_found_handling = "none"

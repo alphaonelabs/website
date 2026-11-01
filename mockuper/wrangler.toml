@@ -1,0 +1,10 @@
+# Static site served from Workers static assets.
+# Deployed by .github/workflows/deploy-sites.yml on changes to mockuper/.
+name = "mockuper"
+compatibility_date = "2026-10-01"
+
+routes = [{ pattern = "mockuper.alphaonelabs.com", custom_domain = true }]
+
+[assets]
+directory = "."
+not_found_handling = "single-page-application"

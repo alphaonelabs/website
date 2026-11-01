@@ -1,13 +1,15 @@
-name = "oss-project-management"
+name = "pmoss"
 main = "src/main.py"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["python_workers"]
 
+routes = [{ pattern = "pmoss.alphaonelabs.com", custom_domain = true }]
+
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"
-database_name = "oss-pm-db"
-database_id = "placeholder-database-id"
+database_name = "pmoss"
+database_id = "75906b5f-de52-42e6-9e45-183bc047788b"
 
 # Environment variables (set these via wrangler secret)
 # GITHUB_CLIENT_ID
@@ -16,4 +18,4 @@ database_id = "placeholder-database-id"
 # SESSION_SECRET
 
 [vars]
-GITHUB_REDIRECT_URI = "https://your-worker.workers.dev/auth/callback"
+GITHUB_REDIRECT_URI = "https://pmoss.alphaonelabs.com/auth/callback"

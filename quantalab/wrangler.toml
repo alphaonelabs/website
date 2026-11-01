@@ -3,6 +3,8 @@ main = "src/index.py"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["python_workers"]
 
+routes = [{ pattern = "quantalab.alphaonelabs.com", custom_domain = true }]
+
 [ai]
 binding = "AI"
 

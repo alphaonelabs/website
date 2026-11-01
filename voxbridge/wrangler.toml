@@ -3,6 +3,8 @@ main = "src/worker.py"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["python_workers"]
 
+routes = [{ pattern = "voxbridge.alphaonelabs.com", custom_domain = true }]
+
 [ai]
 binding = "AI"
 

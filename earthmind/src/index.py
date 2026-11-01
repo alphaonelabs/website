@@ -551,3 +551,11 @@ def _rows_to_list(result) -> list[dict]:
         return []
     except Exception:
         return []
+
+
+async def on_fetch(request, env, ctx=None):
+    """Module-level handler: this compatibility date dispatches to on_fetch, not entrypoint classes."""
+    entry = EarthMind.__new__(EarthMind)
+    entry.env = env
+    entry.ctx = ctx
+    return await entry.fetch(request)

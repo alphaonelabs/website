@@ -4,18 +4,19 @@ compatibility_date = "2024-09-02"
 compatibility_flags = ["python_workers"]
 workers_dev = true
 
+routes = [{ pattern = "earthmind.alphaonelabs.com", custom_domain = true }]
+
 [ai]
 binding = "AI"
 
 [[kv_namespaces]]
 binding = "ENV_CACHE"
-id = "replace_with_your_kv_namespace_id"
-preview_id = "replace_with_your_preview_kv_namespace_id"
+id = "5dc6998cbb134ba8bf052dc56ffa6343"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "earthmind"
-database_id = "replace_with_your_d1_database_id"
+database_id = "7e6bb2f0-bebe-4ea3-9757-d0bef60ebca5"
 
 [vars]
 ANOMALY_ZSCORE_THRESHOLD = "2.5"
