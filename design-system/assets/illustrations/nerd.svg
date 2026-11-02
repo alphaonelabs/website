@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400">
+  <!-- Alpha One Labs nerd: monoline redraw of the "nerd says hi" whiteboard sketch -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- head -->
+    <path d="M112 120 C112 80 136 58 170 58 C204 58 228 80 228 120 C228 164 204 190 170 190 C136 190 112 164 112 120 Z"/>
+    <!-- hair: spikes and a fringe, like the sketch -->
+    <path d="M138 64 L124 42 M156 58 L150 30 M174 57 L182 28 M194 61 L212 40 M212 74 L232 62"/>
+    <path d="M116 100 C128 80 150 72 170 84 C186 72 210 76 224 98"/>
+    <!-- ears -->
+    <path d="M112 122 C100 118 98 140 112 144"/>
+    <path d="M228 122 C240 118 242 140 228 144"/>
+    <!-- glasses -->
+    <rect x="120" y="108" width="42" height="32" rx="10"/>
+    <rect x="178" y="108" width="42" height="32" rx="10"/>
+    <path d="M162 118 C166 113 174 113 178 118"/>
+    <!-- smile -->
+    <path d="M154 162 C164 172 178 172 188 162"/>
+    <!-- neck -->
+    <path d="M155 190 V206 M185 190 V206"/>
+    <!-- collar -->
+    <path d="M140 204 L170 236 L200 204"/>
+    <path d="M140 204 L128 234 L156 228"/>
+    <path d="M200 204 L212 234 L184 228"/>
+    <!-- right side of torso and short sleeve -->
+    <path d="M200 204 C232 208 252 218 262 244 L276 296 L248 304 L240 270"/>
+    <path d="M244 280 L248 400"/>
+    <!-- left side of torso -->
+    <path d="M140 204 C112 208 94 216 84 236"/>
+    <path d="M100 262 L96 400"/>
+    <!-- waving arm: sleeve, forearm, open hand -->
+    <path d="M84 236 L60 286 L96 298 L102 262"/>
+    <path d="M68 288 L50 206 M90 296 L76 204"/>
+    <path d="M50 206 L46 174 C54 166 68 166 76 174 L76 204"/>
+    <path d="M49 172 L45 146 M57 168 L55 136 M65 168 L66 134 M73 172 L76 144"/>
+    <path d="M76 192 L92 174"/>
+  </g>
+  <!-- buttons -->
+  <g fill="#FFFFFF"><circle cx="170" cy="262" r="3.5"/><circle cx="170" cy="300" r="3.5"/><circle cx="170" cy="338" r="3.5"/></g>
+  <!-- eyes -->
+  <g fill="#FFFFFF"><circle cx="141" cy="125" r="4.5"/><circle cx="199" cy="125" r="4.5"/></g>
+  <!-- pocket protector with pens and a ruler (gold) -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M190 268 L234 268 L232 312 C226 318 198 318 192 312 Z" fill="none" stroke="#FFFFFF" stroke-width="6"/>
+    <path d="M200 276 V242" stroke="#C7AB4F" stroke-width="7"/>
+    <path d="M200 242 V234" stroke="#C7AB4F" stroke-width="3.5"/>
+    <path d="M212 276 V248" stroke="#C7AB4F" stroke-width="7"/>
+    <rect x="218" y="234" width="11" height="42" rx="1.5" fill="#C7AB4F"/>
+    <path d="M220 242 H224 M220 250 H226 M220 258 H224 M220 266 H226" stroke="#000" stroke-width="1.8"/>
+  </g>
+  <!-- speech bubble -->
+  <path d="M14 58 H88 A12 12 0 0 1 100 70 V100 A12 12 0 0 1 88 112 H40 L28 126 L30 112 H14 A12 12 0 0 1 2 100 V70 A12 12 0 0 1 14 58 Z" fill="#C7AB4F"/>
+  <text x="51" y="96" text-anchor="middle" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="30" font-weight="800" fill="#000">hi!</text>
+</svg>

@@ -1,0 +1,9 @@
+/brand.css
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=300
+/chrome.js
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=300
+/assets/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=86400
