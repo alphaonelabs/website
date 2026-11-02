@@ -125,11 +125,20 @@ async def _ingest_reading(request, env) -> Response:
     except Exception:
         return _error("Invalid JSON body")
 
+    if not isinstance(body, dict):
+        return _error("JSON body must be an object")
+
     required = ("source", "source_type", "parameter", "value", "timestamp")
     missing = [f for f in required if body.get(f) is None or body[f] == ""]
     if missing:
         return _error(f"Missing required fields: {', '.join(missing)}")
 
+    invalid = [f for f in required if isinstance(body[f], (list, dict))]
+    if invalid:
+        return _error(f"Invalid field values: {', '.join(invalid)}")
+
+    if isinstance(body["value"], bool):
+        return _error("'value' must be a finite number")
     try:
         value = float(body["value"])
     except (TypeError, ValueError, OverflowError):
@@ -141,6 +150,8 @@ async def _ingest_reading(request, env) -> Response:
     for field, bound in (("latitude", 90), ("longitude", 180)):
         coordinate = body.get(field)
         if coordinate is not None:
+            if isinstance(coordinate, bool):
+                return _error(f"'{field}' must be a number between {-bound} and {bound}")
             try:
                 coordinate = float(coordinate)
             except (TypeError, ValueError, OverflowError):

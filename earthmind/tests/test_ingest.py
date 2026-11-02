@@ -88,7 +88,7 @@ async def test_missing_fields_are_rejected(worker, reading, field, missing):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("value", ["nan", "inf", "-inf", "1e400", float("nan"), float("inf"), "bad", {}, 10**400])
+@pytest.mark.parametrize("value", ["nan", "inf", "-inf", "1e400", float("nan"), float("inf"), "bad", {}, [], True, False, 10**400])
 async def test_invalid_values_are_rejected(worker, reading, value):
     reading["value"] = value
     response, database = await ingest(worker, reading)
@@ -113,10 +113,30 @@ async def test_valid_coordinates(worker, reading, latitude, longitude):
     ("latitude", -90.1), ("latitude", 90.1), ("longitude", -180.1), ("longitude", 180.1),
     ("latitude", "nan"), ("longitude", "inf"), ("latitude", ""), ("longitude", "bad"),
     ("latitude", {}), ("longitude", 10**400),
+    ("latitude", True), ("latitude", False), ("longitude", True), ("longitude", False),
 ])
 async def test_invalid_coordinates_are_rejected(worker, reading, field, value):
     reading[field] = value
     response, database = await ingest(worker, reading)
     assert response.status == 400
     assert field in response.body["error"]
+    assert database.bindings == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field", ["source", "source_type", "parameter", "timestamp"])
+@pytest.mark.parametrize("value", [[], {}, ["unexpected"], {"unexpected": 1}])
+async def test_container_fields_are_rejected(worker, reading, field, value):
+    reading[field] = value
+    response, database = await ingest(worker, reading)
+    assert response.status == 400
+    assert field in response.body["error"]
+    assert database.bindings == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [None, [], "text", 0, True])
+async def test_non_object_body_is_rejected(worker, body):
+    response, database = await ingest(worker, body)
+    assert response.status == 400
     assert database.bindings == []
