@@ -1490,6 +1490,13 @@ async def init_db(env):
         )""",
         "CREATE INDEX IF NOT EXISTS idx_survey_answers_response ON survey_answers(response_id)",
         "CREATE INDEX IF NOT EXISTS idx_survey_answers_question ON survey_answers(question_id)",
+        # Page views: one counter per page per UTC day. No IPs, cookies or user ids.
+        """CREATE TABLE IF NOT EXISTS page_views (
+            day   TEXT NOT NULL,
+            path  TEXT NOT NULL,
+            views INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, path)
+        )""",
     ]
     for sql in legacy_tables:
         await env.DB.prepare(sql).run()
@@ -2144,7 +2151,45 @@ async def api_reset_password(req, env):
     return ok(None, "Password reset successfully. You can now sign in with your new password.")
 
 
+_ACTIVITY_LIST_CACHE_SECONDS = 120
+
+
+async def api_list_activities_cached(req, env):
+    """Serve the public catalog from the edge cache; it's identical for every visitor."""
+    cache = getattr(getattr(js, "caches", None), "default", None)
+    if req.headers.get("Authorization"):
+        cache = None
+    key = None
+    if cache is not None:
+        try:
+            key = js.Request.new(req.url)
+            hit = await cache.match(key)
+            if hit:
+                return Response(
+                    await hit.text(),
+                    headers={"Content-Type": "application/json", "X-Cache": "HIT", **_CORS},
+                )
+        except Exception:
+            key = None
+    body = json.dumps(await _activity_list_payload(req, env))
+    if key is not None:
+        try:
+            await cache.put(key, js.Response.new(body, to_js({
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Cache-Control": f"public, max-age={_ACTIVITY_LIST_CACHE_SECONDS}",
+                },
+            }, dict_converter=js.Object.fromEntries)))
+        except Exception:
+            pass
+    return Response(body, headers={"Content-Type": "application/json", "X-Cache": "MISS", **_CORS})
+
+
 async def api_list_activities(req, env):
+    return json_resp(await _activity_list_payload(req, env))
+
+
+async def _activity_list_payload(req, env):
     parsed = urlparse(req.url)
     params = parse_qs(parsed.query)
     atype  = (params.get("type")   or [None])[0]
@@ -2273,7 +2318,7 @@ async def api_list_activities(req, env):
     else:
         total_pages = 1
 
-    return json_resp({
+    return {
         "activities": activities,
         "pagination": {
             "page": page,
@@ -2281,7 +2326,7 @@ async def api_list_activities(req, env):
             "total": total,
             "total_pages": total_pages,
         },
-    })
+    }
 
 
 async def api_create_activity(req, env):
@@ -6585,6 +6630,148 @@ async def api_admin_table_counts(req, env):
 
 
 # ---------------------------------------------------------------------------
+# Page views
+# ---------------------------------------------------------------------------
+
+_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/")
+_VIEW_BOT_RE = re.compile(
+    r"bot|crawl|spider|slurp|preview|monitor|uptime|curl|wget|python-|httpx|axios|headless|lighthouse|facebookexternalhit",
+    re.IGNORECASE,
+)
+
+
+def _page_view_path(request, env):
+    """Return the normalized page path to count for this request, or None to skip it."""
+    if request.method.upper() != "GET":
+        return None
+    parsed = urlparse(request.url)
+    path = parsed.path or "/"
+    if path.startswith(_VIEW_SKIP_PREFIXES):
+        return None
+    admin_path = _clean_path(getattr(env, "ADMIN_URL", ""))
+    if path == admin_path or path.startswith(admin_path.rstrip("/") + "/"):
+        return None
+    if path.endswith(".html"):
+        path = path[:-5] or "/"
+    if path.endswith("/index"):
+        path = path[:-6] or "/"
+    last = path.rsplit("/", 1)[-1]
+    if "." in last:
+        return None
+    if len(path) > 1:
+        path = path.rstrip("/")
+    if path == "/activity":
+        query = parse_qs(parsed.query)
+        ref = (query.get("slug") or query.get("id") or [""])[0]
+        if ref:
+            path = "/activity/" + ref
+    ua = request.headers.get("User-Agent") or ""
+    if not ua or _VIEW_BOT_RE.search(ua):
+        return None
+    purpose = (request.headers.get("Sec-Purpose") or request.headers.get("Purpose") or "").lower()
+    if "prefetch" in purpose or "prerender" in purpose:
+        return None
+    return path[:200]
+
+
+async def record_page_view(request, env, response) -> None:
+    """Count a successful HTML page view. Never raises."""
+    try:
+        if getattr(response, "status", 200) != 200:
+            return
+        # On Workers, Response.headers is a plain dict whose key case varies.
+        headers = response.headers
+        pairs = headers.items() if hasattr(headers, "items") else headers
+        ctype = ""
+        for key, value in pairs:
+            if str(key).lower() == "content-type":
+                ctype = str(value or "").lower()
+                break
+        if "text/html" not in ctype:
+            return
+        path = _page_view_path(request, env)
+        if not path:
+            return
+        day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+        stmt = (
+            "INSERT INTO page_views (day, path, views) VALUES (?, ?, 1)"
+            " ON CONFLICT(day, path) DO UPDATE SET views = views + 1"
+        )
+        try:
+            await env.DB.prepare(stmt).bind(day, path).run()
+        except Exception as e:
+            if not _is_no_such_table_error(e):
+                raise
+            await init_db(env)
+            await env.DB.prepare(stmt).bind(day, path).run()
+    except Exception as exc:
+        print(f"[page_views] {type(exc).__name__}: {exc}")
+
+
+async def api_admin_views(req, env):
+    if not _is_basic_auth_valid(req, env):
+        return _unauthorized_basic()
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    since_30 = (today - datetime.timedelta(days=29)).isoformat()
+    since_7 = (today - datetime.timedelta(days=6)).isoformat()
+
+    async def load():
+        totals = await env.DB.prepare(
+            "SELECT"
+            " COALESCE(SUM(CASE WHEN day = ? THEN views END), 0) AS today,"
+            " COALESCE(SUM(CASE WHEN day >= ? THEN views END), 0) AS last7,"
+            " COALESCE(SUM(CASE WHEN day >= ? THEN views END), 0) AS last30,"
+            " COALESCE(SUM(views), 0) AS all_time,"
+            " MIN(day) AS since"
+            " FROM page_views"
+        ).bind(today.isoformat(), since_7, since_30).first()
+        daily = await env.DB.prepare(
+            "SELECT day, SUM(views) AS views FROM page_views WHERE day >= ? GROUP BY day ORDER BY day"
+        ).bind(since_30).all()
+        pages = await env.DB.prepare(
+            "SELECT path, SUM(views) AS views FROM page_views WHERE day >= ?"
+            " GROUP BY path ORDER BY views DESC LIMIT 20"
+        ).bind(since_30).all()
+        acts = await env.DB.prepare(
+            "SELECT pv.path AS path, SUM(pv.views) AS views, a.title AS title, a.slug AS slug, a.id AS id"
+            " FROM page_views pv"
+            " JOIN activities a ON pv.path = '/activity/' || a.slug OR pv.path = '/activity/' || a.id"
+            " WHERE pv.day >= ? AND pv.path LIKE '/activity/%'"
+            " GROUP BY a.id ORDER BY views DESC LIMIT 20"
+        ).bind(since_30).all()
+        return totals, daily, pages, acts
+
+    try:
+        totals, daily, pages, acts = await load()
+    except Exception as e:
+        if not _is_no_such_table_error(e):
+            raise
+        await init_db(env)
+        totals, daily, pages, acts = await load()
+
+    by_day = {r.day: int(r.views or 0) for r in (daily.results or [])}
+    series = []
+    for i in range(29, -1, -1):
+        d = (today - datetime.timedelta(days=i)).isoformat()
+        series.append({"day": d, "views": by_day.get(d, 0)})
+    return json_resp({
+        "totals": {
+            "today": int(getattr(totals, "today", 0) or 0),
+            "last7": int(getattr(totals, "last7", 0) or 0),
+            "last30": int(getattr(totals, "last30", 0) or 0),
+            "all_time": int(getattr(totals, "all_time", 0) or 0),
+            "since": getattr(totals, "since", None),
+        },
+        "daily": series,
+        "top_pages": [{"path": r.path, "views": int(r.views or 0)} for r in (pages.results or [])],
+        "top_activities": [
+            {"title": r.title, "slug": r.slug, "id": r.id, "path": r.path, "views": int(r.views or 0)}
+            for r in (acts.results or [])
+        ],
+    })
+
+
+# ---------------------------------------------------------------------------
 # Static-asset serving  (Workers Sites / __STATIC_CONTENT KV)
 # ---------------------------------------------------------------------------
 
@@ -7161,10 +7348,23 @@ async def render_500(req, env):
     )
 
 
+_STATIC_TEXT_CACHE: Dict[str, str] = {}
+
+
 async def _load_static_text(env, key: str) -> Optional[str]:
     normalized = (key or "").lstrip("/")
     if not normalized:
         normalized = "index.html"
+    # Assets can't change without a redeploy, which starts fresh isolates.
+    if normalized in _STATIC_TEXT_CACHE:
+        return _STATIC_TEXT_CACHE[normalized]
+    value = await _load_static_text_uncached(env, normalized)
+    if value is not None and len(_STATIC_TEXT_CACHE) < 300:
+        _STATIC_TEXT_CACHE[normalized] = value
+    return value
+
+
+async def _load_static_text_uncached(env, normalized: str) -> Optional[str]:
 
     # Older Workers Sites binding used by the first Worker version.
     try:
@@ -7418,9 +7618,7 @@ class ClassroomDO(DurableObject):
                 "display_name":   display_name,
                 "can_interact":   can_interact,
             }))
-            whiteboard_events = await self.ctx.storage.get("whiteboard_events")
-            if not isinstance(whiteboard_events, list):
-                whiteboard_events = []
+            whiteboard_events = await self._load_whiteboard_events()
             server.send(json.dumps({
                 "type": "whiteboard_state",
                 "events": whiteboard_events[-1000:],
@@ -7528,12 +7726,10 @@ class ClassroomDO(DurableObject):
             event["display_name"] = info["display_name"]
             event["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             try:
-                events = await self.ctx.storage.get("whiteboard_events")
-                if not isinstance(events, list):
-                    events = []
+                events = await self._load_whiteboard_events()
                 events.append(event)
                 events = events[-1000:]
-                await self.ctx.storage.put("whiteboard_events", events)
+                await self._save_whiteboard_events(events)
             except Exception as exc:
                 await capture_exception(exc, None, self.env, "classroom.whiteboard_event.persist")
             self._broadcast(json.dumps({
@@ -7543,7 +7739,7 @@ class ClassroomDO(DurableObject):
 
         elif msg_type == "whiteboard_clear":
             try:
-                await self.ctx.storage.put("whiteboard_events", [])
+                await self._save_whiteboard_events([])
             except Exception as exc:
                 await capture_exception(exc, None, self.env, "classroom.whiteboard_clear.persist")
             self._broadcast(json.dumps({
@@ -7554,15 +7750,13 @@ class ClassroomDO(DurableObject):
 
         elif msg_type == "whiteboard_undo":
             try:
-                events = await self.ctx.storage.get("whiteboard_events")
-                if not isinstance(events, list):
-                    events = []
+                events = await self._load_whiteboard_events()
                 for idx in range(len(events) - 1, -1, -1):
                     event = events[idx]
                     if isinstance(event, dict) and event.get("participant_id") == info["participant_id"]:
                         events.pop(idx)
                         break
-                await self.ctx.storage.put("whiteboard_events", events)
+                await self._save_whiteboard_events(events)
                 self._broadcast(json.dumps({
                     "type": "whiteboard_state",
                     "events": events[-1000:],
@@ -7693,6 +7887,23 @@ class ClassroomDO(DurableObject):
         except (TypeError, ValueError):
             return None
         return {"x": max(0.0, min(1.0, x)), "y": max(0.0, min(1.0, y))}
+
+    async def _load_whiteboard_events(self):
+        # Stored as a JSON string: Python lists can't be structured-cloned into DO storage.
+        stored = await self.ctx.storage.get("whiteboard_events")
+        if isinstance(stored, str):
+            try:
+                events = json.loads(stored)
+            except ValueError:
+                events = []
+        elif hasattr(stored, "to_py"):
+            events = stored.to_py()
+        else:
+            events = stored
+        return events if isinstance(events, list) else []
+
+    async def _save_whiteboard_events(self, events):
+        await self.ctx.storage.put("whiteboard_events", json.dumps(events[-1000:]))
 
     def _sanitize_whiteboard_event(self, value):
         if not isinstance(value, dict):
@@ -8781,6 +8992,9 @@ async def _dispatch(request, env):
     if path == admin_api_counts_path and method == "GET":
         return await api_admin_table_counts(request, env)
 
+    if path == admin_path.rstrip("/") + "/api/views" and method == "GET":
+        return await api_admin_views(request, env)
+
     if path in ("/legacy-features", "/legacy-features.html", "/features", "/features.html") and method == "GET":
         return await render_ssr_record_page(request, env, "/feature-votes", SSR_RECORD_PAGES["/feature-votes"])
 
@@ -8844,7 +9058,7 @@ async def _dispatch(request, env):
             return await api_classes_near_me(request, env)
 
         if path == "/api/activities" and method == "GET":
-            return await api_list_activities(request, env)
+            return await api_list_activities_cached(request, env)
 
         if path == "/api/activities" and method == "POST":
             return await api_create_activity(request, env)
@@ -8987,6 +9201,9 @@ async def _dispatch(request, env):
         if path == "/api/admin/table-counts" and method == "GET":
             return await api_admin_table_counts(request, env)
 
+        if path == "/api/admin/views" and method == "GET":
+            return await api_admin_views(request, env)
+
         if path.rstrip("/") == "/api/error" and method == "GET":
             exc = RuntimeError("Sentry test error from /api/error")
             await capture_exception(exc, request, env, "api_error_test")
@@ -9114,10 +9331,28 @@ async def api_submit_feedback(request, env):
     return ok({"message": "Thank you for your feedback! We appreciate your input."})
 
 
+# Vulnerability-scanner probes (.env, PHP, WordPress, git). None of these exist here,
+# so answer before any setup, D1 or template work.
+_SCANNER_PATH_RE = re.compile(
+    r"(\.(php\d?|asp|aspx|jsp|cgi|env|ini|sql|bak|old|swp)$)"
+    r"|(/\.(env|git|svn|hg|aws|ssh|docker|vscode|idea|DS_Store))"
+    r"|(^/(wp-admin|wp-content|wp-includes|wp-json|wordpress|wp|cgi-bin|phpmyadmin|xmlrpc)(/|$))",
+    re.IGNORECASE,
+)
+
+
+def _is_scanner_probe(path: str) -> bool:
+    return bool(path) and not path.startswith("/.well-known/") and bool(_SCANNER_PATH_RE.search(path))
+
+
 async def on_fetch(request, env):
+    if _is_scanner_probe(urlparse(request.url).path):
+        return Response("Not found", status=404, headers={"Content-Type": "text/plain", "Cache-Control": "public, max-age=86400"})
     try:
         init_sentry(env)
-        return await _dispatch(request, env)
+        response = await _dispatch(request, env)
+        await record_page_view(request, env, response)
+        return response
     except Exception as e:
         await capture_exception(e, request, env, "on_fetch_unhandled")
         if urlparse(request.url).path.startswith("/api/"):
