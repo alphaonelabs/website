@@ -17,11 +17,11 @@
     :focus-visible { outline: 2px solid var(--a1-focus); outline-offset: 3px; border-radius: 6px; }
     .hero { position: relative; overflow: hidden; padding: clamp(56px, 8vw, 96px) 0 48px; border-bottom: 1px solid var(--a1-border); isolation: isolate; }
     .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: linear-gradient(var(--a1-border) 1px, transparent 1px), linear-gradient(90deg, var(--a1-border) 1px, transparent 1px); background-size: 48px 48px; opacity: .3; mask-image: radial-gradient(ellipse 70% 80% at 80% 30%, #000 25%, transparent 75%); }
-    .hero h1 { font-family: var(--a1-font-display); font-size: var(--a1-text-5xl); line-height: 1; letter-spacing: -0.04em; margin: 16px 0 18px; }
+    .hero h1 { font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; font-size: var(--a1-text-6xl); line-height: .9; letter-spacing: -0.01em; margin: 16px 0 18px; }
     .hero p { color: var(--a1-text-muted); font-size: var(--a1-text-lg); max-width: 640px; margin: 0; }
-    .hero .iss { position: absolute; right: max(20px, 6vw); top: 50%; translate: 0 -50%; width: min(34vw, 380px); color: var(--a1-accent); opacity: .9; z-index: -1; }
+    .hero .iss { position: absolute; right: max(20px, 6vw); top: 50%; translate: 0 -50%; width: min(34vw, 420px); z-index: -1; }
     .tips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 40px 0 0; }
-    .tips .a1-card h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-lg); margin: 0 0 6px; }
+    .tips .a1-card h2 { font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; font-size: 1.6rem; line-height: 1; margin: 0 0 8px; }
     .tips .a1-card p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
     .layout { display: grid; grid-template-columns: 17rem 1fr; gap: 48px; padding: 56px 0; }
     .toc { position: sticky; top: calc(var(--a1-header-height) + 24px); align-self: start; }
@@ -29,8 +29,8 @@
     .toc a { display: block; padding: 6px 14px; margin-left: -1px; border-left: 2px solid transparent; color: var(--a1-text-muted); text-decoration: none; font-size: var(--a1-text-sm); line-height: 1.4; }
     .toc a:hover { color: var(--a1-text); border-left-color: var(--a1-accent); }
     .ideas { min-width: 0; }
-    .ideas h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-2xl); letter-spacing: -0.02em; line-height: 1.2; margin: 3rem 0 .75rem; scroll-margin-top: calc(var(--a1-header-height) + 24px); }
-    .ideas h3 { font-family: var(--a1-font-mono); font-size: var(--a1-text-xs); letter-spacing: .16em; text-transform: uppercase; color: var(--a1-accent); margin: 1.6rem 0 .4rem; }
+    .ideas h2 { font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2rem, 3.4vw, 2.8rem); letter-spacing: -0.005em; line-height: .95; margin: 3rem 0 .75rem; scroll-margin-top: calc(var(--a1-header-height) + 24px); }
+    .ideas h3 { font-family: var(--a1-font-mono); font-size: var(--a1-text-xs); letter-spacing: .14em; text-transform: uppercase; color: var(--a1-text); margin: 1.6rem 0 .4rem; }
     .ideas p, .ideas li { color: var(--a1-text); }
     .ideas ul, .ideas ol { padding-left: 1.3rem; }
     .ideas li::marker { color: var(--a1-accent); }
@@ -38,10 +38,10 @@
     .ideas code { font-family: var(--a1-font-mono); font-size: .88em; background: var(--a1-surface-raised); border: 1px solid var(--a1-border); padding: .1rem .35rem; border-radius: 6px; }
     .ideas hr { border: 0; height: 10px; margin: 3rem 0; background: radial-gradient(circle at 0 50%, var(--a1-accent) 3px, transparent 3.5px) left center / 10px 10px no-repeat, radial-gradient(circle at 100% 50%, var(--a1-accent) 3px, transparent 3.5px) right center / 10px 10px no-repeat, linear-gradient(var(--a1-accent), var(--a1-accent)) center / calc(100% - 16px) 1.5px no-repeat; opacity: .5; }
     .archive { padding: 0 0 80px; }
-    .archive h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-3xl); margin: 0 0 8px; }
+    .archive h2 { font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; font-size: var(--a1-text-4xl); line-height: .92; margin: 0 0 8px; }
     .archive > .wrap > p { color: var(--a1-text-muted); margin: 0 0 24px; }
-    details.year { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); background: var(--a1-surface); margin-bottom: 12px; }
-    details.year > summary { cursor: pointer; list-style: none; padding: 20px 24px; font-family: var(--a1-font-display); font-size: var(--a1-text-xl); font-weight: 600; display: flex; justify-content: space-between; }
+    details.year { border: 1px solid var(--a1-border-strong); border-radius: 6px; background: var(--a1-surface); margin-bottom: 12px; }
+    details.year > summary { cursor: pointer; list-style: none; padding: 20px 24px; font-family: var(--a1-font-display); font-size: 1.8rem; font-weight: 900; text-transform: uppercase; display: flex; justify-content: space-between; }
     details.year > summary::after { content: "+"; color: var(--a1-accent); font-family: var(--a1-font-mono); }
     details.year[open] > summary::after { content: "−"; }
     details.year > .ideas { padding: 0 24px 24px; }
@@ -52,7 +52,7 @@
   <a1-header site="GSoC" site-href="/" sticky></a1-header>
   <main>
     <section class="hero">
-      <img class="iss" src="https://design.alphaonelabs.com/assets/illustrations/iss.svg" alt="">
+      <img class="iss" src="https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg" alt="">
       <div class="wrap">
         <span class="a1-badge a1-badge--gold">Google Summer of Code 2027</span>
         <h1>Project ideas</h1>

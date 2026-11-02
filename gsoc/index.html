@@ -4,386 +4,275 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Google Summer of Code 2027 · Alpha One Labs</title>
-  <meta name="description" content="Build open-source education tools with Alpha One Labs in Google Summer of Code 2027: project ideas, the contributor leaderboard and how to get started.">
+  <meta name="description" content="Google Summer of Code 2027 with Alpha One Labs: ten project ideas, the contributor leaderboard and how to get started.">
   <meta property="og:title" content="Google Summer of Code 2027 · Alpha One Labs">
-  <meta property="og:description" content="Build open-source education tools on a platform that's live today.">
-  <meta property="og:image" content="https://design.alphaonelabs.com/assets/banner.webp">
+  <meta property="og:description" content="Learn by shipping: open-source education tools used by real learners.">
   <link rel="icon" href="https://design.alphaonelabs.com/assets/logo/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
   <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin: 0; background: var(--a1-bg); color: var(--a1-text); font-family: var(--a1-font-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    body { margin: 0; background: var(--a1-bg); color: var(--a1-text); font: 16px/1.55 var(--a1-font-body); -webkit-font-smoothing: antialiased; }
+    a { color: var(--a1-text); }
     img { max-width: 100%; display: block; }
-    a { color: var(--a1-accent); }
-    .wrap { width: min(1200px, 100% - 40px); margin-inline: auto; }
-    section { padding-block: clamp(64px, 9vw, 112px); position: relative; }
-    .section-head { max-width: 720px; margin-bottom: 48px; }
-    .section-head h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-4xl); line-height: 1.05; letter-spacing: -0.03em; margin: 12px 0 14px; }
-    .section-head p { color: var(--a1-text-muted); font-size: var(--a1-text-lg); margin: 0; }
-    .gold { color: var(--a1-accent); }
-    :focus-visible { outline: 2px solid var(--a1-focus); outline-offset: 3px; border-radius: 6px; }
+    :focus-visible { outline: 3px solid var(--a1-focus); outline-offset: 3px; }
+    code { font-family: var(--a1-font-mono); font-size: .88em; border: 1px solid var(--a1-border); padding: 1px 5px; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .lede { color: var(--a1-text-muted); font-size: 1.1rem; max-width: 62ch; margin: 0 0 28px; }
 
-    /* ---------- hero ---------- */
-    .hero { padding-block: clamp(56px, 8vw, 96px) clamp(48px, 7vw, 80px); overflow: hidden; isolation: isolate; }
-    .hero::before { content: ""; position: absolute; inset: 0; z-index: -1;
-      background-image: linear-gradient(var(--a1-border) 1px, transparent 1px), linear-gradient(90deg, var(--a1-border) 1px, transparent 1px);
-      background-size: 48px 48px; opacity: .35;
-      mask-image: radial-gradient(ellipse 80% 70% at 70% 40%, #000 30%, transparent 75%); }
-    .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
-    .hero h1 { font-family: var(--a1-font-display); font-size: var(--a1-text-5xl); line-height: .98; letter-spacing: -0.04em; margin: 18px 0 22px; }
-    .hero h1 em { font-style: normal; color: var(--a1-accent); }
-    .hero .lead { font-size: clamp(1.05rem, 1.6vw, 1.25rem); color: var(--a1-text-muted); max-width: 560px; margin: 0 0 32px; }
-    .cta { display: flex; flex-wrap: wrap; gap: 12px; }
-    .art { position: relative; aspect-ratio: 1 / 1.05; color: var(--a1-accent); }
-    .art .circuit { position: absolute; inset: 0 auto auto -10%; width: 70%; opacity: .55; }
-    .art .iss { position: absolute; top: 2%; right: 0; width: 52%; }
-    .art .iron { position: absolute; bottom: 4%; right: 2%; width: 15%; }
-    .art .nerd { position: absolute; left: 12%; bottom: 0; width: 72%; color: var(--a1-text); }
-    .stats { margin-top: clamp(48px, 7vw, 72px); display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); background: var(--a1-surface); }
+    /* hero, like the approved homepage concept */
+    .hero { border-bottom: 1px solid var(--a1-border); overflow: hidden; }
+    .hero-grid { display: grid; grid-template-columns: 46% 54%; min-height: 560px; }
+    .hero-copy { padding: 64px 0 52px; position: relative; z-index: 2; }
+    .hero h1 { font-size: clamp(64px, 8.6vw, 136px); margin: 18px 0 18px; }
+    .hero .lead { font: 500 1.2rem/1.5 var(--a1-font-mono); max-width: 26ch; margin: 0; }
+    .hero .a1-rule { margin: 22px 0 26px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .hero-art { position: relative; min-height: 480px; }
+    .hero-art .portrait { position: absolute; inset: 0 0 0 10%; width: 90%; height: 100%; object-fit: cover; object-position: 50% 22%; filter: grayscale(1) contrast(1.08); }
+    .hero-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--a1-bg) 8%, transparent 34%); pointer-events: none; }
+    .hero-art .traces { position: absolute; left: -2%; top: 30%; width: 46%; z-index: 2; }
+    .hero-art .mark { position: absolute; right: 4%; top: 6%; width: 28%; z-index: 2; filter: drop-shadow(0 0 0 transparent); }
+
+    /* stats */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--a1-border); }
     .stat { padding: 22px 24px; border-left: 1px solid var(--a1-border); }
-    .stat:first-child { border-left: 0; }
-    .stat b { display: block; font-family: var(--a1-font-display); font-size: var(--a1-text-3xl); line-height: 1.1; }
-    .stat span { font-family: var(--a1-font-mono); font-size: var(--a1-text-xs); letter-spacing: .12em; text-transform: uppercase; color: var(--a1-text-muted); }
+    .stat:first-child { border-left: 0; padding-left: 0; }
+    .stat b { display: block; font: 900 clamp(2.4rem, 4vw, 3.4rem)/1 var(--a1-font-display); }
+    .stat span { font: 800 11px var(--a1-font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--a1-text-muted); }
 
-    /* ---------- why ---------- */
+    /* why */
     .why { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    .why .a1-card h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-xl); margin: 14px 0 8px; letter-spacing: -0.01em; }
-    .why .a1-card p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
-    .icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; border: 1px solid var(--a1-border); color: var(--a1-accent); }
-    .icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .why .a1-card h3 { font: 900 1.6rem/1 var(--a1-font-display); text-transform: uppercase; margin: 16px 0 8px; }
+    .why .a1-card p { margin: 0; color: var(--a1-text-muted); font-size: 15px; }
+    .ico { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 
-    /* ---------- leaderboard ---------- */
-    .lb-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    .tabs { display: inline-flex; padding: 4px; gap: 4px; border: 1px solid var(--a1-border); border-radius: var(--a1-radius-full); background: var(--a1-surface); }
-    .tabs button { border: 0; background: none; color: var(--a1-text-muted); font: 600 var(--a1-text-sm) var(--a1-font-body); padding: 8px 18px; border-radius: var(--a1-radius-full); cursor: pointer; }
-    .tabs button[aria-selected="true"] { background: var(--a1-accent); color: var(--a1-on-accent); }
-    .tabs button .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; }
-    .search { flex: 1 1 220px; max-width: 320px; position: relative; }
-    .search input { width: 100%; padding: 10px 14px 10px 38px; border-radius: var(--a1-radius-full); border: 1px solid var(--a1-border); background: var(--a1-surface); color: var(--a1-text); font: inherit; font-size: var(--a1-text-sm); }
-    .search svg { position: absolute; left: 13px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; fill: none; stroke: var(--a1-text-muted); stroke-width: 2; }
-    .season-meta { color: var(--a1-text-muted); font-size: var(--a1-text-sm); margin: -8px 0 24px; }
+    /* leaderboard */
+    .lb-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .tabs { display: inline-flex; border: 1px solid var(--a1-border-strong); border-radius: var(--a1-radius); overflow: hidden; }
+    .tabs button { border: 0; border-left: 1px solid var(--a1-border-strong); background: var(--a1-bg); color: var(--a1-text); font: 900 1.3rem/1 var(--a1-font-display); padding: 10px 22px; cursor: pointer; }
+    .tabs button:first-child { border-left: 0; }
+    .tabs button[aria-selected="true"] { background: var(--a1-accent-fill); color: var(--a1-on-accent); }
+    .tabs button .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 8px; vertical-align: 3px; }
+    .search { position: relative; flex: 1 1 240px; max-width: 340px; }
+    .search svg { position: absolute; left: 13px; top: 50%; translate: 0 -50%; width: 18px; height: 18px; fill: none; stroke: var(--a1-text-muted); stroke-width: 2; }
+    .search .a1-input { padding-left: 40px; }
+    .season-meta { font: 600 12px var(--a1-font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--a1-text-muted); margin: 0 0 18px; }
     .podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
     .podium a { text-decoration: none; color: inherit; }
-    .podium .a1-card { display: flex; align-items: center; gap: 16px; position: relative; overflow: hidden; }
-    .podium .rank { position: absolute; right: 14px; top: 8px; font: 700 64px/1 var(--a1-font-display); color: var(--a1-accent); opacity: .18; }
-    .podium img { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--a1-accent); }
-    .podium .who b { display: block; font-family: var(--a1-font-display); font-size: var(--a1-text-lg); }
-    .podium .who span { color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
-    .list { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); overflow: hidden; background: var(--a1-surface); }
-    .row { display: grid; grid-template-columns: 44px 44px 1fr auto 140px; gap: 14px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--a1-border); }
+    .podium .a1-card { flex-direction: row; align-items: center; gap: 16px; position: relative; overflow: hidden; border-color: var(--a1-border-strong); border-radius: 6px; }
+    .podium .a1-card:hover { background: var(--a1-surface-raised); }
+    .podium .rank { position: absolute; right: 14px; top: 2px; font: 900 76px/1 var(--a1-font-display); color: var(--a1-accent-fill); }
+    .podium img { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--a1-accent-fill); }
+    .podium .who b { display: block; font: 900 1.5rem/1 var(--a1-font-display); }
+    .podium .who span { font: 700 12px var(--a1-font-mono); text-transform: uppercase; color: var(--a1-text-muted); }
+    .list { border: 1px solid var(--a1-border-strong); border-radius: 6px; overflow: hidden; }
+    .row { display: grid; grid-template-columns: 44px 44px 1fr auto 150px; gap: 14px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--a1-border); }
     .row:first-child { border-top: 0; }
-    .row .n { font: 700 var(--a1-text-sm) var(--a1-font-mono); color: var(--a1-text-muted); text-align: right; }
+    .row:hover { background: var(--a1-surface-raised); }
+    .row .n { font: 900 1.3rem var(--a1-font-display); color: var(--a1-text-muted); text-align: right; }
     .row img { width: 40px; height: 40px; border-radius: 50%; }
-    .row .name { font-weight: 600; color: var(--a1-text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .row .name:hover { color: var(--a1-accent); }
+    .row .name { font-weight: 800; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .name:hover { text-decoration: underline; text-underline-offset: 3px; }
     .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-    .score { display: grid; gap: 4px; justify-items: end; font: 700 var(--a1-text-sm) var(--a1-font-mono); }
-    .score i { display: block; width: 100%; height: 4px; border-radius: 4px; background: var(--a1-border); overflow: hidden; }
-    .score i::after { content: ""; display: block; height: 100%; width: var(--w); background: var(--a1-accent); }
-    .more { display: block; width: 100%; padding: 14px; border: 0; border-top: 1px solid var(--a1-border); background: none; color: var(--a1-accent); font: 600 var(--a1-text-sm) var(--a1-font-body); cursor: pointer; }
+    .score { display: grid; gap: 5px; justify-items: end; font: 900 1.25rem/1 var(--a1-font-display); }
+    .score i { display: block; width: 100%; height: 5px; background: var(--a1-border); }
+    .score i::after { content: ""; display: block; height: 100%; width: var(--w); background: var(--a1-accent-fill); }
+    .more { display: block; width: 100%; padding: 14px; border: 0; border-top: 1px solid var(--a1-border-strong); background: var(--a1-bg); color: var(--a1-text); font: 800 14px var(--a1-font-body); cursor: pointer; }
+    .more:hover { background: var(--a1-surface-raised); }
     .empty { padding: 40px 20px; text-align: center; color: var(--a1-text-muted); }
-    details.how { margin-top: 20px; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
-    details.how summary { cursor: pointer; color: var(--a1-text); font-weight: 600; }
+    details.how { margin-top: 18px; color: var(--a1-text-muted); font-size: 15px; }
+    details.how summary { cursor: pointer; color: var(--a1-text); font-weight: 800; }
 
-    /* ---------- ideas ---------- */
+    /* ideas */
     .ideas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .ideas a { text-decoration: none; color: inherit; }
-    .ideas .a1-card { height: 100%; display: flex; flex-direction: column; gap: 10px; }
-    .ideas h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-xl); line-height: 1.2; margin: 4px 0 0; }
-    .ideas p { color: var(--a1-text-muted); font-size: var(--a1-text-sm); margin: 0; flex: 1; }
-    .ideas .go { color: var(--a1-accent); font-weight: 600; font-size: var(--a1-text-sm); }
+    .ideas a { text-decoration: none; color: inherit; display: flex; }
+    .ideas .a1-card { width: 100%; border-color: var(--a1-border-strong); border-radius: 6px; overflow: hidden; }
+    .ideas .a1-card:hover { background: var(--a1-surface-raised); }
+    .idea-media { background: #0f0f0f !important; }
+    .idea-media img { width: 52%; height: auto; }
+    .idea-title { font: 900 1.7rem/1 var(--a1-font-display); text-transform: uppercase; margin: 2px 0 10px; }
+    .meta-price { font: 900 1.4rem/1 var(--a1-font-display); }
 
-    /* ---------- path (circuit timeline) ---------- */
-    .path { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; position: relative; }
-    .path::before { content: ""; position: absolute; left: 0; right: 0; top: 19px; height: 2px; background: var(--a1-accent); opacity: .6; }
-    .path li { position: relative; padding: 0 16px 0 0; }
-    .path .node { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--a1-bg); border: 2px solid var(--a1-accent); color: var(--a1-accent); font: 700 var(--a1-text-sm) var(--a1-font-mono); position: relative; }
-    .path h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-lg); margin: 18px 0 6px; }
-    .path p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
-    .path a { color: var(--a1-accent); }
+    /* path */
+    .path { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); position: relative; }
+    .path::before { content: ""; position: absolute; left: 0; right: 0; top: 23px; height: 3px; background: var(--a1-accent-fill); }
+    .path li { position: relative; padding-right: 18px; }
+    .path .node { position: relative; display: grid; place-items: center; width: 48px; height: 48px; background: var(--a1-bg); border: 3px solid var(--a1-accent-fill); border-radius: 50%; font: 900 1.3rem var(--a1-font-display); }
+    .path h3 { font: 900 1.6rem/1 var(--a1-font-display); text-transform: uppercase; margin: 18px 0 6px; }
+    .path p { margin: 0; color: var(--a1-text-muted); font-size: 15px; }
 
-    /* ---------- timeline ---------- */
-    .when { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .when .a1-card time { font: 700 var(--a1-text-xs) var(--a1-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--a1-accent); }
-    .when .a1-card h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-lg); margin: 8px 0 6px; }
-    .when .a1-card p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
-    .note { margin-top: 18px; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+    /* timeline */
+    .when { border-top: 1px solid var(--a1-border-strong); }
+    .when-row { display: grid; grid-template-columns: 220px 260px 1fr; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--a1-border); align-items: baseline; }
+    .when-row time { font: 700 13px var(--a1-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--a1-accent); }
+    .when-row h3 { font: 900 1.5rem/1 var(--a1-font-display); text-transform: uppercase; margin: 0; }
+    .when-row p { margin: 0; color: var(--a1-text-muted); }
+    .note { margin: 18px 0 0; color: var(--a1-text-muted); font-size: 15px; }
 
-    /* ---------- faq ---------- */
-    .faq { display: grid; gap: 12px; max-width: 860px; }
-    .faq details { border: 1px solid var(--a1-border); border-radius: var(--a1-radius); background: var(--a1-surface); }
-    .faq summary { cursor: pointer; list-style: none; padding: 18px 22px; font-weight: 600; display: flex; justify-content: space-between; gap: 16px; }
+    /* faq */
+    .faq { border-top: 1px solid var(--a1-border-strong); max-width: 920px; }
+    .faq details { border-bottom: 1px solid var(--a1-border); }
+    .faq summary { cursor: pointer; list-style: none; padding: 20px 0; font: 800 1.05rem var(--a1-font-body); display: flex; justify-content: space-between; gap: 16px; }
     .faq summary::-webkit-details-marker { display: none; }
-    .faq summary::after { content: "+"; color: var(--a1-accent); font: 700 20px/1 var(--a1-font-mono); }
+    .faq summary::after { content: "+"; font: 900 1.6rem/1 var(--a1-font-display); color: var(--a1-accent); }
     .faq details[open] summary::after { content: "−"; }
-    .faq details p { margin: 0; padding: 0 22px 20px; color: var(--a1-text-muted); }
+    .faq details p { margin: 0 0 20px; color: var(--a1-text-muted); max-width: 70ch; }
 
-    /* ---------- closing band ---------- */
-    .band { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); background: var(--a1-surface); padding: clamp(28px, 5vw, 56px); display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center; overflow: hidden; position: relative; }
-    .band h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-3xl); letter-spacing: -0.02em; margin: 10px 0; line-height: 1.1; }
-    .band p { color: var(--a1-text-muted); margin: 0 0 24px; max-width: 52ch; }
-    .band .trans { width: 180px; color: var(--a1-accent); opacity: .8; }
+    /* statement */
+    .statement { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+    .statement h2 { font-size: clamp(2.6rem, 5vw, 4.2rem); margin: 0; padding-right: 40px; border-right: 1px solid var(--a1-border); }
+    .statement p { font-style: italic; font-size: 1.25rem; margin: 0 0 18px; }
+    .statement .pcb { width: min(100%, 480px); margin-top: 22px; }
 
     @media (max-width: 960px) {
-      .hero-grid { grid-template-columns: 1fr; }
-      .art { max-width: 420px; justify-self: center; width: 100%; }
-      .why, .ideas, .when { grid-template-columns: 1fr 1fr; }
-      .podium { grid-template-columns: 1fr; }
-      .path { grid-template-columns: 1fr; gap: 28px; }
-      .path::before { left: 19px; right: auto; top: 0; bottom: 0; width: 2px; height: auto; }
-      .path li { display: grid; grid-template-columns: 40px 1fr; column-gap: 18px; padding: 0; }
-      .path h3 { margin: 6px 0 4px; }
-      .path .node { grid-row: span 2; }
-    }
-    @media (max-width: 640px) {
+      .hero-grid, .statement { grid-template-columns: 1fr; }
+      .hero-copy { padding: 48px 0 16px; }
+      .hero-art { min-height: 380px; }
+      .hero-art .portrait { inset: 0; width: 100%; }
+      .hero-art::after { background: linear-gradient(0deg, transparent 70%, var(--a1-bg)); }
       .stats { grid-template-columns: 1fr 1fr; }
-      .stat:nth-child(3) { border-left: 0; }
+      .stat:nth-child(3) { border-left: 0; padding-left: 0; }
       .stat:nth-child(n+3) { border-top: 1px solid var(--a1-border); }
-      .why, .ideas, .when { grid-template-columns: 1fr; }
-      .row { grid-template-columns: 28px 36px 1fr 64px; padding: 12px 14px; gap: 10px; }
+      .why, .ideas { grid-template-columns: 1fr 1fr; }
+      .podium { grid-template-columns: 1fr; }
+      .path { grid-template-columns: 1fr; gap: 26px; }
+      .path::before { left: 22px; right: auto; top: 0; bottom: 0; width: 3px; height: auto; }
+      .path li { display: grid; grid-template-columns: 48px 1fr; column-gap: 18px; padding: 0; }
+      .path .node { grid-row: span 2; }
+      .path h3 { margin: 10px 0 4px; }
+      .when-row { grid-template-columns: 1fr; gap: 6px; }
+      .statement h2 { border-right: 0; padding-right: 0; }
+    }
+    @media (max-width: 600px) {
+      .why, .ideas { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 28px 36px 1fr 70px; padding: 12px 14px; gap: 10px; }
       .row img { width: 36px; height: 36px; }
       .row .chips { display: none; }
-      .band { grid-template-columns: 1fr; }
-      .band .trans { display: none; }
     }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .a1-card, .a1-btn { transition: none; } }
   </style>
 </head>
 <body>
-  <a1-header site="GSoC" site-href="/" sticky>
-    <a slot="actions" class="a1-btn a1-btn--primary" href="/ideas" style="padding:.55rem 1rem">2027 ideas</a>
-  </a1-header>
-
+  <a1-header site="GSoC" site-href="/" sticky></a1-header>
   <main id="main">
-    <!-- ================= HERO ================= -->
     <section class="hero" aria-labelledby="hero-title">
-      <div class="wrap">
-        <div class="hero-grid">
-          <div>
-            <span class="a1-badge a1-badge--gold">Google Summer of Code 2027</span>
-            <h1 id="hero-title" class="a1-display">Build the future of <em>open-source education.</em></h1>
-            <p class="lead">Spend your summer shipping features that real learners use the next day. Every project lands in a live Alpha One Labs site, guided by mentors who review your code.</p>
-            <div class="cta">
-              <a class="a1-btn a1-btn--primary" href="/ideas">Browse 2027 project ideas →</a>
-              <a class="a1-btn a1-btn--ghost" href="#start">How to get started</a>
-            </div>
-          </div>
-          <div class="art" aria-hidden="true">
-            <img class="circuit" src="https://design.alphaonelabs.com/assets/illustrations/circuit.svg" alt="">
-            <img class="iss" src="https://design.alphaonelabs.com/assets/illustrations/iss.svg" alt="">
-            <img class="iron" src="https://design.alphaonelabs.com/assets/illustrations/soldering-iron.svg" alt="">
-            <svg class="nerd" viewBox="0 0 320 400">
-              <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M112 120 C112 80 136 58 170 58 C204 58 228 80 228 120 C228 164 204 190 170 190 C136 190 112 164 112 120 Z"/>
-                <path d="M138 64 L124 42 M156 58 L150 30 M174 57 L182 28 M194 61 L212 40 M212 74 L232 62"/>
-                <path d="M116 100 C128 80 150 72 170 84 C186 72 210 76 224 98"/>
-                <path d="M112 122 C100 118 98 140 112 144"/><path d="M228 122 C240 118 242 140 228 144"/>
-                <rect x="120" y="108" width="42" height="32" rx="10"/><rect x="178" y="108" width="42" height="32" rx="10"/>
-                <path d="M162 118 C166 113 174 113 178 118"/>
-                <path d="M154 162 C164 172 178 172 188 162"/>
-                <path d="M155 190 V206 M185 190 V206"/>
-                <path d="M140 204 L170 236 L200 204"/><path d="M140 204 L128 234 L156 228"/><path d="M200 204 L212 234 L184 228"/>
-                <path d="M200 204 C232 208 252 218 262 244 L276 296 L248 304 L240 270"/><path d="M244 280 L248 400"/>
-                <path d="M140 204 C112 208 94 216 84 236"/><path d="M100 262 L96 400"/>
-                <path d="M84 236 L60 286 L96 298 L102 262"/><path d="M68 288 L50 206 M90 296 L76 204"/>
-                <path d="M50 206 L46 174 C54 166 68 166 76 174 L76 204"/>
-                <path d="M49 172 L45 146 M57 168 L55 136 M65 168 L66 134 M73 172 L76 144"/><path d="M76 192 L92 174"/>
-                <path d="M190 268 L234 268 L232 312 C226 318 198 318 192 312 Z" stroke-width="6"/>
-              </g>
-              <g fill="currentColor"><circle cx="170" cy="262" r="3.5"/><circle cx="170" cy="300" r="3.5"/><circle cx="170" cy="338" r="3.5"/><circle cx="141" cy="125" r="4.5"/><circle cx="199" cy="125" r="4.5"/></g>
-              <g stroke="var(--a1-accent)" stroke-linecap="round"><path d="M200 276 V242" stroke-width="7"/><path d="M200 242 V234" stroke-width="3.5"/><path d="M212 276 V248" stroke-width="7"/></g>
-              <rect x="218" y="234" width="11" height="42" rx="1.5" fill="var(--a1-accent)"/>
-              <path d="M14 58 H88 A12 12 0 0 1 100 70 V100 A12 12 0 0 1 88 112 H40 L28 126 L30 112 H14 A12 12 0 0 1 2 100 V70 A12 12 0 0 1 14 58 Z" fill="var(--a1-accent)"/>
-              <text x="51" y="96" text-anchor="middle" font-family="Space Grotesk, Inter, sans-serif" font-size="30" font-weight="700" fill="var(--a1-on-accent)">hi!</text>
-            </svg>
+      <div class="a1-container hero-grid">
+        <div class="hero-copy">
+          <div class="a1-eyebrow">Google Summer of Code 2027 / Mentored / Open source</div>
+          <h1 id="hero-title" class="a1-display">Learn.<br>Build.<br><span class="a1-gold">Ship.</span></h1>
+          <p class="lead">Spend your summer shipping features that real learners use the next day.</p>
+          <span class="a1-rule" aria-hidden="true"></span>
+          <div class="hero-actions">
+            <a class="a1-btn a1-btn--primary" href="/ideas">Browse 2027 ideas ↗</a>
+            <a class="a1-btn" href="#start">▶ How to start</a>
           </div>
         </div>
-
-        <div class="stats" aria-label="This season at a glance">
-          <div class="stat"><b data-stat="contributors">–</b><span>2027 contributors</span></div>
-          <div class="stat"><b data-stat="merged">–</b><span>PRs merged this season</span></div>
-          <div class="stat"><b>9</b><span>Live sites to build on</span></div>
-          <div class="stat"><b>10</b><span>Project ideas</span></div>
+        <div class="hero-art" aria-hidden="true">
+          <img class="portrait" src="https://design.alphaonelabs.com/assets/mascots/nerd-noir-portrait.webp" alt="" fetchpriority="high">
+          <img class="traces" src="https://design.alphaonelabs.com/assets/circuits/pcb-corner.svg" alt="">
+          <img class="mark" src="https://design.alphaonelabs.com/assets/logo/logo.svg" alt="">
         </div>
       </div>
     </section>
 
-    <!-- ================= WHY ================= -->
-    <section aria-labelledby="why-title">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="a1-eyebrow">Why Alpha One Labs</span>
-          <h2 id="why-title">A makerspace, rebuilt for the internet.</h2>
-          <p>We started in 2009 as a Brooklyn hackerspace. Today we build open-source learning tools, and the same rule applies: you learn by building something real.</p>
-        </div>
-        <div class="why">
-          <article class="a1-card a1-card--interactive">
-            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg></div>
-            <h3>Real users</h3>
-            <p>Your work ships to learn.alphaonelabs.com and eight more live sites. No throwaway prototypes.</p>
-          </article>
-          <article class="a1-card a1-card--interactive">
-            <div class="icon"><svg viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0ZM4 21a8 8 0 0 1 16 0"/></svg></div>
-            <h3>Real mentorship</h3>
-            <p>Every PR gets a human review. Mentors help you scope your proposal before you write it.</p>
-          </article>
-          <article class="a1-card a1-card--interactive">
-            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/><path d="m17 15 3 2-3 2"/></svg></div>
-            <h3>One repo</h3>
-            <p>All 17 projects live in one monorepo. Clone once, run any project, and your site deploys on merge.</p>
-          </article>
-          <article class="a1-card a1-card--interactive">
-            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v6c0 4.4 3.4 7.6 8 8 4.6-.4 8-3.6 8-8V7l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg></div>
-            <h3>Privacy first</h3>
-            <p>learn encrypts personal data at rest. You'll learn to build features that respect users.</p>
-          </article>
-        </div>
+    <div class="a1-container">
+      <div class="a1-live">
+        <h2 class="a1-live__title">Contribution<br>season open</h2>
+        <span class="a1-tag a1-tag--gold a1-tag--live">Live</span>
+        <p>The 2027 season runs from September 1, 2026. Every merged PR counts toward your application.</p>
+        <a class="a1-btn" href="#leaderboard">See the leaderboard ↗</a>
       </div>
-    </section>
-
-    <!-- ================= LEADERBOARD ================= -->
-    <section id="leaderboard" aria-labelledby="lb-title">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="a1-eyebrow">Leaderboard</span>
-          <h2 id="lb-title">Top contributors</h2>
-          <p>Ranked by merged pull requests across the monorepo, with past seasons kept for the record. Click anyone to see their GitHub profile.</p>
-        </div>
-
-        <div class="lb-bar">
-          <div class="tabs" role="tablist" aria-label="Season">
-            <button role="tab" id="tab-2027" data-season="2027" aria-selected="true" aria-controls="lb-panel"><span class="live" aria-hidden="true"></span>2027</button>
-            <button role="tab" id="tab-2026" data-season="2026" aria-selected="false" aria-controls="lb-panel">2026</button>
-            <button role="tab" id="tab-2025" data-season="2025" aria-selected="false" aria-controls="lb-panel">2025</button>
-          </div>
-          <label class="search">
-            <span class="sr-only">Find a contributor</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input type="search" id="lb-search" placeholder="Find a contributor" autocomplete="off">
-          </label>
-        </div>
-        <p class="season-meta" id="lb-meta" aria-live="polite"></p>
-
-        <div id="lb-panel" role="tabpanel" aria-labelledby="tab-2027">
-          <div class="podium" id="lb-podium"></div>
-          <div class="list" id="lb-list"><div class="empty">Loading contributors…</div></div>
-        </div>
-
-        <details class="how">
-          <summary>How the ranking works</summary>
-          <p>Each merged PR earns 10 points. If closed-without-merging PRs outnumber half your merged ones, each extra costs 2 points, and open PRs beyond your merged count cost 1 point each, so steady, finished work ranks highest. Seasons run from September 1 to September 1. Merged PRs from repositories we folded into the monorepo are included even though GitHub search no longer lists them. PRs closed when the Django site retired on November 1, 2026 don't count against anyone.</p>
-        </details>
+      <div class="stats" aria-label="This season at a glance">
+        <div class="stat"><b data-stat="contributors">–</b><span>2027 contributors</span></div>
+        <div class="stat"><b data-stat="merged">–</b><span>PRs merged this season</span></div>
+        <div class="stat"><b>9</b><span>Live sites to build on</span></div>
+        <div class="stat"><b>10</b><span>Project ideas</span></div>
       </div>
-    </section>
+    </div>
 
-    <!-- ================= IDEAS ================= -->
-    <section aria-labelledby="ideas-title">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="a1-eyebrow">Project ideas</span>
-          <h2 id="ideas-title">Ten ideas for 2027, or bring your own.</h2>
-          <p>Every idea builds on code that's live today. Strong proposals reshape them, combine them, or pitch something new.</p>
-        </div>
-        <div class="ideas">
-          <a href="/ideas#1-live-classrooms-with-real-audio-video-and-captions"><article class="a1-card a1-card--interactive">
-            <span class="a1-badge a1-badge--gold">350 h · Hard</span>
-            <h3>Live classrooms with audio, video and captions</h3>
-            <p>Real-time classes in learn's virtual classroom on Cloudflare Realtime, with VoxBridge captions.</p>
-            <span class="go">Read the idea →</span>
-          </article></a>
-          <a href="/ideas#2-course-grounded-ai-tutor-with-teacher-controls"><article class="a1-card a1-card--interactive">
-            <span class="a1-badge a1-badge--gold">350 h · Hard</span>
-            <h3>A course-grounded AI tutor</h3>
-            <p>Answers only from a course's materials, cites its sources, and follows the teacher's rules.</p>
-            <span class="go">Read the idea →</span>
-          </article></a>
-          <a href="/ideas#3-offline-first-learning-for-low-connectivity-regions"><article class="a1-card a1-card--interactive">
-            <span class="a1-badge a1-badge--gold">175 h · Medium</span>
-            <h3>Offline-first learning</h3>
-            <p>Download a course on Wi-Fi and finish it anywhere. Progress syncs when you reconnect.</p>
-            <span class="go">Read the idea →</span>
-          </article></a>
-        </div>
-        <p class="note"><a href="/ideas">See all ten ideas, plus starter projects and past years →</a></p>
+    <section class="a1-section" aria-labelledby="why-title"><div class="a1-container">
+      <div class="a1-section__top"><h2 id="why-title" class="a1-section__title">Why Alpha One Labs</h2></div>
+      <div class="why">
+        <article class="a1-card"><svg class="ico" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="13"/><path d="M4 17h26M17 4c5 5 5 21 0 26M17 4c-5 5-5 21 0 26"/></svg><h3>Real learners</h3><p>Your work ships to learn.alphaonelabs.com and eight more live sites.</p></article>
+        <article class="a1-card"><svg class="ico" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="11" r="5"/><path d="M7 29a10 10 0 0 1 20 0"/></svg><h3>Real mentors</h3><p>Every PR gets a human review. Mentors help you scope your proposal.</p></article>
+        <article class="a1-card"><svg class="ico" viewBox="0 0 34 34" aria-hidden="true"><path d="M5 9h24M5 17h24M5 25h14"/><path d="m23 22 5 3-5 3"/></svg><h3>One repo</h3><p>All 17 projects in one monorepo. Your site deploys when you merge.</p></article>
+        <article class="a1-card"><svg class="ico" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 3 6 8v8c0 6.6 4.7 11.4 11 13 6.3-1.6 11-6.4 11-13V8z"/><path d="m12 17 4 4 7-8"/></svg><h3>Privacy first</h3><p>learn encrypts personal data at rest. Build features that respect users.</p></article>
       </div>
-    </section>
+    </div></section>
 
-    <!-- ================= PATH ================= -->
-    <section id="start" aria-labelledby="start-title">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="a1-eyebrow">Get started</span>
-          <h2 id="start-title">Your path to GSoC with us</h2>
-          <p>Priority goes to applicants who have merged at least five pull requests before selection. Start early, start small.</p>
+    <section class="a1-section" id="leaderboard" aria-labelledby="lb-title"><div class="a1-container">
+      <div class="a1-section__top"><h2 id="lb-title" class="a1-section__title">Top contributors</h2><a class="a1-link-more" href="https://github.com/alphaonelabs/website/pulls?q=is%3Apr+is%3Amerged">All merged PRs ↗</a></div>
+      <div class="lb-bar">
+        <div class="tabs" role="tablist" aria-label="Season">
+          <button role="tab" id="tab-2027" data-season="2027" aria-selected="true" aria-controls="lb-panel"><span class="live" aria-hidden="true"></span>2027</button>
+          <button role="tab" id="tab-2026" data-season="2026" aria-selected="false" aria-controls="lb-panel">2026</button>
+          <button role="tab" id="tab-2025" data-season="2025" aria-selected="false" aria-controls="lb-panel">2025</button>
         </div>
-        <ol class="path">
-          <li><span class="node">01</span><h3>Explore</h3><p>Clone the <a href="https://github.com/alphaonelabs/website">monorepo</a> and run <code>learn/</code> locally.</p></li>
-          <li><span class="node">02</span><h3>First PR</h3><p>Pick a <a href="https://github.com/alphaonelabs/website/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22">good first issue</a> and open a focused PR.</p></li>
-          <li><span class="node">03</span><h3>Five merged</h3><p>Keep going. Climb the <a href="#leaderboard">leaderboard</a> with finished, reviewed work.</p></li>
-          <li><span class="node">04</span><h3>Propose</h3><p>Pick an <a href="/ideas">idea</a> and draft your proposal with a mentor in <a href="https://github.com/orgs/alphaonelabs/discussions">Discussions</a>.</p></li>
-          <li><span class="node">05</span><h3>Build</h3><p>Bond with your mentor, then ship your project to real users all summer.</p></li>
-        </ol>
+        <label class="search"><span class="sr-only">Find a contributor</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input class="a1-input" type="search" id="lb-search" placeholder="Find a contributor…" autocomplete="off"></label>
       </div>
-    </section>
+      <p class="season-meta" id="lb-meta" aria-live="polite"></p>
+      <div id="lb-panel" role="tabpanel" aria-labelledby="tab-2027">
+        <div class="podium" id="lb-podium"></div>
+        <div class="list" id="lb-list"><div class="empty">Loading contributors…</div></div>
+      </div>
+      <details class="how"><summary>How the ranking works</summary><p>Each merged PR earns 10 points. If closed-without-merging PRs outnumber half your merged ones, each extra costs 2 points, and open PRs beyond your merged count cost 1 point each. Seasons run from September 1 to September 1. Merged PRs from repositories folded into the monorepo are included even though GitHub search no longer lists them, and PRs closed when the Django site retired on November 1, 2026 don't count against anyone.</p></details>
+    </div></section>
 
-    <!-- ================= TIMELINE ================= -->
-    <section aria-labelledby="when-title">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="a1-eyebrow">Timeline</span>
-          <h2 id="when-title">GSoC 2027 at a glance</h2>
-          <p>The typical shape of a GSoC year. Exact dates come from Google's official timeline.</p>
-        </div>
-        <div class="when">
-          <article class="a1-card"><time>Now – February</time><h3>Contribute</h3><p>Merge PRs, learn the codebase and get to know the mentors. Organizations apply to Google.</p></article>
-          <article class="a1-card"><time>Late February</time><h3>Organizations announced</h3><p>Google publishes the accepted mentoring organizations.</p></article>
-          <article class="a1-card"><time>March – April</time><h3>Proposals</h3><p>Contributors submit proposals through the GSoC site. Get feedback on drafts early.</p></article>
-          <article class="a1-card"><time>May</time><h3>Selections and bonding</h3><p>Accepted contributors are announced and meet their mentors.</p></article>
-          <article class="a1-card"><time>June – August</time><h3>Coding</h3><p>Build, review and ship, with evaluations at midterm and the end.</p></article>
-          <article class="a1-card"><time>September onward</time><h3>Wrap up</h3><p>Final evaluations. Extended projects can run into November.</p></article>
-        </div>
-        <p class="note">Check <a href="https://summerofcode.withgoogle.com/">summerofcode.withgoogle.com</a> for the official 2027 dates and <a href="https://summerofcode.withgoogle.com/rules">program rules</a>.</p>
+    <section class="a1-section" aria-labelledby="ideas-title"><div class="a1-container">
+      <div class="a1-section__top"><h2 id="ideas-title" class="a1-section__title">2027 project ideas</h2><a class="a1-link-more" href="/ideas">All ten ideas ↗</a></div>
+      <div class="ideas">
+        <a href="/ideas#1-live-classrooms-with-real-audio-video-and-captions"><article class="a1-card a1-card--media"><div class="a1-card__media idea-media"><span class="a1-tag a1-tag--gold">350 h · Hard</span><img src="https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg" alt=""></div><div class="a1-card__body"><h3 class="idea-title">Live classrooms</h3><p class="a1-card__desc">Real audio, video and captions in learn's virtual classroom, on Cloudflare Realtime with VoxBridge captions.</p><div class="a1-card__meta"><span>learn/ · voxbridge/</span><span class="meta-price">→</span></div></div></article></a>
+        <a href="/ideas#2-course-grounded-ai-tutor-with-teacher-controls"><article class="a1-card a1-card--media"><div class="a1-card__media idea-media"><span class="a1-tag a1-tag--gold">350 h · Hard</span><img src="https://design.alphaonelabs.com/assets/circuits/pcb-traces.svg" alt=""></div><div class="a1-card__body"><h3 class="idea-title">A course-grounded AI tutor</h3><p class="a1-card__desc">Answers only from a course's own materials, cites its sources, and follows the teacher's rules.</p><div class="a1-card__meta"><span>learn/ · learnpilot/</span><span class="meta-price">→</span></div></div></article></a>
+        <a href="/ideas#3-offline-first-learning-for-low-connectivity-regions"><article class="a1-card a1-card--media"><div class="a1-card__media idea-media"><span class="a1-tag">175 h · Medium</span><img src="https://design.alphaonelabs.com/assets/circuits/pcb-divider.svg" alt="" style="width:80%"></div><div class="a1-card__body"><h3 class="idea-title">Offline-first learning</h3><p class="a1-card__desc">Download a course on Wi-Fi and finish it anywhere. Progress syncs when you reconnect.</p><div class="a1-card__meta"><span>learn/</span><span class="meta-price">→</span></div></div></article></a>
       </div>
-    </section>
+    </div></section>
 
-    <!-- ================= FAQ ================= -->
-    <section aria-labelledby="faq-title">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="a1-eyebrow">FAQ</span>
-          <h2 id="faq-title">Questions, answered</h2>
-        </div>
-        <div class="faq">
-          <details><summary>What is Google Summer of Code?</summary><p>A global program where new contributors work on open-source projects with mentors from participating organizations, and receive a stipend from Google.</p></details>
-          <details><summary>Do I need prior experience?</summary><p>Basic programming knowledge helps, but we welcome beginners who are eager to learn. Start with small fixes to understand our workflow, then grow from there.</p></details>
-          <details><summary>Which project should I contribute to?</summary><p>Most work happens in <code>learn/</code>, our live platform, but every folder in the monorepo is fair game. Pick the area your proposal will touch, so your PRs show you know it.</p></details>
-          <details><summary>Why five merged PRs?</summary><p>It shows you can work with our codebase and our review process, which is the best predictor of a successful summer. Quality matters more than count.</p></details>
-          <details><summary>Can I propose my own idea?</summary><p>Yes. A focused proposal grounded in our code is just as strong as one from the list. Run it past a mentor in Discussions first.</p></details>
-          <details><summary>Where do I ask questions?</summary><p>Open a thread in <a href="https://github.com/orgs/alphaonelabs/discussions">GitHub Discussions</a>, comment on an issue, or join our <a href="https://t.co/Uskb6jkZKz">Slack community</a>.</p></details>
-        </div>
+    <section class="a1-section" id="start" aria-labelledby="start-title"><div class="a1-container">
+      <div class="a1-section__top"><h2 id="start-title" class="a1-section__title">Your path to GSoC</h2></div>
+      <p class="lede">Priority goes to applicants who have merged at least five pull requests before selection. Start early, start small.</p>
+      <ol class="path">
+        <li><span class="node">1</span><h3>Explore</h3><p>Clone the <a href="https://github.com/alphaonelabs/website">monorepo</a> and run <code>learn/</code> locally.</p></li>
+        <li><span class="node">2</span><h3>First PR</h3><p>Pick a <a href="https://github.com/alphaonelabs/website/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22">good first issue</a> and open a focused PR.</p></li>
+        <li><span class="node">3</span><h3>Five merged</h3><p>Keep going. Climb the <a href="#leaderboard">leaderboard</a> with finished, reviewed work.</p></li>
+        <li><span class="node">4</span><h3>Propose</h3><p>Pick an <a href="/ideas">idea</a> and shape your proposal with a mentor in <a href="https://github.com/orgs/alphaonelabs/discussions">Discussions</a>.</p></li>
+        <li><span class="node">5</span><h3>Ship</h3><p>Bond with your mentor, then ship to real learners all summer.</p></li>
+      </ol>
+      <div class="a1-cta-grid" style="margin-top:40px">
+        <a class="a1-cta a1-cta--gold" href="https://github.com/alphaonelabs/website/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m14 12-8 8 8 8M26 12l8 8-8 8M23 8l-6 24"/></svg><span><strong>I want to contribute →</strong><small>Find a good first issue and open your first PR.</small></span></a>
+        <a class="a1-cta" href="https://github.com/orgs/alphaonelabs/discussions"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M4 15 20 8l16 7-16 7z"/><path d="M10 18v8c5 4 15 4 20 0v-8M36 15v9"/></svg><span><strong>I want to mentor →</strong><small>Share your expertise and guide a contributor.</small></span></a>
       </div>
-    </section>
+    </div></section>
 
-    <!-- ================= BAND ================= -->
-    <section aria-labelledby="band-title" style="padding-top:0">
-      <div class="wrap">
-        <div class="band">
-          <div>
-            <span class="a1-eyebrow">Say hi</span>
-            <h2 id="band-title">Start with one pull request.</h2>
-            <p>Find a good first issue, open a PR, and introduce yourself in Discussions. The leaderboard updates every six hours.</p>
-            <div class="cta">
-              <a class="a1-btn a1-btn--primary" href="https://github.com/alphaonelabs/website/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22">Good first issues</a>
-              <a class="a1-btn a1-btn--ghost" href="https://github.com/orgs/alphaonelabs/discussions">Introduce yourself</a>
-            </div>
-          </div>
-          <img class="trans" src="https://design.alphaonelabs.com/assets/illustrations/transistor.svg" alt="">
-        </div>
+    <section class="a1-section" aria-labelledby="when-title"><div class="a1-container">
+      <div class="a1-section__top"><h2 id="when-title" class="a1-section__title">GSoC 2027 timeline</h2><a class="a1-link-more" href="https://summerofcode.withgoogle.com/">Official dates ↗</a></div>
+      <div class="when">
+        <div class="when-row"><time>Now – February</time><h3>Contribute</h3><p>Merge PRs, learn the codebase and meet the mentors. Organizations apply to Google.</p></div>
+        <div class="when-row"><time>Late February</time><h3>Orgs announced</h3><p>Google publishes the accepted mentoring organizations.</p></div>
+        <div class="when-row"><time>March – April</time><h3>Proposals</h3><p>Submit through the GSoC site. Get feedback on drafts early.</p></div>
+        <div class="when-row"><time>May</time><h3>Selection &amp; bonding</h3><p>Accepted contributors are announced and meet their mentors.</p></div>
+        <div class="when-row"><time>June – August</time><h3>Coding</h3><p>Build, review and ship, with evaluations at midterm and the end.</p></div>
+        <div class="when-row"><time>September onward</time><h3>Wrap up</h3><p>Final evaluations. Extended projects can run into November.</p></div>
       </div>
-    </section>
+      <p class="note">The typical shape of a GSoC year. Check <a href="https://summerofcode.withgoogle.com/">summerofcode.withgoogle.com</a> and the <a href="https://summerofcode.withgoogle.com/rules">program rules</a> for official dates.</p>
+    </div></section>
+
+    <section class="a1-section" aria-labelledby="faq-title"><div class="a1-container">
+      <div class="a1-section__top"><h2 id="faq-title" class="a1-section__title">Questions</h2></div>
+      <div class="faq">
+        <details><summary>What is Google Summer of Code?</summary><p>A global program where new contributors work on open-source projects with mentors from participating organizations, and receive a stipend from Google.</p></details>
+        <details><summary>Do I need prior experience?</summary><p>Basic programming knowledge helps, but we welcome beginners who are eager to learn. Start with small fixes to understand our workflow.</p></details>
+        <details><summary>Which project should I contribute to?</summary><p>Most work happens in <code>learn/</code>, our live platform, but every folder in the monorepo is fair game. Pick the area your proposal will touch.</p></details>
+        <details><summary>Why five merged PRs?</summary><p>It shows you can work with our codebase and review process, which is the best predictor of a successful summer. Quality matters more than count.</p></details>
+        <details><summary>Can I propose my own idea?</summary><p>Yes. A focused proposal grounded in our code is just as strong as one from the list. Run it past a mentor in Discussions first.</p></details>
+        <details><summary>Where do I ask questions?</summary><p>Open a thread in <a href="https://github.com/orgs/alphaonelabs/discussions">GitHub Discussions</a>, comment on an issue, or join our <a href="https://t.co/Uskb6jkZKz">Slack community</a>.</p></details>
+      </div>
+    </div></section>
+
+    <section class="a1-section" aria-labelledby="statement-title"><div class="a1-container statement">
+      <h2 id="statement-title" class="a1-display">A place to learn, build, and grow together.</h2>
+      <div><p>A community-powered learning platform where curious people teach, learn, and ship together, online and around the world.</p><span class="a1-rule" aria-hidden="true" style="margin:0"></span><img class="pcb" src="https://design.alphaonelabs.com/assets/circuits/pcb-divider.svg" alt=""></div>
+    </div></section>
   </main>
 
   <a1-footer source="gsoc"></a1-footer>
