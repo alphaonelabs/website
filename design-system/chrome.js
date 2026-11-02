@@ -113,7 +113,7 @@
       const root = this.attachShadow({ mode: "open" });
       followTheme(this);
       if (this.hasAttribute("sticky")) Object.assign(this.style, { position: "sticky", top: "0", zIndex: "1000" });
-      const sitesMenu = SITES.map(([t, h, d]) => `<a role="menuitem" href="${h}"><b>${t}</b><span>${d}</span></a>`).join("");
+      const sitesMenu = SITES.map(([t, h, d]) => `<a href="${h}"><b>${t}</b><span>${d}</span></a>`).join("");
       root.innerHTML = `<style>${BASE}
         header { background:var(--bg); color:var(--fg); border-bottom:1px solid var(--soft); }
         .bar { max-width:1280px; margin:0 auto; min-height:76px; padding:0 clamp(16px,4vw,48px); display:flex; align-items:center; gap:18px; }
@@ -152,14 +152,14 @@
           <nav class="primary" aria-label="Alpha One Labs">${NAV.map(([t, h]) => `<a href="${h}">${t}</a>`).join("")}</nav>
           <div class="end">
             <slot name="actions"></slot>
-            <details class="sites"><summary class="icon sites-btn" aria-label="All Alpha One Labs sites">Sites</summary><div class="menu" role="menu">${sitesMenu}</div></details>
+            <details class="sites"><summary class="icon sites-btn" aria-label="All Alpha One Labs sites">Sites</summary><div class="menu">${sitesMenu}</div></details>
             ${showToggle ? `<button class="icon toggle" type="button" aria-label="Toggle light and dark theme">${SUN}${MOON}</button>` : ""}
             <a class="icon" href="${REPO}" aria-label="Alpha One Labs on GitHub">${GH}</a>
             ${compact ? "" : `<a class="btn signin" href="${LEARN}/login">Sign in</a><a class="btn btn--gold explore" href="${LEARN}/activity">Explore Activities ↗</a>`}
-            <button class="icon mobile" type="button" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <button class="icon mobile" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="a1-mobile-drawer"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
           </div>
         </div>
-        <div class="drawer"><nav aria-label="Alpha One Labs menu">
+        <div class="drawer" id="a1-mobile-drawer"><nav aria-label="Alpha One Labs menu">
           ${NAV.map(([t, h]) => `<a href="${h}">${t}</a>`).join("")}
           ${SITES.map(([t, h]) => `<a href="${h}" style="font-size:18px">${t}</a>`).join("")}
           <div class="row"><a class="btn" href="${LEARN}/login" style="font:800 13px Inter;border:1px solid var(--hard);padding:0 14px">Sign in</a><a class="btn btn--gold" href="${LEARN}/activity" style="font:800 13px Inter;padding:0 14px">Explore Activities ↗</a></div>
@@ -169,14 +169,47 @@
       if (toggle) toggle.addEventListener("click", () => window.A1Theme.toggle());
       const header = root.querySelector("header");
       const burger = root.querySelector(".mobile");
-      burger.addEventListener("click", () => {
-        const open = header.classList.toggle("open");
+      const drawer = root.querySelector(".drawer");
+      const setDrawerOpen = (open, returnFocus = false) => {
+        header.classList.toggle("open", open);
         burger.setAttribute("aria-expanded", String(open));
         burger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+        if (open) {
+          drawer.querySelector("a")?.focus();
+        } else if (returnFocus) {
+          burger.focus();
+        }
+      };
+      burger.addEventListener("click", () => {
+        setDrawerOpen(!header.classList.contains("open"));
       });
       const details = root.querySelector("details");
-      document.addEventListener("click", (e) => { if (!e.composedPath().includes(details)) details.open = false; });
-      document.addEventListener("keydown", (e) => { if (e.key === "Escape") { details.open = false; header.classList.remove("open"); } });
+      const summary = root.querySelector("details summary");
+      document.addEventListener("click", (event) => {
+        if (!event.composedPath().includes(this)) {
+          if (details.open) details.open = false;
+          setDrawerOpen(false);
+        } else if (!event.composedPath().includes(details)) {
+          details.open = false;
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+
+        const sitesHasFocus = details.contains(root.activeElement);
+
+        if (details.open && sitesHasFocus) {
+          details.open = false;
+          event.preventDefault();
+          summary.focus();
+        } else if (header.classList.contains("open")) {
+          event.preventDefault();
+          setDrawerOpen(false, true);
+        }
+        if (details.open && !sitesHasFocus && !header.classList.contains("open")) {
+          details.open = false;
+        }
+      });
     }
   }
 
