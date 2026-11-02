@@ -3,1096 +3,471 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alpha One Labs - Google Summer of Code 2026</title>
-  <meta name="description" content="Join Alpha One Labs for Google Summer of Code 2026. Contribute to open-source education projects and grow your skills.">
-  <meta name="keywords" content="GSoC 2026, Alpha One Labs, open source, contributors, leaderboard, merged pull requests">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>Google Summer of Code 2027 · Alpha One Labs</title>
+  <meta name="description" content="Build open-source education tools with Alpha One Labs in Google Summer of Code 2027: project ideas, the contributor leaderboard and how to get started.">
+  <meta property="og:title" content="Google Summer of Code 2027 · Alpha One Labs">
+  <meta property="og:description" content="Build open-source education tools on a platform that's live today.">
+  <meta property="og:image" content="https://design.alphaonelabs.com/assets/banner.webp">
+  <link rel="icon" href="https://design.alphaonelabs.com/assets/logo/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   <style>
-    html {
-      scroll-behavior: smooth;
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--a1-bg); color: var(--a1-text); font-family: var(--a1-font-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    img { max-width: 100%; display: block; }
+    a { color: var(--a1-accent); }
+    .wrap { width: min(1200px, 100% - 40px); margin-inline: auto; }
+    section { padding-block: clamp(64px, 9vw, 112px); position: relative; }
+    .section-head { max-width: 720px; margin-bottom: 48px; }
+    .section-head h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-4xl); line-height: 1.05; letter-spacing: -0.03em; margin: 12px 0 14px; }
+    .section-head p { color: var(--a1-text-muted); font-size: var(--a1-text-lg); margin: 0; }
+    .gold { color: var(--a1-accent); }
+    :focus-visible { outline: 2px solid var(--a1-focus); outline-offset: 3px; border-radius: 6px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    /* ---------- hero ---------- */
+    .hero { padding-block: clamp(56px, 8vw, 96px) clamp(48px, 7vw, 80px); overflow: hidden; isolation: isolate; }
+    .hero::before { content: ""; position: absolute; inset: 0; z-index: -1;
+      background-image: linear-gradient(var(--a1-border) 1px, transparent 1px), linear-gradient(90deg, var(--a1-border) 1px, transparent 1px);
+      background-size: 48px 48px; opacity: .35;
+      mask-image: radial-gradient(ellipse 80% 70% at 70% 40%, #000 30%, transparent 75%); }
+    .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
+    .hero h1 { font-family: var(--a1-font-display); font-size: var(--a1-text-5xl); line-height: .98; letter-spacing: -0.04em; margin: 18px 0 22px; }
+    .hero h1 em { font-style: normal; color: var(--a1-accent); }
+    .hero .lead { font-size: clamp(1.05rem, 1.6vw, 1.25rem); color: var(--a1-text-muted); max-width: 560px; margin: 0 0 32px; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+    .art { position: relative; aspect-ratio: 1 / 1.05; color: var(--a1-accent); }
+    .art .circuit { position: absolute; inset: 0 auto auto -10%; width: 70%; opacity: .55; }
+    .art .iss { position: absolute; top: 2%; right: 0; width: 52%; }
+    .art .iron { position: absolute; bottom: 4%; right: 2%; width: 15%; }
+    .art .nerd { position: absolute; left: 12%; bottom: 0; width: 72%; color: var(--a1-text); }
+    .stats { margin-top: clamp(48px, 7vw, 72px); display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); background: var(--a1-surface); }
+    .stat { padding: 22px 24px; border-left: 1px solid var(--a1-border); }
+    .stat:first-child { border-left: 0; }
+    .stat b { display: block; font-family: var(--a1-font-display); font-size: var(--a1-text-3xl); line-height: 1.1; }
+    .stat span { font-family: var(--a1-font-mono); font-size: var(--a1-text-xs); letter-spacing: .12em; text-transform: uppercase; color: var(--a1-text-muted); }
+
+    /* ---------- why ---------- */
+    .why { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .why .a1-card h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-xl); margin: 14px 0 8px; letter-spacing: -0.01em; }
+    .why .a1-card p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+    .icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; border: 1px solid var(--a1-border); color: var(--a1-accent); }
+    .icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- leaderboard ---------- */
+    .lb-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .tabs { display: inline-flex; padding: 4px; gap: 4px; border: 1px solid var(--a1-border); border-radius: var(--a1-radius-full); background: var(--a1-surface); }
+    .tabs button { border: 0; background: none; color: var(--a1-text-muted); font: 600 var(--a1-text-sm) var(--a1-font-body); padding: 8px 18px; border-radius: var(--a1-radius-full); cursor: pointer; }
+    .tabs button[aria-selected="true"] { background: var(--a1-accent); color: var(--a1-on-accent); }
+    .tabs button .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; }
+    .search { flex: 1 1 220px; max-width: 320px; position: relative; }
+    .search input { width: 100%; padding: 10px 14px 10px 38px; border-radius: var(--a1-radius-full); border: 1px solid var(--a1-border); background: var(--a1-surface); color: var(--a1-text); font: inherit; font-size: var(--a1-text-sm); }
+    .search svg { position: absolute; left: 13px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; fill: none; stroke: var(--a1-text-muted); stroke-width: 2; }
+    .season-meta { color: var(--a1-text-muted); font-size: var(--a1-text-sm); margin: -8px 0 24px; }
+    .podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+    .podium a { text-decoration: none; color: inherit; }
+    .podium .a1-card { display: flex; align-items: center; gap: 16px; position: relative; overflow: hidden; }
+    .podium .rank { position: absolute; right: 14px; top: 8px; font: 700 64px/1 var(--a1-font-display); color: var(--a1-accent); opacity: .18; }
+    .podium img { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--a1-accent); }
+    .podium .who b { display: block; font-family: var(--a1-font-display); font-size: var(--a1-text-lg); }
+    .podium .who span { color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+    .list { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); overflow: hidden; background: var(--a1-surface); }
+    .row { display: grid; grid-template-columns: 44px 44px 1fr auto 140px; gap: 14px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--a1-border); }
+    .row:first-child { border-top: 0; }
+    .row .n { font: 700 var(--a1-text-sm) var(--a1-font-mono); color: var(--a1-text-muted); text-align: right; }
+    .row img { width: 40px; height: 40px; border-radius: 50%; }
+    .row .name { font-weight: 600; color: var(--a1-text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .name:hover { color: var(--a1-accent); }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .score { display: grid; gap: 4px; justify-items: end; font: 700 var(--a1-text-sm) var(--a1-font-mono); }
+    .score i { display: block; width: 100%; height: 4px; border-radius: 4px; background: var(--a1-border); overflow: hidden; }
+    .score i::after { content: ""; display: block; height: 100%; width: var(--w); background: var(--a1-accent); }
+    .more { display: block; width: 100%; padding: 14px; border: 0; border-top: 1px solid var(--a1-border); background: none; color: var(--a1-accent); font: 600 var(--a1-text-sm) var(--a1-font-body); cursor: pointer; }
+    .empty { padding: 40px 20px; text-align: center; color: var(--a1-text-muted); }
+    details.how { margin-top: 20px; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+    details.how summary { cursor: pointer; color: var(--a1-text); font-weight: 600; }
+
+    /* ---------- ideas ---------- */
+    .ideas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .ideas a { text-decoration: none; color: inherit; }
+    .ideas .a1-card { height: 100%; display: flex; flex-direction: column; gap: 10px; }
+    .ideas h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-xl); line-height: 1.2; margin: 4px 0 0; }
+    .ideas p { color: var(--a1-text-muted); font-size: var(--a1-text-sm); margin: 0; flex: 1; }
+    .ideas .go { color: var(--a1-accent); font-weight: 600; font-size: var(--a1-text-sm); }
+
+    /* ---------- path (circuit timeline) ---------- */
+    .path { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; position: relative; }
+    .path::before { content: ""; position: absolute; left: 0; right: 0; top: 19px; height: 2px; background: var(--a1-accent); opacity: .6; }
+    .path li { position: relative; padding: 0 16px 0 0; }
+    .path .node { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--a1-bg); border: 2px solid var(--a1-accent); color: var(--a1-accent); font: 700 var(--a1-text-sm) var(--a1-font-mono); position: relative; }
+    .path h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-lg); margin: 18px 0 6px; }
+    .path p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+    .path a { color: var(--a1-accent); }
+
+    /* ---------- timeline ---------- */
+    .when { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .when .a1-card time { font: 700 var(--a1-text-xs) var(--a1-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--a1-accent); }
+    .when .a1-card h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-lg); margin: 8px 0 6px; }
+    .when .a1-card p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+    .note { margin-top: 18px; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+
+    /* ---------- faq ---------- */
+    .faq { display: grid; gap: 12px; max-width: 860px; }
+    .faq details { border: 1px solid var(--a1-border); border-radius: var(--a1-radius); background: var(--a1-surface); }
+    .faq summary { cursor: pointer; list-style: none; padding: 18px 22px; font-weight: 600; display: flex; justify-content: space-between; gap: 16px; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: "+"; color: var(--a1-accent); font: 700 20px/1 var(--a1-font-mono); }
+    .faq details[open] summary::after { content: "−"; }
+    .faq details p { margin: 0; padding: 0 22px 20px; color: var(--a1-text-muted); }
+
+    /* ---------- closing band ---------- */
+    .band { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); background: var(--a1-surface); padding: clamp(28px, 5vw, 56px); display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center; overflow: hidden; position: relative; }
+    .band h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-3xl); letter-spacing: -0.02em; margin: 10px 0; line-height: 1.1; }
+    .band p { color: var(--a1-text-muted); margin: 0 0 24px; max-width: 52ch; }
+    .band .trans { width: 180px; color: var(--a1-accent); opacity: .8; }
+
+    @media (max-width: 960px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .art { max-width: 420px; justify-self: center; width: 100%; }
+      .why, .ideas, .when { grid-template-columns: 1fr 1fr; }
+      .podium { grid-template-columns: 1fr; }
+      .path { grid-template-columns: 1fr; gap: 28px; }
+      .path::before { left: 19px; right: auto; top: 0; bottom: 0; width: 2px; height: auto; }
+      .path li { display: grid; grid-template-columns: 40px 1fr; column-gap: 18px; padding: 0; }
+      .path h3 { margin: 6px 0 4px; }
+      .path .node { grid-row: span 2; }
     }
-    
-    .card-hover {
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stat:nth-child(3) { border-left: 0; }
+      .stat:nth-child(n+3) { border-top: 1px solid var(--a1-border); }
+      .why, .ideas, .when { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 28px 36px 1fr 64px; padding: 12px 14px; gap: 10px; }
+      .row img { width: 36px; height: 36px; }
+      .row .chips { display: none; }
+      .band { grid-template-columns: 1fr; }
+      .band .trans { display: none; }
     }
-    
-    .card-hover:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
-    }
-    
-    #mobile-menu {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-    }
-    
-    #mobile-menu.active {
-      max-height: 500px;
-    }
-    
-    * {
-      transition-property: background-color, border-color, color;
-      transition-timing-function: ease;
-      transition-duration: 200ms;
-    }
-    
-    ::-webkit-scrollbar {
-      width: 10px;
-    }
-    
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(to bottom, #0d9488, #ea580c);
-      border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(to bottom, #0f766e, #c2410c);
-    }
-    
-    @media (prefers-color-scheme: dark) {
-      ::-webkit-scrollbar-track {
-        background: #1f2937;
-      }
-    }
-    
-    @keyframes fade-in {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes slide-up {
-      from { transform: translateY(20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    
-    @keyframes fade-in-up {
-      from { transform: translateY(30px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    
-    @keyframes gradient-x {
-      0%, 100% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-    }
-    
-    .animate-fade-in {
-      animation: fade-in 1s ease-in-out;
-    }
-    
-    .animate-slide-up {
-      animation: slide-up 1s ease-in-out;
-    }
-    
-    .animate-fade-in-up {
-      animation: fade-in-up 1s ease-in-out;
-    }
-    
-    .animate-gradient-x {
-      background-size: 200% 200%;
-      animation: gradient-x 3s ease infinite;
-    }
-    
-    /* Dark mode support */
-    @media (prefers-color-scheme: dark) {
-      body {
-        background-color: #111827;
-        color: #f9fafb;
-      }
-    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .a1-card, .a1-btn { transition: none; } }
   </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+<body>
+  <a1-header site="GSoC" site-href="/" sticky>
+    <a slot="actions" class="a1-btn a1-btn--primary" href="/ideas" style="padding:.55rem 1rem">2027 ideas</a>
+  </a1-header>
 
-  <!-- Navigation Bar -->
-  <nav class="sticky top-0 z-50 w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md">
-    <div class="max-w-7xl mx-auto px-4 md:px-6">
-      <div class="flex justify-between items-center h-16">
-        <!-- Logo -->
-        <a href="#" class="flex items-center space-x-2">
-          <i class="fas fa-graduation-cap text-2xl"></i>
-          <span class="text-xl font-bold">Alpha One Labs</span>
-        </a>
-        
-        <!-- Desktop Navigation -->
-        <div class="hidden md:flex items-center space-x-6">
-          <a href="#about" class="text-white hover:text-teal-100 transition-colors text-sm font-medium">About</a>
-          <a href="#contributors" class="text-white hover:text-teal-100 transition-colors text-sm font-medium">Contributors</a>
-          <a href="#getting-started" class="text-white hover:text-teal-100 transition-colors text-sm font-medium">Get Started</a>
-          <a href="/ideas" class="text-white hover:text-teal-100 transition-colors text-sm font-medium">Ideas</a>
-          <a href="#timeline" class="text-white hover:text-teal-100 transition-colors text-sm font-medium">Timeline</a>
-          <a href="#faqs" class="text-white hover:text-teal-100 transition-colors text-sm font-medium">FAQs</a>
-          <a href="https://github.com/alphaonelabs/website" target="_blank" rel="noopener noreferrer" class="text-white hover:text-teal-100 transition-colors">
-            <i class="fab fa-github text-xl"></i>
-          </a>
-          <a href="https://alphaonelabs.com/" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors">
-            Visit Us
-          </a>
+  <main id="main">
+    <!-- ================= HERO ================= -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div>
+            <span class="a1-badge a1-badge--gold">Google Summer of Code 2027</span>
+            <h1 id="hero-title" class="a1-display">Build the future of <em>open-source education.</em></h1>
+            <p class="lead">Spend your summer shipping features that real learners use the next day. Every project lands in a live Alpha One Labs site, guided by mentors who review your code.</p>
+            <div class="cta">
+              <a class="a1-btn a1-btn--primary" href="/ideas">Browse 2027 project ideas →</a>
+              <a class="a1-btn a1-btn--ghost" href="#start">How to get started</a>
+            </div>
+          </div>
+          <div class="art" aria-hidden="true">
+            <img class="circuit" src="https://design.alphaonelabs.com/assets/illustrations/circuit.svg" alt="">
+            <img class="iss" src="https://design.alphaonelabs.com/assets/illustrations/iss.svg" alt="">
+            <img class="iron" src="https://design.alphaonelabs.com/assets/illustrations/soldering-iron.svg" alt="">
+            <svg class="nerd" viewBox="0 0 320 400">
+              <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M112 120 C112 80 136 58 170 58 C204 58 228 80 228 120 C228 164 204 190 170 190 C136 190 112 164 112 120 Z"/>
+                <path d="M138 64 L124 42 M156 58 L150 30 M174 57 L182 28 M194 61 L212 40 M212 74 L232 62"/>
+                <path d="M116 100 C128 80 150 72 170 84 C186 72 210 76 224 98"/>
+                <path d="M112 122 C100 118 98 140 112 144"/><path d="M228 122 C240 118 242 140 228 144"/>
+                <rect x="120" y="108" width="42" height="32" rx="10"/><rect x="178" y="108" width="42" height="32" rx="10"/>
+                <path d="M162 118 C166 113 174 113 178 118"/>
+                <path d="M154 162 C164 172 178 172 188 162"/>
+                <path d="M155 190 V206 M185 190 V206"/>
+                <path d="M140 204 L170 236 L200 204"/><path d="M140 204 L128 234 L156 228"/><path d="M200 204 L212 234 L184 228"/>
+                <path d="M200 204 C232 208 252 218 262 244 L276 296 L248 304 L240 270"/><path d="M244 280 L248 400"/>
+                <path d="M140 204 C112 208 94 216 84 236"/><path d="M100 262 L96 400"/>
+                <path d="M84 236 L60 286 L96 298 L102 262"/><path d="M68 288 L50 206 M90 296 L76 204"/>
+                <path d="M50 206 L46 174 C54 166 68 166 76 174 L76 204"/>
+                <path d="M49 172 L45 146 M57 168 L55 136 M65 168 L66 134 M73 172 L76 144"/><path d="M76 192 L92 174"/>
+                <path d="M190 268 L234 268 L232 312 C226 318 198 318 192 312 Z" stroke-width="6"/>
+              </g>
+              <g fill="currentColor"><circle cx="170" cy="262" r="3.5"/><circle cx="170" cy="300" r="3.5"/><circle cx="170" cy="338" r="3.5"/><circle cx="141" cy="125" r="4.5"/><circle cx="199" cy="125" r="4.5"/></g>
+              <g stroke="var(--a1-accent)" stroke-linecap="round"><path d="M200 276 V242" stroke-width="7"/><path d="M200 242 V234" stroke-width="3.5"/><path d="M212 276 V248" stroke-width="7"/></g>
+              <rect x="218" y="234" width="11" height="42" rx="1.5" fill="var(--a1-accent)"/>
+              <path d="M14 58 H88 A12 12 0 0 1 100 70 V100 A12 12 0 0 1 88 112 H40 L28 126 L30 112 H14 A12 12 0 0 1 2 100 V70 A12 12 0 0 1 14 58 Z" fill="var(--a1-accent)"/>
+              <text x="51" y="96" text-anchor="middle" font-family="Space Grotesk, Inter, sans-serif" font-size="30" font-weight="700" fill="var(--a1-on-accent)">hi!</text>
+            </svg>
+          </div>
         </div>
-        
-        <!-- Mobile Menu Button -->
-        <button id="mobile-menu-button" class="md:hidden text-white focus:outline-none">
-          <i class="fas fa-bars text-xl"></i>
-        </button>
-      </div>
-      
-      <!-- Mobile Menu -->
-      <div id="mobile-menu" class="md:hidden">
-        <div class="py-4 space-y-3 border-t border-teal-500">
-          <a href="#about" class="block text-white hover:text-teal-100 transition-colors text-sm font-medium px-2">About</a>
-          <a href="#contributors" class="block text-white hover:text-teal-100 transition-colors text-sm font-medium px-2">Contributors</a>
-          <a href="#getting-started" class="block text-white hover:text-teal-100 transition-colors text-sm font-medium px-2">Get Started</a>
-          <a href="/ideas" class="block text-white hover:text-teal-100 transition-colors text-sm font-medium px-2">Ideas</a>
-          <a href="#timeline" class="block text-white hover:text-teal-100 transition-colors text-sm font-medium px-2">Timeline</a>
-          <a href="#faqs" class="block text-white hover:text-teal-100 transition-colors text-sm font-medium px-2">FAQs</a>
-          <a href="https://alphaonelabs.com/" target="_blank" rel="noopener noreferrer" class="block w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg text-center transition-colors mt-4">
-            Visit Us
-          </a>
-        </div>
-      </div>
-    </div>
-  </nav>
 
-  <!-- Hero Section -->
-  <section class="w-full bg-gradient-to-r from-teal-600 to-orange-500 text-white py-20 md:py-28">
-    <div class="max-w-5xl mx-auto px-6 text-center">
-      <div class="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
-        <span class="text-sm font-medium">🚀 Google Summer of Code 2026</span>
-      </div>
-      <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight animate-fade-in">
-        Build the Future of <br/>Open-Source Education
-      </h1>
-      <p class="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto animate-slide-up">
-        Join Alpha One Labs' inaugural GSoC program. Contribute to real-world projects, learn from experienced mentors, and make an impact. 🌍✨
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-        <a href="https://summerofcode.withgoogle.com/" target="_blank" rel="noopener noreferrer" class="px-8 py-4 bg-white text-teal-700 font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg">
-          Apply to GSoC 2026
-        </a>
-        <a href="/ideas" class="px-8 py-4 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-lg">
-          Browse 2027 Project Ideas
-        </a>
-        <a href="#getting-started" class="px-8 py-4 bg-transparent text-white font-semibold rounded-lg hover:bg-white/10 transition-colors border-2 border-white/30">
-          Learn How to Start
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- About Section -->
-  <section id="about" class="w-full py-16 bg-white dark:bg-gray-800">
-    <div class="max-w-6xl mx-auto px-4 md:px-6">
-      <div class="text-center mb-12">
-        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">About Alpha One Labs</h2>
-        <p class="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-          Alpha One Labs is an open-source organization dedicated to building educational technology that empowers learners worldwide.
-        </p>
-      </div>
-      
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700 card-hover">
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <i class="fas fa-graduation-cap text-2xl text-teal-600 dark:text-teal-400"></i>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">Our Mission</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            Democratize education through innovative, accessible and high-quality open-source learning platforms.
-          </p>
-        </div>
-        
-        <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700 card-hover">
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <i class="fas fa-users text-2xl text-teal-600 dark:text-teal-400"></i>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">First-Time GSoC</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            As a first-time GSoC organization, Alpha One Labs is committed to providing a supportive and enriching environment for students.
-          </p>
-        </div>
-        
-        <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700 card-hover">
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <i class="fas fa-code text-2xl text-teal-600 dark:text-teal-400"></i>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">Tech Stack</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            We work with HTML, Python, Shell and modern web technologies to build scalable education platforms.
-          </p>
+        <div class="stats" aria-label="This season at a glance">
+          <div class="stat"><b data-stat="contributors">–</b><span>2027 contributors</span></div>
+          <div class="stat"><b data-stat="merged">–</b><span>PRs merged this season</span></div>
+          <div class="stat"><b>9</b><span>Live sites to build on</span></div>
+          <div class="stat"><b>10</b><span>Project ideas</span></div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Contributors Section -->
-  <section id="contributors" class="w-full py-16 bg-gray-50 dark:bg-gray-900">
-    <div class="max-w-7xl mx-auto px-4 md:px-6">
-      <!-- Title Section -->
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-        <div>
-          <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">🏆 Top GSoC Contributors</h2>
-          <p class="text-lg text-gray-600 dark:text-gray-300">
-            Celebrating the amazing people who contribute to our open source projects.
-          </p>
+    <!-- ================= WHY ================= -->
+    <section aria-labelledby="why-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="a1-eyebrow">Why Alpha One Labs</span>
+          <h2 id="why-title">A makerspace, rebuilt for the internet.</h2>
+          <p>We started in 2009 as a Brooklyn hackerspace. Today we build open-source learning tools, and the same rule applies: you learn by building something real.</p>
         </div>
-        <a href="https://github.com/alphaonelabs/website" target="_blank" rel="noopener noreferrer" class="mt-4 md:mt-0 inline-flex items-center bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg transition-colors shadow-lg">
-          <i class="fab fa-github mr-2"></i>
-          View on GitHub
-        </a>
-      </div>
-
-      <!-- Smart Ranking Explanation -->
-      <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 mb-8">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
-          <i class="fas fa-brain mr-2 text-teal-600 dark:text-teal-400"></i>Smart Contributor Ranking
-        </h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-4">
-          Our contributor ranking system weighs multiple factors to provide a fair assessment of contribution value:
-        </p>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
-            <h4 class="font-semibold text-green-700 dark:text-green-300 mb-2">
-              <i class="fas fa-check-circle mr-2"></i>Merged PRs
-            </h4>
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-              Merged pull requests have the highest weight as they represent accepted contributions.
-            </p>
-          </div>
-          <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-            <h4 class="font-semibold text-blue-700 dark:text-blue-300 mb-2">
-              <i class="fas fa-balance-scale mr-2"></i>Balanced Contributions
-            </h4>
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-              We value contributors who maintain a healthy ratio of merged PRs to total PRs.
-            </p>
-          </div>
-          <div class="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg">
-            <h4 class="font-semibold text-yellow-700 dark:text-yellow-300 mb-2">
-              <i class="fas fa-code-branch mr-2"></i>Quality Factors
-            </h4>
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-              Too many closed (non-merged) or open PRs may indicate quality issues or unfinished work.
-            </p>
-          </div>
+        <div class="why">
+          <article class="a1-card a1-card--interactive">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z"/><path d="M4 12h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/></svg></div>
+            <h3>Real users</h3>
+            <p>Your work ships to learn.alphaonelabs.com and eight more live sites. No throwaway prototypes.</p>
+          </article>
+          <article class="a1-card a1-card--interactive">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0ZM4 21a8 8 0 0 1 16 0"/></svg></div>
+            <h3>Real mentorship</h3>
+            <p>Every PR gets a human review. Mentors help you scope your proposal before you write it.</p>
+          </article>
+          <article class="a1-card a1-card--interactive">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/><path d="m17 15 3 2-3 2"/></svg></div>
+            <h3>One repo</h3>
+            <p>All 17 projects live in one monorepo. Clone once, run any project, and your site deploys on merge.</p>
+          </article>
+          <article class="a1-card a1-card--interactive">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v6c0 4.4 3.4 7.6 8 8 4.6-.4 8-3.6 8-8V7l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+            <h3>Privacy first</h3>
+            <p>learn encrypts personal data at rest. You'll learn to build features that respect users.</p>
+          </article>
         </div>
       </div>
-      <div id="stats-summary" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div id="stat-contributors" class="text-4xl font-bold text-teal-600 dark:text-teal-400 mb-2">0</div>
-          <div class="text-gray-600 dark:text-gray-300 font-medium">Contributors</div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div id="stat-merged" class="text-4xl font-bold text-green-500 mb-2">0</div>
-          <div class="text-gray-600 dark:text-gray-300 font-medium">Merged PRs</div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div id="stat-open" class="text-4xl font-bold text-blue-500 mb-2">0</div>
-          <div class="text-gray-600 dark:text-gray-300 font-medium">Open PRs</div>
-        </div>
-        <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 text-center">
-          <div id="stat-closed" class="text-4xl font-bold text-gray-500 mb-2">0</div>
-          <div class="text-gray-600 dark:text-gray-300 font-medium">Closed PRs</div>
-        </div>
-      </div>
+    </section>
 
-      <div class="text-center mb-6">
-        <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" role="tablist" aria-label="Leaderboard seasons">
-          <button id="leaderboard-tab-2026" type="button" data-season="2026" role="tab" aria-selected="true" class="leaderboard-tab px-6 py-3 text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors">
-            2026
-          </button>
-        </div>
-      </div>
-
-      <!-- Contributors List -->
-      <div class="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden">
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200">All Contributors</h3>
-          <p class="text-gray-600 dark:text-gray-400 mt-1">Sorted by contribution quality score</p>
-        </div>
-        <div id="contributors-list" class="divide-y divide-gray-200 dark:divide-gray-700">
-          <!-- Contributors will be loaded here -->
-        </div>
-      </div>
-
-      <!-- Call to Action -->
-      <div class="bg-gradient-to-r from-teal-600 to-teal-500 rounded-xl p-8 mt-8 text-white shadow-xl">
-        <div class="text-center">
-          <h3 class="text-2xl font-bold mb-4">Want to contribute?</h3>
-          <p class="mb-6 max-w-2xl mx-auto">
-            Join our community of contributors and help us build the future of education. No contribution is too small!
-          </p>
-          <a href="https://github.com/alphaonelabs/website/issues" target="_blank" rel="noopener noreferrer" class="inline-flex items-center bg-white text-teal-600 font-semibold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors shadow-md">
-            <i class="fas fa-code-branch mr-2"></i>
-            Browse Open Issues
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Tips Section -->
-  <section class="w-full py-16 bg-white dark:bg-gray-800">
-    <div class="max-w-6xl mx-auto px-4 md:px-6">
-      <div class="text-center mb-12">
-        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">💡 Essential Tips for GSoC</h2>
-        <p class="text-lg text-gray-600 dark:text-gray-300">
-          Follow these key strategies to improve your chances of selection! 🚀
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div class="relative p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover overflow-hidden">
-          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <i class="fas fa-book text-2xl text-teal-600 dark:text-teal-400"></i>
-          </div>
-          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">📖 Understand the Program</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            Learn about GSoC's structure, timeline, and goals. Visit the
-            <a href="https://summerofcode.withgoogle.com/" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors underline">
-              official GSoC website
-            </a> to get started.
-          </p>
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="leaderboard" aria-labelledby="lb-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="a1-eyebrow">Leaderboard</span>
+          <h2 id="lb-title">Top contributors</h2>
+          <p>Ranked by merged pull requests across the monorepo, with past seasons kept for the record. Click anyone to see their GitHub profile.</p>
         </div>
 
-        <div class="relative p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover overflow-hidden">
-          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <i class="fas fa-search text-2xl text-teal-600 dark:text-teal-400"></i>
+        <div class="lb-bar">
+          <div class="tabs" role="tablist" aria-label="Season">
+            <button role="tab" id="tab-2027" data-season="2027" aria-selected="true" aria-controls="lb-panel"><span class="live" aria-hidden="true"></span>2027</button>
+            <button role="tab" id="tab-2026" data-season="2026" aria-selected="false" aria-controls="lb-panel">2026</button>
+            <button role="tab" id="tab-2025" data-season="2025" aria-selected="false" aria-controls="lb-panel">2025</button>
           </div>
-          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">🔍 Find the Right Project</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            Explore our
-            <a href="https://gsoc.alphaonelabs.com/ideas" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors underline">
-              project ideas
-            </a> and choose one that aligns with your skills and interests.
-          </p>
+          <label class="search">
+            <span class="sr-only">Find a contributor</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" id="lb-search" placeholder="Find a contributor" autocomplete="off">
+          </label>
+        </div>
+        <p class="season-meta" id="lb-meta" aria-live="polite"></p>
+
+        <div id="lb-panel" role="tabpanel" aria-labelledby="tab-2027">
+          <div class="podium" id="lb-podium"></div>
+          <div class="list" id="lb-list"><div class="empty">Loading contributors…</div></div>
         </div>
 
-        <div class="relative p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover overflow-hidden">
-          <div class="absolute inset-0 bg-gradient-to-r from-teal-500 to-orange-500 opacity-10 pointer-events-none"></div>
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <i class="fas fa-users text-2xl text-teal-600 dark:text-teal-400"></i>
-          </div>
-          <h3 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">🤝 Connect with Mentors</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            Engage with mentors and the open-source community via our
-            <a href="https://t.co/Uskb6jkZKz" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 transition-colors underline">
-              Slack community
-            </a>.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Getting Started Section -->
-  <section id="getting-started" class="w-full py-16 bg-gray-50 dark:bg-gray-900">
-    <div class="max-w-6xl mx-auto px-4 md:px-6">
-      <div class="text-center mb-12">
-        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">How to Get Started with GSoC - Alpha One Labs!</h2>
-        <p class="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-          Google Summer of Code (GSoC) is a great opportunity for students to contribute to open-source projects, gain experience, and earn a stipend. Here are some tips to help you get started and make the most of your GSoC journey with the Alpha One Labs Educational Website project.
-        </p>
-      </div>
-      
-      <div class="grid md:grid-cols-3 gap-8 mb-12">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 card-hover">
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <span class="text-2xl font-bold text-teal-600 dark:text-teal-400">1</span>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">📖 Understand the Program</h3>
-          <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Learn about GSoC's structure, timeline, and goals. Visit the 
-            <a href="https://summerofcode.withgoogle.com/" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">official GSoC website</a> 
-            to get started.
-          </p>
-        </div>
-        
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 card-hover">
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <span class="text-2xl font-bold text-teal-600 dark:text-teal-400">2</span>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">🔍 Find the Right Project</h3>
-          <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Explore our 
-            <a href="https://gsoc.alphaonelabs.com/ideas" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">project ideas</a> 
-            and choose one that aligns with your skills and interests.
-          </p>
-        </div>
-        
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 card-hover">
-          <div class="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center mb-4">
-            <span class="text-2xl font-bold text-teal-600 dark:text-teal-400">3</span>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">🤝 Connect with Mentors</h3>
-          <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Engage with mentors and the open-source community via our 
-            <a href="https://t.co/Uskb6jkZKz" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">Slack community</a>.
-          </p>
-        </div>
-      </div>
-
-      <!-- Detailed Steps -->
-      <div class="space-y-6">
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-search text-teal-600 dark:text-teal-400 mr-2"></i>
-            1. Research Alpha One Labs
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li>
-                <strong>Explore the Project</strong>: Visit the 
-                <a href="https://github.com/alphaonelabs/website" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">Alpha One Labs Educational Website repository</a> 
-                to understand the project's goals, structure, and existing features.
-              </li>
-              <li>
-                <strong>Read Documentation</strong>: Familiarize yourself with the project's documentation, including the README, contributing guidelines, and any other relevant information.
-              </li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-rocket text-orange-600 dark:text-orange-400 mr-2"></i>
-            2. Get Involved Early
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li><strong>Start Early</strong>: Begin exploring the repository and interacting with the community well before the GSoC application period.</li>
-              <li><strong>Join Communication Channels</strong>: Subscribe to the mailing lists, join chat channels, or participate in forums related to Alpha One Labs.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-code-branch text-teal-600 dark:text-teal-400 mr-2"></i>
-            3. Contribute to the Community
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li><strong>Understand the Codebase</strong>: The Alpha One Labs Educational Website project uses HTML, Python, and Shell. Set up the development environment and explore the codebase to understand how it works.</li>
-              <li>
-                <strong>Setup Instructions</strong>: Follow the setup instructions provided in the 
-                <a href="https://github.com/alphaonelabs/website" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">repository setup guide</a> 
-                to get your development environment ready.
-              </li>
-              <li><strong>Start Small</strong>: Begin with small contributions like fixing bugs, improving documentation, or adding tests. This helps you understand the workflow and gain the trust of the community.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-comments-dots text-orange-600 dark:text-orange-400 mr-2"></i>
-            4. Communicate Effectively
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li><strong>Ask Questions</strong>: Don't hesitate to ask questions on mailing lists, chat channels, or forums. Be polite and specific in your queries.</li>
-              <li><strong>Be Active</strong>: Participate in discussions, attend meetings, and engage with the community. Show your enthusiasm and commitment.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-file-alt text-teal-600 dark:text-teal-400 mr-2"></i>
-            5. Prepare a Strong Proposal
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li><strong>Understand the Project</strong>: Thoroughly understand the project you want to work on. Read the project ideas list and discuss your ideas with mentors.</li>
-              <li><strong>Detailed Proposal</strong>: Write a detailed proposal that outlines your project plan, timeline, milestones, and deliverables. Highlight your skills and previous contributions.</li>
-              <li><strong>Seek Feedback</strong>: Share your draft proposal with mentors and the community for feedback. Revise and improve based on their suggestions.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-tasks text-orange-600 dark:text-orange-400 mr-2"></i>
-            6. Stay Organized
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li><strong>Time Management</strong>: Plan your time effectively to balance GSoC with your academic commitments. Stick to your project timeline and regularly update your mentors.</li>
-              <li><strong>Documentation</strong>: Keep thorough documentation of your work, progress, and challenges. This helps in tracking your progress and makes it easier for others to understand your contributions.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-graduation-cap text-teal-600 dark:text-teal-400 mr-2"></i>
-            7. Learn and Grow
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li><strong>Be Open to Learning</strong>: GSoC is a learning experience, so be open to new ideas, technologies, and feedback.</li>
-              <li><strong>Network</strong>: Build connections with mentors, fellow students, and contributors. Networking can lead to future opportunities and collaborations.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-shield-alt text-orange-600 dark:text-orange-400 mr-2"></i>
-            8. Adhere to the Code of Conduct
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li>
-                <strong>Alpha One Labs Code of Conduct</strong>: Follow the 
-                <a href="https://github.com/alphaonelabs/website/blob/main/CODE_OF_CONDUCT.md" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">Alpha One Labs Code of Conduct</a> 
-                to ensure a welcoming and inclusive environment for all contributors.
-              </li>
-              <li>
-                <strong>GSoC Code of Conduct</strong>: Abide by the 
-                <a href="https://summerofcode.withgoogle.com/rules" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">GSoC Code of Conduct</a> 
-                to maintain professionalism and respect within the GSoC community.
-              </li>
-            </ul>
-          </div>
-        </details>
-
-        <details class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <summary class="px-6 py-4 cursor-pointer font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <i class="fas fa-smile-beam text-teal-600 dark:text-teal-400 mr-2"></i>
-            9. Enjoy the Process
-          </summary>
-          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-            <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-              <li><strong>Have Fun</strong>: Enjoy the process of contributing to open-source and learning from the community. Your enthusiasm and passion will reflect in your work.</li>
-            </ul>
-          </div>
+        <details class="how">
+          <summary>How the ranking works</summary>
+          <p>Each merged PR earns 10 points. If closed-without-merging PRs outnumber half your merged ones, each extra costs 2 points, and open PRs beyond your merged count cost 1 point each, so steady, finished work ranks highest. Seasons run from September 1 to September 1. Merged PRs from repositories we folded into the monorepo are included even though GitHub search no longer lists them. PRs closed when the Django site retired on November 1, 2026 don't count against anyone.</p>
         </details>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Timeline Section -->
-  <section id="timeline" class="w-full py-16 bg-white dark:bg-gray-800">
-    <div class="max-w-6xl mx-auto px-4 md:px-6">
-      <div class="text-center mb-12">
-        <h2 class="text-4xl font-bold mb-4">
-          <span class="bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-orange-500">GSoC 2026 Timeline</span>
-        </h2>
-        <p class="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-          Mark your calendars! Here's what to expect during the Google Summer of Code 2026 journey with Alpha One Labs.
-        </p>
+    <!-- ================= IDEAS ================= -->
+    <section aria-labelledby="ideas-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="a1-eyebrow">Project ideas</span>
+          <h2 id="ideas-title">Ten ideas for 2027, or bring your own.</h2>
+          <p>Every idea builds on code that's live today. Strong proposals reshape them, combine them, or pitch something new.</p>
+        </div>
+        <div class="ideas">
+          <a href="/ideas#1-live-classrooms-with-real-audio-video-and-captions"><article class="a1-card a1-card--interactive">
+            <span class="a1-badge a1-badge--gold">350 h · Hard</span>
+            <h3>Live classrooms with audio, video and captions</h3>
+            <p>Real-time classes in learn's virtual classroom on Cloudflare Realtime, with VoxBridge captions.</p>
+            <span class="go">Read the idea →</span>
+          </article></a>
+          <a href="/ideas#2-course-grounded-ai-tutor-with-teacher-controls"><article class="a1-card a1-card--interactive">
+            <span class="a1-badge a1-badge--gold">350 h · Hard</span>
+            <h3>A course-grounded AI tutor</h3>
+            <p>Answers only from a course's materials, cites its sources, and follows the teacher's rules.</p>
+            <span class="go">Read the idea →</span>
+          </article></a>
+          <a href="/ideas#3-offline-first-learning-for-low-connectivity-regions"><article class="a1-card a1-card--interactive">
+            <span class="a1-badge a1-badge--gold">175 h · Medium</span>
+            <h3>Offline-first learning</h3>
+            <p>Download a course on Wi-Fi and finish it anywhere. Progress syncs when you reconnect.</p>
+            <span class="go">Read the idea →</span>
+          </article></a>
+        </div>
+        <p class="note"><a href="/ideas">See all ten ideas, plus starter projects and past years →</a></p>
       </div>
+    </section>
 
-      <div class="relative py-8">
-        <div class="absolute h-full w-1 bg-gradient-to-b from-teal-500 to-orange-500 left-1/2 transform -translate-x-1/2 hidden md:block"></div>
+    <!-- ================= PATH ================= -->
+    <section id="start" aria-labelledby="start-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="a1-eyebrow">Get started</span>
+          <h2 id="start-title">Your path to GSoC with us</h2>
+          <p>Priority goes to applicants who have merged at least five pull requests before selection. Start early, start small.</p>
+        </div>
+        <ol class="path">
+          <li><span class="node">01</span><h3>Explore</h3><p>Clone the <a href="https://github.com/alphaonelabs/website">monorepo</a> and run <code>learn/</code> locally.</p></li>
+          <li><span class="node">02</span><h3>First PR</h3><p>Pick a <a href="https://github.com/alphaonelabs/website/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22">good first issue</a> and open a focused PR.</p></li>
+          <li><span class="node">03</span><h3>Five merged</h3><p>Keep going. Climb the <a href="#leaderboard">leaderboard</a> with finished, reviewed work.</p></li>
+          <li><span class="node">04</span><h3>Propose</h3><p>Pick an <a href="/ideas">idea</a> and draft your proposal with a mentor in <a href="https://github.com/orgs/alphaonelabs/discussions">Discussions</a>.</p></li>
+          <li><span class="node">05</span><h3>Build</h3><p>Bond with your mentor, then ship your project to real users all summer.</p></li>
+        </ol>
+      </div>
+    </section>
 
-        <div class="flex flex-col items-center space-y-12">
-          <!-- Timeline Item 1 -->
-          <div class="flex flex-col md:flex-row w-full items-center">
-            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
-              <div class="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover">
-                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">January - February</h3>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Organization Applications</h4>
-                <p class="text-gray-600 dark:text-gray-300 mt-2">Organizations like Alpha One Labs apply to be a part of GSoC 2026.</p>
-              </div>
-            </div>
-            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-800 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
-              1
-            </div>
-            <div class="flex-1 md:pl-8 md:order-3 order-3"></div>
-          </div>
+    <!-- ================= TIMELINE ================= -->
+    <section aria-labelledby="when-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="a1-eyebrow">Timeline</span>
+          <h2 id="when-title">GSoC 2027 at a glance</h2>
+          <p>The typical shape of a GSoC year. Exact dates come from Google's official timeline.</p>
+        </div>
+        <div class="when">
+          <article class="a1-card"><time>Now – February</time><h3>Contribute</h3><p>Merge PRs, learn the codebase and get to know the mentors. Organizations apply to Google.</p></article>
+          <article class="a1-card"><time>Late February</time><h3>Organizations announced</h3><p>Google publishes the accepted mentoring organizations.</p></article>
+          <article class="a1-card"><time>March – April</time><h3>Proposals</h3><p>Contributors submit proposals through the GSoC site. Get feedback on drafts early.</p></article>
+          <article class="a1-card"><time>May</time><h3>Selections and bonding</h3><p>Accepted contributors are announced and meet their mentors.</p></article>
+          <article class="a1-card"><time>June – August</time><h3>Coding</h3><p>Build, review and ship, with evaluations at midterm and the end.</p></article>
+          <article class="a1-card"><time>September onward</time><h3>Wrap up</h3><p>Final evaluations. Extended projects can run into November.</p></article>
+        </div>
+        <p class="note">Check <a href="https://summerofcode.withgoogle.com/">summerofcode.withgoogle.com</a> for the official 2027 dates and <a href="https://summerofcode.withgoogle.com/rules">program rules</a>.</p>
+      </div>
+    </section>
 
-          <!-- Timeline Item 2 -->
-          <div class="flex flex-col md:flex-row w-full items-center">
-            <div class="flex-1 md:pr-8 md:text-right order-2 md:order-1"></div>
-            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-800 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
-              2
-            </div>
-            <div class="flex-1 md:pl-8 order-3 md:order-3">
-              <div class="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover">
-                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">March</h3>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Organization Announcement</h4>
-                <p class="text-gray-600 dark:text-gray-300 mt-2">Google announces the list of accepted mentoring organizations.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Timeline Item 3 -->
-          <div class="flex flex-col md:flex-row w-full items-center">
-            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
-              <div class="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover">
-                <h3 class="text-xl font-semibold text-orange-600 dark:text-orange-400">March - April</h3>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Student Application Period</h4>
-                <p class="text-gray-600 dark:text-gray-300 mt-2">Students explore projects and submit proposals to organizations.</p>
-              </div>
-            </div>
-            <div class="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-800 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
-              3
-            </div>
-            <div class="flex-1 md:pl-8 order-3 md:order-3"></div>
-          </div>
-
-          <!-- Timeline Item 4 -->
-          <div class="flex flex-col md:flex-row w-full items-center">
-            <div class="flex-1 md:pr-8 md:text-right order-2 md:order-1"></div>
-            <div class="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-800 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
-              4
-            </div>
-            <div class="flex-1 md:pl-8 order-3 md:order-3">
-              <div class="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover">
-                <h3 class="text-xl font-semibold text-orange-600 dark:text-orange-400">May</h3>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Student Selection Announced</h4>
-                <p class="text-gray-600 dark:text-gray-300 mt-2">Selected students are announced and paired with mentors.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Timeline Item 5 -->
-          <div class="flex flex-col md:flex-row w-full items-center">
-            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
-              <div class="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover">
-                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">May - June</h3>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Community Bonding</h4>
-                <p class="text-gray-600 dark:text-gray-300 mt-2">
-                  Students get to know mentors, read documentation, and get up to speed.
-                </p>
-              </div>
-            </div>
-            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-800 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
-              5
-            </div>
-            <div class="flex-1 md:pl-8 order-3 md:order-3"></div>
-          </div>
-
-          <!-- Timeline Item 6 -->
-          <div class="flex flex-col md:flex-row w-full items-center">
-            <div class="flex-1 md:pr-8 md:text-right order-2 md:order-1"></div>
-            <div class="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-800 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
-              6
-            </div>
-            <div class="flex-1 md:pl-8 order-3 md:order-3">
-              <div class="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover">
-                <h3 class="text-xl font-semibold text-orange-600 dark:text-orange-400">June - August</h3>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Coding Period</h4>
-                <p class="text-gray-600 dark:text-gray-300 mt-2">Students work on their projects with guidance from mentors.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Timeline Item 7 -->
-          <div class="flex flex-col md:flex-row w-full items-center">
-            <div class="flex-1 md:text-right md:pr-8 order-2 md:order-1">
-              <div class="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 card-hover">
-                <h3 class="text-xl font-semibold text-teal-600 dark:text-teal-400">September</h3>
-                <h4 class="text-lg font-medium text-gray-900 dark:text-white mt-2">Project Completion</h4>
-                <p class="text-gray-600 dark:text-gray-300 mt-2">
-                  Final evaluations and project submissions. Successful students pass GSoC!
-                </p>
-              </div>
-            </div>
-            <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white border-4 border-white dark:border-gray-800 z-10 order-1 md:order-2 shadow-lg mb-4 md:mb-0">
-              7
-            </div>
-            <div class="flex-1 md:pl-8 order-3 md:order-3"></div>
-          </div>
+    <!-- ================= FAQ ================= -->
+    <section aria-labelledby="faq-title">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="a1-eyebrow">FAQ</span>
+          <h2 id="faq-title">Questions, answered</h2>
+        </div>
+        <div class="faq">
+          <details><summary>What is Google Summer of Code?</summary><p>A global program where new contributors work on open-source projects with mentors from participating organizations, and receive a stipend from Google.</p></details>
+          <details><summary>Do I need prior experience?</summary><p>Basic programming knowledge helps, but we welcome beginners who are eager to learn. Start with small fixes to understand our workflow, then grow from there.</p></details>
+          <details><summary>Which project should I contribute to?</summary><p>Most work happens in <code>learn/</code>, our live platform, but every folder in the monorepo is fair game. Pick the area your proposal will touch, so your PRs show you know it.</p></details>
+          <details><summary>Why five merged PRs?</summary><p>It shows you can work with our codebase and our review process, which is the best predictor of a successful summer. Quality matters more than count.</p></details>
+          <details><summary>Can I propose my own idea?</summary><p>Yes. A focused proposal grounded in our code is just as strong as one from the list. Run it past a mentor in Discussions first.</p></details>
+          <details><summary>Where do I ask questions?</summary><p>Open a thread in <a href="https://github.com/orgs/alphaonelabs/discussions">GitHub Discussions</a>, comment on an issue, or join our <a href="https://t.co/Uskb6jkZKz">Slack community</a>.</p></details>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- FAQs Section -->
-  <section id="faqs" class="w-full py-16 bg-gray-50 dark:bg-gray-900">
-    <div class="max-w-4xl mx-auto px-4 md:px-6">
-      <div class="text-center mb-12">
-        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">Frequently Asked Questions</h2>
-        <p class="text-lg text-gray-600 dark:text-gray-300">
-          Have questions about GSoC or Alpha One Labs? Here are some common questions and answers to help you out.
-        </p>
-      </div>
-
-      <div class="space-y-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 card-hover">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-            <i class="fas fa-question-circle text-teal-600 dark:text-teal-400 mr-2"></i>
-            What is Google Summer of Code (GSoC)?
-          </h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            Google Summer of Code is a global program that offers students the opportunity to work on open-source projects during the summer. Participants receive a stipend and mentorship while contributing to real-world projects.
-          </p>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 card-hover">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-            <i class="fas fa-user-plus text-orange-600 dark:text-orange-400 mr-2"></i>
-            How do I apply for GSoC with Alpha One Labs?
-          </h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            To apply, visit the 
-            <a href="https://summerofcode.withgoogle.com/" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">GSoC website</a>, 
-            explore our project ideas, and submit a proposal. Make sure to engage with the community and seek feedback on your proposal.
-          </p>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 card-hover">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-            <i class="fas fa-project-diagram text-teal-600 dark:text-teal-400 mr-2"></i>
-            What kind of projects does Alpha One Labs offer?
-          </h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            Alpha One Labs offers projects in web development, educational tools, and open-source software. Check out our 
-            <a href="https://gsoc.alphaonelabs.com/ideas" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300 font-semibold underline">project ideas</a> 
-            for more details.
-          </p>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 card-hover">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-            <i class="fas fa-book-reader text-orange-600 dark:text-orange-400 mr-2"></i>
-            Do I need prior experience to participate?
-          </h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            Basic programming knowledge is helpful, but we welcome beginners who are eager to learn! Start by making small contributions to understand our workflow and codebase.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="w-full bg-gray-800 dark:bg-gray-950 text-white py-12">
-    <div class="max-w-6xl mx-auto px-4 md:px-6">
-      <div class="grid md:grid-cols-3 gap-8 mb-8">
-        <div>
-          <div class="flex items-center space-x-3 mb-4">
-            <i class="fas fa-graduation-cap text-2xl"></i>
-            <span class="text-xl font-bold">Alpha One Labs</span>
+    <!-- ================= BAND ================= -->
+    <section aria-labelledby="band-title" style="padding-top:0">
+      <div class="wrap">
+        <div class="band">
+          <div>
+            <span class="a1-eyebrow">Say hi</span>
+            <h2 id="band-title">Start with one pull request.</h2>
+            <p>Find a good first issue, open a PR, and introduce yourself in Discussions. The leaderboard updates every six hours.</p>
+            <div class="cta">
+              <a class="a1-btn a1-btn--primary" href="https://github.com/alphaonelabs/website/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22">Good first issues</a>
+              <a class="a1-btn a1-btn--ghost" href="https://github.com/orgs/alphaonelabs/discussions">Introduce yourself</a>
+            </div>
           </div>
-          <p class="text-gray-400 text-sm mb-4">Building the future of open-source education</p>
-          <div class="flex space-x-4">
-            <a href="https://github.com/alphaonelabs/website" target="_blank" rel="noopener noreferrer" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-teal-600 transition-colors">
-              <i class="fab fa-github"></i>
-            </a>
-            <a href="https://t.co/Uskb6jkZKz" target="_blank" rel="noopener noreferrer" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-teal-600 transition-colors">
-              <i class="fab fa-slack"></i>
-            </a>
-          </div>
-        </div>
-        
-        <div>
-          <h3 class="text-lg font-bold mb-4">Quick Links</h3>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li><a href="#about" class="hover:text-teal-400 transition-colors">About</a></li>
-            <li><a href="#contributors" class="hover:text-teal-400 transition-colors">Contributors</a></li>
-            <li><a href="#getting-started" class="hover:text-teal-400 transition-colors">Getting Started</a></li>
-            <li><a href="/ideas" class="hover:text-teal-400 transition-colors">Project Ideas</a></li>
-            <li><a href="#timeline" class="hover:text-teal-400 transition-colors">Timeline</a></li>
-            <li><a href="#faqs" class="hover:text-teal-400 transition-colors">FAQs</a></li>
-          </ul>
-        </div>
-        
-        <div>
-          <h3 class="text-lg font-bold mb-4">Resources</h3>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li><a href="https://gsoc.alphaonelabs.com/ideas" target="_blank" rel="noopener noreferrer" class="hover:text-teal-400 transition-colors">Project Ideas Wiki</a></li>
-            <li><a href="https://github.com/alphaonelabs/website" target="_blank" rel="noopener noreferrer" class="hover:text-teal-400 transition-colors">GitHub Repository</a></li>
-            <li><a href="https://summerofcode.withgoogle.com/" target="_blank" rel="noopener noreferrer" class="hover:text-teal-400 transition-colors">GSoC Website</a></li>
-          </ul>
+          <img class="trans" src="https://design.alphaonelabs.com/assets/illustrations/transistor.svg" alt="">
         </div>
       </div>
-      
-      <div class="border-t border-gray-700 pt-8 text-center">
-        <p class="text-sm text-gray-400">
-          © 2026 Alpha One Labs. Licensed under the GNU Affero General Public License v3.0
-        </p>
-      </div>
-    </div>
-  </footer>
+    </section>
+  </main>
 
-  <!-- Floating Apply Button -->
-  <a href="https://summerofcode.withgoogle.com/" target="_blank" rel="noopener noreferrer" class="fixed bottom-6 right-6 px-6 py-3 bg-orange-600 text-white text-lg font-semibold rounded-full shadow-lg hover:bg-orange-700 transition-all duration-200 z-50 hidden md:block">
-    Apply Now 🚀
-  </a>
+  <a1-footer source="gsoc"></a1-footer>
 
-  <!-- JavaScript -->
   <script>
-    // Mobile menu toggle
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    const mobileMenu = document.getElementById('mobile-menu');
-    
-    if (mobileMenuButton && mobileMenu) {
-      mobileMenuButton.addEventListener('click', () => {
-        mobileMenu.classList.toggle('active');
-        const icon = mobileMenuButton.querySelector('i');
-        icon.classList.toggle('fa-bars');
-        icon.classList.toggle('fa-times');
-      });
-      
-      // Close mobile menu when clicking on a link
-      const mobileMenuLinks = mobileMenu.querySelectorAll('a');
-      mobileMenuLinks.forEach(link => {
-        link.addEventListener('click', () => {
-          mobileMenu.classList.remove('active');
-          const icon = mobileMenuButton.querySelector('i');
-          icon.classList.remove('fa-times');
-          icon.classList.add('fa-bars');
-        });
-      });
-    }
+    (() => {
+      const el = (id) => document.getElementById(id);
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      const fmt = (d) => new Date(d).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+      const PAGE = 25;
+      let data = null, season = "2027", shown = PAGE;
 
-    // Leaderboard functionality
-    const LEADERBOARD_FILES = {
-      '2026': './data/leaderboard.json'
-    };
+      const avatar = (c, size) => `${c.avatar_url}${c.avatar_url.includes("?") ? "&" : "?"}s=${size * 2}`;
+      const chips = (c) => `<span class="a1-badge a1-badge--gold" title="Merged">${c.merged_pr_count} merged</span>`
+        + (c.open_pr_count ? `<span class="a1-badge" title="Open">${c.open_pr_count} open</span>` : "")
+        + (c.closed_pr_count ? `<span class="a1-badge" title="Closed without merging">${c.closed_pr_count} closed</span>` : "");
 
-    let activeSeason = '2026';
-    const LEADERBOARD_SEARCH_ORG = 'alphaonelabs';
-
-    function toSafeNumber(value) {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : 0;
-    }
-
-    function toSafeHttpUrl(value) {
-      try {
-        const parsed = new URL(String(value || ''), window.location.origin);
-        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-          return parsed.href;
+      function render() {
+        const s = data && data.seasons[season];
+        const q = el("lb-search").value.trim().toLowerCase();
+        const podium = el("lb-podium"), list = el("lb-list");
+        if (!s) {
+          podium.innerHTML = "";
+          list.innerHTML = `<div class="empty">No data for ${season} yet.</div>`;
+          el("lb-meta").textContent = "";
+          return;
         }
-      } catch (urlError) {
-        return '';
-      }
-      return '';
-    }
+        const all = s.contributors.filter((c) => c.merged_pr_count > 0 || c.total_pr_count > 0);
+        const max = Math.max(1, ...all.map((c) => c.smart_score));
+        const ranked = all.map((c, i) => ({ ...c, rank: i + 1 }));
+        const hits = q ? ranked.filter((c) => c.username.toLowerCase().includes(q)) : ranked;
+        el("lb-meta").textContent = `${fmt(s.start_date)} – ${fmt(s.end_date)} · ${all.length} contributors · updated ${fmt(data.generated_at)}`;
 
-    function toDateOnly(value) {
-      if (!value) {
-        return '';
-      }
+        podium.innerHTML = q ? "" : ranked.slice(0, 3).map((c) => `
+          <a href="${esc(c.profile_url)}" aria-label="${esc(c.username)}, rank ${c.rank}, ${c.merged_pr_count} merged PRs. Open GitHub profile">
+            <article class="a1-card a1-card--interactive">
+              <span class="rank" aria-hidden="true">${c.rank}</span>
+              <img src="${esc(avatar(c, 64))}" alt="" width="64" height="64" loading="lazy">
+              <div class="who"><b>${esc(c.username)}</b><span>${c.merged_pr_count} merged · ${Math.round(c.smart_score)} pts</span></div>
+            </article>
+          </a>`).join("");
 
-      const normalized = String(value);
-      return normalized.includes('T') ? normalized.split('T')[0] : normalized;
-    }
-
-    function buildPrSearchUrl(type, username, startDate, endDate) {
-      const qualifiers = [
-        'is:pr',
-        `org:${LEADERBOARD_SEARCH_ORG}`,
-        `author:${username}`
-      ];
-
-      if (type === 'merged') {
-        qualifiers.push('is:merged');
-        if (startDate) qualifiers.push(`merged:>=${startDate}`);
-        if (endDate) qualifiers.push(`merged:<${endDate}`);
-      } else if (type === 'open') {
-        qualifiers.push('is:open');
-        if (startDate) qualifiers.push(`created:>=${startDate}`);
-        if (endDate) qualifiers.push(`created:<${endDate}`);
-      } else if (type === 'closed') {
-        qualifiers.push('is:closed', 'is:unmerged');
-        if (startDate) qualifiers.push(`closed:>=${startDate}`);
-        if (endDate) qualifiers.push(`closed:<${endDate}`);
-      } else {
-        if (startDate) qualifiers.push(`created:>=${startDate}`);
-        if (endDate) qualifiers.push(`created:<${endDate}`);
-      }
-
-      return `https://github.com/pulls?q=${encodeURIComponent(qualifiers.join(' '))}`;
-    }
-
-    function updateStats(contributors) {
-      const totalContributors = contributors.length;
-      const totalMerged = contributors.reduce((sum, c) => sum + toSafeNumber(c.merged_pr_count), 0);
-      const totalOpen = contributors.reduce((sum, c) => sum + toSafeNumber(c.open_pr_count), 0);
-      const totalClosed = contributors.reduce((sum, c) => sum + toSafeNumber(c.closed_pr_count), 0);
-
-      document.getElementById('stat-contributors').textContent = totalContributors;
-      document.getElementById('stat-merged').textContent = totalMerged;
-      document.getElementById('stat-open').textContent = totalOpen;
-      document.getElementById('stat-closed').textContent = totalClosed;
-    }
-
-    function renderEmptyState(container, message) {
-      container.innerHTML = `
-        <div class="p-12 text-center">
-          <i class="fas fa-users text-6xl text-gray-400 mb-4"></i>
-          <h3 class="mt-4 text-xl font-medium text-gray-900 dark:text-white">No contributors found</h3>
-          <p class="mt-2 text-gray-500 dark:text-gray-400">${message}</p>
-        </div>
-      `;
-    }
-
-    function renderContributors(contributors, startDate, endDate) {
-      const container = document.getElementById('contributors-list');
-      
-      if (contributors.length === 0) {
-        renderEmptyState(container, 'Contributor data will be updated once the GSoC program begins.');
-        updateStats([]);
-        return;
-      }
-
-      const rankSymbols = ['🥇', '🥈', '🥉'];
-      const rankColors = ['bg-yellow-500', 'bg-gray-400', 'bg-amber-600'];
-
-      container.innerHTML = contributors.map((contributor, index) => {
-        const rankSymbol = rankSymbols[index] || '';
-        const rankColor = rankColors[index] || 'bg-blue-500';
-        const safeAvatarUrl = toSafeHttpUrl(contributor.avatar_url);
-        const safeProfileUrl = toSafeHttpUrl(contributor.profile_url);
-        const username = String(contributor.username || 'Unknown');
-        const smartScore = toSafeNumber(contributor.smart_score).toFixed(1);
-        const contributionRatio = toSafeNumber(contributor.contribution_ratio).toFixed(2);
-        const mergedCount = toSafeNumber(contributor.merged_pr_count);
-        const openCount = toSafeNumber(contributor.open_pr_count);
-        const closedCount = toSafeNumber(contributor.closed_pr_count);
-        const totalCount = toSafeNumber(contributor.total_pr_count);
-        const mergedPrUrl = buildPrSearchUrl('merged', username, startDate, endDate);
-        const openPrUrl = buildPrSearchUrl('open', username, startDate, endDate);
-        const closedPrUrl = buildPrSearchUrl('closed', username, startDate, endDate);
-        const totalPrUrl = buildPrSearchUrl('total', username, startDate, endDate);
-
-        return `
-          <div class="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150">
-            <div class="flex flex-col md:flex-row md:items-center">
-              <div class="flex items-center mb-4 md:mb-0">
-                <div class="flex-shrink-0 mr-4 relative">
-                  <a href="${safeProfileUrl}" target="_blank">
-                    <img src="${safeAvatarUrl}" alt="${username}" class="w-12 h-12 rounded-full border-2 border-gray-200 dark:border-gray-700" width="48" height="48" />
-                    ${rankSymbol ? `<div class="absolute -top-2 -left-2 w-6 h-6 ${rankColor} text-white text-xs font-bold flex items-center justify-center rounded-full">${index + 1}</div>` : `<div class="absolute -top-2 -left-2 w-6 h-6 ${rankColor} text-white text-xs font-bold flex items-center justify-center rounded-full">${index + 1}</div>`}
-                  </a>
-                </div>
-                <div>
-                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    <a href="${safeProfileUrl}" target="_blank" class="hover:text-teal-600 dark:hover:text-teal-400 transition duration-150">${username}</a>
-                  </h3>
-                  <div class="flex flex-wrap gap-2 mt-1">
-                    <span class="bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 text-xs px-2 py-1 rounded-full inline-flex items-center">
-                      <i class="fas fa-star mr-1"></i> Score: ${smartScore}
-                    </span>
-                    <span class="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-xs px-2 py-1 rounded-full inline-flex items-center">
-                      <i class="fas fa-percentage mr-1"></i> Ratio: ${contributionRatio}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex-1 flex gap-3 ml-0 md:ml-8">
-                <div class="flex-1 bg-green-100 dark:bg-green-900 rounded-lg p-3 text-center hover:bg-green-200 dark:hover:bg-green-800 transition duration-150">
-                  <a href="${mergedPrUrl}" target="_blank" class="block text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 transition duration-150">
-                    <div class="text-xl font-bold">${mergedCount}</div>
-                    <div class="text-xs font-medium">Merged</div>
-                  </a>
-                </div>
-                <div class="flex-1 bg-blue-100 dark:bg-blue-900 rounded-lg p-3 text-center hover:bg-blue-200 dark:hover:bg-blue-800 transition duration-150">
-                  <a href="${openPrUrl}" target="_blank" class="block text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition duration-150">
-                    <div class="text-xl font-bold">${openCount}</div>
-                    <div class="text-xs font-medium">Open</div>
-                  </a>
-                </div>
-                <div class="flex-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-3 text-center hover:bg-gray-200 dark:hover:bg-gray-800 transition duration-150">
-                  <a href="${closedPrUrl}" target="_blank" class="block text-gray-700 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition duration-150">
-                    <div class="text-xl font-bold">${closedCount}</div>
-                    <div class="text-xs font-medium">Closed</div>
-                  </a>
-                </div>
-                <div class="flex-1 bg-purple-100 dark:bg-purple-900 rounded-lg p-3 text-center hover:bg-purple-200 dark:hover:bg-purple-800 transition duration-150">
-                  <a href="${totalPrUrl}" target="_blank" class="block text-purple-700 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200 transition duration-150">
-                    <div class="text-xl font-bold">${totalCount}</div>
-                    <div class="text-xs font-medium">Total</div>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      updateStats(contributors);
-    }
-
-    function setActiveTab(season) {
-      const tabs = document.querySelectorAll('.leaderboard-tab');
-      tabs.forEach((tab) => {
-        const isActive = tab.dataset.season === season;
-        tab.setAttribute('aria-selected', String(isActive));
-
-        if (isActive) {
-          tab.classList.remove('bg-white', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
-          tab.classList.add('bg-teal-600', 'text-white', 'hover:bg-teal-700');
-        } else {
-          tab.classList.remove('bg-teal-600', 'text-white', 'hover:bg-teal-700');
-          tab.classList.add('bg-white', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
+        const rest = q ? hits : hits.slice(3);
+        if (!rest.length && !podium.innerHTML) {
+          list.innerHTML = `<div class="empty">${q ? "No contributor matches that search." : "No contributors yet this season. Yours could be the first PR."}</div>`;
+          return;
         }
-      });
-    }
-
-    async function fetchLeaderboard(season) {
-      const container = document.getElementById('contributors-list');
-      
-      try {
-        const filePath = LEADERBOARD_FILES[season] || LEADERBOARD_FILES['2026'];
-        const urlWithTimestamp = `${filePath}?t=${new Date().getTime()}`;
-        const response = await fetch(urlWithTimestamp, { cache: 'no-store' });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to load leaderboard data: ${response.status}`);
-        }
-
-        const payload = await response.json();
-        const seasonStartDate = toDateOnly(payload?.start_date);
-        // end_date is optional so the default leaderboard can operate as a rolling window.
-        const seasonEndDate = toDateOnly(payload?.end_date);
-        const contributors = (Array.isArray(payload?.contributors) ? payload.contributors : [])
-          .sort((a, b) => {
-            const scoreA = toSafeNumber(a?.smart_score);
-            const scoreB = toSafeNumber(b?.smart_score);
-            if (scoreB !== scoreA) {
-              return scoreB - scoreA;
-            }
-            return toSafeNumber(b?.merged_pr_count) - toSafeNumber(a?.merged_pr_count);
-          });
-
-        renderContributors(contributors, seasonStartDate, seasonEndDate);
-      } catch (error) {
-        const isFileProtocol = window.location.protocol === 'file:';
-        const errorMessage = isFileProtocol
-          ? 'Local file mode blocks JSON fetch. Run a local server (e.g., python -m http.server 8000) and open http://localhost:8000/'
-          : 'Failed to load contributors. Please try again later.';
-        
-        renderEmptyState(container, errorMessage);
-        updateStats([]);
-        console.error('Leaderboard error:', error);
+        const rows = rest.slice(0, shown).map((c) => `
+          <div class="row">
+            <span class="n">${c.rank}</span>
+            <a href="${esc(c.profile_url)}" tabindex="-1" aria-hidden="true"><img src="${esc(avatar(c, 40))}" alt="" width="40" height="40" loading="lazy"></a>
+            <a class="name" href="${esc(c.profile_url)}">${esc(c.username)}</a>
+            <span class="chips">${chips(c)}</span>
+            <span class="score" title="Score">${Math.round(c.smart_score)}<i style="--w:${Math.max(4, (c.smart_score / max) * 100)}%"></i></span>
+          </div>`).join("");
+        const more = rest.length > shown ? `<button class="more" type="button" id="lb-more">Show ${Math.min(PAGE, rest.length - shown)} more</button>` : "";
+        list.innerHTML = rows + more;
+        const btn = el("lb-more");
+        if (btn) btn.addEventListener("click", () => { shown += PAGE; render(); });
       }
-    }
 
-    function setupLeaderboard() {
-      const tabs = document.querySelectorAll('.leaderboard-tab');
-      
-      tabs.forEach((tab) => {
-        tab.addEventListener('click', () => {
-          const season = tab.dataset.season;
-          if (!season || season === activeSeason) {
-            return;
+      document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
+        season = b.dataset.season; shown = PAGE;
+        document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+        el("lb-panel").setAttribute("aria-labelledby", b.id);
+        render();
+      }));
+      el("lb-search").addEventListener("input", () => { shown = PAGE; render(); });
+
+      fetch(`./data/leaderboard.json?t=${Date.now()}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((json) => {
+          data = json;
+          season = json.current || "2027";
+          const cur = json.seasons[season];
+          if (cur) {
+            const people = cur.contributors.filter((c) => c.merged_pr_count > 0 || c.total_pr_count > 0);
+            document.querySelector('[data-stat="contributors"]').textContent = people.length;
+            document.querySelector('[data-stat="merged"]').textContent = people.reduce((n, c) => n + c.merged_pr_count, 0);
           }
-
-          activeSeason = season;
-          setActiveTab(activeSeason);
-          fetchLeaderboard(activeSeason);
-        });
-      });
-
-      setActiveTab(activeSeason);
-      fetchLeaderboard(activeSeason);
-    }
-
-    // Initialize
-    setupLeaderboard();
+          render();
+        })
+        .catch(() => { el("lb-list").innerHTML = '<div class="empty">Couldn\'t load the leaderboard. Try refreshing.</div>'; });
+    })();
   </script>
 </body>
 </html>

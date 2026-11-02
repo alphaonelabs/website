@@ -31,17 +31,14 @@ def render(path):
 def page():
     current_html, current_toc = render(IDEAS / f"{CURRENT}.md")
     toc_items = "\n".join(
-        f'<li><a href="#{t["id"]}" class="block px-3 py-2 rounded-lg hover:bg-teal-50 dark:hover:bg-gray-700">{html.escape(t["name"])}</a></li>'
+        f'<li><a href="#{t["id"]}">{html.escape(t["name"])}</a></li>'
         for t in current_toc
     )
     archive = "\n".join(
         f"""
-      <details class="group rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm mb-4">
-        <summary class="cursor-pointer list-none flex items-center justify-between px-6 py-5 text-xl font-semibold text-gray-900 dark:text-white">
-          GSoC {year} ideas
-          <i class="fa-solid fa-chevron-down text-teal-600 transition-transform group-open:rotate-180"></i>
-        </summary>
-        <div class="ideas px-6 pb-6">{render(IDEAS / f"{year}.md")[0]}</div>
+      <details class="year">
+        <summary>GSoC {year} ideas</summary>
+        <div class="ideas">{render(IDEAS / f"{year}.md")[0]}</div>
       </details>"""
         for year in ARCHIVE
     )
@@ -56,97 +53,84 @@ TEMPLATE = """<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GSoC {year} Project Ideas · Alpha One Labs</title>
   <meta name="description" content="Google Summer of Code {year} project ideas at Alpha One Labs: live classrooms, AI tutoring, offline learning, verifiable credentials and more.">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script>
-    tailwind.config = {{ darkMode: 'media' }};
-  </script>
+  <link rel="icon" href="https://design.alphaonelabs.com/assets/logo/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   <style>
+    *, *::before, *::after {{ box-sizing: border-box; }}
     html {{ scroll-behavior: smooth; }}
-    .ideas h2 {{ font-size: 1.6rem; font-weight: 700; margin: 2.5rem 0 .75rem; scroll-margin-top: 5rem; color: #0f766e; }}
-    .ideas h3 {{ font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 .5rem; }}
-    .ideas p {{ margin: .75rem 0; line-height: 1.75; }}
-    .ideas ul, .ideas ol {{ margin: .75rem 0 .75rem 1.5rem; line-height: 1.75; }}
-    .ideas ul {{ list-style: disc; }} .ideas ol {{ list-style: decimal; }}
-    .ideas a {{ color: #0d9488; text-decoration: underline; text-underline-offset: 2px; }}
-    .ideas code {{ background: rgba(13,148,136,.1); padding: .1rem .35rem; border-radius: .3rem; font-size: .9em; }}
-    .ideas hr {{ margin: 2.5rem 0; border-color: rgba(127,127,127,.25); }}
-    .ideas strong {{ font-weight: 600; }}
-    @media (prefers-color-scheme: dark) {{
-      .ideas h2 {{ color: #5eead4; }}
-      .ideas a {{ color: #5eead4; }}
-    }}
+    body {{ margin: 0; background: var(--a1-bg); color: var(--a1-text); font-family: var(--a1-font-body); line-height: 1.7; }}
+    .wrap {{ width: min(1200px, 100% - 40px); margin-inline: auto; }}
+    :focus-visible {{ outline: 2px solid var(--a1-focus); outline-offset: 3px; border-radius: 6px; }}
+    .hero {{ position: relative; overflow: hidden; padding: clamp(56px, 8vw, 96px) 0 48px; border-bottom: 1px solid var(--a1-border); isolation: isolate; }}
+    .hero::before {{ content: ""; position: absolute; inset: 0; z-index: -1; background-image: linear-gradient(var(--a1-border) 1px, transparent 1px), linear-gradient(90deg, var(--a1-border) 1px, transparent 1px); background-size: 48px 48px; opacity: .3; mask-image: radial-gradient(ellipse 70% 80% at 80% 30%, #000 25%, transparent 75%); }}
+    .hero h1 {{ font-family: var(--a1-font-display); font-size: var(--a1-text-5xl); line-height: 1; letter-spacing: -0.04em; margin: 16px 0 18px; }}
+    .hero p {{ color: var(--a1-text-muted); font-size: var(--a1-text-lg); max-width: 640px; margin: 0; }}
+    .hero .iss {{ position: absolute; right: max(20px, 6vw); top: 50%; translate: 0 -50%; width: min(34vw, 380px); color: var(--a1-accent); opacity: .9; z-index: -1; }}
+    .tips {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 40px 0 0; }}
+    .tips .a1-card h2 {{ font-family: var(--a1-font-display); font-size: var(--a1-text-lg); margin: 0 0 6px; }}
+    .tips .a1-card p {{ margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }}
+    .layout {{ display: grid; grid-template-columns: 17rem 1fr; gap: 48px; padding: 56px 0; }}
+    .toc {{ position: sticky; top: calc(var(--a1-header-height) + 24px); align-self: start; }}
+    .toc ol {{ list-style: none; margin: 12px 0 0; padding: 0; border-left: 1px solid var(--a1-border); }}
+    .toc a {{ display: block; padding: 6px 14px; margin-left: -1px; border-left: 2px solid transparent; color: var(--a1-text-muted); text-decoration: none; font-size: var(--a1-text-sm); line-height: 1.4; }}
+    .toc a:hover {{ color: var(--a1-text); border-left-color: var(--a1-accent); }}
+    .ideas {{ min-width: 0; }}
+    .ideas h2 {{ font-family: var(--a1-font-display); font-size: var(--a1-text-2xl); letter-spacing: -0.02em; line-height: 1.2; margin: 3rem 0 .75rem; scroll-margin-top: calc(var(--a1-header-height) + 24px); }}
+    .ideas h3 {{ font-family: var(--a1-font-mono); font-size: var(--a1-text-xs); letter-spacing: .16em; text-transform: uppercase; color: var(--a1-accent); margin: 1.6rem 0 .4rem; }}
+    .ideas p, .ideas li {{ color: var(--a1-text); }}
+    .ideas ul, .ideas ol {{ padding-left: 1.3rem; }}
+    .ideas li::marker {{ color: var(--a1-accent); }}
+    .ideas a {{ color: var(--a1-accent); }}
+    .ideas code {{ font-family: var(--a1-font-mono); font-size: .88em; background: var(--a1-surface-raised); border: 1px solid var(--a1-border); padding: .1rem .35rem; border-radius: 6px; }}
+    .ideas hr {{ border: 0; height: 10px; margin: 3rem 0; background: radial-gradient(circle at 0 50%, var(--a1-accent) 3px, transparent 3.5px) left center / 10px 10px no-repeat, radial-gradient(circle at 100% 50%, var(--a1-accent) 3px, transparent 3.5px) right center / 10px 10px no-repeat, linear-gradient(var(--a1-accent), var(--a1-accent)) center / calc(100% - 16px) 1.5px no-repeat; opacity: .5; }}
+    .archive {{ padding: 0 0 80px; }}
+    .archive h2 {{ font-family: var(--a1-font-display); font-size: var(--a1-text-3xl); margin: 0 0 8px; }}
+    .archive > .wrap > p {{ color: var(--a1-text-muted); margin: 0 0 24px; }}
+    details.year {{ border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); background: var(--a1-surface); margin-bottom: 12px; }}
+    details.year > summary {{ cursor: pointer; list-style: none; padding: 20px 24px; font-family: var(--a1-font-display); font-size: var(--a1-text-xl); font-weight: 600; display: flex; justify-content: space-between; }}
+    details.year > summary::after {{ content: "+"; color: var(--a1-accent); font-family: var(--a1-font-mono); }}
+    details.year[open] > summary::after {{ content: "−"; }}
+    details.year > .ideas {{ padding: 0 24px 24px; }}
+    @media (max-width: 900px) {{ .layout {{ grid-template-columns: 1fr; }} .toc {{ position: static; }} .tips {{ grid-template-columns: 1fr; }} .hero .iss {{ display: none; }} }}
   </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-  <nav class="sticky top-0 z-50 w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-2 font-semibold"><i class="fa-solid fa-sun"></i> Alpha One Labs GSoC</a>
-      <div class="flex items-center gap-5 text-sm font-medium">
-        <a href="/#getting-started" class="hover:text-teal-100">Get Started</a>
-        <a href="/ideas" class="underline underline-offset-4">Ideas</a>
-        <a href="/#timeline" class="hover:text-teal-100 hidden sm:inline">Timeline</a>
-        <a href="/#faqs" class="hover:text-teal-100 hidden sm:inline">FAQs</a>
-      </div>
-    </div>
-  </nav>
-
-  <header class="w-full bg-gradient-to-r from-teal-600 to-orange-500 text-white py-16">
-    <div class="max-w-6xl mx-auto px-4">
-      <p class="uppercase tracking-widest text-sm text-teal-100 mb-3">Google Summer of Code {year}</p>
-      <h1 class="text-4xl md:text-5xl font-bold mb-4">Project Ideas</h1>
-      <p class="text-lg md:text-xl max-w-3xl text-white/90">Ambitious, real-world projects on a platform that's live today. Pick one, remix one, or propose your own.</p>
-    </div>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-4 py-12">
-    <section class="grid md:grid-cols-3 gap-4 mb-12">
-      <div class="rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <i class="fa-solid fa-code-merge text-2xl text-teal-600 mb-3"></i>
-        <h2 class="font-semibold text-lg mb-1">Merge 5 PRs first</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Priority goes to applicants with at least five merged pull requests in the <a class="text-teal-600 underline" href="https://github.com/alphaonelabs/website">monorepo</a> before selection.</p>
-      </div>
-      <div class="rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <i class="fa-solid fa-lightbulb text-2xl text-orange-500 mb-3"></i>
-        <h2 class="font-semibold text-lg mb-1">Your own idea is welcome</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400">These are starting points. A focused proposal of your own, grounded in our code, is just as strong.</p>
-      </div>
-      <div class="rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <i class="fa-solid fa-comments text-2xl text-teal-600 mb-3"></i>
-        <h2 class="font-semibold text-lg mb-1">Talk to us early</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400">Open an issue or discussion in the <a class="text-teal-600 underline" href="https://github.com/alphaonelabs/website/issues">monorepo</a> to shape your proposal with mentors.</p>
+<body>
+  <a1-header site="GSoC" site-href="/" sticky></a1-header>
+  <main>
+    <section class="hero">
+      <img class="iss" src="https://design.alphaonelabs.com/assets/illustrations/iss.svg" alt="">
+      <div class="wrap">
+        <span class="a1-badge a1-badge--gold">Google Summer of Code {year}</span>
+        <h1>Project ideas</h1>
+        <p>Ambitious, real-world projects on a platform that's live today. Pick one, remix one, or propose your own.</p>
+        <div class="tips">
+          <div class="a1-card"><h2>Merge 5 PRs first</h2><p>Priority goes to applicants with at least five merged pull requests in the <a href="https://github.com/alphaonelabs/website">monorepo</a>.</p></div>
+          <div class="a1-card"><h2>Your own idea is welcome</h2><p>These are starting points. A focused proposal of your own, grounded in our code, is just as strong.</p></div>
+          <div class="a1-card"><h2>Talk to us early</h2><p>Open a thread in <a href="https://github.com/orgs/alphaonelabs/discussions">Discussions</a> to shape your proposal with a mentor.</p></div>
+        </div>
       </div>
     </section>
-
-    <div class="grid lg:grid-cols-[16rem_1fr] gap-10">
-      <aside class="hidden lg:block">
-        <div class="sticky top-20">
-          <p class="text-xs uppercase tracking-wider text-gray-500 mb-2 px-3">{year} ideas</p>
-          <ol class="text-sm space-y-0.5">
+    <div class="wrap layout">
+      <nav class="toc" aria-label="{year} ideas">
+        <span class="a1-eyebrow">{year} ideas</span>
+        <ol>
 {toc}
-          </ol>
-          <a href="#archive" class="block mt-4 px-3 text-sm text-teal-600">Past years →</a>
-        </div>
-      </aside>
-
-      <article class="ideas min-w-0">
+        </ol>
+      </nav>
+      <article class="ideas">
 {current}
       </article>
     </div>
-
-    <section id="archive" class="mt-20">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Past ideas</h2>
-      <p class="text-gray-600 dark:text-gray-400 mb-6">Ideas from earlier years, kept for reference. Several of them are now live projects in the monorepo.</p>
+    <section class="archive" id="archive">
+      <div class="wrap">
+        <h2>Past years</h2>
+        <p>Earlier idea lists, kept for reference. Several became live projects in the monorepo.</p>
 {archive}
+      </div>
     </section>
   </main>
-
-  <footer class="w-full bg-gray-800 dark:bg-gray-950 text-gray-300 py-10">
-    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row gap-4 justify-between text-sm">
-      <p>© Alpha One Labs · <a class="underline" href="https://github.com/alphaonelabs/website/tree/main/gsoc/ideas">Edit these ideas on GitHub</a></p>
-      <p><a class="underline" href="https://learn.alphaonelabs.com">learn.alphaonelabs.com</a> · <a class="underline" href="https://alphaonelabs.com">alphaonelabs.com</a></p>
-    </div>
-  </footer>
+  <a1-footer source="gsoc/ideas"></a1-footer>
 </body>
 </html>
 """
