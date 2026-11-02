@@ -230,6 +230,16 @@ wrangler dev
 
 **Note**: Python Workers are fully supported by Wrangler. No separate Python installation or pip packages are needed.
 
+### Running Tests
+
+Install the development dependencies and run the PMOSS test suite from the project directory:
+
+```bash
+cd pmoss
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
 ### Testing Locally
 
 Use a tool like [ngrok](https://ngrok.com/) to test webhooks locally:
