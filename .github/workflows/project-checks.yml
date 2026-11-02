@@ -57,6 +57,30 @@ jobs:
         run: |
           files=$(git ls-files '*.py')
           [ -z "$files" ] || python -m py_compile $files
+      - name: Python tests
+        if: hashFiles(format('{0}/tests/**/*.py', matrix.project)) != ''
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          # Temporarily skip suites with known failures. Remove each project when fixed:
+          # learn: https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+learn%22
+          # voxbridge: https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+voxbridge%22
+          pytest_opt_out=" learn voxbridge "
+          case "$pytest_opt_out" in
+            *" $PROJECT "*)
+              echo "Temporarily skipping $PROJECT pytest suite; see project issues."
+              exit 0
+              ;;
+          esac
+
+          if [ -f requirements-dev.txt ]; then
+            python -m pip install -r requirements-dev.txt
+          elif [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            python -m pip install pytest pytest-asyncio
+          fi
+          python -m pytest -q
       - name: Build
         if: hashFiles(format('{0}/package.json', matrix.project)) != ''
         run: |
