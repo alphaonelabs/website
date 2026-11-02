@@ -5,6 +5,9 @@ import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 
+// TODO: Learn has no meetings API equivalent yet. Replace these signaling
+// calls as part of GSoC idea 1:
+// https://gsoc.alphaonelabs.com/ideas#1-live-classrooms-with-real-audio-video-and-captions
 class VideoMeetingScreen extends StatefulWidget {
   final Map<String, dynamic> classData;
 

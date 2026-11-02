@@ -1,10 +1,10 @@
 # Video Meeting App
 
-A Flutter application that enables teachers to host video meetings and students to connect in a peer-to-peer way. The app integrates with alphaonelabs.com for user authentication and class management.
+A Flutter application that enables teachers to host video meetings and students to connect in a peer-to-peer way. The app integrates with Learn for user authentication and activity catalog data.
 
 ## Features
 
-- User authentication with alphaonelabs.com
+- User authentication with Learn
 - View enrolled classes
 - Join video meetings
 - Peer-to-peer video streaming
@@ -35,6 +35,13 @@ flutter pub get
 3. Run the app:
 ```bash
 flutter run
+```
+
+The app uses `https://learn.alphaonelabs.com` by default. To point it at
+another Learn deployment:
+
+```bash
+flutter run --dart-define=API_BASE=https://example.com
 ```
 
 ## Testing
