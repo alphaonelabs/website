@@ -13,8 +13,16 @@ GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 GITHUB_USER_URL = 'https://api.github.com/user'
 
 
+def _not_configured():
+    headers = Headers.new()
+    headers.set('Content-Type', 'text/plain; charset=utf-8')
+    return Response.new('GitHub sign-in is not configured yet.', status=503, headers=headers)
+
+
 async def handle_auth(env):
     """Initiate OAuth flow"""
+    if not getattr(env, 'GITHUB_CLIENT_ID', None):
+        return _not_configured()
     state = str(uuid.uuid4())
     redirect_uri = getattr(env, 'GITHUB_REDIRECT_URI', '') or getattr(env, 'GITHUB_REDIRECT_URI_DEFAULT', '')
     
@@ -40,6 +48,8 @@ async def handle_auth_callback(request, env):
     
     if not code:
         return Response.new('Authorization failed: No code provided', status=400)
+    if not getattr(env, 'GITHUB_CLIENT_ID', None) or not getattr(env, 'GITHUB_CLIENT_SECRET', None):
+        return _not_configured()
     
     try:
         redirect_uri = getattr(env, 'GITHUB_REDIRECT_URI', '') or getattr(env, 'GITHUB_REDIRECT_URI_DEFAULT', '')
