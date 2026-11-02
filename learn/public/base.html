@@ -8,7 +8,6 @@
   <style>
     html { background: #ffffff; }
     html.dark { background: #000000; }
-    html.prepaint-home, html.prepaint-home body, html.prepaint-home body > main > section:first-child { background: #000000; }
     .hidden { display: none !important; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
     .relative { position: relative; }
@@ -18,26 +17,18 @@
     .justify-center { justify-content: center; }
     .w-full { width: 100%; }
     .min-h-screen { min-height: 100vh; }
-    #site-navbar { min-height: 72px; background: #000000; color: #fff; }
-    #site-navbar header { background: inherit; color: inherit; }
-    #site-navbar header > div { max-width: 90rem; margin: 0 auto; min-height: 70px; padding: .75rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
-    #site-navbar header > div > a,
-    #site-navbar header > div > nav a,
-    #site-navbar header > div > div > a,
-    #site-navbar header > div > button { color: inherit; }
-    #site-navbar img { width: 40px; height: 40px; display: block; }
+    /* Pre-paint header (white in light, black in dark) so the page does not jump before Tailwind loads. */
+    #site-navbar { min-height: 77px; background: #ffffff; color: #101010; }
+    html.dark #site-navbar { background: #000000; color: #fafafa; }
+    #site-navbar .a1n { position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
+    #site-navbar .a1n__bar { max-width: 1280px; margin: 0 auto; min-height: 76px; display: flex; align-items: center; }
+    #site-navbar .a1n__brand img { width: 34px; height: auto; }
     html.is-authenticated #auth-not-logged-in,
     html.is-authenticated #mobile-auth-not-logged-in,
     html.is-anonymous #auth-logged-in,
     html.is-anonymous #mobile-auth-logged-in { display: none !important; }
-    html.is-authenticated #auth-logged-in { display: flex !important; }
-    html.is-authenticated #mobile-auth-logged-in { display: block !important; }
-    html.prepaint-home main > section:first-child { min-height: 560px; color: #fff; }
-    html.prepaint-home main > section:first-child > div:last-child { max-width: 90rem; margin: 0 auto; padding: 5rem 1rem; }
-    html.prepaint-home main > section:first-child h1 { max-width: 52rem; margin: 0 0 1.5rem; font-size: clamp(2.5rem, 6vw, 4rem); line-height: 1.05; font-weight: 800; letter-spacing: -.03em; color: #fff; }
-    html.prepaint-home main > section:first-child p { max-width: 42rem; color: #fff; }
-    html.prepaint-home main > section:first-child a { min-height: 3.5rem; align-items: center; justify-content: center; text-decoration: none; }
-    @media (max-width: 767px) { html.prepaint-home main > section:first-child { min-height: 720px; } }
+    html.is-authenticated #mobile-auth-logged-in { display: grid !important; }
+    @media (min-width: 768px) { html.is-authenticated #auth-logged-in { display: flex !important; } }
     @media (min-width: 640px) {
       .sm\:inline { display: inline !important; }
     }
@@ -98,18 +89,6 @@
         try { localStorage.setItem('darkMode', String(isDark)); } catch (_) { /* ignore */ }
         if (typeof window.updateDarkModeIcon === 'function') window.updateDarkModeIcon();
       });
-
-      const currentPath = ((location.pathname || '/').replace(/\/+$/, '') || '/').replace(/^\/en(?=\/|$)/, '') || '/';
-      if (currentPath === '/') {
-        document.documentElement.classList.add('prepaint-home');
-        window.addEventListener('load', function () {
-          requestAnimationFrame(function () {
-            requestAnimationFrame(function () {
-              document.documentElement.classList.remove('prepaint-home');
-            });
-          });
-        }, { once: true });
-      }
 
       const protectedPaths = new Set([
         '/calendar',
@@ -184,9 +163,14 @@
       })(),
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Barlow Condensed', 'Arial Narrow', 'Impact', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
-      }
+      },
+      // Design system v2: near-square corners (tags 2px, buttons/inputs 4px, cards 6px,
+      // panels 8px). `full` stays round for avatars and status dots.
+      borderRadius: { sm: '2px', DEFAULT: '4px', md: '4px', lg: '4px', xl: '6px', '2xl': '6px', '3xl': '8px' },
+      // Hard 1px borders instead of soft drop shadows.
+      boxShadow: { sm: 'none', DEFAULT: 'none', md: 'none', lg: 'none', xl: 'none', '2xl': 'none', inner: 'none' }
     };
     window.applyA1TailwindTheme = function () {
       var cfg = window.tailwind && window.tailwind.config ? window.tailwind.config : {};
@@ -197,7 +181,9 @@
         theme: Object.assign({}, theme, {
           extend: Object.assign({}, extend, {
             colors: Object.assign({}, extend.colors || {}, window.A1_TAILWIND_THEME.colors),
-            fontFamily: Object.assign({}, extend.fontFamily || {}, window.A1_TAILWIND_THEME.fontFamily)
+            fontFamily: Object.assign({}, extend.fontFamily || {}, window.A1_TAILWIND_THEME.fontFamily),
+            borderRadius: Object.assign({}, extend.borderRadius || {}, window.A1_TAILWIND_THEME.borderRadius),
+            boxShadow: Object.assign({}, extend.boxShadow || {}, window.A1_TAILWIND_THEME.boxShadow)
           })
         })
       });
@@ -211,12 +197,31 @@
     .dark { color-scheme: dark; }
     :root { color-scheme: light; }
     a, button, input, select, textarea { touch-action: manipulation; }
-    /* Alpha One Labs brand layer (tokens come from brand.css). */
+    /* Alpha One Labs brand layer, design system v2 (tokens come from brand.css). */
     body { font-family: var(--a1-font-body, Inter, system-ui, sans-serif); }
-    h1, h2, h3, .font-display { font-family: var(--a1-font-display, "Space Grotesk", Inter, sans-serif); letter-spacing: -0.01em; }
-    :focus-visible { outline: 2px solid #9a8236; outline-offset: 2px; }
-    html.dark :focus-visible { outline-color: #e2c66a; }
-    ::selection { background: #e2c66a; color: #000; }
+    h1, h2, .font-display { font-family: var(--a1-font-display, "Barlow Condensed", "Arial Narrow", Impact, sans-serif); font-weight: 800; letter-spacing: -0.005em; }
+    h3 { font-family: var(--a1-font-body, Inter, system-ui, sans-serif); letter-spacing: -0.02em; }
+    :focus-visible { outline: 3px solid #d4af37; outline-offset: 2px; }
+    html.dark :focus-visible { outline-color: #e1b746; }
+    ::selection { background: #e1b746; color: #000; }
+    /* Near-square, hard-edged controls site-wide (pill buttons and inputs included). */
+    a.rounded-full, button.rounded-full, input.rounded-full, select.rounded-full, textarea.rounded-full { border-radius: 4px; }
+    /* Primary buttons: brass fill with near-black text (teal/cyan classes map to gold). */
+    a.bg-teal-500, a.bg-teal-600, a.bg-teal-700, button.bg-teal-500, button.bg-teal-600, button.bg-teal-700,
+    a.bg-cyan-500, a.bg-cyan-600, button.bg-cyan-500, button.bg-cyan-600,
+    a[class*="from-teal-"]:not(.bg-clip-text), button[class*="from-teal-"]:not(.bg-clip-text), a[class*="from-cyan-"]:not(.bg-clip-text), button[class*="from-cyan-"]:not(.bg-clip-text),
+    input[type="submit"].bg-teal-600 {
+      background: #d4af37; border-color: #d4af37; color: #080808;
+    }
+    a.bg-teal-500:hover, a.bg-teal-600:hover, a.bg-teal-700:hover, button.bg-teal-500:hover, button.bg-teal-600:hover, button.bg-teal-700:hover,
+    a.bg-cyan-500:hover, a.bg-cyan-600:hover, button.bg-cyan-500:hover, button.bg-cyan-600:hover,
+    a[class*="from-teal-"]:not(.bg-clip-text):hover, button[class*="from-teal-"]:not(.bg-clip-text):hover, a[class*="from-cyan-"]:not(.bg-clip-text):hover, button[class*="from-cyan-"]:not(.bg-clip-text):hover {
+      background: #f0c658; border-color: #f0c658; color: #080808;
+    }
+    html.dark a.bg-teal-500, html.dark a.bg-teal-600, html.dark a.bg-teal-700, html.dark button.bg-teal-500, html.dark button.bg-teal-600, html.dark button.bg-teal-700,
+    html.dark a[class*="from-teal-"]:not(.bg-clip-text), html.dark button[class*="from-teal-"]:not(.bg-clip-text) { background: #e1b746; border-color: #e1b746; color: #080808; }
+    a.bg-teal-600 i, button.bg-teal-600 i, a[class*="from-teal-"]:not(.bg-clip-text) i, button[class*="from-teal-"]:not(.bg-clip-text) i { color: inherit; }
+    button:disabled.bg-teal-600, button:disabled[class*="from-teal-"]:not(.bg-clip-text) { opacity: .55; }
     a1-footer { display: block; min-height: 280px; background: #000; }
     html:not(.dark) a1-footer { background: #fff; }
   </style>

@@ -5259,46 +5259,75 @@ def _is_test_success_story_record(record: Dict[str, Any]) -> bool:
 _SSR_BRAND_HEAD = (
     '<link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">'
     '<style>body{font-family:var(--a1-font-body,Inter,system-ui,sans-serif)}'
-    'h1,h2,h3{font-family:var(--a1-font-display,"Space Grotesk",Inter,sans-serif)}'
-    ':focus-visible{outline:2px solid #9a8236;outline-offset:2px}html.dark :focus-visible{outline-color:#e2c66a}'
+    'h1,h2{font-family:var(--a1-font-display,"Barlow Condensed","Arial Narrow",Impact,sans-serif);font-weight:800;letter-spacing:-.005em}'
+    ':focus-visible{outline:3px solid #d4af37;outline-offset:2px}html.dark :focus-visible{outline-color:#e1b746}'
+    'a.rounded-full,button.rounded-full,input.rounded-full{border-radius:4px}'
+    '.a1s{background:#fff;color:#101010;border-bottom:1px solid #d8d8d8;font-family:var(--a1-font-body,Inter,sans-serif)}'
+    'html.dark .a1s{background:#000;color:#fafafa;border-bottom-color:#383838}'
+    '.a1s a{color:inherit;text-decoration:none}'
+    '.a1s__bar{max-width:1280px;margin:0 auto;min-height:76px;padding:0 clamp(16px,4vw,48px);display:flex;align-items:center;gap:18px}'
+    '.a1s__brand{display:flex;align-items:center;gap:12px;flex:none}.a1s__brand img{width:34px;height:auto}'
+    '.a1s__word{font:900 26px/1 var(--a1-font-display,"Barlow Condensed",sans-serif);text-transform:uppercase;white-space:nowrap}'
+    '.a1s__div{width:1px;align-self:stretch;margin:20px 2px;background:#d8d8d8}html.dark .a1s__div{background:#383838}'
+    '.a1s__nav{display:flex;gap:22px}.a1s__nav a{font:700 14px/1 var(--a1-font-body,Inter,sans-serif);padding:8px 0;border-bottom:2px solid transparent}'
+    '.a1s__nav a:hover{border-bottom-color:#d4af37}'
+    '.a1s__end{margin-left:auto;display:flex;align-items:center;gap:6px}'
+    '.a1s__btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid currentColor;border-radius:4px;background:none;color:inherit;font:800 13px/1 var(--a1-font-body,Inter,sans-serif);white-space:nowrap;cursor:pointer}'
+    '.a1s__btn--gold{background:#d4af37;border-color:#d4af37;color:#080808!important}html.dark .a1s__btn--gold{background:#e1b746;border-color:#e1b746}'
+    '.a1s__icon{display:inline-grid;place-items:center;width:40px;height:40px;border:1px solid transparent;border-radius:2px;background:none;color:inherit;cursor:pointer;list-style:none}'
+    '.a1s__icon::-webkit-details-marker{display:none}'
+    '.a1s__menu{display:none}.a1s details[open] .a1s__drawer{display:grid}'
+    '.a1s__drawer{display:none;position:absolute;left:0;right:0;top:77px;z-index:50;padding:12px clamp(16px,4vw,48px) 20px;background:inherit;border-bottom:1px solid #d8d8d8}'
+    'html.dark .a1s__drawer{border-bottom-color:#383838}'
+    '.a1s__drawer a{padding:12px 0;border-bottom:1px solid #d8d8d8;font:900 24px/1 var(--a1-font-display,"Barlow Condensed",sans-serif);text-transform:uppercase}'
+    'html.dark .a1s__drawer a{border-bottom-color:#383838}'
+    '@media(max-width:1179px){.a1s__nav,.a1s__div{display:none}.a1s__menu{display:block}}'
+    '@media(max-width:767px){.a1s__hide-sm{display:none}.a1s__word{font-size:22px}}'
     'a1-footer{display:block;min-height:280px;background:#000}html:not(.dark) a1-footer{background:#fff}</style>'
     '<script>(function(){var g={50:"#fbf8ee",100:"#f6efd9",200:"#ecdeb0",300:"#e2c66a",400:"#c7ab4f",500:"#9a8236",600:"#7c692e",700:"#685721",800:"#524520",900:"#3a3117",950:"#221d0d"};'
-    'tailwind.config={darkMode:"class",theme:{extend:{colors:{teal:g,cyan:g,gold:g}}}};'
+    'var r2={sm:"2px",DEFAULT:"4px",md:"4px",lg:"4px",xl:"6px","2xl":"6px","3xl":"8px"},sh={sm:"none",DEFAULT:"none",md:"none",lg:"none",xl:"none","2xl":"none"};'
+    'tailwind.config={darkMode:"class",theme:{extend:{colors:{teal:g,cyan:g,gold:g},borderRadius:r2,boxShadow:sh,fontFamily:{display:["Barlow Condensed","Arial Narrow","sans-serif"]}}}};'
     'var r=document.documentElement,d=false;'
     'try{var c=(document.cookie.match(/(?:^|; )a1-theme=(light|dark)/)||[])[1],st=localStorage.getItem("darkMode");'
     'if(c){d=c==="dark";localStorage.setItem("darkMode",String(d));}else if(st==="true"||st==="false"){d=st==="true";}'
     'else{d=!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);}}catch(e){}'
-    'if(d){r.classList.add("dark");}r.setAttribute("data-a1-theme",d?"dark":"light");})();</script>'
+    'if(d){r.classList.add("dark");}r.setAttribute("data-a1-theme",d?"dark":"light");'
+    'window.a1SsrToggleTheme=function(){var dk=!r.classList.contains("dark");r.classList.toggle("dark",dk);'
+    'try{localStorage.setItem("darkMode",String(dk));}catch(e){}'
+    'if(window.A1Theme&&window.A1Theme.set){window.A1Theme.set(dk?"dark":"light");}else{r.setAttribute("data-a1-theme",dk?"dark":"light");}};'
+    'document.addEventListener("a1-themechange",function(e){var t=e&&e.detail&&e.detail.theme;if(t==="dark"||t==="light"){r.classList.toggle("dark",t==="dark");}});'
+    '})();</script>'
+)
+
+
+_SSR_NAV_LINKS = (
+    ("/activity", "Activities"),
+    ("/classroom_poc?autojoin=1&amp;room=lobby", "Classroom"),
+    ("/teach", "Teach"),
+    ("/forum", "Community"),
+    ("/about", "About"),
 )
 
 
 def _ssr_nav() -> str:
-    links = [
-        ("/activity", "Courses"),
-        ("/classes-map", "Classes Near Me"),
-        ("/waiting-rooms", "Waiting Rooms"),
-        ("/forum", "Forum"),
-        ("/blog", "Blog"),
-        ("/study-groups", "Study Groups"),
-        ("/quizzes", "Quizzes"),
-        ("/challenges", "Challenges"),
-        ("/progress", "Progress"),
-        ("/cart", "Cart"),
-        ("/login", "Login"),
-    ]
-    nav_links = "".join(
-        f'<a href="{href}" class="px-3 py-2 rounded-md text-gray-300 hover:bg-[#141414] hover:text-[#e2c66a] text-sm font-medium">{label}</a>'
-        for href, label in links
-    )
+    nav_links = "".join(f'<a href="{href}">{label}</a>' for href, label in _SSR_NAV_LINKS)
     return (
-        '<header class="w-full bg-black text-white border-b border-[#2e2e2e]">'
-        '<div class="max-w-[90rem] mx-auto px-4 md:px-6 min-h-[70px] flex flex-wrap items-center justify-between gap-3 py-3">'
-        '<a href="/" class="flex items-center space-x-3">'
-        '<img src="/images/logo.svg" alt="Alpha One Labs logo" height="40" width="36" class="h-10 w-auto">'
-        '<span class="text-xl font-bold" style="font-family:var(--a1-font-display,inherit)">Alpha One Labs</span></a>'
-        f'<nav class="flex flex-wrap items-center gap-1" aria-label="Primary navigation">{nav_links}</nav>'
-        '</div>'
-        '<div aria-hidden="true" style="height:2px;background:linear-gradient(90deg,transparent,#c7ab4f 20%,#c7ab4f 80%,transparent);opacity:.55"></div>'
+        '<header class="a1s" style="position:relative">'
+        '<div class="a1s__bar">'
+        '<a href="/" class="a1s__brand" aria-label="Alpha One Labs home">'
+        '<img src="/images/logo.svg" alt="" width="34" height="38">'
+        '<span class="a1s__word">Alpha One Labs</span></a>'
+        '<span class="a1s__div" aria-hidden="true"></span>'
+        f'<nav class="a1s__nav" aria-label="Primary navigation">{nav_links}</nav>'
+        '<div class="a1s__end">'
+        '<a href="/activity" class="a1s__icon a1s__hide-sm" aria-label="Search activities"><i class="fas fa-search" aria-hidden="true"></i></a>'
+        '<button type="button" class="a1s__icon" aria-label="Toggle light and dark theme" onclick="a1SsrToggleTheme()"><i class="fas fa-circle-half-stroke" aria-hidden="true"></i></button>'
+        '<a href="/login" class="a1s__btn a1s__hide-sm">Sign in</a>'
+        '<a href="/activity" class="a1s__btn a1s__btn--gold a1s__hide-sm">Explore Activities <span aria-hidden="true">&#8599;</span></a>'
+        '<details class="a1s__menu"><summary class="a1s__icon" aria-label="Open menu"><i class="fas fa-bars" aria-hidden="true"></i></summary>'
+        f'<nav class="a1s__drawer" aria-label="Primary navigation (mobile)">{nav_links}'
+        '<a href="/login">Sign in</a></nav></details>'
+        '</div></div>'
         '</header>'
     )
 
