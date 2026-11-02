@@ -15,12 +15,12 @@
         
         .dark { color-scheme: dark; }
         :root { color-scheme: light; }
-        html.prepaint-home { background: #0f766e; }
-        html.prepaint-home.dark { background: #134e4a; }
+        html.prepaint-home { background: #000; }
+        html.prepaint-home.dark { background: #000; }
         body { background: #fff; }
-        html.prepaint-home body { background: #0f766e; }
+        html.prepaint-home body { background: #000; }
         html.dark body { background: #000; }
-        html.prepaint-home.dark body { background: #134e4a; }
+        html.prepaint-home.dark body { background: #000; }
 
         .home-auth-only { display: none !important; }
         .home-guest-only { display: flex !important; }
@@ -50,23 +50,25 @@
 <!-- ===== MAIN CONTENT ===== -->
     <main class="flex-1 w-full">
         <!-- ===== 3D HERO SECTION ===== -->
-        <section class="bg-gradient-to-br from-teal-700 via-teal-600 to-cyan-600 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-800 relative overflow-hidden py-20 md:py-28">
+        <section class="a1-hero bg-black relative overflow-hidden py-20 md:py-28">
             <div class="absolute inset-0 pointer-events-none select-none" aria-hidden="true">
-                <div class="animate-bounce absolute top-[10%] left-[8%] text-white/20 text-6xl"><i class="fas fa-atom"></i></div>
-                <div class="animate-pulse absolute top-[20%] right-[12%] text-white/15 text-7xl"><i class="fas fa-book-open"></i></div>
-                <div class="animate-bounce absolute bottom-[15%] left-[15%] text-white/20 text-5xl"><i class="fas fa-flask"></i></div>
-                <div class="animate-bounce absolute bottom-[20%] right-[8%] text-white/15 text-6xl" style="animation-delay: 3s;"><i class="fas fa-graduation-cap"></i></div>
-                <div class="animate-pulse absolute top-[50%] left-[50%] text-white/10 text-8xl" style="animation-delay: 2s;"><i class="fas fa-brain"></i></div>
-                <div class="animate-bounce absolute top-[5%] left-[45%] text-white/15 text-5xl" style="animation-delay: 1.5s;"><i class="fas fa-lightbulb"></i></div>
-                <div class="animate-bounce absolute bottom-[5%] left-[60%] text-white/10 text-6xl" style="animation-delay: 4s;"><i class="fas fa-rocket"></i></div>
+                <img src="/images/illustrations/circuit.svg" alt="" class="hidden md:block absolute -right-10 top-6 w-[26rem] max-w-[45%] opacity-25" loading="lazy" decoding="async">
+                <img src="/images/illustrations/soldering-iron.svg" alt="" class="absolute -left-8 bottom-4 w-48 md:w-64 opacity-15" loading="lazy" decoding="async">
+                <div class="animate-bounce absolute top-[10%] left-[8%] text-[#c7ab4f]/20 text-6xl"><i class="fas fa-atom"></i></div>
+                <div class="animate-pulse absolute top-[20%] right-[12%] text-[#c7ab4f]/15 text-7xl"><i class="fas fa-book-open"></i></div>
+                <div class="animate-bounce absolute bottom-[15%] left-[15%] text-[#c7ab4f]/20 text-5xl"><i class="fas fa-flask"></i></div>
+                <div class="animate-bounce absolute bottom-[20%] right-[8%] text-[#c7ab4f]/15 text-6xl" style="animation-delay: 3s;"><i class="fas fa-graduation-cap"></i></div>
+                <div class="animate-pulse absolute top-[50%] left-[50%] text-[#c7ab4f]/10 text-8xl" style="animation-delay: 2s;"><i class="fas fa-brain"></i></div>
+                <div class="animate-bounce absolute top-[5%] left-[45%] text-[#c7ab4f]/15 text-5xl" style="animation-delay: 1.5s;"><i class="fas fa-lightbulb"></i></div>
+                <div class="animate-bounce absolute bottom-[5%] left-[60%] text-[#c7ab4f]/10 text-6xl" style="animation-delay: 4s;"><i class="fas fa-rocket"></i></div>
             </div>
 
             <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
                 <div class="flex flex-col lg:flex-row items-center gap-10">
                     <div class="lg:w-3/5 text-center lg:text-left">
                         <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
-                            Activities, <span class="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">Classes</span>, and
-                            <span class="bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">Community</span> in One Place
+                            Activities, <span class="text-[#e2c66a]">Classes</span>, and
+                            <span class="text-[#c7ab4f]">Community</span> in One Place
                         </h1>
                         <p class="text-lg md:text-xl text-white max-w-2xl mb-8 leading-relaxed">
                             Alpha One Labs is an activity platform for classes, workshops, study groups, classrooms, events, and community projects. Browse what is live, request what you want next, or offer something you can teach.
@@ -113,6 +115,7 @@
                 </div>
             </div>
         </section>
+        <div class="a1-trace" aria-hidden="true"></div>
 
         <!-- ===== PAGE SECTIONS ===== -->
         <div class="home-below-fold max-w-[90rem] mx-auto px-4 md:px-6 mt-10 pb-12 space-y-14">

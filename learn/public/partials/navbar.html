@@ -1,29 +1,37 @@
 <!-- ===== HEADER ===== -->
-<header class=" fixed top-0 left-0 z-50 w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md">
+<header class="a1-site-header fixed top-0 left-0 z-50 w-full bg-black text-white">
   <style>
-    a.nav-link[aria-current="page"] {
-      background-color: #115e59;
-      color: #ffffff;
-    }
+    .a1-site-header { border-bottom: 1px solid #2e2e2e; font-family: var(--a1-font-body, Inter, system-ui, sans-serif); }
+    .a1-site-header .a1-brand-name { font-family: var(--a1-font-display, "Space Grotesk", Inter, sans-serif); letter-spacing: -0.01em; }
+    .a1-site-header .a1-hover:hover { background-color: #141414; color: #e2c66a; }
+    .a1-site-header a.nav-link { color: #d4d4d4; }
+    .a1-site-header a.nav-link:hover { background-color: #141414; color: #ffffff; }
+    .a1-site-header a.nav-link[aria-current="page"] { background-color: #141414; color: #e2c66a; box-shadow: inset 0 -2px 0 #c7ab4f; }
+    .a1-site-header :focus-visible { outline: 2px solid #e2c66a; outline-offset: 2px; }
+    .a1-site-header .a1-header-trace { display: block; height: 2px; background: linear-gradient(90deg, transparent, #c7ab4f 20%, #c7ab4f 80%, transparent); opacity: .55; }
+    .a1-site-header .a1-cta { background: #c7ab4f; color: #000; }
+    .a1-site-header .a1-cta:hover { background: #e2c66a; color: #000; }
+    .a1-site-header .a1-avatar { background: #c7ab4f; color: #000; }
+    .a1-site-header #mobile-menu { background: #0d0d0d; border-color: #2e2e2e; }
   </style>
 
   <div class="max-w-[90rem] mx-auto px-4 md:px-6 flex items-center justify-between min-h-[70px] relative gap-3 py-3">
-    <a href="/" class="flex items-center space-x-2 min-w-[170px]">
-      <img src="/images/logo.png" alt="Alpha One Labs Logo" height="40" width="40" class="h-10 w-10">
-      <span class="text-xl font-bold text-white whitespace-nowrap">Alpha One Labs</span>
+    <a href="/" class="flex items-center space-x-3 min-w-[170px] rounded-lg">
+      <img src="/images/logo.svg" alt="Alpha One Labs logo" height="40" width="36" class="h-10 w-auto">
+      <span class="a1-brand-name text-xl font-bold text-white whitespace-nowrap">Alpha One Labs</span>
     </a>
 
     <nav class="hidden xl:flex items-center gap-1" aria-label="Primary navigation">
-      <a href="/activity" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-book-open mr-1"></i>Browse</a>
-      <a href="/requests?kind=learn" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-graduation-cap mr-1"></i>Learn</a>
-      <a href="/requests?kind=teach" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-chalkboard-user mr-1"></i>Teach</a>
-      <a href="/waiting-rooms" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg hover:bg-teal-700 font-semibold text-sm transition-colors"><i class="fas fa-door-open mr-1"></i>Wait</a>
+      <a href="/activity" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-book-open mr-1"></i>Browse</a>
+      <a href="/requests?kind=learn" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-graduation-cap mr-1"></i>Learn</a>
+      <a href="/requests?kind=teach" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-chalkboard-user mr-1"></i>Teach</a>
+      <a href="/waiting-rooms" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-door-open mr-1"></i>Wait</a>
     </nav>
 
     <div class="relative hidden lg:block w-[260px]">
       <form action="/activity" method="get" class="m-0">
         <label class="sr-only" for="site-search">Search classes</label>
-        <input id="site-search" type="text" name="q" placeholder="What do you want to learn?" class="rounded-full w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 pr-12 min-h-11 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700 text-sm">
+        <input id="site-search" type="text" name="q" placeholder="What do you want to learn?" class="rounded-full w-full bg-white dark:bg-[#1a1a1a] dark:border dark:border-[#2e2e2e] text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 px-4 py-2 pr-12 min-h-11 focus:outline-none focus:ring-2 focus:ring-[#c7ab4f] text-sm">
         <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-gray-600 dark:text-gray-200" aria-label="Search">
           <i class="fas fa-search"></i>
         </button>
@@ -31,26 +39,26 @@
     </div>
 
     <div class="hidden md:flex items-center gap-1">
-      <a href="/cart" id="cart-nav-link" class="hidden relative items-center justify-center min-h-11 min-w-11 p-2 hover:bg-teal-700 rounded-lg" aria-label="Cart" title="Cart">
+      <a href="/cart" id="cart-nav-link" class="hidden relative items-center justify-center min-h-11 min-w-11 p-2 a1-hover rounded-lg" aria-label="Cart" title="Cart">
         <i class="fa-solid fa-shopping-cart"></i>
-        <span id="cart-count-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold"></span>
+        <span id="cart-count-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full a1-avatar flex items-center justify-center text-xs font-bold"></span>
       </a>
-      <a href="/notifications" id="notif-bell-link" class="hidden relative items-center justify-center min-h-11 min-w-11 p-2 hover:bg-teal-700 rounded-lg" aria-label="Notifications" title="Notifications">
+      <a href="/notifications" id="notif-bell-link" class="hidden relative items-center justify-center min-h-11 min-w-11 p-2 a1-hover rounded-lg" aria-label="Notifications" title="Notifications">
         <i class="fas fa-bell"></i>
         <span id="notif-unread-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold"></span>
       </a>
-      <button class="focus:outline-none flex items-center justify-center min-h-11 min-w-11 p-2 rounded-lg hover:bg-teal-700 transition-colors" title="Switch dark mode" aria-label="Switch dark mode" onclick="toggleDarkMode()">
+      <button class="focus:outline-none flex items-center justify-center min-h-11 min-w-11 p-2 rounded-lg a1-hover transition-colors" title="Switch dark mode" aria-label="Switch dark mode" onclick="toggleDarkMode()">
         <i id="darkModeIcon" class="fas fa-moon"></i>
       </button>
     </div>
 
     <div class="hidden md:flex items-center space-x-2 min-w-[180px]">
       <div id="auth-not-logged-in" class="flex items-center space-x-2 w-full">
-        <a href="/login" class="hover:underline flex items-center min-h-11 p-2 hover:bg-teal-700 rounded-lg flex-1 justify-center">
+        <a href="/login" class="flex items-center min-h-11 p-2 a1-hover rounded-lg flex-1 justify-center">
           <i class="fa-solid fa-right-to-bracket mr-1"></i>
           <span class="hidden sm:inline">Login</span>
         </a>
-        <a href="/login?tab=register" class="px-3 py-2.5 min-h-11 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-semibold flex items-center transition">
+        <a href="/login?tab=register" class="px-3 py-2.5 min-h-11 rounded-full a1-cta font-semibold flex items-center transition">
           <i class="fa-solid fa-user-plus mr-1"></i>
           <span class="hidden sm:inline text-sm">Signup</span>
         </a>
@@ -58,14 +66,14 @@
 
       <div id="auth-logged-in" class="hidden items-center space-x-2 w-full">
         <div class="relative flex-1">
-          <button onclick="toggleProfileDropdown()" class="flex items-center space-x-2 hover:bg-teal-700 rounded-lg p-2 min-h-11 w-full" aria-label="Open profile menu">
-            <div id="profile-avatar" class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm"></div>
+          <button onclick="toggleProfileDropdown()" class="flex items-center space-x-2 a1-hover rounded-lg p-2 min-h-11 w-full" aria-label="Open profile menu">
+            <div id="profile-avatar" class="w-8 h-8 rounded-full a1-avatar flex items-center justify-center font-bold text-sm"></div>
             <span id="profile-greeting" class="text-sm font-medium truncate"></span>
             <i class="fas fa-chevron-down text-xs"></i>
           </button>
-          <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50">
+          <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-[#0d0d0d] border border-gray-200 dark:border-[#2e2e2e] rounded-lg shadow-lg py-2 z-50">
             <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
-              <div class="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+              <div class="w-9 h-9 rounded-full a1-avatar flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
                 <span id="dropdown-avatar-initials"></span>
                 <img id="dropdown-avatar-img" class="hidden w-full h-full object-cover" alt="" />
               </div>
@@ -74,56 +82,58 @@
                 <p id="dropdown-user-role" class="text-xs text-gray-500 dark:text-gray-400 capitalize"></p>
               </div>
             </div>
-            <a href="/dashboard" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-tachometer-alt mr-2 text-teal-500"></i>Dashboard</a>
-            <a href="/profile" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-user mr-2 text-teal-500"></i>Profile</a>
-            <a id="dropdown-view-profile-link" href="/users.html" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-id-badge mr-2 text-teal-500"></i>My Public Profile</a>
-            <a href="/notification-preferences" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-sliders mr-2 text-teal-500"></i>Notifications</a>
+            <a href="/dashboard" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-tachometer-alt mr-2 text-teal-500"></i>Dashboard</a>
+            <a href="/profile" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-user mr-2 text-teal-500"></i>Profile</a>
+            <a id="dropdown-view-profile-link" href="/users.html" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-id-badge mr-2 text-teal-500"></i>My Public Profile</a>
+            <a href="/notification-preferences" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-sliders mr-2 text-teal-500"></i>Notifications</a>
             <button onclick="logout()" class="w-full text-left block px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
           </div>
         </div>
       </div>
     </div>
 
-    <button class="md:hidden p-2 min-h-11 min-w-11 hover:bg-teal-700 rounded-lg" onclick="toggleMobileMenu()" aria-label="Open menu">
+    <button class="md:hidden p-2 min-h-11 min-w-11 a1-hover rounded-lg" onclick="toggleMobileMenu()" aria-label="Open menu">
       <i class="fas fa-bars text-xl"></i>
     </button>
   </div>
 
-  <div id="mobile-menu" class="hidden md:hidden bg-teal-700 dark:bg-teal-900 border-t border-teal-500/40 mobile-menu-content">
+  <div id="mobile-menu" class="hidden md:hidden border-t mobile-menu-content">
     <div class="px-4 py-4 space-y-3">
       <form action="/activity" method="get" class="relative">
         <label class="sr-only" for="mobile-site-search">Search classes</label>
-        <input id="mobile-site-search" type="text" name="q" placeholder="Search classes" class="rounded-full w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 pr-12 min-h-11 focus:outline-none focus:ring-2 focus:ring-teal-300">
-        <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-gray-600" aria-label="Search"><i class="fas fa-search"></i></button>
+        <input id="mobile-site-search" type="text" name="q" placeholder="Search classes" class="rounded-full w-full bg-white dark:bg-[#1a1a1a] dark:border dark:border-[#2e2e2e] text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 px-4 py-2 pr-12 min-h-11 focus:outline-none focus:ring-2 focus:ring-[#c7ab4f]">
+        <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-gray-600 dark:text-gray-300" aria-label="Search"><i class="fas fa-search"></i></button>
       </form>
       <div class="grid grid-cols-1 gap-1 text-sm font-semibold">
-        <a href="/activity" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-book-open mr-2"></i>Browse</a>
-        <a href="/requests?kind=learn" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-graduation-cap mr-2"></i>Learn</a>
-        <a href="/requests?kind=teach" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-chalkboard-user mr-2"></i>Teach</a>
-        <a href="/waiting-rooms" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-door-open mr-2"></i>Wait</a>
-        <a href="/cart" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-shopping-cart mr-2"></i>Cart</a>
-        <a href="#site-footer" class="min-h-11 flex items-center px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-compass mr-2"></i>All Site Links</a>
+        <a href="/activity" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-book-open mr-2"></i>Browse</a>
+        <a href="/requests?kind=learn" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-graduation-cap mr-2"></i>Learn</a>
+        <a href="/requests?kind=teach" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-chalkboard-user mr-2"></i>Teach</a>
+        <a href="/waiting-rooms" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-door-open mr-2"></i>Wait</a>
+        <a href="/cart" class="min-h-11 flex items-center px-3 py-2 rounded-lg a1-hover"><i class="fas fa-shopping-cart mr-2"></i>Cart</a>
+        <a href="#site-footer" class="min-h-11 flex items-center px-3 py-2 rounded-lg a1-hover"><i class="fas fa-compass mr-2"></i>All Site Links</a>
+        <button type="button" onclick="toggleDarkMode()" class="min-h-11 flex items-center px-3 py-2 rounded-lg a1-hover text-left font-semibold"><i id="darkModeIconMobile" class="fas fa-moon mr-2 text-teal-300"></i>Light / dark theme</button>
       </div>
-      <div id="mobile-auth-not-logged-in" class="flex gap-2 pt-3 border-t border-teal-500/40">
-        <a href="/login" class="flex-1 min-h-11 flex items-center justify-center px-3 py-2 rounded-lg bg-teal-800 hover:bg-teal-900"><i class="fa-solid fa-right-to-bracket mr-1"></i>Login</a>
-        <a href="/login?tab=register" class="flex-1 min-h-11 flex items-center justify-center px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600"><i class="fa-solid fa-user-plus mr-1"></i>Signup</a>
+      <div id="mobile-auth-not-logged-in" class="flex gap-2 pt-3 border-t border-[#2e2e2e]">
+        <a href="/login" class="flex-1 min-h-11 flex items-center justify-center px-3 py-2 rounded-lg border border-[#2e2e2e] a1-hover"><i class="fa-solid fa-right-to-bracket mr-1"></i>Login</a>
+        <a href="/login?tab=register" class="flex-1 min-h-11 flex items-center justify-center px-3 py-2 rounded-lg a1-cta font-semibold"><i class="fa-solid fa-user-plus mr-1"></i>Signup</a>
       </div>
-      <div id="mobile-auth-logged-in" class="hidden pt-3 border-t border-teal-500/40 space-y-2">
+      <div id="mobile-auth-logged-in" class="hidden pt-3 border-t border-[#2e2e2e] space-y-2">
         <div class="flex items-center gap-2 px-3 py-2">
-          <div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+          <div class="w-8 h-8 rounded-full a1-avatar flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
             <span id="mobile-avatar-initials"></span>
             <img id="mobile-avatar-img" class="hidden w-full h-full object-cover" alt="" />
           </div>
           <div class="min-w-0">
             <span id="mobile-profile-greeting" class="font-semibold block truncate"></span>
-            <span id="mobile-user-role" class="text-xs text-teal-100 capitalize block"></span>
+            <span id="mobile-user-role" class="text-xs text-gray-400 capitalize block"></span>
           </div>
         </div>
-        <a href="/dashboard" class="block px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</a>
-        <a href="/profile" class="block px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-user mr-2"></i>Profile</a>
-        <a id="mobile-view-profile-link" href="/users.html" class="block px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-id-badge mr-2"></i>My Public Profile</a>
-        <button onclick="logout()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-teal-800"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
+        <a href="/dashboard" class="block px-3 py-2 rounded-lg"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</a>
+        <a href="/profile" class="block px-3 py-2 rounded-lg"><i class="fas fa-user mr-2"></i>Profile</a>
+        <a id="mobile-view-profile-link" href="/users.html" class="block px-3 py-2 rounded-lg"><i class="fas fa-id-badge mr-2"></i>My Public Profile</a>
+        <button onclick="logout()" class="w-full text-left px-3 py-2 rounded-lg"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
       </div>
     </div>
   </div>
+  <span class="a1-header-trace" aria-hidden="true"></span>
 </header>

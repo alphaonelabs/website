@@ -1,10 +1,11 @@
 <!-- ===== FOOTER ===== -->
-<footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
-  <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-12">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
+<div class="mt-auto">
+<nav class="learn-sitemap bg-white dark:bg-black border-t border-gray-200 dark:border-[#2e2e2e]" aria-label="Learn site links">
+  <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-10">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-8">
       <div>
-        <h3 class="text-sm font-black uppercase tracking-wide mb-4 text-teal-700 dark:text-teal-300">Learn first</h3>
-        <ul class="space-y-2">
+        <h2 class="learn-sitemap-heading mb-3">Learn first</h2>
+        <ul class="space-y-0.5">
           <li><a href="/" class="footer-link"><i class="fas fa-home footer-icon"></i>Home</a></li>
           <li><a href="/activity" class="footer-link"><i class="fas fa-book-open footer-icon"></i>Browse</a></li>
           <li><a href="/requests?kind=learn" class="footer-link"><i class="fas fa-graduation-cap footer-icon"></i>I Want to Learn</a></li>
@@ -20,8 +21,8 @@
       </div>
 
       <div>
-        <h3 class="text-sm font-black uppercase tracking-wide mb-4 text-teal-700 dark:text-teal-300">Teach & participate</h3>
-        <ul class="space-y-2">
+        <h2 class="learn-sitemap-heading mb-3">Teach & participate</h2>
+        <ul class="space-y-0.5">
           <li><a href="/teach" class="footer-link"><i class="fas fa-chalkboard-user footer-icon"></i>Teach an Activity</a></li>
           <li><a href="/requests?kind=teach" class="footer-link"><i class="fas fa-list-check footer-icon"></i>I Want to Teach</a></li>
           <li><a href="/virtual-classroom" class="footer-link"><i class="fas fa-flask footer-icon"></i>Virtual Classroom</a></li>
@@ -36,8 +37,8 @@
       </div>
 
       <div>
-        <h3 class="text-sm font-black uppercase tracking-wide mb-4 text-teal-700 dark:text-teal-300">Community</h3>
-        <ul class="space-y-2">
+        <h2 class="learn-sitemap-heading mb-3">Community</h2>
+        <ul class="space-y-0.5">
           <li><a href="/forum" class="footer-link"><i class="fas fa-comments footer-icon"></i>Forum</a></li>
           <li><a href="/blog" class="footer-link"><i class="fas fa-blog footer-icon"></i>Blog</a></li>
           <li><a href="/referral-leaderboard" class="footer-link"><i class="fas fa-gift footer-icon"></i>Referral Program</a></li>
@@ -50,8 +51,8 @@
       </div>
 
       <div>
-        <h3 class="text-sm font-black uppercase tracking-wide mb-4 text-teal-700 dark:text-teal-300">Support the site</h3>
-        <ul class="space-y-2">
+        <h2 class="learn-sitemap-heading mb-3">Support the site</h2>
+        <ul class="space-y-0.5">
           <li><a href="/status" class="footer-link"><i class="fas fa-chart-line footer-icon"></i>Status</a></li>
           <li><a href="/feedback" class="footer-link"><i class="fas fa-comment-dots footer-icon"></i>Feedback</a></li>
           <li><a href="/donate" class="footer-link"><i class="fas fa-hand-holding-heart footer-icon"></i>Donate</a></li>
@@ -63,8 +64,8 @@
       </div>
 
       <div>
-        <h3 class="text-sm font-black uppercase tracking-wide mb-4 text-teal-700 dark:text-teal-300">About & legal</h3>
-        <ul class="space-y-2">
+        <h2 class="learn-sitemap-heading mb-3">About & legal</h2>
+        <ul class="space-y-0.5">
           <li><a href="/about" class="footer-link"><i class="fas fa-circle-info footer-icon"></i>About Alpha One Labs</a></li>
           <li><a href="/affiliations" class="footer-link"><i class="fas fa-handshake footer-icon"></i>Affiliations</a></li>
           <li><a href="/terms" class="footer-link"><i class="fas fa-file-contract footer-icon"></i>Terms</a></li>
@@ -72,7 +73,7 @@
           <li><a href="/cookies" class="footer-link"><i class="fas fa-cookie-bite footer-icon"></i>Cookie Policy</a></li>
         </ul>
 
-        <h3 class="text-sm font-black uppercase tracking-wide mt-8 mb-4 text-teal-700 dark:text-teal-300">Connect</h3>
+        <h2 class="learn-sitemap-heading mt-6 mb-3">Connect</h2>
         <div class="flex flex-wrap gap-3">
           <a href="https://twitter.com/alphaonelabs" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
           <a href="https://discord.gg/HJtuzTJN3h" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Discord"><i class="fab fa-discord"></i></a>
@@ -86,28 +87,22 @@
       </div>
     </div>
 
-    <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-      <p>© <span id="current-year"></span> Alpha One Labs. All rights reserved.</p>
-      <p>Open source education, current classes, and community learning tools.</p>
-    </div>
   </div>
 
   <style>
-    .footer-link { display: flex; align-items: center; min-height: 2.75rem; color: rgb(75 85 99); transition: color .15s ease; }
-    .dark .footer-link { color: rgb(209 213 219); }
-    .footer-link:hover { color: rgb(13 148 136); }
-    .dark .footer-link:hover { color: rgb(45 212 191); }
-    .footer-icon { margin-right: .5rem; color: rgb(20 184 166); width: 1.25rem; text-align: center; }
-    .social-link { display: flex; align-items: center; justify-content: center; height: 2.5rem; width: 2.5rem; border-radius: 9999px; background: rgb(243 244 246); color: rgb(75 85 99); transition: all .15s ease; }
-    .dark .social-link { background: rgb(55 65 81); color: rgb(209 213 219); }
-    .social-link:hover { background: rgb(204 251 241); color: rgb(13 148 136); transform: translateY(-1px); }
-    .dark .social-link:hover { background: rgba(19, 78, 74, .75); color: rgb(45 212 191); }
-    .footer-bottom-icon-link { display: inline-flex; align-items: center; min-height: 2.75rem; gap: .5rem; border-radius: 9999px; background: rgb(243 244 246); color: rgb(75 85 99); padding: .625rem 1rem; font-weight: 700; transition: all .15s ease; }
-    .dark .footer-bottom-icon-link { background: rgb(55 65 81); color: rgb(209 213 219); }
-    .footer-bottom-icon-link:hover { background: rgb(204 251 241); color: rgb(13 148 136); transform: translateY(-1px); }
-    .dark .footer-bottom-icon-link:hover { background: rgba(19, 78, 74, .75); color: rgb(45 212 191); }
+    .learn-sitemap-heading { font: 700 11px/1.2 var(--a1-font-mono, "JetBrains Mono", ui-monospace, monospace); letter-spacing: .18em; text-transform: uppercase; color: #7c692e; }
+    .dark .learn-sitemap-heading { color: #c7ab4f; }
+    .footer-link { display: flex; align-items: center; min-height: 2rem; font-size: .875rem; color: #525252; border-radius: 6px; transition: color .15s ease; }
+    .dark .footer-link { color: #a3a3a3; }
+    .footer-link:hover { color: #000; }
+    .dark .footer-link:hover { color: #e2c66a; }
+    .footer-icon { margin-right: .5rem; color: #9a8236; width: 1.1rem; text-align: center; font-size: .8rem; }
+    .dark .footer-icon { color: #c7ab4f; }
+    .social-link { display: flex; align-items: center; justify-content: center; height: 2.5rem; width: 2.5rem; border-radius: 9999px; border: 1px solid #e4e4e4; color: #525252; transition: all .15s ease; }
+    .dark .social-link { border-color: #2e2e2e; color: #d4d4d4; }
+    .social-link:hover { border-color: #9a8236; color: #000; transform: translateY(-1px); }
+    .dark .social-link:hover { border-color: #c7ab4f; color: #e2c66a; }
   </style>
-</footer>
-<script>
-  document.getElementById("current-year").textContent = new Date().getFullYear();
-</script>
+</nav>
+<a1-footer source="learn"></a1-footer>
+</div>

@@ -84,9 +84,11 @@ function updateDarkModeIcon() {
         icon.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
     }
     if (iconMobile) {
-        iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-500' : 'fas fa-moon mr-2 text-teal-500';
+        iconMobile.className = isDark ? 'fas fa-sun mr-2 text-teal-300' : 'fas fa-moon mr-2 text-teal-300';
     }
 }
+
+window.updateDarkModeIcon = updateDarkModeIcon;
 
 function initializeDarkMode() {
     const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
