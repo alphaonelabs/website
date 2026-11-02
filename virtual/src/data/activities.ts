@@ -53,7 +53,7 @@ function cleanDescription(raw: string, max = 220): string {
   return `${text.slice(0, max).replace(/\s+\S*$/, "")}…`;
 }
 
-function normalize(raw: ApiActivity): CampusActivity | null {
+export function normalize(raw: ApiActivity): CampusActivity | null {
   const id = str(raw.id);
   const title = str(raw.title).trim();
   if (!id || !title) return null;
@@ -154,7 +154,11 @@ export function eyebrowFor(a: CampusActivity): string {
 
 /** Classroom room names are short slugs; one room per live activity. */
 export function roomFor(a: CampusActivity): string {
-  const base = (a.slug || a.id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return slugFor(a.slug || a.id);
+}
+
+export function slugFor(value: string): string {
+  const base = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return base.slice(0, 40).replace(/-+$/, "") || "lobby";
 }
 
