@@ -62,6 +62,16 @@ npx http-server
 # Then visit http://localhost:8000
 ```
 
+## 🧪 Testing
+
+Run the leaderboard scoring unit tests from the `gsoc` directory:
+
+```bash
+python -m pytest -q
+```
+
+The tests use no network calls.
+
 ## 🛠️ Technology Stack
 
 - **HTML5**: Semantic markup
