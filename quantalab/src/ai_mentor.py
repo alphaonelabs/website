@@ -5,6 +5,16 @@ in-lab science tutor.
 
 import json
 
+try:  # Workers AI needs plain JS objects; a bare Python dict arrives as a JS Map.
+    from js import Object
+    from pyodide.ffi import to_js as _to_js
+
+    def _js(value):
+        return _to_js(value, dict_converter=Object.fromEntries)
+except ImportError:  # local tests run outside Pyodide
+    def _js(value):
+        return value
+
 # System prompt that shapes the AI mentor's persona and behaviour
 _SYSTEM_PROMPT = """You are QuantaMentor, an enthusiastic and patient AI science tutor for QuantaLab,
 an interactive virtual laboratory.  Your role is to:
@@ -47,7 +57,7 @@ async def ask_mentor(env, user_message: str, history: list[dict], domain: str = 
 
     response = await env.AI.run(
         "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-        {"messages": messages},
+        _js({"messages": messages}),
     )
 
     # The Workers AI response object exposes .response for text models

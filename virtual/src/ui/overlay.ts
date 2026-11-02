@@ -77,6 +77,12 @@ export class Overlay {
     this.hint.classList.remove("hidden");
   }
 
+  showSignIn(handler: () => void): void {
+    this.logoutButton.textContent = "Sign in";
+    this.logoutButton.addEventListener("click", handler);
+    this.logoutButton.classList.remove("hidden");
+  }
+
   showLogout(): void {
     this.logoutButton.classList.remove("hidden");
   }

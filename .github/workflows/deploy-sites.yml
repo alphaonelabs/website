@@ -92,3 +92,17 @@ jobs:
             args+=(--domain "${{ matrix.project }}.alphaonelabs.com")
           fi
           npx --yes wrangler@4.40.0 deploy "${args[@]}"
+
+      - name: Purge the site's pages from the CDN cache
+        # A response cached at the edge during a deploy (e.g. a transient 403) can
+        # otherwise outlive the deploy, so drop the main pages for this site.
+        env:
+          ZONE_ID: 6f9d9bc5260431584221266afda142e5
+        run: |
+          hosts=$(grep -oE 'pattern = "[^"]+"' wrangler.toml | cut -d'"' -f2)
+          [ "${{ matrix.project }}" = learn ] && hosts="learn.alphaonelabs.com alphaonelabs.com www.alphaonelabs.com"
+          [ -z "$hosts" ] && hosts="${{ matrix.project }}.alphaonelabs.com"
+          files=$(for h in $hosts; do printf '"https://%s/",' "$h"; done)
+          curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+            -d "{\"files\":[${files%,}]}" | jq -c '{success, errors}'

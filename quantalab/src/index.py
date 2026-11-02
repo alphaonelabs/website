@@ -18,6 +18,11 @@ from experiments import get_all_experiments, get_experiment, list_domains
 from ai_mentor import ask_mentor
 
 
+def _py(value):
+    """request.json() on the raw Workers request returns a JS object; make it a dict."""
+    return value.to_py() if hasattr(value, "to_py") else value
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -57,7 +62,7 @@ def handle_experiments_list(domain: str | None = None) -> Response:
 async def handle_mentor(request, env) -> Response:
     """Forward a student message to the AI mentor and return the reply."""
     try:
-        body = await request.json()
+        body = _py(await request.json())
     except Exception:
         return _error("Request body must be valid JSON.")
 

@@ -1,14 +1,10 @@
 import * as THREE from "three";
-import { logout, requireAuth } from "./auth";
+import { isAuthenticated, logout } from "./auth";
 import { activities } from "./data/activities";
 import { Overlay } from "./ui/overlay";
 import { FirstPersonControls } from "./world/controls";
 import { createPortals, findNearestPortal, type Portal } from "./world/portals";
 import { createScene } from "./world/scene";
-
-if (!requireAuth()) {
-  throw new Error("redirecting to login");
-}
 
 const canvas = document.querySelector<HTMLCanvasElement>("#app")!;
 const { scene, camera, renderer } = createScene(canvas);
@@ -44,8 +40,16 @@ overlay.onPanelClose(() => {
   controls.lock();
 });
 
-overlay.onLogout(() => logout());
-overlay.showLogout();
+// Anyone can explore as a guest; signing in only matters for the learn activities.
+if (isAuthenticated()) {
+  overlay.onLogout(() => logout());
+  overlay.showLogout();
+} else {
+  overlay.showSignIn(() => {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login.html?next=${next}`;
+  });
+}
 
 const clock = new THREE.Clock();
 

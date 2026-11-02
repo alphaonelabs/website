@@ -7,6 +7,16 @@ and trend narratives from environmental sensor data.
 
 import json
 
+try:  # Workers AI needs plain JS objects; a bare Python dict arrives as a JS Map.
+    from js import Object
+    from pyodide.ffi import to_js as _to_js
+
+    def _js(value):
+        return _to_js(value, dict_converter=Object.fromEntries)
+except ImportError:  # local tests run outside Pyodide
+    def _js(value):
+        return value
+
 
 # Cloudflare Workers AI model identifiers
 _CHAT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
@@ -141,13 +151,13 @@ async def _run_chat(env, user_message: str) -> str:
     try:
         result = await env.AI.run(
             _CHAT_MODEL,
-            {
+            _js({
                 "messages": [
                     {"role": "system", "content": _SYSTEM_PROMPT},
                     {"role": "user", "content": user_message},
                 ],
                 "max_tokens": 400,
-            },
+            }),
         )
         # The result object is a JS proxy; extract the response text
         if hasattr(result, "response"):
