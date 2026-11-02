@@ -155,8 +155,8 @@ a1-header { display: block; min-height: var(--a1-header-height, 76px); backgroun
 .welcome-content { text-align: center; max-width: 560px; }
 .welcome-art {
   width: 200px; height: 140px; margin: 0 auto 16px; background: var(--accent-fill);
-  -webkit-mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat;
-  mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat;
+  -webkit-mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg?v=2") center / contain no-repeat;
+  mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg?v=2") center / contain no-repeat;
 }
 .welcome-content h2.welcome-title { font-size: clamp(2.25rem, 5vw, 3.25rem); margin-bottom: 14px; }
 .welcome-content .a1-trace { margin: 8px auto 0; max-width: 320px; }
