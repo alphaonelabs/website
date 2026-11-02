@@ -21,7 +21,7 @@ export class DrawingController {
     this.onPreview = options.onPreview || (() => {});
     this.onRequireLogin = options.onRequireLogin || (() => {});
     this.getTool = options.getTool || (() => 'pen');
-    this.getPenColor = options.getPenColor || (() => '#0f766e');
+    this.getPenColor = options.getPenColor || (() => '#7a6418');
     this.getPenWidth = options.getPenWidth || (() => 4);
     this.canInteract = options.canInteract ?? true;
     this.getEvents = options.getEvents || (() => []);

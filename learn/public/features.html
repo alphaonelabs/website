@@ -4,7 +4,7 @@
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
 {% block content %}
 <main class="flex-1">
-    <section class="bg-gradient-to-br from-slate-900 via-teal-900 to-cyan-900 text-white py-16">
+    <section class="text-white py-16 a1s-hero">
       <div class="max-w-6xl mx-auto px-4 md:px-6">
         <p class="text-sm font-bold uppercase tracking-[0.2em] text-cyan-200 mb-3">Current platform data</p>
         <h1 class="text-4xl md:text-6xl font-extrabold mb-4">Community, progress, assessments, and more.</h1>
@@ -79,7 +79,7 @@
             ${record.description ? `<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed mb-4">${esc(record.description)}</p>` : ''}
             <div class="flex flex-wrap gap-2 text-xs">
               ${record.status ? `<span class="rounded-full bg-gray-100 dark:bg-gray-900 px-3 py-1 text-gray-600 dark:text-gray-300">${esc(record.status)}</span>` : ''}
-              ${record.amount ? `<span class="rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-amber-700 dark:text-amber-300">${esc(record.amount)}</span>` : ''}
+              ${record.amount ? `<span class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300">${esc(record.amount)}</span>` : ''}
               ${record.url ? `<a href="${esc(record.url)}" target="_blank" rel="noopener" class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300 hover:underline">Open link</a>` : ''}
             </div>
           </article>

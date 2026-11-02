@@ -83,7 +83,7 @@
             (record.description ? '<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">' + esc(record.description) + '</p>' : '') +
             '<div class="mt-3 flex flex-wrap gap-2 text-xs">' +
               (record.status ? '<span class="rounded-full bg-gray-100 dark:bg-gray-900 px-3 py-1 text-gray-600 dark:text-gray-300">' + esc(record.status) + '</span>' : '') +
-              (record.amount ? '<span class="rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-amber-700 dark:text-amber-300">' + esc(record.amount) + '</span>' : '') +
+              (record.amount ? '<span class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300">' + esc(record.amount) + '</span>' : '') +
               (record.url ? '<a href="' + esc(record.url) + '" target="_blank" rel="noopener" class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300 hover:underline">Open link</a>' : '') +
               (routeUrl ? '<a href="' + esc(routeUrl) + '" class="rounded-full bg-cyan-100 dark:bg-cyan-900/30 px-3 py-1 text-cyan-700 dark:text-cyan-300 hover:underline">Open page</a>' : '') +
             '</div>' +

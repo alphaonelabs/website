@@ -32,7 +32,7 @@
       RULES.forEach(function (r) {
         var li = container.querySelector('[data-rule="' + r.id + '"]');
         var ok = r.test(pw);
-        li.className = 'flex items-center gap-2 ' + (ok ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400');
+        li.className = 'flex items-center gap-2 ' + (ok ? 'text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400');
         li.querySelector('i').className = (ok ? 'fas fa-check-circle' : 'far fa-circle') + ' text-xs';
       });
     }

@@ -930,17 +930,17 @@ def _branded_email_html(frontend_url: str, title: str, intro: str, cta_label: st
         '<body style="margin:0;background:#f8fafc;color:#0f172a;font-family:Segoe UI,Helvetica,Arial,sans-serif;">'
         '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;padding:28px 12px;">'
         '<tr><td align="center">'
-        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden;">'
-        '<tr><td style="background:linear-gradient(135deg,#0f766e,#0891b2);padding:28px;text-align:center;color:#ffffff;">'
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">'
+        '<tr><td style="background:#000000;border-bottom:4px solid #d4af37;padding:28px;text-align:center;color:#ffffff;">'
         f'<img src="{logo}" alt="Alpha One Labs" width="56" height="56" style="width:56px;height:56px;border-radius:12px;background:#ffffff;padding:6px;margin-bottom:12px;">'
         '<div style="font-size:22px;font-weight:800;letter-spacing:.01em;">Alpha One Labs</div>'
-        '<div style="font-size:13px;color:#ccfbf1;margin-top:4px;">Open Source Education Platform</div>'
+        '<div style="font-size:13px;color:#d4af37;margin-top:4px;">Open Source Education Platform</div>'
         '</td></tr>'
         '<tr><td style="padding:32px;">'
         f'<h1 style="font-size:26px;line-height:1.2;margin:0 0 16px;color:#0f172a;">{title}</h1>'
         f'<p style="font-size:16px;line-height:1.6;margin:0 0 24px;color:#334155;">{intro}</p>'
-        f'<p style="margin:0 0 24px;"><a href="{link}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:12px;">{cta_label}</a></p>'
-        f'<p style="font-size:13px;line-height:1.5;color:#64748b;margin:0 0 20px;">If the button does not work, copy and paste this link:<br><a href="{link}" style="color:#0f766e;word-break:break-all;">{link}</a></p>'
+        f'<p style="margin:0 0 24px;"><a href="{link}" style="display:inline-block;background:#d4af37;color:#080808;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:4px;">{cta_label}</a></p>'
+        f'<p style="font-size:13px;line-height:1.5;color:#64748b;margin:0 0 20px;">If the button does not work, copy and paste this link:<br><a href="{link}" style="color:#7a6418;word-break:break-all;">{link}</a></p>'
         f'<p style="font-size:13px;line-height:1.5;color:#64748b;margin:0;">{note}</p>'
         '</td></tr>'
         '<tr><td style="border-top:1px solid #e2e8f0;padding:18px 32px;text-align:center;font-size:12px;color:#94a3b8;">'
@@ -5401,7 +5401,7 @@ def _ssr_record_card(record: Dict[str, Any]) -> str:
     if status:
         pills += f'<span class="rounded-full bg-gray-100 dark:bg-gray-900 px-3 py-1 text-gray-600 dark:text-gray-300">{status}</span>'
     if amount:
-        pills += f'<span class="rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-amber-700 dark:text-amber-300">{amount}</span>'
+        pills += f'<span class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300">{amount}</span>'
     if url:
         pills += f'<a href="{url}" target="_blank" rel="noopener" class="rounded-full bg-teal-100 dark:bg-teal-900/30 px-3 py-1 text-teal-700 dark:text-teal-300 hover:underline">Open link</a>'
     if route_url:
@@ -5447,7 +5447,7 @@ def _ssr_meme_grid_html(records: list) -> str:
             f'<img src="{image_url}" alt="{title}" class="max-w-full max-h-full object-contain" loading="lazy" onerror="this.closest(\'a\').classList.add(\'hidden\');">'
             '</div>'
             if image_url else
-            '<div class="w-full h-56 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900 dark:to-cyan-900 flex items-center justify-center text-teal-700 dark:text-teal-200"><i class="fa-solid fa-face-smile text-4xl"></i></div>'
+            '<div class="w-full h-56 flex items-center justify-center text-teal-700 dark:text-teal-200 a1s-icontile"><i class="fa-solid fa-face-smile text-4xl"></i></div>'
         )
         cards.append(
             f'<a href="{href}" class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">'
@@ -5624,7 +5624,7 @@ async def _server_forum_records_html(env) -> str:
             '<h3 class="text-xl font-black text-gray-900 dark:text-white"><a href="' + href + '" class="hover:text-teal-700 dark:hover:text-teal-300">' + title + '</a></h3>'
             + (('<p class="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">' + desc + '</p>') if desc else '') +
             '</div><div class="flex md:flex-col gap-2 shrink-0 text-sm">'
-            '<span class="rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-3 py-2 font-black"><i class="fa-solid fa-arrow-up mr-1"></i>' + str(score) + ' votes</span>'
+            '<span class="rounded-xl bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-2 font-black"><i class="fa-solid fa-arrow-up mr-1"></i>' + str(score) + ' votes</span>'
             '<span class="rounded-xl bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 px-3 py-2 font-black"><i class="fa-solid fa-reply mr-1"></i>' + str(replies) + ' replies</span>'
             '</div></div></article>'
         )
@@ -5681,7 +5681,7 @@ async def render_forum_topic_detail(req, env, topic_ref: str):
         + _SSR_BRAND_HEAD + '</head>'
         '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">' + _ssr_nav() +
         '<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-10"><a href="/forum" class="inline-flex items-center text-sm font-bold text-teal-700 dark:text-teal-300 hover:underline mb-6"><i class="fa-solid fa-arrow-left mr-2"></i>Back to forum</a>'
-        f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm"><div class="flex flex-wrap gap-2 mb-4"><span class="rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-3 py-1 text-xs font-black"><i class="fa-solid fa-arrow-up mr-1"></i>{votes} votes</span>' + (f'<span class="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">{date}</span>' if date else '') + f'</div><h1 class="text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1><div class="mt-8 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{desc}</div></article>'
+        f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm"><div class="flex flex-wrap gap-2 mb-4"><span class="rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 text-xs font-black"><i class="fa-solid fa-arrow-up mr-1"></i>{votes} votes</span>' + (f'<span class="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">{date}</span>' if date else '') + f'</div><h1 class="text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1><div class="mt-8 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{desc}</div></article>'
         '<section class="mt-8"><h2 class="text-2xl font-black mb-4">Replies</h2><div class="space-y-4">' + replies_html + '</div></section></main>' + _ssr_footer() + '</body></html>'
     )
     return Response(html, headers={"Content-Type": "text/html; charset=utf-8", **_CORS})
@@ -5725,7 +5725,7 @@ async def render_ssr_record_page(req, env, clean_path: str, config: Dict[str, An
         f'<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{kicker}</p></div>'
         f'<nav class="space-y-2 text-sm">{_ssr_side_nav(clean_path)}</nav>'
         '</aside>'
-        '<section class="flex-1 bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">'
+        '<section class="flex-1 bg-white dark:bg-black p-4 lg:p-6">'
         '<div class="flex flex-wrap justify-between items-start gap-4 mb-6">'
         f'<div><p class="text-sm uppercase tracking-wide text-teal-600 dark:text-teal-300 font-bold">{kicker}</p><h2 class="text-3xl font-bold mt-1 text-gray-900 dark:text-gray-100">{title}</h2><p class="text-gray-600 dark:text-gray-400 mt-2 max-w-3xl">{desc}</p></div>'
         f'<div class="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-600 dark:text-gray-300"><span class="text-2xl font-black text-teal-600 dark:text-teal-300">{count}</span> {noun}</div>'
@@ -6785,53 +6785,71 @@ async def _server_featured_activities(env, limit: int) -> list:
     return sorted(activities, key=_activity_score, reverse=True)[:limit]
 
 
+_A1_CARD_CHIP_SVG = (
+    '<svg viewBox="0 0 760 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'
+    '<rect x="340" y="20" width="84" height="80" stroke-width="3.5"/><circle cx="352" cy="32" r="3.2" fill="currentColor" stroke="none"/>'
+    '<path d="M0 18 L196 18 L212 34 L326 34"/><path d="M438 34 L456 34 L472 18 L690 18 L704 32"/><circle cx="708" cy="36" r="5.5"/>'
+    '<path d="M0 34 L202 34 L218 50 L326 50"/><path d="M438 50 L462 50 L478 34 L668 34 L682 48"/><circle cx="686" cy="52" r="5.5"/>'
+    '<path d="M0 50 L208 50 L224 66 L326 66"/><path d="M438 66 L468 66 L484 50 L646 50 L660 64"/><circle cx="664" cy="68" r="5.5"/>'
+    '<path d="M0 66 L214 66 L230 82 L326 82"/><path d="M438 82 L474 82 L490 66 L624 66 L638 80"/><circle cx="642" cy="84" r="5.5"/></svg>'
+)
+_A1_CARD_ICONS = {
+    "group": '<path d="M8 8.5a3 3 0 1 1 0 .01M16 8.5a3 3 0 1 1 0 .01"/><path d="M2.5 20c0-3.5 2.5-6 5.5-6s5.5 2.5 5.5 6M12.5 15.2c.9-.8 2.2-1.2 3.5-1.2 3 0 5.5 2.5 5.5 6"/>',
+    "live": '<circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.5 5.5a9.2 9.2 0 0 0 0 13M18.5 5.5a9.2 9.2 0 0 1 0 13"/>',
+    "video": '<rect x="2.5" y="5" width="19" height="14" rx="1.5"/><path d="M10 9v6l5-3z"/>',
+    "book": '<path d="M12 6.5c-2.4-1.8-5.6-2.2-9-1.6v13.2c3.4-.6 6.6-.2 9 1.6 2.4-1.8 5.6-2.2 9-1.6V4.9c-3.4-.6-6.6-.2-9 1.6zM12 6.5v13.2"/>',
+    "tool": '<path d="M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5"/><path d="M14.5 6.5l3-3 3 3-3 3"/>',
+}
+
+
 def _server_activity_card_html(activity: Dict[str, Any], *, home: bool = False) -> str:
+    """Activity card in the Alpha One Labs design system (matches the homepage cards)."""
     title = _html_escape(activity.get("title", "Untitled activity"))
-    desc = _html_escape((activity.get("description") or "")[:180])
+    raw_desc = re.sub(r"\s+", " ", re.sub(r"[#*_`>\[\]]", "", str(activity.get("description") or ""))).strip()
+    atype = activity.get("type") or ""
+    fmt_raw = activity.get("format") or ""
+    type_label = _activity_type_label(atype)
+    if not raw_desc:
+        raw_desc = type_label + (" hosted by " + str(activity.get("host_name")) if activity.get("host_name") else "") + "."
+    if len(raw_desc) > 170:
+        raw_desc = raw_desc[:167].rsplit(" ", 1)[0] + "…"
+    desc = _html_escape(raw_desc)
     host = _html_escape(activity.get("host_name") or "Alpha One Labs")
     image = _html_escape(activity.get("image_url") or "")
     href = _html_escape(_activity_href(activity))
     price = _html_escape(_money_label(activity.get("price_cents"), activity.get("price_currency") or "USD"))
-    level = _html_escape(activity.get("level") or "All levels")
-    fmt = _html_escape((activity.get("format") or "activity").replace("_", " "))
+    fmt_label = {"live": "Live", "self_paced": "Self-paced", "hybrid": "Hybrid"}.get(fmt_raw, fmt_raw.replace("_", " ").title() or type_label)
+    if fmt_raw == "live":
+        tag = '<span class="a1-tag a1-tag--gold a1-tag--live">Live</span>'
+    elif atype == "study_group":
+        tag = '<span class="a1-tag a1s-tag-white">Study group</span>'
+    else:
+        tag = f'<span class="a1-tag a1s-tag-black">{_html_escape("Featured" if activity.get("is_featured") else fmt_label)}</span>'
+    icon_key = "group" if atype == "study_group" else "video" if atype == "video" else "tool" if atype == "workshop" else "live" if fmt_raw == "live" else "book"
+    signals = []
     count = int(activity.get("participant_count") or 0)
     interest = int(activity.get("interest_count") or 0)
-    tags = "".join(
-        f'<span class="rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-2.5 py-1 text-xs font-semibold">{_html_escape(tag)}</span>'
-        for tag in (activity.get("tags") or [])[:3]
-    )
-    badge = "Featured" if activity.get("is_featured") else _html_escape(_activity_type_label(activity.get("type")))
-    metrics = []
     if count > 0:
-        metrics.append(f'<span><i class="fas fa-users mr-1 text-teal-500"></i>{count} enrolled</span>')
+        signals.append(f"{count} enrolled")
     if interest > 0:
-        metrics.append(f'<span><i class="fas fa-hand-paper mr-1 text-orange-500"></i>{interest} interested</span>')
-    metrics_html = ""
-    if metrics:
-        metrics_html = '<div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">' + "".join(metrics) + '</div>'
-    action_html = (
-        '<div class="px-5 pb-5 mt-auto">'
-        f'<span class="w-full min-h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-3 py-2 rounded-lg flex items-center justify-center">'
-        '<i class="fas fa-circle-info mr-2"></i>View More Info</span>'
-        '</div>'
+        signals.append(f"{interest} interested")
+    by_line = f"by {host}" + (" &middot; " + _html_escape(" · ".join(signals)) if signals else "")
+    media = (
+        f'<img src="{image}" alt="" width="500" height="250" loading="lazy" decoding="async" fetchpriority="low" '
+        'onerror="if(window.a1sImgFallback){a1sImgFallback(this)}else{this.remove()}">'
+        if image else f'<span class="a1s-card__art" aria-hidden="true">{_A1_CARD_CHIP_SVG}</span>'
     )
     return (
-        '<article class="group h-full min-h-[36rem] bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">'
-        f'<a href="{href}" class="block">'
-        '<div class="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">'
-        f'<img src="{image}" alt="{title}" width="500" height="500" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" fetchpriority="low" onerror="this.remove();">'
-        '</div>'
-        '<div class="p-5 flex flex-col flex-1">'
-        '<div class="flex items-center justify-between gap-3 mb-3">'
-        f'<span class="rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 px-3 py-1 text-xs font-bold uppercase tracking-wide">{badge}</span>'
-        f'<span class="text-sm font-black text-orange-600 dark:text-orange-300">{price}</span>'
-        '</div>'
-        f'<h3 class="text-lg font-black text-gray-900 dark:text-gray-100 leading-snug mb-2 min-h-[3.25rem]">{title}</h3>'
-        f'<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 mb-4 min-h-[4.75rem]">{desc}</p>'
-        f'<div class="text-xs text-gray-500 dark:text-gray-400 mb-3 min-h-[1.25rem]">by {host} · {fmt} · {level}</div>'
-        f'<div class="flex flex-wrap gap-2 mb-4 min-h-[4.5rem] content-start">{tags}</div>'
-        f'{metrics_html}'
-        f'</div></a><a href="{href}" class="block">{action_html}</a></article>'
+        f'<a class="a1s-card" href="{href}">'
+        f'<div class="a1s-card__media">{tag}{media}</div>'
+        '<div class="a1s-card__body">'
+        f'<h3 class="a1s-card__title">{title}</h3>'
+        f'<p class="a1s-card__by">{by_line}</p>'
+        f'<p class="a1s-card__desc">{desc}</p>'
+        '<div class="a1s-card__meta">'
+        f'<span class="a1s-card__cat"><svg viewBox="0 0 24 24" class="a1s-icon" aria-hidden="true">{_A1_CARD_ICONS[icon_key]}</svg><span>{_html_escape(type_label)}</span></span>'
+        f'<span class="a1s-card__price">{price}</span>'
+        '</div></div></a>'
     )
 
 
@@ -7057,7 +7075,7 @@ async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: 
         limit = _template_attr_int(attrs, "limit", 3, 1, 12)
         activities = await _server_featured_activities(env, limit)
         if not activities:
-            return '<div class="col-span-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No featured classes found yet.</div>'
+            return '<div class="col-span-full a1s-panel p-8 text-center a1s-muted">No featured classes found yet.</div>'
         return "".join(_server_activity_card_html(a, home=True) for a in activities)
     if name == "activities_json":
         if activity_ref:
@@ -7084,7 +7102,7 @@ async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: 
         )
         activities = payload.get("activities", [])[:limit]
         if not activities:
-            return '<div class="col-span-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No activities found yet.</div>'
+            return '<div class="col-span-full a1s-panel p-8 text-center a1s-muted">No activities found yet.</div>'
         return "".join(_server_activity_card_html(a) for a in activities)
     if name == "activity_detail_json":
         ref = _template_activity_ref(req)
@@ -7688,9 +7706,9 @@ class ClassroomDO(DurableObject):
             kind = "stroke"
         if kind != "text" and not end:
             return None
-        color = value.get("color", "#0f766e")
+        color = value.get("color", "#7a6418")
         if not isinstance(color, str) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
-            color = "#0f766e"
+            color = "#7a6418"
         mode = value.get("mode") or ("text" if kind == "text" else "pen")
         if mode not in {"pen", "highlighter", "eraser", "shape", "text"}:
             mode = "pen"
@@ -9064,7 +9082,7 @@ async def api_submit_feedback(request, env):
         safe_email = _html.escape(email)
         safe_description = _html.escape(description)
         html = f"""
-        <h2 style="color:#0d9488">New Feedback Received</h2>
+        <h2 style="color:#7a6418">New Feedback Received</h2>
         <table style="border-collapse:collapse;width:100%;max-width:600px">
           <tr><td style="padding:8px;font-weight:bold;width:120px">From</td><td style="padding:8px">{safe_name}</td></tr>
           <tr style="background:#f9fafb"><td style="padding:8px;font-weight:bold">Email</td><td style="padding:8px">{safe_email}</td></tr>

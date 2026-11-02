@@ -7,7 +7,7 @@
   <section class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-5 md:p-6 mb-8 shadow-sm">
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Location search</p>
+        <p class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300">Location search</p>
         <h1 class="text-3xl font-bold mt-1">Classes Near Me</h1>
         <p class="text-gray-600 dark:text-gray-300 mt-2 max-w-2xl">
           Browse activities that have real ZIP/postal-coded session locations. Full class addresses stay private until the appropriate activity access rules allow them.
@@ -15,14 +15,14 @@
       </div>
       <form id="zip-form" class="flex flex-col sm:flex-row gap-3 lg:min-w-[34rem]">
         <label class="sr-only" for="zip-input">ZIP or postal code</label>
-        <input id="zip-input" name="zip" type="text" inputmode="text" autocomplete="postal-code" placeholder="ZIP or postal code" class="flex-1 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-        <button type="submit" class="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-3">Search</button>
+        <input id="zip-input" name="zip" type="text" inputmode="text" autocomplete="postal-code" placeholder="ZIP or postal code" class="flex-1 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500">
+        <button type="submit" class="rounded-xl bg-gray-700 hover:bg-gray-800 text-white font-semibold px-5 py-3">Search</button>
         <button type="button" id="near-button" class="rounded-xl border border-gray-300 dark:border-gray-700 px-5 py-3 font-semibold hover:bg-gray-50 dark:hover:bg-gray-900">Use my location</button>
       </form>
     </div>
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
       <p id="location-status" class="text-sm text-gray-500 dark:text-gray-400" aria-live="polite">Only activities with ZIP/postal-coded session locations are shown.</p>
-      <button type="button" id="clear-button" class="text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:underline self-start sm:self-auto">Show all ZIP-coded classes</button>
+      <button type="button" id="clear-button" class="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:underline self-start sm:self-auto">Show all ZIP-coded classes</button>
     </div>
   </section>
 
@@ -86,7 +86,7 @@
     list.innerHTML = classes.map(function (activity) {
       const meta = [activity.type, activity.format, activity.level].filter(Boolean).join(' / ');
       const zips = (activity.zip_codes || []).map(function (code) {
-        return '<span class="inline-flex rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 px-2.5 py-1 text-xs font-semibold">' + esc(code) + '</span>';
+        return '<span class="inline-flex rounded-full bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 px-2.5 py-1 text-xs font-semibold">' + esc(code) + '</span>';
       }).join('');
       const image = activity.image_url
         ? '<img src="' + esc(activity.image_url) + '" class="w-full h-full object-cover" alt="' + esc(activity.title) + '">'
@@ -96,7 +96,7 @@
         + '<div class="aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden">' + image + '</div>'
         + '<div class="p-5">'
         + '<div class="flex items-center justify-between gap-3 text-xs font-semibold text-gray-500 dark:text-gray-400"><span>' + esc(priceLabel(activity)) + '</span><span>' + Number(activity.session_count || 0) + ' ZIP-coded session' + (Number(activity.session_count || 0) === 1 ? '' : 's') + '</span></div>'
-        + '<h2 class="text-lg font-bold mt-2 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">' + esc(activity.title) + '</h2>'
+        + '<h2 class="text-lg font-bold mt-2 group-hover:text-teal-700 dark:group-hover:text-teal-300">' + esc(activity.title) + '</h2>'
         + (meta ? '<p class="text-sm text-gray-600 dark:text-gray-300 mt-1">' + esc(meta) + '</p>' : '')
         + '<div class="flex flex-wrap gap-2 mt-4">' + zips + '</div>'
         + '</div>'

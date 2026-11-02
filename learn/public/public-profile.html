@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Profile - Alpha One Labs{% endblock %}
 {% block meta_description %}View a community member's public profile on Alpha One Labs{% endblock %}
-{% block body_class %}min-h-screen flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white dark:bg-black text-gray-900 dark:text-gray-100 transition-colors{% endblock %}
 {% block content %}
 <!-- Not-found / private state -->
 <div id="state-error" class="hidden flex-1 flex flex-col items-center justify-center py-24 text-center px-4">
@@ -14,7 +14,7 @@
 </div>
 
 <div id="state-loading" class="flex-1">
-  <div class="bg-gradient-to-br from-teal-600 to-cyan-600 py-20"></div>
+  <div class="py-20 a1s-hero"></div>
   <div class="max-w-3xl mx-auto px-4 py-10 animate-pulse space-y-4">
     <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
     <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
@@ -23,14 +23,14 @@
 </div>
 
 <div id="state-profile" class="hidden flex-1 flex flex-col">
-  <section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 py-16 relative overflow-hidden">
+  <section class="py-16 relative overflow-hidden a1s-hero">
     <div class="absolute inset-0 opacity-10 pointer-events-none select-none" aria-hidden="true">
       <i class="fas fa-graduation-cap absolute top-6 left-8 text-7xl"></i>
       <i class="fas fa-star absolute bottom-6 right-8 text-7xl"></i>
     </div>
     <div class="max-w-3xl mx-auto px-4 md:px-6 flex flex-col sm:flex-row items-center gap-8 relative">
       <div class="flex-shrink-0">
-        <div id="profile-avatar" class="w-28 h-28 rounded-full overflow-hidden bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-4xl font-bold select-none ring-4 ring-white/20">
+        <div id="profile-avatar" class="w-28 h-28 rounded-full overflow-hidden flex items-center justify-center text-white text-4xl font-bold select-none ring-4 ring-white/20 a1s-icontile">
           <span id="profile-initials">?</span>
           <img id="profile-avatar-img" class="hidden w-full h-full object-cover" alt="avatar" />
         </div>
@@ -71,7 +71,7 @@
 
 <script>
 const TYPE_ICON = { course:'fa-book', meetup:'fa-handshake', workshop:'fa-tools', seminar:'fa-microphone', other:'fa-star' };
-const TYPE_COLOR = { course:'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200', meetup:'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200', workshop:'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200', seminar:'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200', other:'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+const TYPE_COLOR = { course:'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200', meetup:'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200', workshop:'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-200', seminar:'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200', other:'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
 
 function show(id)   { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
 function hideBlock(id) { document.getElementById(id).classList.add('hidden'); }
@@ -174,11 +174,11 @@ function renderProfile(p) {
   }
   if (p.discord_username) {
     hasSocial = true;
-    socials.innerHTML += `<span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium"><i class="fab fa-discord text-indigo-500"></i> ${esc(p.discord_username)}</span>`;
+    socials.innerHTML += `<span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium"><i class="fab fa-discord text-gray-500"></i> ${esc(p.discord_username)}</span>`;
   }
   if (p.slack_username) {
     hasSocial = true;
-    socials.innerHTML += `<span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium"><i class="fab fa-slack text-pink-500"></i> ${esc(p.slack_username)}</span>`;
+    socials.innerHTML += `<span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium"><i class="fab fa-slack text-gray-500"></i> ${esc(p.slack_username)}</span>`;
   }
   if (!hasSocial) hideBlock('social-card');
 

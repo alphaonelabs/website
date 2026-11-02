@@ -1,8 +1,10 @@
 <div align="center">
 
-# Alpha One Labs
+<a href="https://alphaonelabs.com"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/alphaonelabs/.github/main/profile/assets/banner-dark.webp?v=5"><img src="https://raw.githubusercontent.com/alphaonelabs/.github/main/profile/assets/banner-light.webp?v=5" alt="Alpha One Labs. Learn. Share. Explore." width="100%"></picture></a>
 
-**Open-source education for everyone.** Every Alpha One Labs project lives in this repository.
+# ALPHA ONE LABS
+
+**Open-source education for everyone.** Every Alpha One Labs project lives in this repository, built on one [design system](https://design.alphaonelabs.com).
 
 [learn.alphaonelabs.com](https://learn.alphaonelabs.com) · [GSoC](https://gsoc.alphaonelabs.com) · [Contributing](CONTRIBUTING.md) · [Discussions](https://github.com/orgs/alphaonelabs/discussions)
 

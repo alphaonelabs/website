@@ -118,19 +118,19 @@
               <span id="login-err-msg"></span>
             </div>
 
-            <button type="submit" class="w-full bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95">
+            <button type="submit" class="w-full text-white font-bold py-2.5 rounded-xl shadow-lg transition-all duration-200 active:scale-95 bg-teal-600 hover:bg-teal-700">
               <i class="fas fa-arrow-right mr-2"></i>Sign In
             </button>
           </form>
-          <div id="resend-box" class="hidden mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm space-y-3">
-            <p class="text-amber-800 dark:text-amber-200">
+          <div id="resend-box" class="hidden mt-4 p-4 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg text-sm space-y-3">
+            <p class="text-teal-800 dark:text-teal-200">
               <i class="fas fa-envelope mr-1"></i>Your email address isn't verified yet. Enter it below and we'll send a new verification link.
             </p>
             <div class="flex flex-col sm:flex-row gap-2">
               <input id="resend-email" type="email" autocomplete="email" aria-label="Email address" placeholder="you@example.com"
-                class="flex-1 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                class="flex-1 px-3 py-2 rounded-lg border border-teal-300 dark:border-teal-700 bg-white dark:bg-gray-700 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
               <button id="resend-btn" type="button"
-                class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed">
+                class="px-4 py-2 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed">
                 Resend email
               </button>
             </div>
@@ -215,7 +215,7 @@
               <span id="register-err-msg"></span>
             </div>
 
-            <button type="submit" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95">
+            <button type="submit" class="w-full text-white font-bold py-2.5 rounded-xl shadow-lg transition-all duration-200 active:scale-95 bg-teal-600 hover:bg-teal-700">
               <i class="fas fa-user-check mr-2"></i>Create Account
             </button>
           </form>
@@ -285,7 +285,7 @@ function storeAuth(data) {
 // Show success toast message
 function showToast(msg) {
     const toast = document.createElement('div');
-    toast.className = 'fixed top-4 right-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-green-700 dark:text-green-300 text-sm flex items-start gap-2 animate-pulse shadow-lg z-50';
+    toast.className = 'fixed top-4 right-4 bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 rounded-lg p-4 text-gray-700 dark:text-gray-300 text-sm flex items-start gap-2 animate-pulse shadow-lg z-50';
     const icon = document.createElement('i');
     icon.className = 'fas fa-check-circle mt-0.5 flex-shrink-0';
     const span = document.createElement('span');
@@ -345,7 +345,7 @@ function startResendCooldown(btn, label, seconds) {
 
 function setResendMessage(el, text, isError) {
     el.textContent = text;
-    el.className = 'text-xs ' + (isError ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400');
+    el.className = 'text-xs ' + (isError ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-400');
 }
 
 function showResendBox(prefillEmail) {
