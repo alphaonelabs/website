@@ -66,29 +66,32 @@ async def handle_mentor(request, env) -> Response:
     except Exception:
         return _error("Request body must be valid JSON.")
 
-    user_message: str = (body.get("message") or "").strip()
+    if not isinstance(body, dict):
+        return _error("Request body must be valid JSON.")
+
+    raw_message = body.get("message")
+    if not isinstance(raw_message, str):
+        return _error("'message' field is required and must not be empty.")
+    user_message = raw_message.strip()
     if not user_message:
         return _error("'message' field is required and must not be empty.")
 
-    history: list[dict] = body.get("history") or []
-    domain: str = body.get("domain") or ""
-    experiment: str = body.get("experiment") or ""
-
-    # Validate history format (best-effort)
+    history = body.get("history")
     if not isinstance(history, list):
         history = []
+    domain = body.get("domain") if isinstance(body.get("domain"), str) else ""
+    experiment = body.get("experiment") if isinstance(body.get("experiment"), str) else ""
 
     try:
         reply = await ask_mentor(env, user_message, history, domain, experiment)
     except Exception as exc:
-        # Surface AI errors as a friendly message so the UI never breaks
+        print("QuantaLab mentor error:", exc)
         return _json_response(
             {
                 "response": (
                     "I'm having trouble connecting to my knowledge base right now. "
                     "Please try again in a moment! 🔬"
                 ),
-                "error": str(exc),
             },
             status=200,  # keep 200 so the frontend still shows the message
         )
