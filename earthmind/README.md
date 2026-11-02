@@ -205,7 +205,7 @@ Cloudflare Python Worker (src/index.py)
        ├── services/anomaly.py      (Z-score, IQR, rolling-avg)
        ├── services/trends.py       (linear regression, SMA, EMA)
        ├── services/ai_service.py   ──► Cloudflare Workers AI
-       │                                (@cf/meta/llama-3.1-8b-instruct)
+       │                                (@cf/meta/llama-3.3-70b-instruct-fp8-fast)
        ├── env.DB  (Cloudflare D1 / SQLite)
        └── env.ENV_CACHE (Cloudflare KV)
 ```

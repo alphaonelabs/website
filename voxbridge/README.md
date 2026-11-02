@@ -113,7 +113,7 @@ Transcribe audio, then generate step-by-step sign-language instructions.
   "transcript":    "Good morning",
   "sign_language": "ASL",
   "instructions":  "GOOD: open hand, palm facing out...\nMORNING: ...",
-  "models": ["@cf/openai/whisper", "@cf/meta/llama-3.1-8b-instruct"]
+  "models": ["@cf/openai/whisper", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
 }
 ```
 
@@ -132,7 +132,7 @@ Analyse a sign-language gesture image and return the spoken equivalent.
 {
   "gesture_description": "Hand raised, open palm facing viewer...",
   "speech_text":         "Hello",
-  "models": ["@cf/unum/uform-gen2-qwen-500m", "@cf/meta/llama-3.1-8b-instruct"]
+  "models": ["@cf/unum/uform-gen2-qwen-500m", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
 }
 ```
 

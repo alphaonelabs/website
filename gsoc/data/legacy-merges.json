@@ -1,0 +1,29 @@
+{
+  "note": "Merged PRs from repositories folded into this monorepo (learn, mockuper, gsoc, botlab, ...) and since deleted, so GitHub search no longer finds them. Rebuilt from their merge commits; closed and open PRs could not be recovered.",
+  "seasons": {
+    "2025": {},
+    "2026": {
+      "ghanshyam2005singh": 14,
+      "Ananya44444": 7,
+      "Shubhashish-Chakraborty": 7,
+      "Lakshya-2440": 6,
+      "Flashl3opard": 2,
+      "ayesha1145": 2,
+      "jayati04": 1,
+      "AndyVale": 1,
+      "Shrey1006": 1,
+      "dpx9": 1,
+      "chinnu8055": 1
+    },
+    "2027": {
+      "gopikrishna-20": 7,
+      "rishavvrajj": 6,
+      "Aaravanand00": 4,
+      "Lakshya-2440": 3,
+      "10done": 3,
+      "Taha254511": 2,
+      "shivanshshri": 1,
+      "tarunagnihotri534": 1
+    }
+  }
+}

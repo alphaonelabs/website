@@ -13,7 +13,7 @@ const state = {
   params: {},              // current parameter values
   animFrame: null,         // requestAnimationFrame handle
   chatHistory: [],         // [{role, content}, ...]
-  mentorVisible: true,
+  mentorVisible: window.matchMedia('(min-width: 901px)').matches,
 };
 
 // ── DOM References ────────────────────────────────────────────────────────
@@ -21,6 +21,46 @@ const state = {
 const $ = (sel) => document.querySelector(sel);
 const canvas = $('#simCanvas');
 const ctx = canvas.getContext('2d');
+
+// ── Theme palette ─────────────────────────────────────────────────────────
+// Canvas colours come from CSS custom properties (style.css), which follow the
+// Alpha One Labs light/dark theme. Simulations redraw every frame, so they pick
+// up a theme change on the next frame.
+const C = {};
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+}
+function refreshPalette() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
+  Object.assign(C, {
+    bg: v('--sim-bg', '#000000'),
+    raised: v('--bg-raised', '#1a1a1a'),
+    line: v('--border', '#2e2e2e'),
+    muted: v('--text-secondary', '#a3a3a3'),
+    text: v('--text-primary', '#ffffff'),
+    accent: v('--accent', '#c7ab4f'),
+    accentDeep: v('--accent-dark', '#9a8236'),
+    accentHi: v('--accent-bright', '#e2c66a'),
+    green: v('--sim-green', '#3fb950'),
+    amber: v('--sim-amber', '#d29922'),
+    red: v('--sim-red', '#f85149'),
+    purple: v('--sim-purple', '#bc8cff'),
+    orange: v('--sim-orange', '#f0883e'),
+  });
+  C.accentRgb = C.accent.startsWith('#') ? hexToRgb(C.accent) : '199,171,79';
+  C.grid = C.line.startsWith('#') ? `rgba(${hexToRgb(C.line)},0.5)` : C.line;
+}
+const accentA = (a) => `rgba(${C.accentRgb},${a})`;
+refreshPalette();
+document.addEventListener('a1-themechange', () => requestAnimationFrame(refreshPalette));
+// chrome.js (deferred) may apply a saved theme after this script runs, so also
+// watch the attribute directly.
+new MutationObserver(() => requestAnimationFrame(refreshPalette))
+  .observe(document.documentElement, { attributes: true, attributeFilter: ['data-a1-theme'] });
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => requestAnimationFrame(refreshPalette));
 const domainBtns = document.querySelectorAll('.domain-btn');
 const expList = $('#experimentList');
 const welcomeScreen = $('#welcomeScreen');
@@ -69,7 +109,10 @@ async function loadDomain(domain) {
   state.experiment = null;
   cancelAnimation();
 
-  domainBtns.forEach((b) => b.classList.toggle('active', b.dataset.domain === domain));
+  domainBtns.forEach((b) => {
+    b.classList.toggle('active', b.dataset.domain === domain);
+    b.setAttribute('aria-pressed', String(b.dataset.domain === domain));
+  });
   expList.innerHTML = '<li class="skeleton-item"></li><li class="skeleton-item"></li><li class="skeleton-item"></li>';
   showWelcome();
 
@@ -88,7 +131,13 @@ function renderExperimentList(experiments) {
     li.className = 'exp-item';
     li.dataset.id = exp.id;
     li.innerHTML = `<strong>${exp.title}</strong><small>${exp.description.slice(0, 72)}…</small>`;
+    // Keyboard accessible: focusable and activates with Enter / Space
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
     li.addEventListener('click', () => selectExperiment(exp));
+    li.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectExperiment(exp); }
+    });
     expList.appendChild(li);
   });
 }
@@ -98,9 +147,10 @@ function selectExperiment(exp) {
   state.params = {};
   (exp.parameters || []).forEach((p) => { state.params[p.id] = p.default; });
 
-  document.querySelectorAll('.exp-item').forEach((li) =>
-    li.classList.toggle('active', li.dataset.id === exp.id)
-  );
+  document.querySelectorAll('.exp-item').forEach((li) => {
+    li.classList.toggle('active', li.dataset.id === exp.id);
+    li.setAttribute('aria-pressed', String(li.dataset.id === exp.id));
+  });
 
   expTitle.textContent = exp.title;
   expDesc.textContent = exp.description;
@@ -220,7 +270,7 @@ function startSimulation(id) {
 }
 
 function drawPlaceholder(id) {
-  ctx.fillStyle = '#8b949e';
+  ctx.fillStyle = C.muted;
   ctx.font = '16px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(`Simulation: ${id}`, canvas.width / 2, canvas.height / 2);
@@ -247,15 +297,15 @@ function simPendulum() {
     const bobY = pivotY + L * 130 * Math.cos(angle);
 
     // Clear
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Pivot bracket
-    ctx.fillStyle = '#30363d';
+    ctx.fillStyle = C.line;
     ctx.fillRect(pivotX - 30, 40, 60, 20);
 
     // String
-    ctx.strokeStyle = '#8b949e';
+    ctx.strokeStyle = C.muted;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(pivotX, pivotY);
@@ -265,15 +315,15 @@ function simPendulum() {
     // Bob
     const bobR = 18;
     const grad = ctx.createRadialGradient(bobX - 4, bobY - 4, 2, bobX, bobY, bobR);
-    grad.addColorStop(0, '#79c0ff');
-    grad.addColorStop(1, '#1f6feb');
+    grad.addColorStop(0, C.accentHi);
+    grad.addColorStop(1, C.accentDeep);
     ctx.beginPath();
     ctx.arc(bobX, bobY, bobR, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
 
     // Angle arc
-    ctx.strokeStyle = 'rgba(88,166,255,0.3)';
+    ctx.strokeStyle = accentA(0.3);
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(pivotX, pivotY, 50, Math.PI / 2 - initAngle, Math.PI / 2 + initAngle);
@@ -329,11 +379,11 @@ function simProjectile() {
     const g = state.params.gravity || 9.81;
     const dt = 0.016;
 
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Ground
-    ctx.strokeStyle = '#30363d';
+    ctx.strokeStyle = C.line;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, groundY);
@@ -341,7 +391,7 @@ function simProjectile() {
     ctx.stroke();
 
     // Grid lines (faint)
-    ctx.strokeStyle = 'rgba(48,54,61,0.5)';
+    ctx.strokeStyle = C.grid;
     ctx.lineWidth = 1;
     for (let x = 0; x < W; x += 60) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
@@ -349,19 +399,19 @@ function simProjectile() {
 
     // Launch arrow
     const a = ((state.params.angle || 45) * Math.PI) / 180;
-    ctx.strokeStyle = '#58a6ff';
+    ctx.strokeStyle = C.accent;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(40, groundY);
     ctx.lineTo(40 + 40 * Math.cos(a), groundY - 40 * Math.sin(a));
     ctx.stroke();
-    ctx.fillStyle = '#58a6ff';
+    ctx.fillStyle = C.accent;
     ctx.font = '12px Inter';
     ctx.fillText(`${state.params.angle || 45}°`, 56, groundY - 20);
 
     // Trail
     if (trail.length > 1) {
-      ctx.strokeStyle = 'rgba(88,166,255,0.4)';
+      ctx.strokeStyle = accentA(0.4);
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(trail[0].x, trail[0].y);
@@ -387,7 +437,7 @@ function simProjectile() {
       // Ball
       ctx.beginPath();
       ctx.arc(px, py, 8, 0, Math.PI * 2);
-      ctx.fillStyle = '#f0883e';
+      ctx.fillStyle = C.orange;
       ctx.fill();
     }
 
@@ -415,7 +465,7 @@ function simOhmsLaw() {
     const P = V * I;
 
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Draw circuit
@@ -423,7 +473,7 @@ function simOhmsLaw() {
     const cw = 300, ch = 160;
 
     // Circuit outline (rectangle)
-    ctx.strokeStyle = '#30363d';
+    ctx.strokeStyle = C.line;
     ctx.lineWidth = 3;
     ctx.strokeRect(cx - cw / 2, cy - ch / 2, cw, ch);
 
@@ -441,7 +491,7 @@ function simOhmsLaw() {
     drawCurrentFlow(cx, cy, cw, ch, I);
 
     // V=IR label
-    ctx.fillStyle = '#e6edf3';
+    ctx.fillStyle = C.text;
     ctx.font = 'bold 14px JetBrains Mono, monospace';
     ctx.textAlign = 'center';
     ctx.fillText('V = I × R', cx, H - 20);
@@ -459,7 +509,7 @@ function simOhmsLaw() {
 }
 
 function drawBattery(x, y, V) {
-  ctx.strokeStyle = '#3fb950';
+  ctx.strokeStyle = C.green;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(x, y - 20);
@@ -473,30 +523,30 @@ function drawBattery(x, y, V) {
   ctx.moveTo(x - 4, y + 12);
   ctx.lineTo(x + 4, y + 12);
   ctx.stroke();
-  ctx.fillStyle = '#3fb950';
+  ctx.fillStyle = C.green;
   ctx.font = '11px Inter';
   ctx.textAlign = 'center';
   ctx.fillText(`${V}V`, x, y + 38);
 }
 
 function drawResistor(x, y, R) {
-  ctx.strokeStyle = '#d29922';
+  ctx.strokeStyle = C.amber;
   ctx.lineWidth = 2;
   const w = 60, h = 18;
   ctx.strokeRect(x - w / 2, y - h / 2, w, h);
-  ctx.fillStyle = '#d29922';
+  ctx.fillStyle = C.amber;
   ctx.font = '11px Inter';
   ctx.textAlign = 'center';
   ctx.fillText(`${R}Ω`, x, y - h / 2 - 6);
 }
 
 function drawAmmeter(x, y, I) {
-  ctx.strokeStyle = '#bc8cff';
+  ctx.strokeStyle = C.purple;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(x, y, 18, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = '#bc8cff';
+  ctx.fillStyle = C.purple;
   ctx.font = 'bold 13px Inter';
   ctx.textAlign = 'center';
   ctx.fillText('A', x, y + 5);
@@ -507,7 +557,7 @@ function drawAmmeter(x, y, I) {
 let _dotOffset = 0;
 function drawCurrentFlow(cx, cy, cw, ch, I) {
   _dotOffset = (_dotOffset + I * 800) % 60;
-  ctx.fillStyle = 'rgba(88,166,255,0.7)';
+  ctx.fillStyle = accentA(0.7);
   const speed = Math.max(10, Math.min(60, I * 5000));
   const perimeter = 2 * (cw + ch);
   for (let d = _dotOffset; d < perimeter; d += 60) {
@@ -545,12 +595,12 @@ function simAcidBase() {
     const ph = Math.max(1, Math.min(14, initPh + drops * conc * 0.4 - 4 * conc));
 
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Beaker
     const bx = W / 2 - 60, bw = 120, bh = 140, by = H / 2 - 40;
-    ctx.strokeStyle = '#8b949e';
+    ctx.strokeStyle = C.muted;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(bx, by);
@@ -576,7 +626,7 @@ function simAcidBase() {
 
     // Marker on bar
     const markerX = W / 2 - 160 + phScale * 320;
-    ctx.fillStyle = '#e6edf3';
+    ctx.fillStyle = C.text;
     ctx.beginPath();
     ctx.moveTo(markerX, H - 50);
     ctx.lineTo(markerX - 6, H - 30);
@@ -595,7 +645,7 @@ function simAcidBase() {
 
 function drawPHMeter(x, y, ph, scale) {
   ctx.font = 'bold 32px JetBrains Mono, monospace';
-  ctx.fillStyle = '#e6edf3';
+  ctx.fillStyle = C.text;
   ctx.textAlign = 'center';
   ctx.fillText(`pH ${ph.toFixed(1)}`, x, y + 10);
 }
@@ -610,7 +660,7 @@ function drawPHScaleBar(cx, y, width) {
   ctx.fillStyle = grad;
   ctx.fillRect(cx - width / 2, y - 8, width, 16);
   // Labels
-  ctx.fillStyle = '#8b949e';
+  ctx.fillStyle = C.muted;
   ctx.font = '10px Inter';
   ctx.textAlign = 'center';
   for (let i = 1; i <= 14; i += 2) {
@@ -629,19 +679,19 @@ function simBoylesLaw() {
     const P = (P0 * V0) / V;
 
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Syringe body
     const sy = H / 2, sx = 120, sw = 350 * (V / 5.0), sh = 80;
-    ctx.strokeStyle = '#8b949e';
+    ctx.strokeStyle = C.muted;
     ctx.lineWidth = 3;
     ctx.strokeRect(sx, sy - sh / 2, sw, sh);
 
     // Gas molecules (dots)
     const nMolecules = Math.round(20 * (V / 5.0));
     const seed = Math.sin(V * 100);
-    ctx.fillStyle = `rgba(88,166,255,${Math.min(1, 0.3 + P * 0.3)})`;
+    ctx.fillStyle = `rgba(${C.accentRgb},${Math.min(1, 0.3 + P * 0.3)})`;
     for (let i = 0; i < nMolecules; i++) {
       const mx = sx + 10 + ((Math.sin(i * 2.7 + seed) * 0.5 + 0.5) * (sw - 20));
       const my = sy - sh / 2 + 10 + ((Math.cos(i * 3.1 + seed) * 0.5 + 0.5) * (sh - 20));
@@ -652,13 +702,13 @@ function simBoylesLaw() {
 
     // Piston
     const pistonX = sx + sw;
-    ctx.fillStyle = '#30363d';
+    ctx.fillStyle = C.line;
     ctx.fillRect(pistonX, sy - sh / 2 - 4, 20, sh + 8);
-    ctx.strokeStyle = '#8b949e';
+    ctx.strokeStyle = C.muted;
     ctx.strokeRect(pistonX, sy - sh / 2 - 4, 20, sh + 8);
 
     // PV=const label
-    ctx.fillStyle = '#e6edf3';
+    ctx.fillStyle = C.text;
     ctx.font = 'bold 14px JetBrains Mono';
     ctx.textAlign = 'center';
     ctx.fillText('PV = constant', W / 2, H - 20);
@@ -704,11 +754,11 @@ function simTitration() {
 
     const ph = phAtVolume(titrantAdded);
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Burette (top)
-    ctx.strokeStyle = '#8b949e';
+    ctx.strokeStyle = C.muted;
     ctx.lineWidth = 2;
     ctx.strokeRect(W / 2 - 10, 20, 20, 120);
     ctx.fillStyle = '#4575b4';
@@ -724,7 +774,7 @@ function simTitration() {
 
     // Conical flask
     const fx = W / 2, fy = 230;
-    ctx.strokeStyle = '#8b949e';
+    ctx.strokeStyle = C.muted;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(fx - 15, fy);
@@ -768,7 +818,7 @@ function getPhColor(ph) {
 }
 
 function drawTitrationCurve(cx, cy, xScale, yScale, current) {
-  ctx.strokeStyle = 'rgba(88,166,255,0.6)';
+  ctx.strokeStyle = accentA(0.6);
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   for (let v = 0; v <= 60; v += 0.5) {
@@ -803,13 +853,13 @@ function drawTitrationCurve(cx, cy, xScale, yScale, current) {
   }
   const dotX = cx - xScale / 2 + (current / 60) * xScale;
   const dotY = cy + yScale / 2 - ((cPh - 1) / 13) * yScale;
-  ctx.fillStyle = '#f0883e';
+  ctx.fillStyle = C.orange;
   ctx.beginPath();
   ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
   ctx.fill();
 
   // Axis labels
-  ctx.fillStyle = '#6e7681';
+  ctx.fillStyle = C.muted;
   ctx.font = '10px Inter';
   ctx.textAlign = 'center';
   ctx.fillText('Volume added (mL)', cx, cy + yScale / 2 + 16);
@@ -855,31 +905,31 @@ function simMitosis() {
     const phaseProgress = (frame - accBefore) / phase.duration;
 
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     drawMitosisPhase(W / 2, H / 2 - 20, phaseIdx, phaseProgress);
 
     // Phase label
-    ctx.fillStyle = '#e6edf3';
+    ctx.fillStyle = C.text;
     ctx.font = 'bold 18px Inter';
     ctx.textAlign = 'center';
     ctx.fillText(phase.name, W / 2, 36);
 
     // Phase progress bar
     const barW = 400;
-    ctx.fillStyle = '#21262d';
+    ctx.fillStyle = C.raised;
     ctx.fillRect(W / 2 - barW / 2, 48, barW, 6);
-    ctx.fillStyle = '#3fb950';
+    ctx.fillStyle = C.green;
     ctx.fillRect(W / 2 - barW / 2, 48, phaseProgress * barW, 6);
 
     // Phase timeline
     let bx = W / 2 - barW / 2;
     MITOSIS_PHASES.forEach((p, i) => {
       const pw = (p.duration / totalFrames) * barW;
-      ctx.fillStyle = i === phaseIdx ? '#58a6ff' : '#30363d';
+      ctx.fillStyle = i === phaseIdx ? C.accent : C.line;
       ctx.fillRect(bx, H - 36, pw - 2, 8);
-      ctx.fillStyle = '#6e7681';
+      ctx.fillStyle = C.muted;
       ctx.font = '9px Inter';
       ctx.textAlign = 'left';
       if (pw > 30) ctx.fillText(p.name, bx + 2, H - 20);
@@ -897,48 +947,48 @@ function drawMitosisPhase(cx, cy, phaseIdx, progress) {
 
   if (phaseIdx === 0) {
     // Interphase: single round cell
-    drawCell(cx, cy, r, 'rgba(63,185,80,0.2)', '#3fb950');
-    drawNucleus(cx, cy, r * 0.45, 'rgba(88,166,255,0.3)', '#58a6ff');
-    ctx.fillStyle = '#8b949e';
+    drawCell(cx, cy, r, 'rgba(63,185,80,0.2)', C.green);
+    drawNucleus(cx, cy, r * 0.45, accentA(0.3), C.accent);
+    ctx.fillStyle = C.muted;
     ctx.font = '12px Inter';
     ctx.textAlign = 'center';
     ctx.fillText('DNA replication occurring…', cx, cy + r + 22);
   } else if (phaseIdx === 1) {
     // Prophase: chromosomes condense
-    drawCell(cx, cy, r, 'rgba(63,185,80,0.2)', '#3fb950');
+    drawCell(cx, cy, r, 'rgba(63,185,80,0.2)', C.green);
     const n = 4;
     for (let i = 0; i < n; i++) {
       const angle = (i / n) * Math.PI * 2 + progress * 0.5;
       const dx = Math.cos(angle) * r * 0.35;
       const dy = Math.sin(angle) * r * 0.35;
-      drawChromosome(cx + dx, cy + dy, 12 + 4 * progress, '#bc8cff');
+      drawChromosome(cx + dx, cy + dy, 12 + 4 * progress, C.purple);
     }
   } else if (phaseIdx === 2) {
     // Metaphase: chromosomes align on plate
-    drawCell(cx, cy, r, 'rgba(63,185,80,0.2)', '#3fb950');
+    drawCell(cx, cy, r, 'rgba(63,185,80,0.2)', C.green);
     drawSpindleFibres(cx, cy, r);
     const n = 4;
     for (let i = 0; i < n; i++) {
       const dx = ((i - 1.5) / 3) * r * 0.55;
-      drawChromosome(cx + dx, cy, 14, '#bc8cff');
+      drawChromosome(cx + dx, cy, 14, C.purple);
     }
   } else if (phaseIdx === 3) {
     // Anaphase: chromosomes move to poles
-    drawCell(cx, cy, r * (1 + 0.3 * progress), 'rgba(63,185,80,0.15)', '#3fb950');
+    drawCell(cx, cy, r * (1 + 0.3 * progress), 'rgba(63,185,80,0.15)', C.green);
     drawSpindleFibres(cx, cy, r);
     const n = 4;
     for (let i = 0; i < n; i++) {
       const dx = ((i - 1.5) / 3) * r * 0.4;
-      drawChromosome(cx + dx, cy - r * 0.35 * progress, 12, '#bc8cff');
-      drawChromosome(cx + dx, cy + r * 0.35 * progress, 12, '#f0883e');
+      drawChromosome(cx + dx, cy - r * 0.35 * progress, 12, C.purple);
+      drawChromosome(cx + dx, cy + r * 0.35 * progress, 12, C.orange);
     }
   } else if (phaseIdx === 4) {
     // Telophase: two nuclei forming
     const sep = r * 0.5 * progress;
-    drawCell(cx, cy - sep, r * 0.7, 'rgba(63,185,80,0.2)', '#3fb950');
-    drawCell(cx, cy + sep, r * 0.7, 'rgba(63,185,80,0.2)', '#3fb950');
-    drawNucleus(cx, cy - sep, r * 0.28, 'rgba(88,166,255,0.25)', '#58a6ff');
-    drawNucleus(cx, cy + sep, r * 0.28, 'rgba(88,166,255,0.25)', '#58a6ff');
+    drawCell(cx, cy - sep, r * 0.7, 'rgba(63,185,80,0.2)', C.green);
+    drawCell(cx, cy + sep, r * 0.7, 'rgba(63,185,80,0.2)', C.green);
+    drawNucleus(cx, cy - sep, r * 0.28, accentA(0.25), C.accent);
+    drawNucleus(cx, cy + sep, r * 0.28, accentA(0.25), C.accent);
   } else {
     // Cytokinesis: cell pinches
     const pinch = progress;
@@ -990,7 +1040,7 @@ function drawSpindleFibres(cx, cy, r) {
 function drawPinchingCell(cx, cy, r, pinch) {
   const squeeze = pinch * r * 0.6;
   ctx.fillStyle = 'rgba(63,185,80,0.2)';
-  ctx.strokeStyle = '#3fb950';
+  ctx.strokeStyle = C.green;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.ellipse(cx, cy - squeeze / 2, r * (1 - pinch * 0.2), r * (1 - pinch * 0.1), 0, 0, Math.PI * 2);
@@ -1048,7 +1098,7 @@ function simNaturalSelection() {
     }
 
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Background environment
@@ -1067,11 +1117,11 @@ function simNaturalSelection() {
 
     const avgFit = population.reduce((s, o) => s + o.fitness, 0) / population.length;
 
-    ctx.fillStyle = '#e6edf3';
+    ctx.fillStyle = C.text;
     ctx.font = 'bold 13px Inter';
     ctx.textAlign = 'left';
     ctx.fillText(`Generation: ${generation}`, 36, 30);
-    ctx.fillStyle = '#8b949e';
+    ctx.fillStyle = C.muted;
     ctx.font = '12px Inter';
     ctx.fillText(`Avg fitness: ${avgFit.toFixed(3)}`, 200, 30);
 
@@ -1118,7 +1168,7 @@ function simPhotosynthesis() {
     bubbles = bubbles.filter((b) => b.y > 60);
 
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0d1117';
+    ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
 
     // Water / beaker
@@ -1126,7 +1176,7 @@ function simPhotosynthesis() {
     ctx.fillRect(240, 120, 160, 220);
 
     // Plant (simple)
-    ctx.strokeStyle = '#3fb950';
+    ctx.strokeStyle = C.green;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(320, 330);
@@ -1150,7 +1200,7 @@ function simPhotosynthesis() {
 
     // Bubbles (O₂)
     bubbles.forEach((b) => {
-      ctx.strokeStyle = 'rgba(88,166,255,0.7)';
+      ctx.strokeStyle = accentA(0.7);
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
@@ -1161,7 +1211,7 @@ function simPhotosynthesis() {
     drawRateGauge(580, H / 2, r);
 
     // Equation
-    ctx.fillStyle = '#8b949e';
+    ctx.fillStyle = C.muted;
     ctx.font = '11px JetBrains Mono';
     ctx.textAlign = 'center';
     ctx.fillText('6CO₂ + 6H₂O + light → C₆H₁₂O₆ + 6O₂', W / 2, H - 12);
@@ -1180,7 +1230,7 @@ function drawLeaf(x, y, angle) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
-  ctx.fillStyle = '#3fb950';
+  ctx.fillStyle = C.green;
   ctx.globalAlpha = 0.8;
   ctx.beginPath();
   ctx.ellipse(25, 0, 25, 10, 0, 0, Math.PI * 2);
@@ -1194,14 +1244,14 @@ function drawRateGauge(cx, cy, rate) {
   const capped = Math.min(rate, maxR);
   const height = 120;
 
-  ctx.fillStyle = '#21262d';
+  ctx.fillStyle = C.raised;
   ctx.fillRect(cx - 20, cy - height / 2, 40, height);
 
   const fillH = (capped / maxR) * height;
-  ctx.fillStyle = capped > 6 ? '#3fb950' : capped > 3 ? '#d29922' : '#f85149';
+  ctx.fillStyle = capped > 6 ? C.green : capped > 3 ? C.amber : C.red;
   ctx.fillRect(cx - 18, cy + height / 2 - fillH, 36, fillH);
 
-  ctx.fillStyle = '#8b949e';
+  ctx.fillStyle = C.muted;
   ctx.font = '10px Inter';
   ctx.textAlign = 'center';
   ctx.fillText('Rate', cx, cy + height / 2 + 14);
@@ -1282,12 +1332,15 @@ toggleMentorBtn.addEventListener('click', () => {
   mentorPanel.classList.toggle('hidden', !state.mentorVisible);
   // For mobile
   mentorPanel.classList.toggle('visible', state.mentorVisible);
+  toggleMentorBtn.setAttribute('aria-expanded', String(state.mentorVisible));
 });
 
 closeMentorBtn.addEventListener('click', () => {
   state.mentorVisible = false;
   mentorPanel.classList.add('hidden');
   mentorPanel.classList.remove('visible');
+  toggleMentorBtn.setAttribute('aria-expanded', 'false');
+  toggleMentorBtn.focus();
 });
 
 resetBtn.addEventListener('click', () => {
@@ -1302,5 +1355,8 @@ resetBtn.addEventListener('click', () => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────
+
+toggleMentorBtn.setAttribute('aria-expanded', String(state.mentorVisible));
+if (!state.mentorVisible) mentorPanel.classList.add('hidden');
 
 loadDomain('physics');

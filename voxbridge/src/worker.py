@@ -20,7 +20,7 @@ from workers import Response, WorkerEntrypoint
 # Cloudflare AI model identifiers
 # ---------------------------------------------------------------------------
 MODEL_WHISPER = "@cf/openai/whisper"
-MODEL_LLAMA = "@cf/meta/llama-3.1-8b-instruct"
+MODEL_LLAMA = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 MODEL_VISION = "@cf/unum/uform-gen2-qwen-500m"
 
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ export const activities: Activity[] = [
     description:
       "Join live virtual classrooms, whiteboards, and collaborative learning rooms.",
     position: [0, 0, -8],
-    color: 0x14b8a6,
+    color: 0xc7ab4f, // brand gold
     links: [
       { label: "Enter Global Classroom", url: `${LEARN_API_BASE}/classroom_poc?autojoin=1&room=lobby` },
       { label: "Open Whiteboard", url: `${LEARN_API_BASE}/whiteboard` },

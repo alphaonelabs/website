@@ -8,12 +8,7 @@
   <style>
     html { background: #ffffff; }
     html.dark { background: #000000; }
-    html.prepaint-home { background: #0f766e; }
-    html.prepaint-home.dark { background: #134e4a; }
-    html.prepaint-home body { background: #0f766e; }
-    html.prepaint-home.dark body { background: #134e4a; }
-    html.prepaint-home body > main > section:first-child { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #06b6d4 100%); }
-    html.prepaint-home.dark body > main > section:first-child { background: linear-gradient(135deg, #134e4a 0%, #0f766e 50%, #164e63 100%); }
+    html.prepaint-home, html.prepaint-home body, html.prepaint-home body > main > section:first-child { background: #000000; }
     .hidden { display: none !important; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
     .relative { position: relative; }
@@ -23,8 +18,7 @@
     .justify-center { justify-content: center; }
     .w-full { width: 100%; }
     .min-h-screen { min-height: 100vh; }
-    #site-navbar { min-height: 70px; background: #0d9488; color: #fff; }
-    html.dark #site-navbar { background: #115e59; }
+    #site-navbar { min-height: 72px; background: #000000; color: #fff; }
     #site-navbar header { background: inherit; color: inherit; }
     #site-navbar header > div { max-width: 90rem; margin: 0 auto; min-height: 70px; padding: .75rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
     #site-navbar header > div > a,
@@ -66,11 +60,44 @@
   </style>
   <script>
     (function () {
+      var root = document.documentElement;
+      var dark = false;
       try {
-        if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+        var cookieTheme = (document.cookie.match(/(?:^|; )a1-theme=(light|dark)/) || [])[1];
+        var stored = localStorage.getItem('darkMode');
+        if (cookieTheme) {
+          dark = cookieTheme === 'dark';
+          localStorage.setItem('darkMode', String(dark));
+        } else if (stored === 'true' || stored === 'false') {
+          dark = stored === 'true';
+        } else {
+          dark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+          localStorage.setItem('darkMode', String(dark));
+        }
       } catch (_) {
         /* Ignore storage failures. */
       }
+      if (dark) root.classList.add('dark');
+      root.setAttribute('data-a1-theme', dark ? 'dark' : 'light');
+
+      // Keep the shared Alpha One Labs theme (brand.css tokens, <a1-footer>, the
+      // a1-theme cookie used across *.alphaonelabs.com) in step with learn's own
+      // Tailwind `dark` class, whichever script toggles it.
+      new MutationObserver(function () {
+        var theme = root.classList.contains('dark') ? 'dark' : 'light';
+        if (root.getAttribute('data-a1-theme') === theme) return;
+        if (window.A1Theme && typeof window.A1Theme.set === 'function') window.A1Theme.set(theme);
+        else root.setAttribute('data-a1-theme', theme);
+      }).observe(root, { attributes: true, attributeFilter: ['class'] });
+      document.addEventListener('a1-themechange', function (e) {
+        var theme = e && e.detail && e.detail.theme;
+        if (theme !== 'dark' && theme !== 'light') return;
+        var isDark = theme === 'dark';
+        if (root.classList.contains('dark') === isDark) return;
+        root.classList.toggle('dark', isDark);
+        try { localStorage.setItem('darkMode', String(isDark)); } catch (_) { /* ignore */ }
+        if (typeof window.updateDarkModeIcon === 'function') window.updateDarkModeIcon();
+      });
 
       const currentPath = ((location.pathname || '/').replace(/\/+$/, '') || '/').replace(/^\/en(?=\/|$)/, '') || '/';
       if (currentPath === '/') {
@@ -134,15 +161,49 @@
       }
     })();
   </script>
-  <link rel="icon" type="image/png" href="/images/logo.png" />
+  <link rel="icon" type="image/svg+xml" href="/images/logo.svg" />
+  <link rel="alternate icon" type="image/png" href="/images/logo.png" />
+  <link rel="preconnect" href="https://design.alphaonelabs.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
   <link rel="preconnect" href="https://cdn.tailwindcss.com" />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" /></noscript>
   <script>
+    // Alpha One Labs brand palette. learn's teal/cyan accent classes map onto a
+    // gold scale so every page picks up the brand without per-page edits.
+    // 600/700 are darkened from gold-deep so white text and gold text on white
+    // meet WCAG AA (600 on white 5.4:1, white on 600 5.4:1).
+    window.A1_TAILWIND_THEME = {
+      colors: (function () {
+        var gold = { 50: '#fbf8ee', 100: '#f6efd9', 200: '#ecdeb0', 300: '#e2c66a', 400: '#c7ab4f', 500: '#9a8236', 600: '#7c692e', 700: '#685721', 800: '#524520', 900: '#3a3117', 950: '#221d0d' };
+        return { teal: gold, cyan: gold, gold: gold, a1: { black: '#000000', white: '#ffffff', gold: '#c7ab4f', 'gold-bright': '#e2c66a', 'gold-deep': '#9a8236' } };
+      })(),
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+      }
+    };
+    window.applyA1TailwindTheme = function () {
+      var cfg = window.tailwind && window.tailwind.config ? window.tailwind.config : {};
+      var theme = cfg.theme || {};
+      var extend = theme.extend || {};
+      window.tailwind.config = Object.assign({}, cfg, {
+        darkMode: cfg.darkMode || 'class',
+        theme: Object.assign({}, theme, {
+          extend: Object.assign({}, extend, {
+            colors: Object.assign({}, extend.colors || {}, window.A1_TAILWIND_THEME.colors),
+            fontFamily: Object.assign({}, extend.fontFamily || {}, window.A1_TAILWIND_THEME.fontFamily)
+          })
+        })
+      });
+    };
     tailwind.config = { darkMode: 'class', theme: { extend: {} } };
-    if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+    window.applyA1TailwindTheme();
   </script>
   <style>
     html, body { overflow-x: hidden; box-sizing: border-box; }
@@ -150,8 +211,20 @@
     .dark { color-scheme: dark; }
     :root { color-scheme: light; }
     a, button, input, select, textarea { touch-action: manipulation; }
+    /* Alpha One Labs brand layer (tokens come from brand.css). */
+    body { font-family: var(--a1-font-body, Inter, system-ui, sans-serif); }
+    h1, h2, h3, .font-display { font-family: var(--a1-font-display, "Space Grotesk", Inter, sans-serif); letter-spacing: -0.01em; }
+    :focus-visible { outline: 2px solid #9a8236; outline-offset: 2px; }
+    html.dark :focus-visible { outline-color: #e2c66a; }
+    ::selection { background: #e2c66a; color: #000; }
+    a1-footer { display: block; min-height: 280px; background: #000; }
+    html:not(.dark) a1-footer { background: #fff; }
   </style>
   {% block head %}{% endblock %}
+  <script>
+    /* Re-apply the brand palette after any page-level tailwind.config override. */
+    if (window.applyA1TailwindTheme) window.applyA1TailwindTheme();
+  </script>
 </head>
 <body class="{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300 overflow-x-hidden{% endblock %}">
   <div id="site-navbar" data-inline="true">{% include "partials/navbar.html" %}</div>
@@ -185,6 +258,7 @@
     document.addEventListener('DOMContentLoaded', installPasswordToggles);
   </script>
   <script src="/js/layout.js" defer></script>
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

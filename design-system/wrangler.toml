@@ -1,0 +1,10 @@
+# Alpha One Labs design system: brand tokens, shared site chrome and assets.
+# Deployed by .github/workflows/deploy-sites.yml on changes to design-system/.
+name = "design-system"
+compatibility_date = "2026-10-01"
+
+routes = [{ pattern = "design.alphaonelabs.com", custom_domain = true }]
+
+[assets]
+directory = "."
+not_found_handling = "404-page"

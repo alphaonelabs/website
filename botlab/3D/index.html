@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Gesture Robot Assembler</title>
+  <title>BotLab 3D Robot Assembler — Alpha One Labs</title>
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -16,7 +18,13 @@
   </script>
 </head>
 <body>
-  <canvas id="simCanvas" width="1920" height="1080"></canvas>
+  <a1-header site="BotLab" site-href="/" sticky>
+    <a slot="actions" class="a1-slot-btn" href="/home.html">2D Playground</a>
+  </a1-header>
+  <main class="sim-stage">
+    <h1 class="sr-only">BotLab 3D gesture robot assembler</h1>
+    <canvas id="simCanvas" width="1920" height="1080" role="img" aria-label="3D robot assembly simulation. Use your camera and hand gestures, or WASD keys and 1 to 5 to cycle parts."></canvas>
+  </main>
   <video id="cameraVideo" autoplay playsinline muted></video>
   <script>
     const appScript = document.createElement("script");

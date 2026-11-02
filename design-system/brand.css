@@ -1,0 +1,202 @@
+/*
+ * Alpha One Labs brand tokens — https://design.alphaonelabs.com
+ *
+ * Link it from any site:
+ *   <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
+ *
+ * Everything is a CSS custom property prefixed --a1-, plus a handful of
+ * opt-in .a1-* classes. Nothing here restyles a site's own elements.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+:root {
+  /* Core palette (from the 2009 makerspace poster) */
+  --a1-black: #000000;
+  --a1-white: #ffffff;
+  --a1-gold: #c7ab4f;
+  --a1-gold-bright: #e2c66a;
+  --a1-gold-deep: #9a8236;
+  --a1-gold-ink: #7c692e;   /* gold for text and buttons on light backgrounds (5.4:1 on white) */
+  --a1-red: #e11d2e;
+
+  /* Neutrals */
+  --a1-gray-50: #fafafa;
+  --a1-gray-100: #f2f2f2;
+  --a1-gray-200: #e4e4e4;
+  --a1-gray-300: #c9c9c9;
+  --a1-gray-400: #a3a3a3;
+  --a1-gray-500: #737373;
+  --a1-gray-600: #525252;
+  --a1-gray-700: #2e2e2e;
+  --a1-gray-800: #1a1a1a;
+  --a1-gray-900: #0d0d0d;
+
+  /* Semantic (dark is the brand default) */
+  --a1-bg: var(--a1-black);
+  --a1-surface: var(--a1-gray-900);
+  --a1-surface-raised: var(--a1-gray-800);
+  --a1-border: var(--a1-gray-700);
+  --a1-text: var(--a1-white);
+  --a1-text-muted: var(--a1-gray-400);
+  --a1-accent: var(--a1-gold);
+  --a1-accent-hover: var(--a1-gold-bright);
+  --a1-on-accent: var(--a1-black);
+  --a1-focus: var(--a1-gold-bright);
+
+  /* Type */
+  --a1-font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --a1-font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --a1-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --a1-text-xs: 0.75rem;
+  --a1-text-sm: 0.875rem;
+  --a1-text-base: 1rem;
+  --a1-text-lg: 1.125rem;
+  --a1-text-xl: 1.375rem;
+  --a1-text-2xl: 1.75rem;
+  --a1-text-3xl: 2.25rem;
+  --a1-text-4xl: clamp(2.5rem, 5vw, 3.5rem);
+  --a1-text-5xl: clamp(3rem, 7vw, 5rem);
+
+  /* Space, radius, shadow, motion */
+  --a1-space-1: 0.25rem;
+  --a1-space-2: 0.5rem;
+  --a1-space-3: 0.75rem;
+  --a1-space-4: 1rem;
+  --a1-space-6: 1.5rem;
+  --a1-space-8: 2rem;
+  --a1-space-12: 3rem;
+  --a1-space-16: 4rem;
+  --a1-space-24: 6rem;
+  --a1-radius-sm: 6px;
+  --a1-radius: 12px;
+  --a1-radius-lg: 20px;
+  --a1-radius-full: 999px;
+  --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+  --a1-glow: 0 0 0 1px rgb(199 171 79 / 0.35), 0 8px 32px rgb(199 171 79 / 0.15);
+  --a1-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --a1-header-height: 64px;
+}
+
+/*
+ * Light theme. Pages follow the visitor's system setting by default; the
+ * theme toggle in <a1-header> sets data-a1-theme="light" | "dark" on <html>
+ * and remembers it. Any container can also force a theme with the attribute.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-a1-theme="dark"]) {
+    --a1-bg: var(--a1-white);
+    --a1-surface: var(--a1-gray-50);
+    --a1-surface-raised: var(--a1-white);
+    --a1-border: var(--a1-gray-200);
+    --a1-text: var(--a1-black);
+    --a1-text-muted: var(--a1-gray-600);
+    --a1-accent: var(--a1-gold-ink);
+    --a1-accent-hover: var(--a1-black);
+    --a1-on-accent: var(--a1-white);
+    --a1-focus: var(--a1-gold-ink);
+    --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
+    --a1-glow: 0 0 0 1px rgb(154 130 54 / 0.4), 0 8px 32px rgb(154 130 54 / 0.12);
+    color-scheme: light;
+  }
+}
+:root { color-scheme: dark; }
+[data-a1-theme="dark"] {
+  color-scheme: dark;
+  --a1-bg: var(--a1-black);
+  --a1-surface: var(--a1-gray-900);
+  --a1-surface-raised: var(--a1-gray-800);
+  --a1-border: var(--a1-gray-700);
+  --a1-text: var(--a1-white);
+  --a1-text-muted: var(--a1-gray-400);
+  --a1-accent: var(--a1-gold);
+  --a1-accent-hover: var(--a1-gold-bright);
+  --a1-on-accent: var(--a1-black);
+  --a1-focus: var(--a1-gold-bright);
+  --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+  --a1-glow: 0 0 0 1px rgb(199 171 79 / 0.35), 0 8px 32px rgb(199 171 79 / 0.15);
+}
+[data-a1-theme="light"] {
+  color-scheme: light;
+  --a1-focus: var(--a1-gold-ink);
+  --a1-glow: 0 0 0 1px rgb(154 130 54 / 0.4), 0 8px 32px rgb(154 130 54 / 0.12);
+  --a1-bg: var(--a1-white);
+  --a1-surface: var(--a1-gray-50);
+  --a1-surface-raised: var(--a1-white);
+  --a1-border: var(--a1-gray-200);
+  --a1-text: var(--a1-black);
+  --a1-text-muted: var(--a1-gray-600);
+  --a1-accent: var(--a1-gold-ink);
+  --a1-accent-hover: var(--a1-black);
+  --a1-on-accent: var(--a1-white);
+  --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
+}
+
+/* ---- Opt-in components ------------------------------------------------ */
+
+.a1-eyebrow {
+  font-family: var(--a1-font-mono);
+  font-size: var(--a1-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--a1-accent);
+}
+
+.a1-display {
+  font-family: var(--a1-font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+}
+
+.a1-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--a1-space-2);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--a1-radius-full);
+  border: 1px solid transparent;
+  font: 600 var(--a1-text-sm) / 1 var(--a1-font-body);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s var(--a1-ease), color 0.2s var(--a1-ease), border-color 0.2s var(--a1-ease), transform 0.2s var(--a1-ease);
+}
+.a1-btn:hover { transform: translateY(-1px); }
+.a1-btn:focus-visible { outline: 2px solid var(--a1-focus); outline-offset: 3px; }
+.a1-btn--primary { background: var(--a1-accent); color: var(--a1-on-accent); }
+.a1-btn--primary:hover { background: var(--a1-accent-hover); }
+.a1-btn--ghost { border-color: var(--a1-border); color: var(--a1-text); background: transparent; }
+.a1-btn--ghost:hover { border-color: var(--a1-accent); color: var(--a1-accent); }
+
+.a1-card {
+  background: var(--a1-surface);
+  border: 1px solid var(--a1-border);
+  border-radius: var(--a1-radius-lg);
+  padding: var(--a1-space-6);
+  transition: border-color 0.2s var(--a1-ease), box-shadow 0.2s var(--a1-ease), transform 0.2s var(--a1-ease);
+}
+.a1-card--interactive:hover { border-color: var(--a1-accent); box-shadow: var(--a1-glow); transform: translateY(-2px); }
+
+.a1-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--a1-radius-full);
+  border: 1px solid var(--a1-border);
+  font: 700 var(--a1-text-xs) / 1.2 var(--a1-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--a1-text-muted);
+}
+.a1-badge--gold { border-color: rgb(199 171 79 / 0.5); color: var(--a1-accent); background: rgb(199 171 79 / 0.08); }
+
+/* A thin gold circuit trace, for section dividers */
+.a1-trace {
+  height: 10px;
+  border: 0;
+  background:
+    radial-gradient(circle at 0 50%, var(--a1-accent) 3px, transparent 3.5px) left center / 10px 10px no-repeat,
+    radial-gradient(circle at 100% 50%, var(--a1-accent) 3px, transparent 3.5px) right center / 10px 10px no-repeat,
+    linear-gradient(var(--a1-accent), var(--a1-accent)) center / calc(100% - 16px) 1.5px no-repeat;
+  opacity: 0.7;
+}

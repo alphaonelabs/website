@@ -9,7 +9,7 @@ import json
 
 
 # Cloudflare Workers AI model identifiers
-_CHAT_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+_CHAT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 
 # System prompt shared by all analysis calls
 _SYSTEM_PROMPT = (

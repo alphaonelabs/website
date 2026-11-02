@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Certificate - Alpha One Labs</title>
-  <link rel="icon" type="image/png" href="https://alphaonelabs.com/static/images/logo.png" />
+  <link rel="icon" type="image/svg+xml" href="/images/logo.svg" />
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -18,6 +19,7 @@
       }
     }
     initializeDarkMode();
+    document.documentElement.setAttribute('data-a1-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
     document.addEventListener('DOMContentLoaded', initializeDarkMode);
   </script>
   <style>
@@ -187,6 +189,7 @@
   </div>
 
   <script src="/js/layout.js" defer></script>
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   <script>
     function formatDate(value) {
       const date = new Date(value);

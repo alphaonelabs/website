@@ -5253,6 +5253,25 @@ def _is_test_success_story_record(record: Dict[str, Any]) -> bool:
     return "test success story" in description[:240]
 
 
+# Shared <head> additions for the server-rendered record pages: Alpha One Labs
+# brand tokens, the gold accent scale (learn's teal/cyan classes map onto it,
+# matching public/base.html) and the theme sync with the cross-site a1-theme cookie.
+_SSR_BRAND_HEAD = (
+    '<link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">'
+    '<style>body{font-family:var(--a1-font-body,Inter,system-ui,sans-serif)}'
+    'h1,h2,h3{font-family:var(--a1-font-display,"Space Grotesk",Inter,sans-serif)}'
+    ':focus-visible{outline:2px solid #9a8236;outline-offset:2px}html.dark :focus-visible{outline-color:#e2c66a}'
+    'a1-footer{display:block;min-height:280px;background:#000}html:not(.dark) a1-footer{background:#fff}</style>'
+    '<script>(function(){var g={50:"#fbf8ee",100:"#f6efd9",200:"#ecdeb0",300:"#e2c66a",400:"#c7ab4f",500:"#9a8236",600:"#7c692e",700:"#685721",800:"#524520",900:"#3a3117",950:"#221d0d"};'
+    'tailwind.config={darkMode:"class",theme:{extend:{colors:{teal:g,cyan:g,gold:g}}}};'
+    'var r=document.documentElement,d=false;'
+    'try{var c=(document.cookie.match(/(?:^|; )a1-theme=(light|dark)/)||[])[1],st=localStorage.getItem("darkMode");'
+    'if(c){d=c==="dark";localStorage.setItem("darkMode",String(d));}else if(st==="true"||st==="false"){d=st==="true";}'
+    'else{d=!!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);}}catch(e){}'
+    'if(d){r.classList.add("dark");}r.setAttribute("data-a1-theme",d?"dark":"light");})();</script>'
+)
+
+
 def _ssr_nav() -> str:
     links = [
         ("/activity", "Courses"),
@@ -5268,32 +5287,37 @@ def _ssr_nav() -> str:
         ("/login", "Login"),
     ]
     nav_links = "".join(
-        f'<a href="{href}" class="px-3 py-2 rounded-md hover:bg-teal-700 text-sm font-medium">{label}</a>'
+        f'<a href="{href}" class="px-3 py-2 rounded-md text-gray-300 hover:bg-[#141414] hover:text-[#e2c66a] text-sm font-medium">{label}</a>'
         for href, label in links
     )
     return (
-        '<header class="w-full bg-teal-600 dark:bg-teal-800 text-white shadow-md">'
+        '<header class="w-full bg-black text-white border-b border-[#2e2e2e]">'
         '<div class="max-w-[90rem] mx-auto px-4 md:px-6 min-h-[70px] flex flex-wrap items-center justify-between gap-3 py-3">'
-        '<a href="/" class="flex items-center space-x-2">'
-        '<img src="/images/logo.png" alt="Alpha One Labs Logo" height="40" width="40" class="h-10 w-10">'
-        '<span class="text-xl font-bold">Alpha One Labs</span></a>'
-        f'<nav class="flex flex-wrap items-center gap-1">{nav_links}</nav>'
-        '</div></header>'
+        '<a href="/" class="flex items-center space-x-3">'
+        '<img src="/images/logo.svg" alt="Alpha One Labs logo" height="40" width="36" class="h-10 w-auto">'
+        '<span class="text-xl font-bold" style="font-family:var(--a1-font-display,inherit)">Alpha One Labs</span></a>'
+        f'<nav class="flex flex-wrap items-center gap-1" aria-label="Primary navigation">{nav_links}</nav>'
+        '</div>'
+        '<div aria-hidden="true" style="height:2px;background:linear-gradient(90deg,transparent,#c7ab4f 20%,#c7ab4f 80%,transparent);opacity:.55"></div>'
+        '</header>'
     )
 
 
 def _ssr_footer() -> str:
     return (
-        '<footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">'
-        '<div class="max-w-[90rem] mx-auto px-4 md:px-6 py-8 flex flex-col md:flex-row justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">'
-        '<p>&copy; 2026 Alpha One Labs. All rights reserved.</p>'
-        '<div class="flex flex-wrap gap-4">'
-        '<a href="/about" class="hover:text-teal-600">About</a>'
-        '<a href="/status" class="hover:text-teal-600">Status</a>'
-        '<a href="/feedback" class="hover:text-teal-600">Feedback</a>'
-        '<a href="/terms" class="hover:text-teal-600">Terms</a>'
-        '<a href="/privacy" class="hover:text-teal-600">Privacy</a>'
-        '</div></div></footer>'
+        '<div class="mt-auto">'
+        '<nav class="bg-white dark:bg-black border-t border-gray-200 dark:border-[#2e2e2e]" aria-label="Learn site links">'
+        '<div class="max-w-[90rem] mx-auto px-4 md:px-6 py-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">'
+        '<a href="/about" class="hover:text-black dark:hover:text-[#e2c66a]">About</a>'
+        '<a href="/status" class="hover:text-black dark:hover:text-[#e2c66a]">Status</a>'
+        '<a href="/feedback" class="hover:text-black dark:hover:text-[#e2c66a]">Feedback</a>'
+        '<a href="/terms" class="hover:text-black dark:hover:text-[#e2c66a]">Terms</a>'
+        '<a href="/privacy" class="hover:text-black dark:hover:text-[#e2c66a]">Privacy</a>'
+        '<a href="/cookies" class="hover:text-black dark:hover:text-[#e2c66a]">Cookies</a>'
+        '</div></nav>'
+        '<a1-footer source="learn"></a1-footer>'
+        '</div>'
+        '<script src="https://design.alphaonelabs.com/chrome.js" defer></script>'
     )
 
 
@@ -5442,10 +5466,10 @@ async def render_meme_detail(req, env, ref: str):
         '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head>'
         '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
         f'<title>{title} - Edu Meme</title>'
-        '<link rel="icon" type="image/png" href="/images/logo.png">'
+        '<link rel="icon" type="image/svg+xml" href="/images/logo.svg">'
         '<script src="https://cdn.tailwindcss.com"></script>'
         '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
-        '<script>tailwind.config={darkMode:"class",theme:{extend:{}}};if(localStorage.getItem("darkMode")==="true"){document.documentElement.classList.add("dark");}</script>'
+        + _SSR_BRAND_HEAD + ''
         '</head><body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">'
         f'{_ssr_nav()}'
         '<main class="flex-1 w-full max-w-5xl mx-auto px-4 py-8 md:py-12">'
@@ -5598,8 +5622,8 @@ async def render_blog_detail(req, env, slug: str):
     image_html = f'<img src="{image}" alt="{title}" class="w-full max-h-[32rem] object-cover rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg mb-8" onerror="this.remove();">' if image else ""
     html = (
         '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
-        f'<title>{title} - Alpha One Labs</title><link rel="icon" type="image/png" href="/images/logo.png"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
-        '<script>tailwind.config={darkMode:"class",theme:{extend:{}}};if(localStorage.getItem("darkMode")==="true"){document.documentElement.classList.add("dark");}</script></head>'
+        f'<title>{title} - Alpha One Labs</title><link rel="icon" type="image/svg+xml" href="/images/logo.svg"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
+        + _SSR_BRAND_HEAD + '</head>'
         '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">' + _ssr_nav() +
         '<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-10"><a href="/blog" class="inline-flex items-center text-sm font-bold text-teal-700 dark:text-teal-300 hover:underline mb-6"><i class="fa-solid fa-arrow-left mr-2"></i>Back to blog</a>'
         f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm">{image_html}<p class="text-xs font-bold uppercase tracking-[0.24em] text-teal-700 dark:text-teal-300">Blog</p><h1 class="mt-3 text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1>'
@@ -5624,8 +5648,8 @@ async def render_forum_topic_detail(req, env, topic_ref: str):
     replies_html = "".join(_ssr_record_card(r) for r in replies) or '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-gray-500 dark:text-gray-400">No replies yet.</div>'
     html = (
         '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
-        f'<title>{title} - Alpha One Labs Forum</title><link rel="icon" type="image/png" href="/images/logo.png"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
-        '<script>tailwind.config={darkMode:"class",theme:{extend:{}}};if(localStorage.getItem("darkMode")==="true"){document.documentElement.classList.add("dark");}</script></head>'
+        f'<title>{title} - Alpha One Labs Forum</title><link rel="icon" type="image/svg+xml" href="/images/logo.svg"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
+        + _SSR_BRAND_HEAD + '</head>'
         '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">' + _ssr_nav() +
         '<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-10"><a href="/forum" class="inline-flex items-center text-sm font-bold text-teal-700 dark:text-teal-300 hover:underline mb-6"><i class="fa-solid fa-arrow-left mr-2"></i>Back to forum</a>'
         f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm"><div class="flex flex-wrap gap-2 mb-4"><span class="rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-3 py-1 text-xs font-black"><i class="fa-solid fa-arrow-up mr-1"></i>{votes} votes</span>' + (f'<span class="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">{date}</span>' if date else '') + f'</div><h1 class="text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1><div class="mt-8 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{desc}</div></article>'
@@ -5659,10 +5683,10 @@ async def render_ssr_record_page(req, env, clean_path: str, config: Dict[str, An
         '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head>'
         '<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
         f'<title>{title} - Alpha One Labs</title>'
-        '<link rel="icon" type="image/png" href="/images/logo.png">'
+        '<link rel="icon" type="image/svg+xml" href="/images/logo.svg">'
         '<script src="https://cdn.tailwindcss.com"></script>'
         '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
-        '<script>tailwind.config={darkMode:"class",theme:{extend:{}}};if(localStorage.getItem("darkMode")==="true"){document.documentElement.classList.add("dark");}</script>'
+        + _SSR_BRAND_HEAD + ''
         '</head><body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">'
         f'{_ssr_nav()}'
         '<main class="flex-1 w-full max-w-[90rem] mx-auto px-0 md:px-0">'

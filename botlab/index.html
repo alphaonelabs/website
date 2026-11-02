@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-black text-white antialiased">
+<html lang="en" class="antialiased">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alpha One Labs - Instrument</title>
+  <title>BotLab — Alpha One Labs</title>
+  <meta name="description" content="BotLab: a free, open-source virtual robotics playground from Alpha One Labs.">
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -11,15 +14,21 @@
       theme: {
         extend: {
           fontFamily: {
-            mono: ['SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Courier New', 'monospace'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
             sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
           },
           colors: {
             sys: {
-              dark: '#050505',
-              grid: '#111111',
-              accent: '#f0f0f0',
-              muted: '#666666',
+              // Semantic brand tokens: follow the light/dark toggle in <a1-header>
+              dark: 'var(--a1-bg)',
+              grid: 'var(--a1-surface)',
+              raised: 'var(--a1-surface-raised)',
+              line: 'var(--a1-border)',
+              accent: 'var(--bl-accent-text)',
+              muted: 'var(--a1-text-muted)',
+              text: 'var(--a1-text)',
+              onaccent: 'var(--a1-on-accent)',
             }
           }
         }
@@ -37,9 +46,12 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
-      background: #050505;
-      overflow-x: hidden;
+      min-height: 100%;
+      background: var(--a1-bg);
+      color: var(--a1-text);
+      /* clip (not hidden) keeps the window as the scroller, so the sticky
+         header and GSAP ScrollTrigger reveals both work */
+      overflow-x: clip;
       scroll-behavior: smooth;
     }
     canvas {
@@ -60,8 +72,39 @@
       width: 0px;
     }
     .system-font {
-      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-family: var(--a1-font-mono);
       letter-spacing: -0.02em;
+    }
+    .system-font h1, .system-font h2, .system-font h3 {
+      font-family: var(--a1-font-display);
+    }
+    .system-font p { font-family: var(--a1-font-body); }
+    a1-header { display: block; min-height: 67px; }
+    /* Gold for small text: brand accent, darkened in light theme for AA contrast */
+    :root { --bl-accent-text: var(--a1-accent); }
+    @media (prefers-color-scheme: light) { :root:not([data-a1-theme="dark"]) { --bl-accent-text: #6f5d24; } }
+    [data-a1-theme="light"] { --bl-accent-text: #6f5d24; }
+    [data-a1-theme="dark"] { --bl-accent-text: var(--a1-accent); }
+    a1-footer { display: block; position: relative; z-index: 20; }
+    .a1-slot-btn {
+      padding: 8px 14px; border-radius: 999px; white-space: nowrap; text-decoration: none;
+      font: 600 14px/1 var(--a1-font-body); color: var(--a1-on-accent); background: var(--a1-accent);
+    }
+    .a1-slot-btn:hover { background: var(--a1-accent-hover); }
+    @media (max-width: 480px) { .a1-slot-btn { display: none; } }
+    /* Maker illustrations from the design system, tinted with the theme accent */
+    .a1-illo {
+      background: var(--a1-accent);
+      -webkit-mask: var(--illo) center / contain no-repeat;
+      mask: var(--illo) center / contain no-repeat;
+      pointer-events: none;
+    }
+    .a1-illo--soldering { --illo: url("https://design.alphaonelabs.com/assets/illustrations/soldering-iron.svg"); }
+    .a1-illo--circuit { --illo: url("https://design.alphaonelabs.com/assets/illustrations/circuit.svg"); }
+    .a1-illo--transistor { --illo: url("https://design.alphaonelabs.com/assets/illustrations/transistor.svg"); }
+    :focus-visible {
+      outline: 2px solid var(--a1-focus, #e2c66a);
+      outline-offset: 3px;
     }
     .stagger-text span {
       display: inline-block;
@@ -80,10 +123,10 @@
       align-items: center;
       gap: 12px;
       padding: 16px 40px;
-      background: rgba(0, 0, 0, 0.85);
-      border: 1px solid rgba(0, 255, 200, 0.3);
-      color: #00ffc8;
-      font-family: 'SFMono-Regular', Consolas, monospace;
+      background: var(--a1-surface);
+      border: 1px solid rgba(199, 171, 79, 0.45);
+      color: var(--bl-accent-text);
+      font-family: var(--a1-font-mono);
       font-size: 13px;
       letter-spacing: 0.25em;
       text-transform: uppercase;
@@ -101,8 +144,8 @@
       background: linear-gradient(
         90deg,
         transparent 0%,
-        rgba(0, 255, 200, 0.05) 40%,
-        rgba(0, 255, 200, 0.05) 60%,
+        rgba(199, 171, 79, 0.05) 40%,
+        rgba(199, 171, 79, 0.05) 60%,
         transparent 100%
       );
       transform: translateX(-100%);
@@ -124,20 +167,20 @@
         0deg,
         transparent,
         transparent 2px,
-        rgba(0, 255, 200, 0.03) 2px,
-        rgba(0, 255, 200, 0.03) 4px
+        rgba(199, 171, 79, 0.03) 2px,
+        rgba(199, 171, 79, 0.03) 4px
       );
       pointer-events: none;
     }
 
     .tech-btn:hover {
-      border-color: rgba(0, 255, 200, 0.8);
+      border-color: rgba(199, 171, 79, 0.8);
       box-shadow:
-        0 0 20px rgba(0, 255, 200, 0.15),
-        0 0 60px rgba(0, 255, 200, 0.05),
-        inset 0 0 20px rgba(0, 255, 200, 0.05);
-      color: #fff;
-      background: rgba(0, 255, 200, 0.08);
+        0 0 20px rgba(199, 171, 79, 0.15),
+        0 0 60px rgba(199, 171, 79, 0.05),
+        inset 0 0 20px rgba(199, 171, 79, 0.05);
+      color: var(--a1-text);
+      background: rgba(199, 171, 79, 0.12);
       transform: translateY(-2px);
     }
 
@@ -155,7 +198,7 @@
       position: absolute;
       width: 8px;
       height: 8px;
-      border-color: rgba(0, 255, 200, 0.6);
+      border-color: rgba(199, 171, 79, 0.6);
       transition: all 0.3s ease;
     }
 
@@ -188,7 +231,7 @@
     }
 
     .tech-btn:hover .btn-corner {
-      border-color: #00ffc8;
+      border-color: var(--a1-accent);
       width: 12px;
       height: 12px;
     }
@@ -200,7 +243,7 @@
       width: 120%;
       height: 120%;
       transform: translate(-50%, -50%);
-      border: 1px solid rgba(0, 255, 200, 0.1);
+      border: 1px solid rgba(199, 171, 79, 0.1);
       border-radius: 2px;
       animation: techPulse 2.5s ease-in-out infinite;
       pointer-events: none;
@@ -214,10 +257,10 @@
     .tech-btn .btn-status {
       width: 6px;
       height: 6px;
-      background: #00ffc8;
+      background: var(--a1-accent);
       border-radius: 50%;
       animation: statusBlink 1.5s ease-in-out infinite;
-      box-shadow: 0 0 6px rgba(0, 255, 200, 0.8);
+      box-shadow: 0 0 6px rgba(199, 171, 79, 0.8);
     }
 
     @keyframes statusBlink {
@@ -244,7 +287,7 @@
     .page-transition .overlay-bg {
       position: absolute;
       inset: 0;
-      background: #050505;
+      background: var(--a1-bg);
       transform: scaleY(0);
       transform-origin: bottom;
       transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
@@ -261,8 +304,8 @@
         0deg,
         transparent,
         transparent 2px,
-        rgba(0, 255, 200, 0.03) 2px,
-        rgba(0, 255, 200, 0.03) 4px
+        rgba(199, 171, 79, 0.03) 2px,
+        rgba(199, 171, 79, 0.03) 4px
       );
       opacity: 0;
       transition: opacity 0.3s ease 0.3s;
@@ -277,8 +320,8 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: linear-gradient(90deg, transparent, #00ffc8, transparent);
-      box-shadow: 0 0 30px 10px rgba(0, 255, 200, 0.3);
+      background: linear-gradient(90deg, transparent, #c7ab4f, transparent);
+      box-shadow: 0 0 30px 10px rgba(199, 171, 79, 0.3);
       top: 100%;
       transition: top 0.6s cubic-bezier(0.77, 0, 0.175, 1) 0.2s;
     }
@@ -292,11 +335,11 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-family: var(--a1-font-mono);
       font-size: 12px;
       letter-spacing: 0.3em;
       text-transform: uppercase;
-      color: #00ffc8;
+      color: var(--bl-accent-text);
       opacity: 0;
       transition: opacity 0.3s ease 0.5s;
       display: flex;
@@ -311,8 +354,8 @@
     .page-transition .loader-text .spinner {
       width: 14px;
       height: 14px;
-      border: 2px solid rgba(0, 255, 200, 0.2);
-      border-top-color: #00ffc8;
+      border: 2px solid rgba(199, 171, 79, 0.2);
+      border-top-color: var(--a1-accent);
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
     }
@@ -325,7 +368,7 @@
       position: absolute;
       width: 20px;
       height: 20px;
-      border-color: rgba(0, 255, 200, 0.4);
+      border-color: rgba(199, 171, 79, 0.4);
       opacity: 0;
       transition: opacity 0.3s ease 0.5s;
     }
@@ -354,7 +397,13 @@
     <div class="corner-mark br"></div>
   </div>
 
-  <div id="root"></div>
+  <a1-header site="BotLab" site-href="/" sticky>
+    <a slot="actions" href="https://github.com/alphaonelabs/website/tree/main/botlab" target="_blank" rel="noopener noreferrer" class="a1-slot-btn">Contribute</a>
+  </a1-header>
+
+  <main id="root"></main>
+
+  <a1-footer source="botlab"></a1-footer>
 
   <script type="text/babel">
     const { useEffect, useRef, useState } = React;
@@ -370,6 +419,14 @@
         let width, height;
         let particles = [];
         let rAF;
+        // Grid lines follow the brand theme (dark/light) via the --a1-border token.
+        let gridColor = '#2e2e2e';
+        const readTheme = () => {
+          gridColor = getComputedStyle(document.documentElement).getPropertyValue('--a1-border').trim() || gridColor;
+        };
+        readTheme();
+        document.addEventListener('a1-themechange', () => requestAnimationFrame(readTheme));
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', readTheme);
 
         const resize = () => {
           width = window.innerWidth;
@@ -396,7 +453,7 @@
         };
 
         const drawGrid = () => {
-          ctx.strokeStyle = '#111111';
+          ctx.strokeStyle = gridColor;
           ctx.lineWidth = 1;
           const gridSize = 50;
           for (let x = 0; x < width; x += gridSize) {
@@ -527,6 +584,15 @@
             }
           );
         });
+
+        // Trigger positions go stale when web fonts and the brand header
+        // load after first render; recompute whenever the page height changes.
+        let t;
+        const refresh = () => { clearTimeout(t); t = setTimeout(() => ScrollTrigger.refresh(), 150); };
+        const ro = new ResizeObserver(refresh);
+        ro.observe(document.body);
+        document.fonts && document.fonts.ready.then(refresh);
+        return () => { ro.disconnect(); clearTimeout(t); };
       }, []);
 
       const dataSources = [
@@ -541,30 +607,12 @@
         <div ref={containerRef} className="content-layer system-font w-full">
           <CanvasSystem />
 
-          <header className="fixed top-0 inset-x-0 z-30 border-b border-[#1f1f1f] bg-black/70 backdrop-blur">
-           <div className="mx-auto max-w-7xl px-6 py-3 flex items-center justify-between">
-             <a
-              href="https://github.com/alphaonelabs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 hover:opacity-90 transition"
-               >
-            <img src="./assets/logo.png" alt="Alpha One Labs logo" className="w-7 h-7" />
-            <span className="text-sm tracking-widest uppercase text-sys-accent">Alpha One Labs</span>
-             </a>
 
-            <nav className="text-xs flex items-center gap-4 uppercase tracking-wider">
-            <a href="https://github.com/alphaonelabs/website/tree/main/botlab" target="_blank" rel="noopener noreferrer" className="hover:text-white">Repo</a>
-            <a href="https://github.com/alphaonelabs/website/issues" target="_blank" rel="noopener noreferrer" className="hover:text-white">Issues</a>
-           <a href="https://github.com/orgs/alphaonelabs/discussions" target="_blank" rel="noopener noreferrer" className="hover:text-white">Discussions</a>
-        </nav>
-      </div>
-     </header>
           
           {/* SECTION 1: PRESENCE */}
-          <section className="min-h-screen flex flex-col justify-center px-12 md:px-24 pt-24">
-            <div className="text-xs text-sys-muted uppercase tracking-widest mb-4">OPEN SCIENCE LABS // ALPHA ONE LABS</div>
-            <h1 className="text-5xl md:text-8xl font-medium tracking-tighter leading-none mb-6 text-sys-accent">
+          <section className="relative min-h-screen flex flex-col justify-center px-6 sm:px-12 md:px-24 pt-12 pb-28">
+            <div className="text-xs text-sys-accent font-bold uppercase tracking-[0.18em] mb-4">BOTLAB // ALPHA ONE LABS</div>
+            <h1 className="text-4xl sm:text-5xl md:text-8xl font-bold tracking-tighter leading-none mb-6 text-sys-text">
               <StaggerText text="VIRTUAL ROBOTICS" />
             </h1>
             <p className="text-lg md:text-2xl text-sys-muted max-w-2xl leading-relaxed">
@@ -586,7 +634,7 @@
                 <span className="btn-pulse"></span>
                 <span className="btn-status"></span>
                 <span>Enter System</span>
-                <svg className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg aria-hidden="true" className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </a>
@@ -603,7 +651,7 @@
                 <span className="btn-pulse"></span>
                 <span className="btn-status"></span>
                 <span>Assemble a robot in 3D</span>
-                <svg className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg aria-hidden="true" className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20 7.5L12 3 4 7.5m16 0v9L12 21m8-13.5L12 12m0 9-8-4.5v-9M12 21v-9m0 0L4 7.5m8 4.5 8-4.5" />
                 </svg>
               </a>
@@ -613,19 +661,22 @@
                 <span className="btn-corner bl"></span>
                 <span className="btn-corner br"></span>
                 <span>Contribute</span>
-                <svg className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg aria-hidden="true" className="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                 </svg>
               </a>
             </div>
-            <div className="absolute bottom-12 left-12 md:left-24 text-xs text-sys-muted flex items-center gap-4">
-              <span className="animate-pulse h-2 w-2 bg-sys-accent rounded-full"></span>
+            <div aria-hidden="true" className="a1-illo a1-illo--soldering hidden lg:block absolute right-8 xl:right-16 2xl:right-32 top-1/2 -translate-y-1/2 w-[200px] h-[200px] xl:w-[300px] xl:h-[300px] opacity-70"></div>
+            <div className="absolute bottom-12 left-6 sm:left-12 md:left-24 text-xs text-sys-muted flex items-center gap-4">
+              <span className="animate-pulse h-2 w-2 bg-sys-accent rounded-full" aria-hidden="true"></span>
               SCROLL TO INITIATE SEQUENCE
             </div>
           </section>
 
+          <hr className="a1-trace mx-6 sm:mx-12 md:mx-24" />
+
           {/* SECTION 2: CONCEPT */}
-          <section className="min-h-screen flex flex-col justify-center px-12 md:px-24 js-section py-24">
+          <section className="min-h-screen flex flex-col justify-center px-6 sm:px-12 md:px-24 js-section py-24">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div>
                 <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-8">MODULAR ENGINEERING BAY</h2>
@@ -633,13 +684,13 @@
                   <p className="text-sys-muted text-lg border-l border-sys-muted pl-4">
                     Assemble your chassis, equip sensors, and deploy your robot in a persistent sandbox environment.
                   </p>
-                  <p className="text-sys-accent text-sm font-mono bg-sys-grid inline-block px-3 py-1 border border-[#333]">
+                  <p className="text-sys-accent text-sm font-mono bg-sys-grid inline-block px-3 py-1 border border-sys-line">
                     STATUS: Simulation Engine Online. Physics Core stable.
                   </p>
                 </div>
                 
                 <div className="mt-12 space-y-2 text-sm text-sys-muted">
-                  <div className="uppercase tracking-widest mb-4 text-xs border-b border-[#333] pb-2">Available Components</div>
+                  <div className="uppercase tracking-widest mb-4 text-xs border-b border-sys-line pb-2">Available Components</div>
                   {dataSources.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center hover:text-sys-accent hover:border-sys-accent transition-colors border border-transparent p-2 cursor-pointer group">
                       <span className="group-hover:translate-x-2 transition-transform">{item}</span>
@@ -648,12 +699,13 @@
                   ))}
                 </div>
               </div>
-              <div className="relative h-[400px] border border-[#333] bg-[#000] p-6 flex flex-col justify-between overflow-hidden group">
+              <div className="relative h-[400px] border border-sys-line bg-sys-dark p-6 flex flex-col justify-between overflow-hidden group">
                 <div className="text-xs text-sys-muted">Simulation Bay Monitor</div>
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#111] via-[#050505] to-[#000] z-0"></div>
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sys-raised via-sys-grid to-sys-dark z-0"></div>
+                <div aria-hidden="true" className="a1-illo a1-illo--circuit absolute inset-8 opacity-20 z-0"></div>
                 <div className="z-10 text-center">
-                  <div className="inline-block p-4 border border-sys-accent/20 rounded-full mb-4 group-hover:scale-110 transition-transform bg-black">
-                    <svg className="w-8 h-8 text-sys-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="inline-block p-4 border border-sys-line rounded-full mb-4 group-hover:scale-110 transition-transform bg-sys-dark">
+                    <svg aria-hidden="true" className="w-8 h-8 text-sys-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                   </div>
@@ -664,59 +716,59 @@
           </section>
 
           {/* SECTION 3: EVIDENCE */}
-          <section className="min-h-screen px-12 md:px-24 js-section py-24 bg-[#0a0a0a] border-y border-[#222]">
+          <section className="min-h-screen px-6 sm:px-12 md:px-24 js-section py-24 bg-sys-grid border-y border-sys-line">
             <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-16 text-center">TESTING PROTOCOLS</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px] bg-[#222]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px] bg-sys-line">
               {/* Hardware */}
-              <div className="bg-[#0a0a0a] p-12">
+              <div className="bg-sys-grid p-6 sm:p-12">
                 <h3 className="text-xl mb-8 uppercase tracking-widest text-sys-accent">Hardware Modules</h3>
                 <ul className="space-y-6 text-sys-muted">
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">01</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">01</span>
                     <span>Chassis deployment and core systems initialization</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">02</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">02</span>
                     <span>Omni-directional movement with custom wheel configurations</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">03</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">03</span>
                     <span>Lidar point cloud simulation and obstacle detection</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">04</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">04</span>
                     <span>Live first-person camera feeds with FOV rendering</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">05</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">05</span>
                     <span>Object manipulation using articulated robotic arms</span>
                   </li>
                 </ul>
               </div>
 
               {/* Telemetry */}
-              <div className="bg-[#0a0a0a] p-12">
+              <div className="bg-sys-grid p-6 sm:p-12">
                 <h3 className="text-xl mb-8 uppercase tracking-widest text-sys-accent">Telemetry Systems</h3>
                 <ul className="space-y-6 text-sys-muted">
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">01</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">01</span>
                     <span>Real-time coordinate tracking and spatial positioning</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">02</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">02</span>
                     <span>Live orientation, heading, and angular velocity data</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">03</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">03</span>
                     <span>Adjustable motor power and turning speed variables</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">04</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">04</span>
                     <span>Component state logs and active hardware monitoring</span>
                   </li>
-                  <li className="flex items-start gap-4 hover:text-white transition-colors">
-                    <span className="text-xs mt-1 text-[#444]">05</span>
+                  <li className="flex items-start gap-4 hover:text-sys-text transition-colors">
+                    <span className="text-xs mt-1 text-sys-muted">05</span>
                     <span>Robot customization and visual identifier tags</span>
                   </li>
                 </ul>
@@ -725,13 +777,13 @@
           </section>
 
           {/* SECTION 4: DATA */}
-          <section className="min-h-screen px-12 md:px-24 js-section py-24 flex flex-col justify-center">
+          <section className="min-h-screen px-6 sm:px-12 md:px-24 js-section py-24 flex flex-col justify-center">
             <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-8">SYSTEM DIAGNOSTICS</h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Column 1 */}
               <div className="space-y-8">
-                <div className="border border-[#333] p-6 hover:bg-[#111] transition-colors cursor-crosshair">
+                <div className="border border-sys-line p-6 hover:bg-sys-raised transition-colors cursor-crosshair">
                   <div className="text-xs text-sys-muted uppercase mb-4">🏆 Deployment Scenarios</div>
                   <div className="text-lg mb-2 text-sys-accent">Navigate the complex maze environment</div>
                   <p className="text-sm text-sys-muted leading-relaxed">
@@ -739,7 +791,7 @@
                     <br/><br/><span className="font-mono text-xs">Status: Pending Deployment</span>
                   </p>
                 </div>
-                <div className="border border-[#333] p-6 hover:bg-[#111] transition-colors cursor-crosshair">
+                <div className="border border-sys-line p-6 hover:bg-sys-raised transition-colors cursor-crosshair">
                   <div className="text-xs text-sys-muted uppercase mb-4"> Leaderboard</div>
                   <p className="text-sm text-sys-muted">
                     No entries yet. Complete scenarios to earn your spot!
@@ -749,7 +801,7 @@
 
               {/* Column 2 */}
               <div className="space-y-8">
-                <div className="border border-[#333] p-6 hover:bg-[#111] transition-colors cursor-crosshair h-full">
+                <div className="border border-sys-line p-6 hover:bg-sys-raised transition-colors cursor-crosshair h-full">
                   <div className="text-xs text-sys-muted uppercase mb-4">🎬 Simulation Logs</div>
                   <div className="text-5xl font-light mb-4 text-sys-accent">24</div>
                   <p className="text-sm text-sys-muted leading-relaxed">
@@ -761,57 +813,47 @@
 
               {/* Column 3 */}
               <div className="space-y-8 block">
-                <div className="border border-[#333] p-6 text-sm text-sys-muted cursor-crosshair">
+                <div className="border border-sys-line p-6 text-sm text-sys-muted cursor-crosshair">
                   <div className="text-xs uppercase mb-2">System Alert</div>
                   <div className="text-sys-accent mb-2">Physics Engine Optimization</div>
                   <p className="mb-2 italic">"Collision algorithms updated to support high-speed impacts without clipping." — SysAdmin</p>
                   <a href="#" className="text-xs hover:underline">View Details →</a>
                 </div>
-                <div className="border border-[#333] p-6 text-sm text-sys-muted cursor-crosshair">
+                <div className="border border-sys-line p-6 text-sm text-sys-muted cursor-crosshair">
                   <div className="text-xs uppercase mb-2">Patch Notes</div>
                   <div className="text-sys-accent mb-2">Update v2.4.1 Released</div>
                   <p className="mb-2">Added new articulation joints for the robotic arm, allowing more precise manipulation.</p>
                   <a href="#" className="text-xs hover:underline">Read More →</a>
                 </div>
-                <div className="border border-[#333] p-6 text-sm text-sys-muted cursor-crosshair flex justify-between items-center bg-[#0a0a0a]">
+                <div className="border border-sys-line p-6 text-sm text-sys-muted cursor-crosshair flex justify-between items-center bg-sys-grid">
                   <span className="uppercase text-xs tracking-widest text-sys-accent">Diagnostic Tool</span>
-                  <a href="#" className="border border-[#333] px-3 py-1 hover:bg-white hover:text-black transition-colors">Run</a>
+                  <a href="#" className="border border-sys-line px-3 py-1 hover:bg-sys-accent hover:text-sys-onaccent transition-colors">Run</a>
                 </div>
               </div>
             </div>
           </section>
 
+          <hr className="a1-trace mx-6 sm:mx-12 md:mx-24" />
+
           {/* SECTION 5: COMMITMENT */}
-          <section className="h-screen flex flex-col justify-center items-center text-center px-12 js-section border-t border-[#222]">
+          <section className="min-h-screen flex flex-col justify-center items-center text-center px-6 sm:px-12 py-24 js-section">
             <h2 className="text-4xl md:text-7xl font-medium tracking-tight mb-16 text-sys-accent">INITIALIZE DEPLOYMENT</h2>
             
             <div className="flex flex-col md:flex-row gap-6 md:gap-12 w-full max-w-4xl">
-              <a href="home.html" className="flex-1 border border-[#444] p-12 hover:bg-white hover:text-black transition-all group flex flex-col items-center">
-                <span className="text-3xl mb-4 font-light">Deploy Blank Chassis</span>
-                <span className="text-sm text-sys-muted group-hover:text-black transition-colors">Start from scratch and build your custom robot rig</span>
+              <a href="home.html" className="flex-1 border border-sys-line p-8 md:p-12 hover:bg-sys-accent hover:text-sys-onaccent hover:border-sys-accent transition-all group flex flex-col items-center">
+                <span className="text-2xl md:text-3xl mb-4 font-display font-medium">Deploy Blank Chassis</span>
+                <span className="text-sm text-sys-muted group-hover:text-sys-onaccent transition-colors">Start from scratch and build your custom robot rig</span>
               </a>
-              <a href="home.html" className="flex-1 border border-[#444] p-12 hover:bg-white hover:text-black transition-all group flex flex-col items-center">
-                <span className="text-3xl mb-4 font-light">Load Preset Rig</span>
-                <span className="text-sm text-sys-muted group-hover:text-black transition-colors">Launch a pre-configured robot with standard sensors</span>
+              <a href="home.html" className="flex-1 border border-sys-line p-8 md:p-12 hover:bg-sys-accent hover:text-sys-onaccent hover:border-sys-accent transition-all group flex flex-col items-center">
+                <span className="text-2xl md:text-3xl mb-4 font-display font-medium">Load Preset Rig</span>
+                <span className="text-sm text-sys-muted group-hover:text-sys-onaccent transition-colors">Launch a pre-configured robot with standard sensors</span>
               </a>
             </div>
 
             <div className="mt-24 text-sm text-sys-muted max-w-lg mx-auto">
-              <span className="inline-block px-3 py-1 border border-[#333] mb-4 uppercase text-xs">Alpha Phase</span>
+              <span className="inline-block px-3 py-1 border border-sys-line mb-4 uppercase text-xs">Alpha Phase</span>
               <p>The simulation environment is currently in active development. Expect occasional physics anomalies.</p>
             </div>
-
-            <footer className="absolute bottom-6 w-full text-center text-xs text-[#444] flex flex-col md:flex-row justify-center gap-4">
-              <span>© 2026 Alpha One Labs. All rights reserved.</span>
-              <span className="hidden md:inline">|</span>
-              <div className="flex justify-center gap-4">
-                <a href="#" className="hover:text-white">About Us</a>
-                <a href="#" className="hover:text-white">Terms & Conditions</a>
-                <a href="#" className="hover:text-white">Privacy Policy</a>
-                <a href="#" className="hover:text-white">Cookie Policy</a>
-                <a href="https://github.com/alphaonelabs/website/tree/main/botlab" target="_blank" rel="noopener noreferrer" className="hover:text-white">Contribute</a>
-              </div>
-            </footer>
           </section>
 
         </div>

@@ -5,17 +5,54 @@ Static file handler
 from js import Response, Headers
 
 # CSS content
-CSS_CONTENT = """* {
+CSS_CONTENT = """/* PMOSS styles, mapped onto the Alpha One Labs brand tokens
+   (https://design.alphaonelabs.com/brand.css). The --a1-* semantic tokens
+   switch between the dark and light theme, so only use those for surfaces,
+   text and accents. */
+:root {
+  --pm-success: #3fb950;
+  --pm-on-success: #000;
+  --pm-closed: #b48cff;
+  --pm-on-closed: #000;
+  --pm-danger: #ff7a7a;
+  --pm-on-danger: #000;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-a1-theme="dark"]) {
+    --pm-success: #1a7f37; --pm-on-success: #fff;
+    --pm-closed: #8250df; --pm-on-closed: #fff;
+    --pm-danger: #c0262d; --pm-on-danger: #fff;
+  }
+}
+:root[data-a1-theme="light"] {
+  --pm-success: #1a7f37; --pm-on-success: #fff;
+  --pm-closed: #8250df; --pm-on-closed: #fff;
+  --pm-danger: #c0262d; --pm-on-danger: #fff;
+}
+
+* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0d1117;
-  color: #c9d1d9;
+  font-family: var(--a1-font-body, system-ui, sans-serif);
+  background: var(--a1-bg, #000);
+  color: var(--a1-text, #fff);
   line-height: 1.6;
+}
+
+a1-header { display: block; min-height: 65px; background: var(--a1-bg, #000); }
+
+:focus-visible {
+  outline: 2px solid var(--a1-focus, #e2c66a);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
 .container {
@@ -24,69 +61,106 @@ body {
   padding: 20px;
 }
 
-header {
-  background: #161b22;
-  border-bottom: 1px solid #30363d;
-  padding: 16px 0;
-  margin-bottom: 24px;
+/* Page intro (below the shared Alpha One Labs header) */
+.page-intro {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 32px;
 }
 
-header h1 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #58a6ff;
+.page-intro h1 {
+  font-family: var(--a1-font-display, sans-serif);
+  font-size: var(--a1-text-3xl, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
+
+.eyebrow {
+  font-family: var(--a1-font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--a1-accent, #c7ab4f);
+  margin-bottom: 6px;
+}
+
+.lead { color: var(--a1-text-muted, #a3a3a3); }
+
+.maker-art {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  background: var(--a1-accent, #c7ab4f);
+  -webkit-mask: url("https://design.alphaonelabs.com/assets/illustrations/circuit.svg") center / contain no-repeat;
+  mask: url("https://design.alphaonelabs.com/assets/illustrations/circuit.svg") center / contain no-repeat;
+}
+
+.a1-trace { margin: 8px 0 24px; }
 
 .auth-section {
   text-align: center;
   padding: 60px 20px;
+  background: var(--a1-surface, #0d0d0d);
+  border: 1px solid var(--a1-border, #2e2e2e);
+  border-radius: var(--a1-radius-lg, 20px);
 }
 
 .auth-section h2 {
   margin-bottom: 16px;
+  font-family: var(--a1-font-display, sans-serif);
   font-size: 32px;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .auth-section p {
-  color: #8b949e;
+  color: var(--a1-text-muted, #a3a3a3);
   margin-bottom: 24px;
 }
 
 .btn {
   display: inline-block;
-  padding: 8px 16px;
-  background: #238636;
-  color: white;
-  border: none;
-  border-radius: 6px;
+  padding: 10px 18px;
+  background: var(--a1-accent, #c7ab4f);
+  color: var(--a1-on-accent, #000);
+  border: 1px solid var(--a1-accent, #c7ab4f);
+  border-radius: var(--a1-radius-full, 999px);
   cursor: pointer;
-  font-size: 14px;
+  font: 600 14px/1.2 var(--a1-font-body, sans-serif);
   text-decoration: none;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .btn:hover {
-  background: #2ea043;
+  background: var(--a1-accent-hover, #e2c66a);
+  border-color: var(--a1-accent-hover, #e2c66a);
 }
 
 .btn-secondary {
-  background: #21262d;
-  border: 1px solid #30363d;
+  background: transparent;
+  color: var(--a1-text, #fff);
+  border: 1px solid var(--a1-border, #2e2e2e);
 }
 
 .btn-secondary:hover {
-  background: #30363d;
+  background: transparent;
+  border-color: var(--a1-accent, #c7ab4f);
+  color: var(--a1-accent, #c7ab4f);
 }
 
 .btn-small {
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
 }
 
 .controls {
-  background: #161b22;
+  background: var(--a1-surface, #0d0d0d);
+  border: 1px solid var(--a1-border, #2e2e2e);
   padding: 16px;
-  border-radius: 6px;
+  border-radius: var(--a1-radius, 12px);
   margin-bottom: 16px;
   display: grid;
   gap: 12px;
@@ -103,16 +177,23 @@ header h1 {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 input[type="text"], select {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  color: #c9d1d9;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 14px;
+  background: var(--a1-bg, #000);
+  border: 1px solid var(--a1-border, #2e2e2e);
+  color: var(--a1-text, #fff);
+  padding: 8px 12px;
+  border-radius: var(--a1-radius-sm, 6px);
+  font: 14px/1.3 var(--a1-font-body, sans-serif);
 }
+
+input[type="text"]:focus, select:focus {
+  border-color: var(--a1-accent, #c7ab4f);
+}
+
+input[type="text"]::placeholder { color: var(--a1-text-muted, #a3a3a3); }
 
 input[type="text"] {
   min-width: 300px;
@@ -121,53 +202,66 @@ input[type="text"] {
 label {
   font-size: 14px;
   font-weight: 500;
-  color: #8b949e;
+  color: var(--a1-text-muted, #a3a3a3);
 }
 
 .bulk-actions {
   display: none;
   gap: 8px;
   padding: 12px;
-  background: #21262d;
-  border-radius: 6px;
+  background: var(--a1-surface-raised, #1a1a1a);
+  border: 1px solid var(--a1-border, #2e2e2e);
+  border-radius: var(--a1-radius, 12px);
   margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .bulk-actions.active {
   display: flex;
 }
 
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--a1-radius, 12px);
+}
+
 table {
   width: 100%;
-  background: #161b22;
-  border-radius: 6px;
-  overflow: hidden;
+  background: var(--a1-surface, #0d0d0d);
+  border: 1px solid var(--a1-border, #2e2e2e);
   border-collapse: collapse;
 }
 
 th, td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--a1-border, #2e2e2e);
 }
 
 th {
-  background: #0d1117;
-  font-weight: 600;
+  background: var(--a1-surface-raised, #1a1a1a);
+  font-family: var(--a1-font-mono, monospace);
+  font-weight: 700;
   font-size: 12px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #8b949e;
-  cursor: pointer;
+  color: var(--a1-text-muted, #a3a3a3);
   user-select: none;
+  white-space: nowrap;
 }
 
-th:hover {
-  background: #161b22;
+th.sortable {
+  cursor: pointer;
+}
+
+th.sortable:hover {
+  color: var(--a1-accent, #c7ab4f);
 }
 
 th.sortable::after {
   content: ' ⇅';
-  opacity: 0.3;
+  opacity: 0.4;
 }
 
 th.sorted-asc::after {
@@ -180,21 +274,22 @@ th.sorted-desc::after {
   opacity: 1;
 }
 
-tr:hover {
-  background: #0d1117;
+tbody tr:hover {
+  background: var(--a1-surface-raised, #1a1a1a);
 }
 
 .issue-number {
-  color: #8b949e;
+  color: var(--a1-text-muted, #a3a3a3);
   text-decoration: none;
+  font-family: var(--a1-font-mono, monospace);
 }
 
 .issue-number:hover {
-  color: #58a6ff;
+  color: var(--a1-accent, #c7ab4f);
 }
 
 .issue-title {
-  color: #c9d1d9;
+  color: var(--a1-text, #fff);
   font-weight: 500;
 }
 
@@ -203,17 +298,17 @@ tr:hover {
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .state-open {
-  background: #238636;
-  color: white;
+  background: var(--pm-success);
+  color: var(--pm-on-success);
 }
 
 .state-closed {
-  background: #8250df;
-  color: white;
+  background: var(--pm-closed);
+  color: var(--pm-on-closed);
 }
 
 .label {
@@ -228,7 +323,7 @@ tr:hover {
 .assignee {
   display: inline-block;
   margin-right: 4px;
-  color: #58a6ff;
+  color: var(--a1-accent, #c7ab4f);
 }
 
 .metrics {
@@ -239,45 +334,55 @@ tr:hover {
 }
 
 .metric-card {
-  background: #161b22;
+  background: var(--a1-surface, #0d0d0d);
   padding: 16px;
-  border-radius: 6px;
-  border: 1px solid #30363d;
+  border-radius: var(--a1-radius, 12px);
+  border: 1px solid var(--a1-border, #2e2e2e);
 }
 
+.metric-card h2,
 .metric-card h3 {
+  font-family: var(--a1-font-mono, monospace);
   font-size: 12px;
-  color: #8b949e;
+  letter-spacing: 0.14em;
+  color: var(--a1-accent, #c7ab4f);
   text-transform: uppercase;
   margin-bottom: 8px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .metric-card .value {
+  font-family: var(--a1-font-display, sans-serif);
   font-size: 32px;
   font-weight: 700;
-  color: #58a6ff;
+  color: var(--a1-text, #fff);
 }
 
 .pagination {
   display: flex;
   justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 16px;
   padding: 16px;
 }
 
+.muted {
+  color: var(--a1-text-muted, #a3a3a3);
+}
+
 .loading {
   text-align: center;
   padding: 40px;
-  color: #8b949e;
+  color: var(--a1-text-muted, #a3a3a3);
 }
 
 .error {
-  background: #da3633;
-  color: white;
+  background: var(--pm-danger);
+  color: var(--pm-on-danger);
   padding: 12px;
-  border-radius: 6px;
+  border-radius: var(--a1-radius-sm, 6px);
   margin-bottom: 16px;
 }
 
@@ -285,11 +390,24 @@ tr:hover {
   width: 18px;
   height: 18px;
   cursor: pointer;
+  accent-color: var(--a1-accent, #c7ab4f);
 }
 
 .time-value {
-  color: #8b949e;
+  color: var(--a1-text-muted, #a3a3a3);
   font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .container { padding: 16px; }
+  .page-intro { gap: 14px; padding-top: 20px; }
+  .maker-art { width: 56px; height: 56px; }
+  .auth-section { padding: 40px 16px; }
+  .auth-section h2 { font-size: 26px; }
+  input[type="text"] { min-width: 0; width: 100%; }
+  .control-group { width: 100%; }
+  .control-group select { flex: 1; }
 }"""
 
 

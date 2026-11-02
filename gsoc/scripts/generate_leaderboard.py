@@ -19,6 +19,17 @@ MAX_OPEN_PAGES = 5
 
 
 DEFAULT_START_DATE = datetime(2025, 9, 1, tzinfo=timezone.utc)
+# Each GSoC year's contribution season runs from September 1 of the year before.
+SEASONS = {
+    "2027": (datetime(2026, 9, 1, tzinfo=timezone.utc), datetime(2027, 9, 1, tzinfo=timezone.utc)),
+    "2026": (datetime(2025, 9, 1, tzinfo=timezone.utc), datetime(2026, 9, 1, tzinfo=timezone.utc)),
+    "2025": (datetime(2024, 9, 1, tzinfo=timezone.utc), datetime(2025, 9, 1, tzinfo=timezone.utc)),
+}
+CURRENT_SEASON = "2027"
+# On 2026-11-01 every open Django PR was closed when the site moved to the
+# monorepo. Those closures say nothing about the contributor, so skip them.
+MIGRATION_CLOSE_DAY = "2026-11-01"
+LEGACY_PATH = Path(__file__).resolve().parent.parent / "data" / "legacy-merges.json"
 DEFAULT_OUTPUT_PATH = "data/leaderboard.json"
 GITHUB_ORG = "alphaonelabs"
 
@@ -46,6 +57,7 @@ def build_search_query(
 
 
 def fetch_search_pulls(query_text: str, page: int):
+    time.sleep(DELAY_SECONDS)
     query = urllib.parse.urlencode(
         {
             "q": query_text,
@@ -88,7 +100,8 @@ def fetch_search_pulls(query_text: str, page: int):
 
 
 PER_PAGE = 100
-DELAY_SECONDS = 0.35
+# The search API allows 30 requests a minute; three seasons need many pages.
+DELAY_SECONDS = 2.2
 
 
 def parse_cli_date(value: str):
@@ -230,6 +243,9 @@ def build_leaderboard(start_date: datetime, end_date: Optional[datetime]):
         if not is_within_date_range(relevant_date, start_date, end_date):
             continue
 
+        if not merged_at and closed_at and closed_at.strftime("%Y-%m-%d") == MIGRATION_CLOSE_DAY:
+            continue
+
         ensure_contributor(contributor_stats, user)
         if merged_at:
             contributor_stats[user["login"]]["merged_pr_count"] += 1
@@ -290,19 +306,56 @@ def build_leaderboard(start_date: datetime, end_date: Optional[datetime]):
     return contributors
 
 
+def add_legacy_merges(contributors: list, legacy: dict):
+    """Fold in merged PRs from deleted repos that GitHub search can no longer see."""
+    by_name = {item["username"].lower(): item for item in contributors}
+    for username, merged in legacy.items():
+        if should_exclude(username):
+            continue
+        item = by_name.get(username.lower())
+        if item is None:
+            item = {
+                "username": username,
+                "avatar_url": f"https://github.com/{username}.png?size=96",
+                "profile_url": f"https://github.com/{username}",
+                "merged_pr_count": 0,
+                "closed_pr_count": 0,
+                "open_pr_count": 0,
+            }
+            contributors.append(item)
+            by_name[username.lower()] = item
+        item["merged_pr_count"] += merged
+    for item in contributors:
+        item["total_pr_count"] = item["merged_pr_count"] + item["closed_pr_count"] + item["open_pr_count"]
+        item["smart_score"] = calculate_smart_score(item)
+    contributors.sort(key=lambda item: (item["smart_score"], item["merged_pr_count"]), reverse=True)
+    return contributors
+
+
 def main():
     args = parse_args()
-    contributors = build_leaderboard(args.start_date, args.end_date)
-    payload = {
-        "generated_at": datetime.now(timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        ),
-        "start_date": args.start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "contributors": contributors,
-    }
+    now = datetime.now(timezone.utc)
+    stamp = lambda value: value.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    if args.end_date:
-        payload["end_date"] = args.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if args.start_date != DEFAULT_START_DATE or args.end_date:
+        # Custom range: the original single-leaderboard output.
+        payload = {"generated_at": stamp(now), "start_date": stamp(args.start_date),
+                   "contributors": build_leaderboard(args.start_date, args.end_date)}
+        if args.end_date:
+            payload["end_date"] = stamp(args.end_date)
+    else:
+        legacy = json.loads(LEGACY_PATH.read_text()).get("seasons", {}) if LEGACY_PATH.exists() else {}
+        seasons = {}
+        for year, (start, end) in SEASONS.items():
+            if start > now:
+                continue
+            contributors = build_leaderboard(start, end)
+            seasons[year] = {
+                "start_date": stamp(start),
+                "end_date": stamp(end),
+                "contributors": add_legacy_merges(contributors, legacy.get(year, {})),
+            }
+        payload = {"generated_at": stamp(now), "current": CURRENT_SEASON, "seasons": seasons}
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -3,198 +3,194 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign in — Alpha One Labs Virtual</title>
+    <title>Sign in — Virtual World · Alpha One Labs</title>
+    <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
+    <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
     <style>
       * { box-sizing: border-box; }
       html, body {
         margin: 0;
         padding: 0;
         min-height: 100%;
-        background: #0a0a0a;
-        color: #f5f5f5;
-        font-family: system-ui, -apple-system, sans-serif;
+        background: var(--a1-bg, #000);
+        color: var(--a1-text, #fff);
+        font-family: var(--a1-font-body, Inter, system-ui, sans-serif);
       }
       body {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        min-height: 100vh;
+        min-height: 100dvh;
       }
+      a1-header { display: block; min-height: 67px; }
+      a1-footer { display: block; }
 
-      header.site-header {
-        width: 100%;
-        background: #0f766e;
-        color: #fff;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      }
-      .site-header .bar {
-        max-width: 90rem;
-        margin: 0 auto;
-        min-height: 70px;
-        padding: 0.75rem 1.25rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-      }
-      .site-header .brand {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        text-decoration: none;
-        color: #fff;
-        font-weight: 800;
-        font-size: 1.1rem;
-        white-space: nowrap;
-      }
-      .site-header .brand .logo {
-        width: 2.25rem;
-        height: 2.25rem;
-        border-radius: 0.6rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        flex-shrink: 0;
-      }
-      .site-header nav {
-        display: flex;
-        gap: 0.25rem;
-      }
-      .site-header nav a {
-        color: #e0f2f1;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.85rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.6rem;
-        white-space: nowrap;
-      }
-      .site-header nav a:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
-      @media (max-width: 720px) {
-        .site-header nav { display: none; }
+      :focus-visible {
+        outline: 2px solid var(--a1-focus, #e2c66a);
+        outline-offset: 3px;
       }
 
       main.content {
+        position: relative;
         flex: 1;
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 2rem 1rem;
+        padding: 3rem 1rem;
+        overflow: hidden;
+        isolation: isolate;
       }
+
+      /* Gold maker illustrations behind the card (decorative) */
+      .illo {
+        position: absolute;
+        z-index: -1;
+        background: var(--a1-accent, #c7ab4f);
+        -webkit-mask: var(--illo) center / contain no-repeat;
+        mask: var(--illo) center / contain no-repeat;
+        opacity: 0.16;
+        pointer-events: none;
+      }
+      .illo--iss { --illo: url("https://design.alphaonelabs.com/assets/illustrations/iss.svg"); width: 420px; height: 420px; top: 4%; left: max(-60px, calc(50% - 720px)); }
+      .illo--circuit { --illo: url("https://design.alphaonelabs.com/assets/illustrations/circuit.svg"); width: 360px; height: 360px; bottom: 2%; right: max(-60px, calc(50% - 680px)); }
+      @media (max-width: 720px) {
+        .illo--iss { width: 220px; height: 220px; top: auto; bottom: 0; left: -70px; opacity: 0.12; }
+        .illo--circuit { display: none; }
+      }
+
       .wrap { width: 100%; max-width: 26rem; }
+
+      .eyebrow {
+        margin: 0 0 0.6rem;
+        text-align: center;
+        font: 700 var(--a1-text-xs, 0.75rem) / 1 var(--a1-font-mono, monospace);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-text);
+      }
+      h1.title {
+        margin: 0 0 0.5rem;
+        text-align: center;
+        font-family: var(--a1-font-display, sans-serif);
+        font-weight: 700;
+        font-size: clamp(1.75rem, 6vw, 2.25rem);
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
 
       .security-note {
         text-align: center;
-        color: #9aa4a9;
+        color: var(--a1-text-muted, #a3a3a3);
         font-size: 0.8rem;
         margin: 0 0 1.5rem;
       }
 
+      .a1-trace { margin: 0 0 1.5rem; }
+
       .card {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 1.25rem;
-        background: #12181c;
+        border: 1px solid var(--a1-border, #2e2e2e);
+        border-radius: var(--a1-radius-lg, 20px);
+        background: var(--a1-surface, #0d0d0d);
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        box-shadow: var(--a1-shadow);
       }
 
       .tabs {
         display: flex;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--a1-border, #2e2e2e);
       }
       .tab {
         flex: 1;
         padding: 1rem;
-        font-size: 0.9rem;
-        font-weight: 600;
+        font: 600 0.9rem/1 var(--a1-font-body, sans-serif);
         text-align: center;
         background: transparent;
         border: none;
         border-bottom: 2px solid transparent;
-        color: #9aa4a9;
+        color: var(--a1-text-muted, #a3a3a3);
         cursor: pointer;
       }
-      .tab.active { color: #2dd4bf; border-bottom-color: #2dd4bf; }
+      .tab:hover { color: var(--a1-text, #fff); }
+      .tab.active { color: var(--accent-text); border-bottom-color: var(--a1-accent, #c7ab4f); }
+      .tab:focus-visible { outline-offset: -3px; }
 
       .panel { padding: 2rem; }
       .panel.hidden { display: none; }
+      @media (max-width: 420px) { .panel { padding: 1.5rem 1.25rem; } }
 
-      .panel h2 { margin: 0 0 0.4rem; font-size: 1.3rem; }
-      .panel > p.sub { margin: 0 0 1.5rem; color: #9aa4a9; font-size: 0.9rem; }
+      .panel h2 { margin: 0 0 0.4rem; font: 700 1.3rem/1.2 var(--a1-font-display, sans-serif); letter-spacing: -0.01em; }
+      .panel > p.sub { margin: 0 0 1.5rem; color: var(--a1-text-muted, #a3a3a3); font-size: 0.9rem; }
 
       label {
         display: block;
         font-size: 0.85rem;
         font-weight: 600;
-        color: #d1d5db;
+        color: var(--a1-text, #fff);
         margin-bottom: 0.4rem;
       }
       .field { margin-bottom: 1rem; }
       input {
         width: 100%;
         padding: 0.65rem 0.9rem;
-        border-radius: 0.75rem;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: #1c242a;
-        color: #fff;
-        font-size: 0.9rem;
+        border-radius: var(--a1-radius, 12px);
+        border: 1px solid var(--a1-border, #2e2e2e);
+        background: var(--a1-bg, #000);
+        color: var(--a1-text, #fff);
+        font: 400 0.95rem/1.3 var(--a1-font-body, sans-serif);
       }
+      input::placeholder { color: var(--a1-text-muted, #a3a3a3); opacity: 0.8; }
       input:focus {
-        outline: none;
-        border-color: #2dd4bf;
-        box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.35);
+        outline: 2px solid var(--a1-focus, #e2c66a);
+        outline-offset: 1px;
+        border-color: var(--a1-accent, #c7ab4f);
       }
-      .hint { font-size: 0.75rem; color: #9aa4a9; margin: 0.4rem 0 0; }
+      .hint { font-size: 0.75rem; color: var(--a1-text-muted, #a3a3a3); margin: 0.4rem 0 0; }
 
       .error {
         display: none;
         padding: 0.7rem 0.9rem;
-        border-radius: 0.6rem;
-        background: rgba(220, 38, 38, 0.15);
-        border: 1px solid rgba(220, 38, 38, 0.4);
-        color: #fca5a5;
+        border-radius: var(--a1-radius-sm, 6px);
+        background: rgba(225, 29, 46, 0.12);
+        border: 1px solid rgba(225, 29, 46, 0.5);
+        color: var(--a1-text, #fff);
         font-size: 0.85rem;
         margin-bottom: 1rem;
       }
       .error.show { display: block; }
 
+      /* Gold button: black text on brand gold passes AA in both themes */
       button.submit {
         width: 100%;
-        padding: 0.75rem;
-        border-radius: 0.75rem;
+        padding: 0.8rem;
+        border-radius: var(--a1-radius-full, 999px);
         border: none;
-        font-weight: 700;
-        font-size: 0.95rem;
-        color: #fff;
+        font: 600 0.95rem/1 var(--a1-font-body, sans-serif);
+        color: #000;
         cursor: pointer;
-        background: linear-gradient(90deg, #14b8a6, #06b6d4);
+        background: var(--a1-gold, #c7ab4f);
+        transition: background 0.2s, transform 0.2s;
       }
-      button.submit:hover { filter: brightness(1.1); }
-      button.submit:disabled { opacity: 0.6; cursor: default; }
-
-      #panel-register button.submit {
-        background: linear-gradient(90deg, #06b6d4, #3b82f6);
-      }
+      button.submit:hover { background: var(--a1-gold-bright, #e2c66a); transform: translateY(-1px); }
+      button.submit:disabled { opacity: 0.6; cursor: default; transform: none; }
 
       .footer-link {
         text-align: center;
-        font-size: 0.75rem;
-        color: #9aa4a9;
+        font-size: 0.8rem;
+        color: var(--a1-text-muted, #a3a3a3);
         margin-top: 1.5rem;
       }
-      a { color: #2dd4bf; text-decoration: none; font-weight: 600; }
-      a:hover { text-decoration: underline; }
+      a { color: var(--accent-text); font-weight: 600; text-underline-offset: 3px; }
+      a:hover { color: var(--a1-accent-hover, #e2c66a); }
 
-      .terms { font-size: 0.75rem; color: #9aa4a9; margin-top: 1rem; text-align: center; }
+      .terms { font-size: 0.75rem; color: var(--a1-text-muted, #a3a3a3); margin-top: 1rem; text-align: center; }
 
       .success { text-align: center; padding: 2rem 0; }
       .success .icon {
         width: 4rem;
         height: 4rem;
         border-radius: 50%;
-        background: rgba(45, 212, 191, 0.15);
+        background: rgba(199, 171, 79, 0.15);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -202,54 +198,54 @@
         font-size: 1.75rem;
       }
       .success h2 { margin: 0 0 0.5rem; }
-      .success p { color: #9aa4a9; font-size: 0.9rem; margin: 0 0 1.5rem; }
+      .success p { color: var(--a1-text-muted, #a3a3a3); font-size: 0.9rem; margin: 0 0 1.5rem; }
       .success button {
         background: transparent;
         border: none;
-        color: #2dd4bf;
+        color: var(--accent-text);
         font-weight: 600;
         cursor: pointer;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 3px;
       }
 
       .toast {
         position: fixed;
-        top: 1rem;
+        top: 5rem;
         right: 1rem;
-        background: rgba(20, 184, 166, 0.15);
-        border: 1px solid rgba(20, 184, 166, 0.4);
-        color: #5eead4;
+        background: var(--a1-surface-raised, #1a1a1a);
+        border: 1px solid var(--a1-accent, #c7ab4f);
+        color: var(--a1-text, #fff);
         padding: 0.8rem 1.1rem;
-        border-radius: 0.6rem;
+        border-radius: var(--a1-radius-sm, 6px);
         font-size: 0.85rem;
-        z-index: 50;
+        z-index: 1100;
       }
+
+      /* Gold for small text: the brand accent, darkened in light theme for AA contrast */
+      :root { --accent-text: var(--a1-accent, #c7ab4f); }
+      @media (prefers-color-scheme: light) { :root:not([data-a1-theme="dark"]) { --accent-text: #6f5d24; } }
+      [data-a1-theme="light"] { --accent-text: #6f5d24; }
     </style>
   </head>
   <body>
-    <header class="site-header">
-      <div class="bar">
-        <a href="https://learn.alphaonelabs.com" class="brand">
-          <img class="logo" src="./images/logo.png" alt="" />
-          <span>Alpha One Labs</span>
-        </a>
-        <nav aria-label="Primary navigation">
-          <a href="https://learn.alphaonelabs.com/activity">Browse</a>
-          <a href="https://learn.alphaonelabs.com/requests?kind=learn">Learn</a>
-          <a href="https://learn.alphaonelabs.com/requests?kind=teach">Teach</a>
-        </nav>
-      </div>
-    </header>
+    <a1-header site="Virtual World" site-href="/"></a1-header>
 
     <main class="content">
+    <div class="illo illo--iss" aria-hidden="true"></div>
+    <div class="illo illo--circuit" aria-hidden="true"></div>
     <div class="wrap">
+      <p class="eyebrow">Alpha One Labs · Virtual World</p>
+      <h1 class="title">Step into the lab</h1>
       <p class="security-note">All user data encrypted at rest — zero plaintext PII stored</p>
+      <hr class="a1-trace" />
 
       <div class="card">
-        <div class="tabs">
-          <button id="tab-login" class="tab active" type="button">Login</button>
-          <button id="tab-register" class="tab" type="button">Register</button>
+        <div class="tabs" role="group" aria-label="Sign in or register">
+          <button id="tab-login" class="tab active" type="button" aria-pressed="true">Login</button>
+          <button id="tab-register" class="tab" type="button" aria-pressed="false">Register</button>
         </div>
 
         <div id="panel-login" class="panel">
@@ -321,6 +317,8 @@
       <p class="footer-link"><a href="https://learn.alphaonelabs.com">← Back to Alpha One Labs</a></p>
     </div>
     </main>
+
+    <a1-footer source="virtual"></a1-footer>
 
     <script type="module" src="/src/login.ts"></script>
   </body>
