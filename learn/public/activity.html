@@ -848,7 +848,7 @@
       }
       const classroomLink = document.getElementById('act-classroom-link');
       if (classroomLink) {
-        classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(a.slug || a.id || 'lobby');
+        classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(a.slug || a.id || 'lobby') + (data.is_host ? '&role=instructor' : '');
       }
       const objectivesCard = document.getElementById('act-objectives-card');
       const objectives = document.getElementById('act-objectives');

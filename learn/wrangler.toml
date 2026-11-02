@@ -72,3 +72,7 @@ command = "bash migrate.sh"
 
 [triggers]
 crons = ["0 13 * * *"]
+
+[vars]
+ALLOW_ANON_PRESENCE = "true"
+ALLOW_ANON_CLASSROOM_POC = "true"
