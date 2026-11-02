@@ -85,7 +85,6 @@ class _VideoMeetingScreenState extends State<VideoMeetingScreen> {
       // Connect to signaling server and exchange SDP
       await _connectToSignalingServer();
     } catch (e) {
-      print('Error joining meeting: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error joining meeting: $e')),
@@ -115,13 +114,16 @@ class _VideoMeetingScreenState extends State<VideoMeetingScreen> {
           await _handleOffer(data['sdp']);
         }
       }
-    } catch (e) {
-      print('Signaling server error: $e');
+    } catch (error) {
+      debugPrint('Signaling server error: $error');
     }
   }
 
   Future<void> _handleOffer(String sdp) async {
     try {
+      if (!mounted) return;
+      final token = Provider.of<AuthService>(context, listen: false).token;
+
       await _peerConnection!.setRemoteDescription(
         RTCSessionDescription(sdp, 'offer'),
       );
@@ -129,8 +131,6 @@ class _VideoMeetingScreenState extends State<VideoMeetingScreen> {
       final answer = await _peerConnection!.createAnswer();
       await _peerConnection!.setLocalDescription(answer);
 
-      // Send answer to signaling server
-      final token = Provider.of<AuthService>(context, listen: false).token;
       await http.post(
         Uri.parse('https://alphaonelabs.com/api/meetings/answer'),
         headers: {
@@ -143,13 +143,14 @@ class _VideoMeetingScreenState extends State<VideoMeetingScreen> {
           'type': answer.type,
         }),
       );
-    } catch (e) {
-      print('Error handling offer: $e');
+    } catch (error) {
+      debugPrint('Error handling signaling offer: $error');
     }
   }
 
   Future<void> _sendIceCandidate(RTCIceCandidate candidate) async {
     try {
+      if (!mounted) return;
       final token = Provider.of<AuthService>(context, listen: false).token;
       await http.post(
         Uri.parse('https://alphaonelabs.com/api/meetings/ice-candidate'),
@@ -162,8 +163,8 @@ class _VideoMeetingScreenState extends State<VideoMeetingScreen> {
           'candidate': candidate.toMap(),
         }),
       );
-    } catch (e) {
-      print('Error sending ICE candidate: $e');
+    } catch (error) {
+      debugPrint('Error sending ICE candidate: $error');
     }
   }
 

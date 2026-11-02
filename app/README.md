@@ -39,8 +39,12 @@ flutter run
 
 ## Testing
 
-Run the tests using:
+Run all app checks from the `app/` directory:
+
 ```bash
+flutter pub get
+flutter analyze --no-fatal-infos
+dart format --output=none --set-exit-if-changed lib test
 flutter test
 ```
 

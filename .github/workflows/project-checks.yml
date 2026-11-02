@@ -81,6 +81,8 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter test
 
   # The one required status check: passes only when every check that ran passed.

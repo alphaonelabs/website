@@ -26,8 +26,6 @@ class AuthService with ChangeNotifier {
         },
       );
 
-      print('Login response: ${response.body}'); // For debugging
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
@@ -43,10 +41,8 @@ class AuthService with ChangeNotifier {
           return true;
         }
       }
-      print('Login failed with status code: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('Login error: $e');
       return false;
     }
   }
