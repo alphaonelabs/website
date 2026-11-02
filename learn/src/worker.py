@@ -360,7 +360,7 @@ def hash_password(password: str, username: str) -> str:
 def verify_password(password: str, stored: str, username: str) -> bool:
     if _verify_django_password(password, stored):
         return True
-    return hash_password(password, username) == stored
+    return _hmac.compare_digest(hash_password(password, username), stored or "")
 
 
 def _verify_django_password(password: str, stored: str) -> bool:
