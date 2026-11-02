@@ -179,6 +179,7 @@ a1-header { display: block; min-height: var(--a1-header-height, 76px); backgroun
 }
 .experiment-header h2 { font-size: 2rem; margin-bottom: 8px; }
 .exp-description { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; max-width: 540px; }
+.experiment-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Canvas */
 .simulation-wrapper {
