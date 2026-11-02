@@ -1,15 +1,18 @@
 :root {
   /* Editor chrome follows the Alpha One Labs light/dark theme (brand.css).
      The canvas itself stays a white "paper" in both themes. */
-  --mk-chrome: var(--a1-surface, #fafafa);
-  --mk-panel: var(--a1-surface, #fafafa);
-  --mk-raised: var(--a1-surface-raised, #fff);
+  --mk-chrome: var(--a1-bg, #fff);
+  --mk-panel: var(--a1-surface, #fff);
+  --mk-raised: var(--a1-surface, #fff);
   --mk-border: var(--a1-border, #e4e4e4);
   --mk-text: var(--a1-text, #000);
   --mk-muted: var(--a1-text-muted, #525252);
-  --mk-accent: var(--a1-accent, #9a8236);
-  --mk-focus: var(--a1-focus, #9a8236);
-  --mk-active: rgb(199 171 79 / 0.18);
+  --mk-strong: var(--a1-border-strong, #101010);
+  --mk-hover: var(--a1-surface-raised, #f5f5f5);
+  --mk-accent: var(--a1-accent, #7a6418);
+  --mk-fill: var(--a1-accent-fill, #d4af37);
+  --mk-focus: var(--a1-focus, #d4af37);
+  --mk-active: rgb(212 175 55 / 0.2);
   --mk-paper: #f7f7f5;
   --collapse-btn-offset: -13px;
   --collapse-btn-offset-collapsed: -26px;
@@ -38,11 +41,11 @@ body {
 a1-header {
   display: block;
   flex: none;
-  min-height: 67px;
+  min-height: var(--a1-header-height, 76px);
 }
 
 :focus-visible {
-  outline: 2px solid var(--mk-focus);
+  outline: 3px solid var(--mk-focus);
   outline-offset: 2px;
 }
 
@@ -93,8 +96,9 @@ a1-header {
 
 .logo-title {
   margin: 0;
-  font: 700 1em/1.1 var(--a1-font-display, "Space Grotesk", sans-serif);
-  letter-spacing: -0.02em;
+  font: 900 1.3em/0.95 var(--a1-font-display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .logo-meta {
@@ -174,9 +178,9 @@ a1-header {
   padding: 6px 12px;
   background: var(--mk-raised);
   border: 1px solid var(--mk-border);
-  border-radius: var(--a1-radius-full, 999px);
+  border-radius: var(--a1-radius, 2px);
   cursor: pointer;
-  font: 500 13px/1.2 var(--a1-font-body, sans-serif);
+  font: 600 13px/1.2 var(--a1-font-body, sans-serif);
   color: var(--mk-text);
   transition: all 0.2s;
   white-space: nowrap;
@@ -192,8 +196,8 @@ a1-header {
 }
 
 .btn:hover:not(:disabled) {
-  border-color: var(--mk-accent);
-  color: var(--mk-accent);
+  border-color: var(--mk-strong);
+  background: var(--mk-hover);
 }
 
 .btn:active:not(:disabled) {
@@ -202,21 +206,21 @@ a1-header {
 
 .btn.active {
   background: var(--mk-active);
-  border-color: var(--mk-accent);
+  border-color: var(--mk-strong);
 }
 
-/* Gold call to action; black text on gold passes AA in both themes */
-.btn-primary,
-.btn-primary:hover:not(:disabled) {
-  background: var(--a1-gold, #c7ab4f);
-  border-color: var(--a1-gold, #c7ab4f);
-  color: #000;
-  font-weight: 600;
+/* v2 primary: brass fill, near-black text (AA in both themes) */
+.btn-primary {
+  background: var(--mk-fill);
+  border-color: var(--mk-fill);
+  color: var(--a1-on-accent, #080808);
+  font-weight: 800;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--a1-gold-bright, #e2c66a);
-  color: #000;
+  background: var(--a1-gold-hover, #f0c658);
+  border-color: var(--a1-gold-hover, #f0c658);
+  color: var(--a1-on-accent, #080808);
 }
 
 .btn:disabled {
@@ -270,10 +274,12 @@ a1-header {
 .sidebar h2,
 .property-panel h2 {
   margin: 0 0 12px 0;
-  font: 700 11px/1 var(--a1-font-mono, monospace);
-  letter-spacing: 0.18em;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--mk-fill);
+  font: 900 18px/1 var(--a1-font-display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.01em;
   text-transform: uppercase;
-  color: var(--mk-accent);
+  color: var(--mk-text);
 }
 
 .components-list {
@@ -288,8 +294,9 @@ a1-header {
   background: var(--mk-raised);
   color: var(--mk-text);
   border: 1px solid var(--mk-border);
-  border-radius: var(--a1-radius-sm, 6px);
+  border-radius: var(--a1-radius, 2px);
   font-family: inherit;
+  font-weight: 600;
   cursor: grab;
   font-size: 12px;
   text-align: left;
@@ -467,8 +474,8 @@ a1-header {
 }
 
 .component-btn:hover {
-  border-color: var(--mk-accent);
-  box-shadow: var(--a1-glow, none);
+  border-color: var(--mk-strong);
+  background: var(--mk-hover);
 }
 
 .canvas-container {
@@ -577,19 +584,20 @@ a1-header {
   padding: 8px;
   background: var(--mk-raised);
   border: 1px solid var(--mk-border);
-  border-radius: var(--a1-radius-sm, 6px);
+  border-radius: var(--a1-radius, 2px);
   margin-bottom: 4px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .page-item:hover {
-  border-color: var(--mk-accent);
+  border-color: var(--mk-strong);
 }
 
 .page-item.active {
   background: var(--mk-active);
-  border-color: var(--mk-accent);
+  border-color: var(--mk-strong);
+  box-shadow: inset 3px 0 0 var(--mk-fill);
 }
 
 .page-name {
@@ -602,7 +610,7 @@ a1-header {
   padding: 2px 6px;
   background: transparent;
   border: 1px solid var(--mk-border);
-  border-radius: 4px;
+  border-radius: var(--a1-radius, 2px);
   cursor: pointer;
   font-size: 11px;
   color: var(--mk-muted);
@@ -621,9 +629,8 @@ a1-header {
   display: flex;
   gap: 4px;
   background: var(--mk-panel);
-  border: 1px solid var(--mk-border);
-  border-radius: var(--a1-radius-full, 999px);
-  box-shadow: var(--a1-shadow, none);
+  border: 1px solid var(--mk-strong);
+  border-radius: var(--a1-radius, 2px);
   padding: 4px;
 }
 
@@ -631,15 +638,15 @@ a1-header {
   padding: 4px 10px;
   background: var(--mk-raised);
   border: 1px solid var(--mk-border);
-  border-radius: var(--a1-radius-full, 999px);
+  border-radius: var(--a1-radius, 2px);
   cursor: pointer;
-  font: 500 12px/1.2 var(--a1-font-body, sans-serif);
+  font: 600 12px/1.2 var(--a1-font-body, sans-serif);
   color: var(--mk-text);
 }
 
 .zoom-btn:hover {
-  border-color: var(--mk-accent);
-  color: var(--mk-accent);
+  border-color: var(--mk-strong);
+  background: var(--mk-hover);
 }
 
 .zoom-level {
@@ -697,7 +704,7 @@ a1-header {
   padding: 6px 8px;
   background: var(--mk-raised);
   border: 1px solid var(--mk-border);
-  border-radius: var(--a1-radius-sm, 6px);
+  border-radius: var(--a1-radius, 2px);
   font-size: 13px;
   color: var(--mk-text);
   font-family: inherit;
@@ -710,9 +717,9 @@ a1-header {
 
 .property-group input:focus,
 .property-group textarea:focus {
-  outline: 2px solid var(--mk-focus);
+  outline: 3px solid var(--mk-focus);
   outline-offset: 1px;
-  border-color: var(--mk-accent);
+  border-color: var(--mk-strong);
 }
 
 /* Component-specific styles */
@@ -923,9 +930,8 @@ a1-header {
   position: fixed;
   background: var(--mk-raised);
   color: var(--mk-text);
-  border: 1px solid var(--mk-border);
-  border-radius: var(--a1-radius-sm, 6px);
-  box-shadow: var(--a1-shadow, 0 4px 12px rgba(0,0,0,0.2));
+  border: 1px solid var(--mk-strong);
+  border-radius: var(--a1-radius, 2px);
   z-index: 10000;
   min-width: 150px;
 }
@@ -954,7 +960,7 @@ a1-header {
   height: 60px;
   background: var(--mk-raised);
   border: 1px solid var(--mk-border);
-  border-radius: 6px;
+  border-radius: var(--a1-radius, 2px);
   cursor: pointer;
   font-size: 18px;
   font-weight: bold;
@@ -968,8 +974,8 @@ a1-header {
 }
 
 .collapse-btn:hover {
-  border-color: var(--mk-accent);
-  color: var(--mk-accent);
+  border-color: var(--mk-strong);
+  background: var(--mk-hover);
 }
 
 .sidebar .collapse-btn {
@@ -978,7 +984,7 @@ a1-header {
 
 .sidebar.collapsed .collapse-btn {
   right: var(--collapse-btn-offset-collapsed);
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 2px 2px 0;
 }
 
 .property-panel .collapse-btn {
@@ -987,7 +993,7 @@ a1-header {
 
 .property-panel.collapsed .collapse-btn {
   left: var(--collapse-btn-offset-collapsed);
-  border-radius: 4px 0 0 4px;
+  border-radius: 2px 0 0 2px;
 }
 
 @media (max-width: 768px) {
@@ -1024,5 +1030,5 @@ a1-header {
 }
 
 .drag-ghost .element-content {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  outline: 1px dashed var(--a1-gold-deep, #9a8236);
 }

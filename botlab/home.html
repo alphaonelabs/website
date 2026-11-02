@@ -14,7 +14,7 @@
           extend: {
             fontFamily: {
               sans: ['Inter', 'system-ui', 'sans-serif'],
-              display: ['"Space Grotesk"', 'Inter', 'sans-serif'],
+              display: ['"Barlow Condensed"', '"Arial Narrow"', 'sans-serif'],
               mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
             },
             colors: {
@@ -26,9 +26,12 @@
                 600: 'var(--a1-border)', 700: 'var(--a1-border)',
                 800: 'var(--a1-surface)', 900: 'var(--a1-bg)', 950: 'var(--a1-bg)',
               },
-              gold: { DEFAULT: '#c7ab4f', bright: '#e2c66a', deep: '#9a8236', text: 'var(--bl-accent-text)' },
+              gold: { DEFAULT: 'var(--a1-accent-fill)', bright: '#f0c658', deep: '#9a8236', text: 'var(--a1-accent)' },
               fg: 'var(--a1-text)',
+              strong: 'var(--a1-border-strong)',
             },
+            /* v2 shape: 2px corners everywhere; rounded-full stays for dots */
+            borderRadius: { DEFAULT: '2px', sm: '2px', md: '2px', lg: '2px', xl: '2px' },
           },
         },
       };
@@ -57,25 +60,29 @@
         animation: fadeInPage 0.6s ease-out forwards;
       }
 
-      a1-header { display: block; flex: none; min-height: 67px; }
-      /* Gold for small text: brand accent, darkened in light theme for AA contrast */
-      :root { --bl-accent-text: var(--a1-accent); }
-      @media (prefers-color-scheme: light) { :root:not([data-a1-theme="dark"]) { --bl-accent-text: #6f5d24; } }
-      [data-a1-theme="light"] { --bl-accent-text: #6f5d24; }
-      [data-a1-theme="dark"] { --bl-accent-text: var(--a1-accent); }
+      a1-header { display: block; flex: none; min-height: var(--a1-header-height, 76px); }
       .a1-illo {
-        background: var(--a1-accent);
+        background: var(--a1-accent-fill);
         -webkit-mask: var(--illo) center / contain no-repeat;
         mask: var(--illo) center / contain no-repeat;
       }
-      .a1-illo--transistor { --illo: url("https://design.alphaonelabs.com/assets/illustrations/transistor.svg"); }
-      :focus-visible { outline: 2px solid var(--a1-focus, #e2c66a); outline-offset: 2px; }
-      .panel-title { font-family: var(--a1-font-display); letter-spacing: -0.01em; }
+      .a1-illo--chip { --illo: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg"); }
+      :focus-visible { outline: 3px solid var(--a1-focus); outline-offset: 2px; }
+      .panel-title { font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; font-size: 1.05rem; line-height: 1; }
+      /* Toolbox buttons: v2 secondary look (hard border, 2px), chassis is the primary */
+      .tool-btn { border: 1px solid var(--a1-border-strong); background: var(--a1-bg); color: var(--a1-text); font-weight: 700; }
+      .tool-btn:hover { background: var(--a1-surface-raised); }
+      .tool-btn--primary { background: var(--a1-accent-fill); border-color: var(--a1-accent-fill); color: var(--a1-on-accent); }
+      .tool-btn--primary:hover { background: var(--a1-gold-hover); border-color: var(--a1-gold-hover); }
+      .tool-btn i { width: 1em; text-align: center; }
       .a1-slot-btn {
-        padding: 8px 14px; border-radius: 999px; white-space: nowrap; text-decoration: none;
-        font: 600 14px/1 var(--a1-font-body); color: var(--a1-on-accent); background: var(--a1-accent);
+        display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px;
+        border: 1px solid var(--a1-border-strong); border-radius: var(--a1-radius);
+        white-space: nowrap; text-decoration: none;
+        font: 800 var(--a1-text-xs)/1 var(--a1-font-body); letter-spacing: 0.04em; text-transform: uppercase;
+        color: var(--a1-text); background: var(--a1-bg);
       }
-      .a1-slot-btn:hover { background: var(--a1-accent-hover); }
+      .a1-slot-btn:hover { background: var(--a1-surface-raised); }
       @media (max-width: 480px) { .a1-slot-btn { display: none; } }
 
       @keyframes fadeInPage {
@@ -91,7 +98,7 @@
     </style>
   </head>
   <body>
-    <a1-header site="BotLab" site-href="/">
+    <a1-header site="BotLab" site-href="/" compact>
       <a slot="actions" class="a1-slot-btn" href="/3D/index.html">3D Lab</a>
     </a1-header>
     <main class="bg-gray-900 flex-1 min-h-0 font-sans">
@@ -100,43 +107,43 @@
         <div class="h-full">
           <div class="bg-gray-900 flex flex-col lg:flex-row h-full">
             <div class="w-full lg:w-52 bg-gray-800 border-b lg:border-b-0 lg:border-r border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
-              <h2 class="panel-title font-bold text-gray-200 mb-1 lg:mb-2 text-xs lg:text-sm"><span aria-hidden="true">🧰</span> Toolbox</h2>
+              <h2 class="panel-title font-bold text-gray-200 mb-1 lg:mb-2 text-xs lg:text-sm">Toolbox</h2>
               <div class="grid grid-cols-3 gap-1 lg:flex lg:flex-col lg:gap-2 flex-1">
                 <button onclick="addPart('chassis')"
-                        class="w-full bg-gold hover:bg-gold-bright p-1.5 lg:p-2 rounded text-black text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                        class="tool-btn tool-btn--primary w-full p-1.5 lg:p-2 rounded text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
                   <i class="fas fa-cube"></i> Chassis
                 </button>
                 <button onclick="addPart('wheels')"
-                        class="w-full bg-orange-700 hover:bg-orange-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                        class="tool-btn w-full p-1.5 lg:p-2 rounded text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
                   <i class="fas fa-circle-notch"></i>
                   <span class="hidden lg:inline">Wheels (WASD)</span>
                   <span class="lg:hidden">Wheels</span>
                 </button>
                 <button onclick="addPart('lidar')"
-                        class="w-full bg-red-700 hover:bg-red-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                        class="tool-btn w-full p-1.5 lg:p-2 rounded text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
                   <i class="fas fa-satellite-dish"></i> Lidar
                 </button>
                 <button onclick="addPart('camera')"
-                        class="w-full bg-blue-700 hover:bg-blue-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                        class="tool-btn w-full p-1.5 lg:p-2 rounded text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
                   <i class="fas fa-video"></i>
                   <span class="hidden lg:inline">Camera (View)</span>
                   <span class="lg:hidden">Camera</span>
                 </button>
                 <button onclick="addPart('arm')"
-                        class="w-full bg-purple-700 hover:bg-purple-600 p-1.5 lg:p-2 rounded text-white text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
+                        class="tool-btn w-full p-1.5 lg:p-2 rounded text-[10px] lg:text-xs flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-0.5 lg:gap-2 transition font-medium">
                   <i class="fas fa-hand-paper"></i>
                   <span class="hidden lg:inline">Arm (SPACE)</span>
                   <span class="lg:hidden">Arm</span>
                 </button>
               </div>
               <a href="/3D/index.html"
-                 class="mt-2 lg:mt-3 w-full rounded-full border border-gold/60 bg-transparent px-2 py-2 text-[10px] lg:text-xs text-gold-text font-mono flex items-center justify-center gap-2 transition hover:bg-gold hover:text-black hover:border-gold tracking-[0.18em] uppercase font-bold no-underline">
+                 class="tool-btn mt-2 lg:mt-3 w-full rounded px-2 py-2 text-[10px] lg:text-xs flex items-center justify-center gap-2 transition tracking-[0.12em] uppercase font-extrabold no-underline">
                 <i class="fas fa-arrow-right"></i>
                 <span>Switch to 3D</span>
               </a>
               <div class="grid grid-cols-2 gap-1 mt-1 lg:block lg:mt-0">
                 <button onclick="resetAll()"
-                        class="w-full lg:mt-3 bg-gray-700 hover:bg-gray-600 p-1.5 lg:p-2 rounded text-gray-300 text-[10px] lg:text-xs flex items-center justify-center gap-1 lg:gap-2 transition">
+                        class="tool-btn w-full lg:mt-3 p-1.5 lg:p-2 rounded text-[10px] lg:text-xs flex items-center justify-center gap-1 lg:gap-2 transition">
                   <i class="fas fa-redo"></i>
                   <span class="hidden lg:inline">Reset All</span>
                   <span class="lg:hidden">Reset</span>
@@ -144,7 +151,7 @@
                 <a href="https://github.com/alphaonelabs/website/tree/main/botlab"
                    target="_blank"
                    rel="noopener noreferrer"
-                   class="lg:mt-2 w-full border border-gray-600 hover:border-gold hover:text-gold-text p-1.5 lg:p-2 rounded text-fg text-[10px] lg:text-xs flex items-center justify-center gap-2 transition font-medium">
+                   class="tool-btn lg:mt-2 w-full p-1.5 lg:p-2 rounded text-[10px] lg:text-xs flex items-center justify-center gap-2 transition font-medium">
                   <i class="fas fa-code-branch"></i> Contribute
                 </a>
               </div>
@@ -154,7 +161,7 @@
                       class="bg-gray-900 w-full h-full"
                       role="img"
                       aria-label="Robot simulation canvas where you can control and view your robot"></canvas>
-              <div class="absolute top-2 right-2 lg:top-3 lg:right-3 bg-black/80 text-gold font-mono text-[9px] lg:text-xs p-1.5 lg:p-2 rounded-lg border border-gold/40">
+              <div class="absolute top-2 right-2 lg:top-3 lg:right-3 bg-black/80 text-gold font-mono text-[9px] lg:text-xs p-1.5 lg:p-2 rounded border border-gray-700">
                 <div>
                   <span class="text-gray-500">POS:</span> <span id="pos-display">0, 0</span>
                 </div>
@@ -169,7 +176,7 @@
                 </div>
               </div>
               <div id="camera-feed"
-                   class="hidden absolute top-3 left-3 w-44 h-28 bg-black border-2 border-blue-500 rounded overflow-hidden shadow-xl">
+                   class="hidden absolute top-3 left-3 w-44 h-28 bg-black border border-blue-500 rounded overflow-hidden">
                 <canvas id="cam-canvas"
                         class="w-full h-full"
                         role="img"
@@ -180,13 +187,13 @@
               </div>
               <!-- Action Message -->
               <div id="action-msg"
-                   class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gold text-black px-4 py-2 rounded-full text-sm font-bold transition-opacity duration-500 opacity-0 pointer-events-none">
+                   class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gold text-black px-4 py-2 rounded text-sm font-extrabold uppercase tracking-wide transition-opacity duration-500 opacity-0 pointer-events-none">
                 Block picked!
               </div>
               <!-- Prompt -->
               <div id="start-prompt"
                    class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 pointer-events-none">
-                <div aria-hidden="true" class="a1-illo a1-illo--transistor w-28 h-28 mb-3 opacity-70"></div>
+                <div aria-hidden="true" class="a1-illo a1-illo--chip w-40 h-28 mb-3 opacity-70"></div>
                 <div class="text-sm">
                   Add a <strong>Chassis</strong> to start
                 </div>
@@ -206,14 +213,14 @@
                   <div></div>
                 </div>
                 <!-- Pick/Drop button -->
-                <button id="btn-space" aria-label="Pick or drop object" class="w-11 h-11 bg-purple-700/80 active:bg-purple-500 rounded-full text-white flex items-center justify-center pointer-events-auto select-none">
+                <button id="btn-space" aria-label="Pick or drop object" class="w-11 h-11 bg-purple-700/80 active:bg-purple-500 rounded text-white flex items-center justify-center pointer-events-auto select-none">
                   <i class="fas fa-hand-paper text-sm"></i>
                 </button>
               </div>
             </div>
             <!-- Right Sidebar: Properties -->
             <div class="w-full lg:w-52 bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700 px-2 py-1.5 lg:p-3 flex flex-col">
-              <h2 class="panel-title font-bold text-gray-200 mb-1 lg:mb-2 text-xs lg:text-sm"><span aria-hidden="true">⚙️</span> Settings</h2>
+              <h2 class="panel-title font-bold text-gray-200 mb-1 lg:mb-2 text-xs lg:text-sm">Settings</h2>
               <div class="grid grid-cols-2 gap-x-3 gap-y-1 lg:block lg:space-y-3 flex-1">
                 <div>
                   <label for="power-slider" class="text-gray-400 text-xs flex justify-between">
@@ -224,7 +231,7 @@
                          min="10"
                          max="100"
                          value="50"
-                         class="w-full accent-[#c7ab4f] mt-0.5 lg:mt-1"
+                         class="w-full accent-[#d4af37] mt-0.5 lg:mt-1"
                          oninput="updatePower()" />
                 </div>
                 <div>
@@ -236,7 +243,7 @@
                          min="1"
                          max="15"
                          value="5"
-                         class="w-full accent-[#c7ab4f] mt-0.5 lg:mt-1"
+                         class="w-full accent-[#d4af37] mt-0.5 lg:mt-1"
                          oninput="updateTurn()" />
                 </div>
                 <div class="col-span-2 lg:col-span-1">
@@ -261,7 +268,7 @@
                 <div class="lg:mt-3 lg:pt-3 lg:border-t lg:border-gray-700">
                   <div class="text-gray-400 text-xs mb-0.5 lg:mb-1 flex items-center gap-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse hidden" id="detection-indicator"></span>
-                    📡 Detection:
+                    Detection:
                   </div>
                   <div id="detection-info" class="text-[10px] space-y-0.5">
                     <div class="text-gray-500">LiDAR not installed</div>

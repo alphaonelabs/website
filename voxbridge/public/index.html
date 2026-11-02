@@ -14,18 +14,20 @@
       --clr-surface: var(--a1-surface, #0d0d0d);
       --clr-raised:  var(--a1-surface-raised, #1a1a1a);
       --clr-border:  var(--a1-border, #2e2e2e);
-      --clr-accent:  var(--a1-accent, #c7ab4f);
-      --clr-accent-hover: var(--a1-accent-hover, #e2c66a);
-      --clr-on-accent: var(--a1-on-accent, #000);
-      --clr-accent2: var(--a1-accent, #c7ab4f);
+      --clr-strong:  var(--a1-border-strong, #101010);
+      --clr-accent:  var(--a1-accent, #7a6418);       /* text-safe gold */
+      --clr-fill:    var(--a1-accent-fill, #d4af37);  /* brass fills, rules, art */
+      --clr-accent-hover: var(--a1-gold-hover, #f0c658);
+      --clr-on-accent: var(--a1-on-accent, #080808);
+      --clr-accent2: var(--a1-accent, #7a6418);
       --clr-text:    var(--a1-text, #fff);
       --clr-muted:   var(--a1-text-muted, #a3a3a3);
       --clr-error:   #ff7a7a;
       --clr-on-error: #000;
       --clr-success: #51cf66;
-      --clr-focus:   var(--a1-focus, #e2c66a);
-      --radius:      var(--a1-radius, 12px);
-      --shadow:      var(--a1-shadow, 0 4px 24px rgba(0,0,0,.45));
+      --clr-focus:   var(--a1-focus, #d4af37);
+      --radius:      var(--a1-radius, 2px);
+      --shadow:      none;
     }
     /* light theme: darker status colours keep AA contrast on white */
     @media (prefers-color-scheme: light) {
@@ -45,17 +47,18 @@
     }
 
     a { color: var(--clr-accent); }
-    a:hover { color: var(--clr-accent-hover); }
-    :focus-visible { outline: 2px solid var(--clr-focus); outline-offset: 3px; }
-    a1-header { display: block; min-height: 65px; background: var(--clr-bg); }
-    h1, h2 { font-family: var(--a1-font-display, sans-serif); letter-spacing: -0.02em; }
+    a:hover { color: var(--a1-accent-hover, var(--clr-text)); }
+    :focus-visible { outline: 3px solid var(--clr-focus); outline-offset: 3px; }
+    a1-header { display: block; min-height: var(--a1-header-height, 76px); background: var(--clr-bg); }
+    h1, h2 { font-family: var(--a1-font-display, sans-serif); font-weight: 900; text-transform: uppercase; letter-spacing: 0; line-height: 0.95; }
 
     /* ---------- page intro ---------- */
-    .page-intro { max-width: 860px; margin: 0 auto; padding: 2rem 2rem 1rem; display: flex; align-items: center; gap: 1.25rem; }
-    .maker-art { width: 84px; height: 84px; flex: none; background: var(--clr-accent); -webkit-mask: url("https://design.alphaonelabs.com/assets/illustrations/transistor.svg") center / contain no-repeat; mask: url("https://design.alphaonelabs.com/assets/illustrations/transistor.svg") center / contain no-repeat; }
-    .eyebrow { font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--clr-accent); margin-bottom: 0.4rem; }
-    .page-intro h1 { font-size: var(--a1-text-3xl, 2.25rem); font-weight: 700; line-height: 1.05; }
-    .page-intro p.lead { color: var(--clr-muted); font-size: 1rem; margin-top: 0.4rem; }
+    .page-intro { max-width: 860px; margin: 0 auto; padding: 2.5rem 2rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; }
+    .pcb-art { width: 150px; height: 108px; flex: none; background: var(--clr-fill); -webkit-mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat; mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat; }
+    .eyebrow { font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--clr-text); margin-bottom: 0.6rem; }
+    .page-intro h1 { font-size: var(--a1-text-4xl, 3rem); }
+    .page-intro .a1-rule { margin: 0.9rem 0 0.75rem; }
+    .page-intro p.lead { color: var(--clr-muted); font-size: 1.05rem; }
 
     /* ---------- nav tabs ---------- */
     nav.tabs {
@@ -72,18 +75,17 @@
       border: none;
       color: var(--clr-muted);
       cursor: pointer;
-      font: 500 0.9rem/1.4 var(--a1-font-body, sans-serif);
+      font: 700 0.9rem/1.4 var(--a1-font-body, sans-serif);
       padding: 0.7rem 1.2rem;
-      border-radius: var(--radius) var(--radius) 0 0;
-      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      border-bottom: 3px solid transparent;
       white-space: nowrap;
       transition: color 0.2s, border-color 0.2s, background 0.2s;
     }
-    nav.tabs button:hover { color: var(--clr-text); background: var(--clr-surface); }
+    nav.tabs button:hover { color: var(--clr-text); background: var(--clr-raised); }
     nav.tabs button.active {
-      color: var(--clr-accent);
-      border-bottom-color: var(--clr-accent);
-      background: var(--clr-surface);
+      color: var(--clr-text);
+      border-bottom-color: var(--clr-fill);
     }
 
     /* ---------- main layout ---------- */
@@ -98,29 +100,28 @@
       border: 1px solid var(--clr-border);
       border-radius: var(--radius);
       padding: 1.5rem;
-      box-shadow: var(--shadow);
       margin-bottom: 1.5rem;
     }
     .card h2 {
-      font-size: 1.15rem;
-      font-weight: 600;
+      font-size: 1.75rem;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.5rem 0.75rem;
       margin-bottom: 0.4rem;
     }
     .card .subtitle { color: var(--clr-muted); font-size: 0.875rem; margin-bottom: 1.25rem; }
 
     /* ---------- inputs ---------- */
-    label { font-size: 0.875rem; font-weight: 500; color: var(--clr-muted); display: block; margin-bottom: 0.35rem; }
+    label { font-size: 0.875rem; font-weight: 600; color: var(--clr-text); display: block; margin-bottom: 0.35rem; }
 
     input[type="file"] {
       display: block;
       width: 100%;
       padding: 0.5rem 0.75rem;
       background: var(--clr-bg);
-      border: 1px solid var(--clr-border);
-      border-radius: 8px;
+      border: 1px solid var(--clr-strong);
+      border-radius: var(--radius);
       color: var(--clr-text);
       font-size: 0.875rem;
       cursor: pointer;
@@ -129,10 +130,11 @@
     select {
       padding: 0.5rem 0.75rem;
       background: var(--clr-bg);
-      border: 1px solid var(--clr-border);
-      border-radius: 8px;
+      border: 1px solid var(--clr-strong);
+      border-radius: var(--radius);
       color: var(--clr-text);
       font-size: 0.875rem;
+      min-height: 40px;
       cursor: pointer;
     }
 
@@ -144,16 +146,15 @@
       padding: 0.6rem 1.25rem;
       min-height: 40px;
       border: 1px solid transparent;
-      border-radius: var(--a1-radius-full, 999px);
-      font: 600 0.9rem/1.2 var(--a1-font-body, sans-serif);
+      border-radius: var(--radius);
+      font: 800 0.875rem/1.2 var(--a1-font-body, sans-serif);
       cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
+      transition: background 0.15s, border-color 0.15s;
     }
-    .btn:active { transform: scale(0.97); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    .btn-primary { background: var(--clr-accent); color: var(--clr-on-accent); }
-    .btn-primary:hover:not(:disabled) { background: var(--clr-accent-hover); }
+    .btn-primary { background: var(--clr-fill); border-color: var(--clr-fill); color: var(--clr-on-accent); }
+    .btn-primary:hover:not(:disabled) { background: var(--clr-accent-hover); border-color: var(--clr-accent-hover); }
 
     .btn-danger  { background: var(--clr-error); color: var(--clr-on-error); }
     .btn-danger:hover:not(:disabled) { opacity: 0.9; }
@@ -161,9 +162,9 @@
     .btn-outline {
       background: transparent;
       color: var(--clr-text);
-      border: 1px solid var(--clr-border);
+      border: 1px solid var(--clr-strong);
     }
-    .btn-outline:hover:not(:disabled) { border-color: var(--clr-accent); color: var(--clr-accent); }
+    .btn-outline:hover:not(:disabled) { background: var(--clr-raised); }
 
     .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
 
@@ -186,7 +187,7 @@
       width: 100%;
       max-height: 220px;
       object-fit: contain;
-      border-radius: 8px;
+      border-radius: var(--radius);
       border: 1px solid var(--clr-border);
       margin-top: 0.75rem;
       display: none;
@@ -197,7 +198,7 @@
     .result-box {
       background: var(--clr-bg);
       border: 1px solid var(--clr-border);
-      border-radius: 8px;
+      border-radius: var(--radius);
       padding: 1rem;
       margin-top: 1rem;
       font-size: 0.9rem;
@@ -225,7 +226,7 @@
       display: none;
       width: 18px; height: 18px;
       border: 2px solid var(--clr-border);
-      border-top-color: var(--clr-accent);
+      border-top-color: var(--clr-fill);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
     }
@@ -234,14 +235,14 @@
 
     /* ---------- badge ---------- */
     .badge {
-      font-size: 0.7rem;
-      font-weight: 600;
-      padding: 0.15rem 0.5rem;
-      border-radius: 20px;
-      font-family: var(--a1-font-mono, monospace);
-      background: rgba(199,171,79,.08);
-      color: var(--clr-accent);
-      border: 1px solid rgba(199,171,79,.5);
+      font: 800 11px/1.2 var(--a1-font-body, sans-serif);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--clr-text);
+      border: 1px solid var(--clr-strong);
     }
 
     /* ---------- speak button ---------- */
@@ -267,7 +268,8 @@
     /* ---------- small screens ---------- */
     @media (max-width: 600px) {
       .page-intro { padding: 1.5rem 1rem 0.75rem; gap: 0.9rem; }
-      .maker-art { width: 56px; height: 56px; }
+      .pcb-art { display: none; }
+      .page-intro h1 { font-size: 2.5rem; }
       nav.tabs { padding: 0 1rem; }
       main { padding: 1.25rem 1rem; }
       .card { padding: 1.1rem; }
@@ -280,22 +282,23 @@
 </head>
 <body>
 
-<a1-header site="VoxBridge" site-href="/" sticky></a1-header>
+<a1-header site="VoxBridge" site-href="/" sticky compact></a1-header>
 
 <div class="page-intro">
-  <div class="maker-art" aria-hidden="true"></div>
   <div>
-    <p class="eyebrow">Alpha One Labs</p>
+    <p class="eyebrow">Alpha One Labs / Accessibility</p>
     <h1>VoxBridge</h1>
+    <hr class="a1-rule" />
     <p class="lead">AI-powered accessibility &amp; communication toolkit</p>
   </div>
+  <div class="pcb-art" aria-hidden="true"></div>
 </div>
 
 <nav class="tabs" role="tablist" aria-label="Features">
-  <button role="tab" aria-selected="true"  aria-controls="tab-caption"      id="btn-caption"      class="active"><span aria-hidden="true">🎤</span> Captioning</button>
-  <button role="tab" aria-selected="false" aria-controls="tab-s2sign"       id="btn-s2sign"                     ><span aria-hidden="true">🗣️</span> Speech → Sign</button>
-  <button role="tab" aria-selected="false" aria-controls="tab-sign2s"       id="btn-sign2s"                     ><span aria-hidden="true">🤟</span> Sign → Speech</button>
-  <button role="tab" aria-selected="false" aria-controls="tab-scene"        id="btn-scene"                      ><span aria-hidden="true">🖼️</span> Scene Description</button>
+  <button role="tab" aria-selected="true"  aria-controls="tab-caption"      id="btn-caption"      class="active">Captioning</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-s2sign"       id="btn-s2sign"                     >Speech → Sign</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-sign2s"       id="btn-sign2s"                     >Sign → Speech</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-scene"        id="btn-scene"                      >Scene Description</button>
 </nav>
 
 <main>
@@ -303,7 +306,7 @@
   <!-- ==================== CAPTIONING ==================== -->
   <section id="tab-caption" class="tab-panel active" role="tabpanel" aria-labelledby="btn-caption">
     <div class="card">
-      <h2><span aria-hidden="true">🎤</span> Real-time Captioning <span class="badge">Whisper</span></h2>
+      <h2>Real-time Captioning <span class="badge">Whisper</span></h2>
       <p class="subtitle">Record or upload audio to generate an instant text transcript.</p>
 
       <label for="caption-file">Upload audio file (WAV / MP3 / WebM)</label>
@@ -325,7 +328,7 @@
   <!-- ==================== SPEECH → SIGN ==================== -->
   <section id="tab-s2sign" class="tab-panel" role="tabpanel" aria-labelledby="btn-s2sign">
     <div class="card">
-      <h2><span aria-hidden="true">🗣️</span> Speech → Sign Language <span class="badge">Whisper + LLaMA</span></h2>
+      <h2>Speech → Sign Language <span class="badge">Whisper + LLaMA</span></h2>
       <p class="subtitle">Speak or upload audio; receive step-by-step sign-language instructions.</p>
 
       <label for="s2sign-file">Upload audio file (WAV / MP3 / WebM)</label>
@@ -357,7 +360,7 @@
   <!-- ==================== SIGN → SPEECH ==================== -->
   <section id="tab-sign2s" class="tab-panel" role="tabpanel" aria-labelledby="btn-sign2s">
     <div class="card">
-      <h2><span aria-hidden="true">🤟</span> Sign → Speech <span class="badge">Vision + LLaMA</span></h2>
+      <h2>Sign → Speech <span class="badge">Vision + LLaMA</span></h2>
       <p class="subtitle">Upload or capture an image of a sign-language gesture; receive the spoken equivalent.</p>
 
       <label for="sign2s-file">Upload image (JPEG / PNG / WebP)</label>
@@ -369,7 +372,7 @@
         <button class="btn btn-primary" id="sign2s-submit-btn" disabled>Interpret Sign ▶</button>
       </div>
 
-      <video id="sign2s-video" aria-label="Camera preview" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
+      <video id="sign2s-video" aria-label="Camera preview" autoplay playsinline style="display:none; width:100%; border-radius:var(--radius); border:1px solid var(--clr-border); margin-top:.75rem;"></video>
       <button class="btn btn-outline" id="sign2s-snap-btn" style="display:none; margin-top:.5rem;">📸 Capture Frame</button>
       <img id="sign2s-preview" class="img-preview" alt="Selected sign-language image preview" />
 
@@ -380,7 +383,7 @@
   <!-- ==================== SCENE DESCRIPTION ==================== -->
   <section id="tab-scene" class="tab-panel" role="tabpanel" aria-labelledby="btn-scene">
     <div class="card">
-      <h2><span aria-hidden="true">🖼️</span> Visual Scene Description <span class="badge">Vision AI</span></h2>
+      <h2>Visual Scene Description <span class="badge">Vision AI</span></h2>
       <p class="subtitle">Upload or capture an image; receive an accessible description for visually impaired users.</p>
 
       <label for="scene-file">Upload image (JPEG / PNG / WebP)</label>
@@ -401,7 +404,7 @@
         <button class="btn btn-primary" id="scene-submit-btn" disabled>Describe Scene ▶</button>
       </div>
 
-      <video id="scene-video" aria-label="Camera preview" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
+      <video id="scene-video" aria-label="Camera preview" autoplay playsinline style="display:none; width:100%; border-radius:var(--radius); border:1px solid var(--clr-border); margin-top:.75rem;"></video>
       <button class="btn btn-outline" id="scene-snap-btn" style="display:none; margin-top:.5rem;">📸 Capture Frame</button>
       <img id="scene-preview" class="img-preview" alt="Selected scene image preview" />
 

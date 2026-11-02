@@ -17,16 +17,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
 </head>
 <body>
-  <a1-header site="PMOSS" site-href="/" sticky></a1-header>
+  <a1-header site="PMOSS" site-href="/" sticky compact></a1-header>
 
   <main class="container">
     <div class="page-intro">
-      <div class="maker-art" aria-hidden="true"></div>
       <div>
-        <p class="eyebrow">Alpha One Labs</p>
+        <p class="eyebrow">Alpha One Labs / Open Source</p>
         <h1>OSS Project Management</h1>
+        <hr class="a1-rule">
         <p class="lead">Manage GitHub issues and track project health in one place.</p>
       </div>
+      <div class="pcb-art" aria-hidden="true"></div>
     </div>
     <hr class="a1-trace">
 
@@ -73,8 +74,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       <div id="bulk-actions" class="bulk-actions" role="region" aria-label="Bulk actions">
         <span id="selected-count" aria-live="polite">0 selected</span>
-        <button class="btn btn-small" onclick="bulkClose()">Close Selected</button>
-        <button class="btn btn-small" onclick="bulkReopen()">Reopen Selected</button>
+        <button class="btn btn-secondary btn-small" onclick="bulkClose()">Close Selected</button>
+        <button class="btn btn-secondary btn-small" onclick="bulkReopen()">Reopen Selected</button>
         <button class="btn btn-secondary btn-small" onclick="clearSelection()">Clear</button>
       </div>
 

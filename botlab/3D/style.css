@@ -20,20 +20,26 @@ body {
 a1-header {
   display: block;
   flex: none;
-  min-height: 67px;
+  min-height: var(--a1-header-height, 76px);
 }
 
 .a1-slot-btn {
-  padding: 8px 14px;
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--a1-border-strong);
+  border-radius: var(--a1-radius, 2px);
   white-space: nowrap;
   text-decoration: none;
-  font: 600 14px/1 var(--a1-font-body, system-ui, sans-serif);
-  color: var(--a1-on-accent, #000);
-  background: var(--a1-accent, #c7ab4f);
+  font: 800 var(--a1-text-xs, 12px)/1 var(--a1-font-body, system-ui, sans-serif);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--a1-text);
+  background: var(--a1-bg);
 }
-.a1-slot-btn:hover { background: var(--a1-accent-hover, #e2c66a); }
-.a1-slot-btn:focus-visible { outline: 2px solid var(--a1-focus, #e2c66a); outline-offset: 3px; }
+.a1-slot-btn:hover { background: var(--a1-surface-raised); }
+.a1-slot-btn:focus-visible { outline: 3px solid var(--a1-focus); outline-offset: 3px; }
 @media (max-width: 480px) { .a1-slot-btn { display: none; } }
 
 .sr-only {
@@ -61,7 +67,9 @@ a1-header {
   width: min(100cqw, calc(100cqh * 16 / 9));
   height: min(100cqh, calc(100cqw * 9 / 16));
   display: block;
+  /* The 3D scene is rendered on black in both themes; frame it with a hard rule */
   background: #000;
+  outline: 1px solid var(--a1-border);
 }
 
 #cameraVideo {
