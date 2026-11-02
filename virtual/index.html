@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Alpha One Labs — Virtual</title>
+    <title>Virtual World — Alpha One Labs</title>
+    <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
+    <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
     <style>
       html, body {
         margin: 0;
@@ -11,8 +13,22 @@
         height: 100%;
         overflow: hidden;
         background: #0a0a0a;
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family: var(--a1-font-body, Inter, system-ui, sans-serif);
       }
+      :focus-visible { outline: 2px solid var(--a1-focus, #e2c66a); outline-offset: 3px; }
+
+      /* Brand header floats over the full-screen canvas while the menu is
+         open; it disappears once the pointer is locked so the world stays
+         full-screen. */
+      #world-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 15;
+        min-height: 67px;
+      }
+      body:has(#blocker.hidden) #world-header { display: none; }
       #app { width: 100vw; height: 100vh; display: block; }
 
       #blocker {
@@ -21,43 +37,53 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.72);
         color: #fff;
         text-align: center;
         cursor: pointer;
         z-index: 10;
+        padding-top: 67px;
+        box-sizing: border-box;
       }
       #blocker.hidden { display: none; }
-      #blocker > div { max-width: 26rem; max-height: 90vh; overflow-y: auto; padding: 0 1rem; }
-      #blocker h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
-      #blocker p { margin: 0 0 0.5rem; color: #ccc; }
+      #blocker > div { max-width: 26rem; max-height: calc(100vh - 67px - 2rem); overflow-y: auto; padding: 1rem; }
+      #blocker .eyebrow {
+        margin: 0 0 0.6rem;
+        font: 700 0.75rem/1 var(--a1-font-mono, monospace);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #c7ab4f;
+      }
+      #blocker h1 { font: 700 clamp(1.75rem, 6vw, 2.25rem)/1.05 var(--a1-font-display, sans-serif); letter-spacing: -0.03em; margin: 0 0 0.75rem; }
+      #blocker .a1-trace { margin: 1.25rem 0 0; }
+      #blocker p { margin: 0 0 0.5rem; color: #c9c9c9; }
       #enter-button {
         margin-top: 1rem;
         padding: 0.65rem 1.5rem;
         border-radius: 999px;
         border: none;
-        background: #0d9488;
-        color: #fff;
-        font-weight: 600;
-        font-size: 1rem;
+        background: #c7ab4f;
+        color: #000;
+        font: 600 1rem/1 var(--a1-font-body, sans-serif);
         cursor: pointer;
       }
-      #enter-button:hover { background: #0f766e; }
-      #enter-button:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 2px; }
+      #enter-button:hover { background: #e2c66a; }
+      #enter-button:focus-visible { outline: 2px solid #e2c66a; outline-offset: 3px; }
 
       #activity-nav { margin-top: 2rem; text-align: left; }
-      #activity-nav h2 { font-size: 1rem; margin: 0 0 0.75rem; text-align: center; color: #fff; }
+      #activity-nav h2 { font: 700 0.75rem/1 var(--a1-font-mono, monospace); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 0.75rem; text-align: center; color: #c7ab4f; }
       #activity-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
       #activity-list li {
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 0.75rem;
+        border: 1px solid #2e2e2e;
+        background: rgba(13, 13, 13, 0.85);
+        border-radius: 12px;
         padding: 0.75rem 1rem;
       }
-      #activity-list h3 { margin: 0 0 0.3rem; font-size: 0.95rem; color: #fff; }
+      #activity-list h3 { margin: 0 0 0.3rem; font: 600 1rem/1.2 var(--a1-font-display, sans-serif); color: #fff; }
       #activity-list p { margin: 0 0 0.5rem; font-size: 0.85rem; }
       #activity-list .activity-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
       #activity-list a {
-        color: #2dd4bf;
+        color: #c7ab4f;
         text-decoration: none;
         font-weight: 600;
         font-size: 0.85rem;
@@ -106,55 +132,64 @@
       }
       #panel.hidden { display: none; }
       #panel-card {
-        background: #12181c;
+        background: #0d0d0d;
         color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 1.25rem;
+        border: 1px solid #2e2e2e;
+        border-radius: 20px;
         padding: 2rem;
         max-width: 26rem;
         width: 90%;
       }
-      #panel-card h2 { margin: 0 0 0.75rem; font-size: 1.5rem; }
-      #panel-card p { margin: 0 0 1.5rem; color: #b8c2c9; line-height: 1.5; }
+      #panel-card h2 { margin: 0 0 0.75rem; font: 700 1.5rem/1.15 var(--a1-font-display, sans-serif); letter-spacing: -0.02em; }
+      #panel-card p { margin: 0 0 1.5rem; color: #c9c9c9; line-height: 1.5; }
       #panel-links { display: flex; flex-direction: column; gap: 0.6rem; }
       #panel-links a {
         display: block;
         text-align: center;
         text-decoration: none;
-        color: #fff;
-        background: #0d9488;
+        color: #000;
+        background: #c7ab4f;
         padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
+        border-radius: 999px;
         font-weight: 600;
       }
-      #panel-links a:hover { background: #0f766e; }
+      #panel-links a:hover { background: #e2c66a; }
       #panel-close {
         margin-top: 1.25rem;
         width: 100%;
         padding: 0.6rem;
-        border-radius: 0.75rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        border: 1px solid #2e2e2e;
         background: transparent;
         color: #fff;
+        font: 500 0.9rem/1 var(--a1-font-body, sans-serif);
         cursor: pointer;
       }
+      #panel-close:hover { border-color: #c7ab4f; color: #c7ab4f; }
 
+      /* Slotted into the brand header, which sits above #blocker (z 10) */
       #logout {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        /* Above #blocker (10) so it's clickable whenever the pointer is
-           unlocked — otherwise the full-screen blocker swallows the click. */
-        z-index: 15;
-        padding: 0.45rem 0.9rem;
+        padding: 8px 14px;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        background: rgba(0, 0, 0, 0.5);
-        color: #fff;
-        font-size: 0.8rem;
+        border: 1px solid var(--a1-border, #2e2e2e);
+        background: transparent;
+        color: var(--a1-text, #fff);
+        font: 500 14px/1 var(--a1-font-body, sans-serif);
+        white-space: nowrap;
         cursor: pointer;
       }
-      #logout:hover { background: rgba(0, 0, 0, 0.7); }
+      #logout:hover { border-color: var(--a1-accent, #c7ab4f); color: var(--a1-accent, #c7ab4f); }
+      /* No room in the phone-width header: float it bottom-right instead */
+      @media (max-width: 480px) {
+        #logout {
+          position: fixed;
+          right: 1rem;
+          bottom: 1rem;
+          background: rgba(0, 0, 0, 0.7);
+          border-color: #525252;
+          color: #fff;
+        }
+      }
       #logout.hidden { display: none; }
 
       #hint {
@@ -177,15 +212,19 @@
 
     <div id="crosshair" class="hidden"></div>
     <div id="prompt" class="hidden"></div>
-    <button id="logout" type="button" class="hidden">Log out</button>
+    <a1-header id="world-header" site="Virtual World" site-href="/">
+      <button id="logout" slot="actions" type="button" class="hidden">Log out</button>
+    </a1-header>
     <div id="hint" class="hidden">Press ESC to free your cursor</div>
 
     <div id="blocker">
       <div>
-        <h1>Alpha One Labs — Virtual</h1>
+        <p class="eyebrow">Alpha One Labs</p>
+        <h1>Virtual World</h1>
         <p>Click to enter · WASD to move · Mouse to look · E to interact</p>
         <p>Press ESC anytime to release your cursor and use the menu</p>
         <button id="enter-button" type="button">Enter world</button>
+        <hr class="a1-trace" />
         <nav id="activity-nav" aria-label="Activities">
           <h2>Activities</h2>
           <ul id="activity-list"></ul>

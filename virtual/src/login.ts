@@ -29,6 +29,8 @@ function switchTab(tab: "login" | "register"): void {
   panelRegister.classList.toggle("hidden", isLogin);
   tabLogin.classList.toggle("active", isLogin);
   tabRegister.classList.toggle("active", !isLogin);
+  tabLogin.setAttribute("aria-pressed", String(isLogin));
+  tabRegister.setAttribute("aria-pressed", String(!isLogin));
 }
 
 tabLogin.addEventListener("click", () => switchTab("login"));

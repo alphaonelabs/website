@@ -4,19 +4,62 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #000;
+  background: var(--a1-bg, #000);
+  color: var(--a1-text, #fff);
+  font-family: var(--a1-font-body, system-ui, sans-serif);
 }
 
 body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Brand header (Shadow DOM); reserve its height before chrome.js upgrades it */
+a1-header {
+  display: block;
+  flex: none;
+  min-height: 67px;
+}
+
+.a1-slot-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  text-decoration: none;
+  font: 600 14px/1 var(--a1-font-body, system-ui, sans-serif);
+  color: var(--a1-on-accent, #000);
+  background: var(--a1-accent, #c7ab4f);
+}
+.a1-slot-btn:hover { background: var(--a1-accent-hover, #e2c66a); }
+.a1-slot-btn:focus-visible { outline: 2px solid var(--a1-focus, #e2c66a); outline-offset: 3px; }
+@media (max-width: 480px) { .a1-slot-btn { display: none; } }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The simulation fills whatever space is left under the header, 16:9 */
+.sim-stage {
+  flex: 1;
+  min-height: 0;
   display: grid;
   place-items: center;
+  container-type: size;
 }
 
 #simCanvas {
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
-  max-width: 100vw;
-  max-height: 100vh;
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  height: min(100cqh, calc(100cqw * 9 / 16));
   display: block;
   background: #000;
 }

@@ -3,17 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wireframe Studio</title>
+    <title>Mockuper — Wireframe Studio · Alpha One Labs</title>
+    <meta name="description" content="Mockuper: a free, open-source wireframe studio from Alpha One Labs.">
+    <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
     <link rel="stylesheet" href="css/styles.css">
+    <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
 </head>
 <body>
+    <a1-header site="Mockuper" site-href="/"></a1-header>
     <div class="app">
         <header class="header">
             <div class="logo">
-                <div>Wireframe Studio</div>
-                <div class="version" id="version">Loading...</div>
+                <h1 class="logo-title">Wireframe Studio</h1>
+                <div class="logo-meta">
+                    <span class="version" id="version">Loading...</span>
+                    <a class="a1-credit" href="https://alphaonelabs.com">by Alpha One Labs</a>
+                </div>
             </div>
-            <div class="toolbar">
+            <div class="toolbar" role="toolbar" aria-label="Editor tools">
                 <div class="toolbar-group">
                     <button class="btn" id="undo-btn" disabled>↶ Undo</button>
                     <button class="btn" id="redo-btn" disabled>↷ Redo</button>
@@ -35,20 +42,20 @@
                     <button class="btn" id="import-json-btn">📁 Import JSON</button>
                 </div>
                 <div class="toolbar-group">
-                    <a href="https://github.com/alphaonelabs/alphaonelabs-mockups" target="_blank" rel="noopener noreferrer" class="btn collaborate-btn">🤝 Collaborate</a>
-                    <a href="https://github.com/alphaonelabs/website/tree/main/mockuper" target="_blank" rel="noopener noreferrer" class="btn contribute-btn">🛠 Contribute</a>
+                    <a href="https://github.com/alphaonelabs/alphaonelabs-mockups" target="_blank" rel="noopener noreferrer" class="btn collaborate-btn"><span aria-hidden="true">🤝</span> Collaborate</a>
+                    <a href="https://github.com/alphaonelabs/website/tree/main/mockuper" target="_blank" rel="noopener noreferrer" class="btn btn-primary contribute-btn"><span aria-hidden="true">🛠</span> Contribute</a>
                 </div>
             </div>
         </header>
 
         <div class="main-content">
             <aside class="sidebar" id="left-sidebar">
-                <button class="collapse-btn" id="left-collapse-btn" title="Collapse sidebar">‹</button>
-                <h3>Pages</h3>
+                <button class="collapse-btn" id="left-collapse-btn" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
+                <h2>Pages</h2>
                 <div class="pages-list" id="pages-list"></div>
                 <button class="btn" id="add-page-btn" style="width: 100%; margin-top: 8px;">+ Add Page</button>
 
-                <h3 style="margin-top: 24px;">Components</h3>
+                <h2 style="margin-top: 24px;">Components</h2>
                 <div class="components-list" id="components-grid">
                     <button class="component-btn" data-type="button" draggable="true">
                         <div class="component-preview button-preview"></div>
@@ -93,7 +100,7 @@
                 </div>
             </aside>
 
-            <div class="canvas-container">
+            <main class="canvas-container" aria-label="Wireframe canvas">
                 <div class="canvas" id="canvas">
                     <div class="canvas-content" id="canvas-content">
                         <div class="grid" id="grid"></div>
@@ -101,41 +108,41 @@
                 </div>
 
                 <div class="zoom-control">
-                    <button class="zoom-btn" id="zoom-out-btn">-</button>
-                    <div class="zoom-level" id="zoom-level">100%</div>
-                    <button class="zoom-btn" id="zoom-in-btn">+</button>
+                    <button class="zoom-btn" id="zoom-out-btn" aria-label="Zoom out">−</button>
+                    <div class="zoom-level" id="zoom-level" aria-live="polite">100%</div>
+                    <button class="zoom-btn" id="zoom-in-btn" aria-label="Zoom in">+</button>
                     <button class="zoom-btn" id="zoom-reset-btn">Reset</button>
                 </div>
-            </div>
+            </main>
 
             <aside class="property-panel" id="property-panel" style="display: none;">
-                <button class="collapse-btn" id="right-collapse-btn" title="Collapse panel">›</button>
-                <h3>Properties</h3>
+                <button class="collapse-btn" id="right-collapse-btn" title="Collapse panel" aria-label="Collapse panel">›</button>
+                <h2>Properties</h2>
                 <div class="property-group">
-                    <label>Text</label>
+                    <label for="prop-text">Text</label>
                     <textarea id="prop-text"></textarea>
                 </div>
                 <div class="property-group">
-                    <label>X Position</label>
+                    <label for="prop-x">X Position</label>
                     <input type="number" id="prop-x">
                 </div>
                 <div class="property-group">
-                    <label>Y Position</label>
+                    <label for="prop-y">Y Position</label>
                     <input type="number" id="prop-y">
                 </div>
                 <div class="property-group">
-                    <label>Width</label>
+                    <label for="prop-width">Width</label>
                     <input type="number" id="prop-width">
                 </div>
                 <div class="property-group">
-                    <label>Height</label>
+                    <label for="prop-height">Height</label>
                     <input type="number" id="prop-height">
                 </div>
             </aside>
         </div>
     </div>
 
-    <input type="file" id="json-file-input" accept=".json" style="display: none;">
+    <input type="file" id="json-file-input" accept=".json" style="display: none;" aria-label="Import JSON file">
 
     <script type="module" src="js/app.js"></script>
 </body>

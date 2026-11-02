@@ -248,7 +248,7 @@ function setControlMode(mode, title, detail) {
 }
 
 function setFont(context, size, weight = 500) {
-  context.font = `${weight} ${size}px "Segoe UI", Arial, sans-serif`;
+  context.font = `${weight} ${size}px Inter, "Segoe UI", Arial, sans-serif`;
 }
 
 function fillText(context, text, x, y, size, color, align = "left", weight = 500) {
@@ -1219,7 +1219,7 @@ function drawSim() {
     ctx.lineTo(xTop, horizonY);
     ctx.stroke();
   }
-  ctx.strokeStyle = bgr([25, 45, 45]);
+  ctx.strokeStyle = bgr([22, 38, 46]);
   for (let j = 1; j < 10; j += 1) {
     const t = j / 10;
     const y = horizonY + t * (groundY - horizonY);
@@ -1319,21 +1319,21 @@ function drawPip() {
     ctx.drawImage(detectionCanvas, cropX, cropY, cropSize, cropSize, pipX, pipY, pipSize, pipSize);
   } else {
     ctx.save();
-    ctx.fillStyle = rgb(6, 10, 14);
+    ctx.fillStyle = rgb(13, 13, 13);
     ctx.fillRect(pipX, pipY, pipSize, pipSize);
-    fillText(ctx, "ROBOTIC PANEL", pipX + pipSize / 2, pipY + 64, 28, bgr([255, 200, 0]), "center", 700);
+    fillText(ctx, "ROBOTIC PANEL", pipX + pipSize / 2, pipY + 64, 28, bgr([106, 198, 226]), "center", 700);
     fillText(ctx, "Camera feed unavailable", pipX + pipSize / 2, pipY + 118, 18, rgb(200, 200, 200), "center", 500);
     fillText(ctx, "Manual control is active", pipX + pipSize / 2, pipY + 148, 18, rgb(170, 170, 170), "center", 500);
-    fillText(ctx, "W / A / S / D", pipX + pipSize / 2, pipY + 216, 24, bgr([0, 170, 255]), "center", 700);
+    fillText(ctx, "W / A / S / D", pipX + pipSize / 2, pipY + 216, 24, bgr([79, 171, 199]), "center", 700);
     fillText(ctx, "Move the robot", pipX + pipSize / 2, pipY + 246, 17, rgb(210, 210, 210), "center", 500);
-    fillText(ctx, "1-5", pipX + pipSize / 2, pipY + 294, 24, bgr([0, 170, 255]), "center", 700);
+    fillText(ctx, "1-5", pipX + pipSize / 2, pipY + 294, 24, bgr([79, 171, 199]), "center", 700);
     fillText(ctx, "Cycle chassis, wheels, lidar, camera, arm", pipX + pipSize / 2, pipY + 322, 16, rgb(210, 210, 210), "center", 500);
     fillText(ctx, "Space pick/drop", pipX + pipSize / 2, pipY + 350, 16, rgb(170, 170, 170), "center", 500);
     ctx.restore();
   }
 
   ctx.save();
-  ctx.strokeStyle = bgr([255, 200, 0]);
+  ctx.strokeStyle = bgr([79, 171, 199]);
   ctx.lineWidth = 2;
   ctx.strokeRect(pipX, pipY, pipSize, pipSize);
   ctx.restore();
@@ -1346,7 +1346,7 @@ function drawPip() {
     const viewY = pipY + pipSize - viewHeight;
     ctx.drawImage(robotViewCanvas, viewX, viewY);
     ctx.save();
-    ctx.strokeStyle = bgr([255, 200, 0]);
+    ctx.strokeStyle = bgr([79, 171, 199]);
     ctx.lineWidth = 1;
     ctx.strokeRect(viewX, viewY, viewWidth, viewHeight);
     ctx.beginPath();
@@ -1367,12 +1367,13 @@ function drawModeBanner(context) {
   const panelHeight = 72;
   const panelX = SIM_W - panelWidth - 24;
   const panelY = 24;
-  const accent = controlMode === "manual" ? [0, 170, 255] : [0, 220, 180];
+  // Brand gold (BGR): bright gold for manual mode, core gold for gesture mode
+  const accent = controlMode === "manual" ? [106, 198, 226] : [79, 171, 199];
   const shortcutText = controlMode === "manual"
     ? "WASD move | 1-5 cycle parts | Space pick/drop | Q stop"
     : "Right hand aims and moves | Left hand freezes and picks";
 
-  fillRoundedRect(context, panelX, panelY, panelWidth, panelHeight, 16, rgb(10, 16, 18, 0.86));
+  fillRoundedRect(context, panelX, panelY, panelWidth, panelHeight, 16, rgb(13, 13, 13, 0.88));
   strokeRoundedRect(context, panelX, panelY, panelWidth, panelHeight, 16, bgr(accent), 1);
   fillText(context, modeBannerTitle, panelX + 20, panelY + 28, 20, bgr(accent), "left", 700);
   fillText(context, modeBannerDetail, panelX + 20, panelY + 50, 15, rgb(220, 220, 220), "left", 500);
@@ -1384,7 +1385,7 @@ function drawBootScreen() {
   ctx.fillStyle = rgb(0, 0, 0);
   ctx.fillRect(0, 0, SIM_W, SIM_H);
   ctx.save();
-  ctx.strokeStyle = bgr([25, 45, 45]);
+  ctx.strokeStyle = bgr([22, 38, 46]);
   ctx.lineWidth = 1;
   for (let i = 0; i < 18; i += 1) {
     const y = 140 + i * 42;
@@ -1401,7 +1402,7 @@ function drawBootScreen() {
     ctx.stroke();
   }
   ctx.restore();
-  fillText(ctx, bootTitle, SIM_W / 2, SIM_H / 2 - 24, 42, bootError ? bgr([40, 80, 255]) : bgr([255, 200, 0]), "center", 700);
+  fillText(ctx, bootTitle, SIM_W / 2, SIM_H / 2 - 24, 42, bootError ? bgr([40, 80, 255]) : bgr([79, 171, 199]), "center", 700);
   fillText(ctx, bootDetail, SIM_W / 2, SIM_H / 2 + 24, 22, rgb(180, 180, 180), "center", 500);
 }
 

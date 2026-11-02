@@ -15,7 +15,7 @@ function createLabelSprite(text: string): THREE.Sprite {
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = "rgba(10, 10, 10, 0.75)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font = "bold 48px sans-serif";
+  ctx.font = "bold 48px \"Space Grotesk\", Inter, sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
