@@ -190,7 +190,9 @@ pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
 
-All 67 tests run against the pure-Python services (no Cloudflare runtime required).
+The tests cover the pure-Python services and the ingestion route. Ingestion tests
+use a local Worker shim and a fake D1 database; no Cloudflare runtime or live
+services are required.
 
 ---
 
