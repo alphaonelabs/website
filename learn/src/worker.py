@@ -1490,6 +1490,13 @@ async def init_db(env):
         )""",
         "CREATE INDEX IF NOT EXISTS idx_survey_answers_response ON survey_answers(response_id)",
         "CREATE INDEX IF NOT EXISTS idx_survey_answers_question ON survey_answers(question_id)",
+        # Page views: one counter per page per UTC day. No IPs, cookies or user ids.
+        """CREATE TABLE IF NOT EXISTS page_views (
+            day   TEXT NOT NULL,
+            path  TEXT NOT NULL,
+            views INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, path)
+        )""",
     ]
     for sql in legacy_tables:
         await env.DB.prepare(sql).run()
@@ -6585,6 +6592,141 @@ async def api_admin_table_counts(req, env):
 
 
 # ---------------------------------------------------------------------------
+# Page views
+# ---------------------------------------------------------------------------
+
+_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/")
+_VIEW_BOT_RE = re.compile(
+    r"bot|crawl|spider|slurp|preview|monitor|uptime|curl|wget|python-|httpx|axios|headless|lighthouse|facebookexternalhit",
+    re.IGNORECASE,
+)
+
+
+def _page_view_path(request, env):
+    """Return the normalized page path to count for this request, or None to skip it."""
+    if request.method.upper() != "GET":
+        return None
+    parsed = urlparse(request.url)
+    path = parsed.path or "/"
+    if path.startswith(_VIEW_SKIP_PREFIXES):
+        return None
+    admin_path = _clean_path(getattr(env, "ADMIN_URL", ""))
+    if path == admin_path or path.startswith(admin_path.rstrip("/") + "/"):
+        return None
+    if path.endswith(".html"):
+        path = path[:-5] or "/"
+    if path.endswith("/index"):
+        path = path[:-6] or "/"
+    last = path.rsplit("/", 1)[-1]
+    if "." in last:
+        return None
+    if len(path) > 1:
+        path = path.rstrip("/")
+    if path == "/activity":
+        query = parse_qs(parsed.query)
+        ref = (query.get("slug") or query.get("id") or [""])[0]
+        if ref:
+            path = "/activity/" + ref
+    ua = request.headers.get("User-Agent") or ""
+    if not ua or _VIEW_BOT_RE.search(ua):
+        return None
+    purpose = (request.headers.get("Sec-Purpose") or request.headers.get("Purpose") or "").lower()
+    if "prefetch" in purpose or "prerender" in purpose:
+        return None
+    return path[:200]
+
+
+async def record_page_view(request, env, response) -> None:
+    """Count a successful HTML page view. Never raises."""
+    try:
+        if getattr(response, "status", 200) != 200:
+            return
+        ctype = (response.headers.get("Content-Type") or "").lower()
+        if "text/html" not in ctype:
+            return
+        path = _page_view_path(request, env)
+        if not path:
+            return
+        day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+        stmt = (
+            "INSERT INTO page_views (day, path, views) VALUES (?, ?, 1)"
+            " ON CONFLICT(day, path) DO UPDATE SET views = views + 1"
+        )
+        try:
+            await env.DB.prepare(stmt).bind(day, path).run()
+        except Exception as e:
+            if not _is_no_such_table_error(e):
+                raise
+            await init_db(env)
+            await env.DB.prepare(stmt).bind(day, path).run()
+    except Exception as exc:
+        print(f"[page_views] {type(exc).__name__}: {exc}")
+
+
+async def api_admin_views(req, env):
+    if not _is_basic_auth_valid(req, env):
+        return _unauthorized_basic()
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    since_30 = (today - datetime.timedelta(days=29)).isoformat()
+    since_7 = (today - datetime.timedelta(days=6)).isoformat()
+
+    async def load():
+        totals = await env.DB.prepare(
+            "SELECT"
+            " COALESCE(SUM(CASE WHEN day = ? THEN views END), 0) AS today,"
+            " COALESCE(SUM(CASE WHEN day >= ? THEN views END), 0) AS last7,"
+            " COALESCE(SUM(CASE WHEN day >= ? THEN views END), 0) AS last30,"
+            " COALESCE(SUM(views), 0) AS all_time,"
+            " MIN(day) AS since"
+            " FROM page_views"
+        ).bind(today.isoformat(), since_7, since_30).first()
+        daily = await env.DB.prepare(
+            "SELECT day, SUM(views) AS views FROM page_views WHERE day >= ? GROUP BY day ORDER BY day"
+        ).bind(since_30).all()
+        pages = await env.DB.prepare(
+            "SELECT path, SUM(views) AS views FROM page_views WHERE day >= ?"
+            " GROUP BY path ORDER BY views DESC LIMIT 20"
+        ).bind(since_30).all()
+        acts = await env.DB.prepare(
+            "SELECT pv.path AS path, SUM(pv.views) AS views, a.title AS title, a.slug AS slug, a.id AS id"
+            " FROM page_views pv"
+            " JOIN activities a ON pv.path = '/activity/' || a.slug OR pv.path = '/activity/' || a.id"
+            " WHERE pv.day >= ? AND pv.path LIKE '/activity/%'"
+            " GROUP BY a.id ORDER BY views DESC LIMIT 20"
+        ).bind(since_30).all()
+        return totals, daily, pages, acts
+
+    try:
+        totals, daily, pages, acts = await load()
+    except Exception as e:
+        if not _is_no_such_table_error(e):
+            raise
+        await init_db(env)
+        totals, daily, pages, acts = await load()
+
+    by_day = {r.day: int(r.views or 0) for r in (daily.results or [])}
+    series = []
+    for i in range(29, -1, -1):
+        d = (today - datetime.timedelta(days=i)).isoformat()
+        series.append({"day": d, "views": by_day.get(d, 0)})
+    return json_resp({
+        "totals": {
+            "today": int(getattr(totals, "today", 0) or 0),
+            "last7": int(getattr(totals, "last7", 0) or 0),
+            "last30": int(getattr(totals, "last30", 0) or 0),
+            "all_time": int(getattr(totals, "all_time", 0) or 0),
+            "since": getattr(totals, "since", None),
+        },
+        "daily": series,
+        "top_pages": [{"path": r.path, "views": int(r.views or 0)} for r in (pages.results or [])],
+        "top_activities": [
+            {"title": r.title, "slug": r.slug, "id": r.id, "path": r.path, "views": int(r.views or 0)}
+            for r in (acts.results or [])
+        ],
+    })
+
+
+# ---------------------------------------------------------------------------
 # Static-asset serving  (Workers Sites / __STATIC_CONTENT KV)
 # ---------------------------------------------------------------------------
 
@@ -8781,6 +8923,9 @@ async def _dispatch(request, env):
     if path == admin_api_counts_path and method == "GET":
         return await api_admin_table_counts(request, env)
 
+    if path == admin_path.rstrip("/") + "/api/views" and method == "GET":
+        return await api_admin_views(request, env)
+
     if path in ("/legacy-features", "/legacy-features.html", "/features", "/features.html") and method == "GET":
         return await render_ssr_record_page(request, env, "/feature-votes", SSR_RECORD_PAGES["/feature-votes"])
 
@@ -8987,6 +9132,9 @@ async def _dispatch(request, env):
         if path == "/api/admin/table-counts" and method == "GET":
             return await api_admin_table_counts(request, env)
 
+        if path == "/api/admin/views" and method == "GET":
+            return await api_admin_views(request, env)
+
         if path.rstrip("/") == "/api/error" and method == "GET":
             exc = RuntimeError("Sentry test error from /api/error")
             await capture_exception(exc, request, env, "api_error_test")
@@ -9117,7 +9265,9 @@ async def api_submit_feedback(request, env):
 async def on_fetch(request, env):
     try:
         init_sentry(env)
-        return await _dispatch(request, env)
+        response = await _dispatch(request, env)
+        await record_page_view(request, env, response)
+        return response
     except Exception as e:
         await capture_exception(e, request, env, "on_fetch_unhandled")
         if urlparse(request.url).path.startswith("/api/"):

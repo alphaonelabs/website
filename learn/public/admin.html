@@ -3,148 +3,212 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alpha One Labs Admin</title>
+  <meta name="robots" content="noindex" />
+  <title>Admin · Alpha One Labs</title>
   <link rel="icon" type="image/png" href="/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="/js/a1-tailwind-theme.js?v=1"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
   <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.setAttribute('data-a1-theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
   <style>
-    :root {
-      --ink: #0a0a0a;
-      --muted: #737373;
-      --line: #e6e6e6;
-      --bg: #fafafa;
-      --card: #ffffff;
-      --accent: #7a6418;
-      --accent-soft: #ccfbf1;
-    }
-    body {
-      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: radial-gradient(circle at 10% 10%, #d1fae5 0%, #fafafa 35%),
-                  radial-gradient(circle at 90% 20%, #bfdbfe 0%, #fafafa 40%);
-      color: var(--ink);
-    }
-    .glass {
-      background: rgba(255, 255, 255, 0.82);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(226, 232, 240, 0.85);
-    }
-    .pulse {
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 0.45; }
-      50% { opacity: 1; }
-      100% { opacity: 0.45; }
+    :root { --bg: #fff; --fg: #0a0a0a; --muted: #4a4a4a; --soft: #e6e6e6; --hard: #0a0a0a; --raised: #f5f5f5; --gold: #d4af37; --gold-ink: #7a6418; }
+    html.dark { --bg: #000; --fg: #fafafa; --muted: #a3a3a3; --soft: #2a2a2a; --hard: #e1e1e1; --raised: #121212; --gold: #e1b746; --gold-ink: #e1b746; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 Inter, system-ui, sans-serif; }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+    .eyebrow { font: 700 12px/1.3 "JetBrains Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+    h1, h2 { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: -.01em; line-height: .95; margin: 0; }
+    h1 { font-size: clamp(40px, 6vw, 64px); margin-top: 6px; }
+    h2 { font-size: 30px; }
+    .rule { width: 56px; height: 6px; background: var(--gold); border: 0; margin: 18px 0 28px; }
+    .head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .actions { display: flex; gap: 8px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 1px solid var(--hard); border-radius: 4px; background: var(--bg); color: var(--fg); font: 800 14px/1 Inter, sans-serif; cursor: pointer; }
+    .btn:hover { background: var(--raised); }
+    .btn--gold { background: var(--gold); border-color: var(--gold); color: #080808; }
+    .btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+    section { margin-top: 40px; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--hard); padding-bottom: 10px; margin-bottom: 18px; }
+    .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--hard); border-radius: 6px; }
+    .tile { padding: 18px 20px; border-left: 1px solid var(--soft); min-width: 0; }
+    .tile:first-child { border-left: 0; }
+    .tile .num { font: 900 clamp(32px, 4vw, 48px)/1 "Barlow Condensed", sans-serif; margin-top: 8px; overflow-wrap: anywhere; }
+    .tile .num.gold { color: var(--gold-ink); }
+    .chart { border: 1px solid var(--hard); border-radius: 6px; padding: 18px 18px 10px; margin-top: 16px; }
+    .bars { display: flex; align-items: flex-end; gap: 4px; height: 180px; }
+    .bar { flex: 1; min-width: 0; background: var(--gold); border-radius: 2px 2px 0 0; min-height: 1px; position: relative; }
+    .bar.zero { background: var(--soft); }
+    .bar:hover { outline: 2px solid var(--fg); }
+    .axis { display: flex; justify-content: space-between; margin-top: 8px; font: 500 12px/1 "JetBrains Mono", monospace; color: var(--muted); }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+    table { width: 100%; border-collapse: collapse; border: 1px solid var(--hard); border-radius: 6px; overflow: hidden; }
+    th { text-align: left; font: 700 12px/1.2 "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid var(--hard); }
+    td { padding: 10px 14px; border-top: 1px solid var(--soft); vertical-align: top; overflow-wrap: anywhere; }
+    td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    td a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    td a:hover { color: var(--gold-ink); }
+    .meter { height: 4px; background: var(--soft); margin-top: 6px; }
+    .meter span { display: block; height: 100%; background: var(--gold); }
+    .status { color: var(--muted); font-size: 13px; margin-top: 12px; }
+    .empty { color: var(--muted); }
+    .err { color: #dc2626; }
+    .pulse { animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+    @media (max-width: 760px) {
+      .tiles { grid-template-columns: 1fr 1fr; }
+      .tile:nth-child(3) { border-left: 0; }
+      .tile:nth-child(n+3) { border-top: 1px solid var(--soft); }
+      .cols { grid-template-columns: 1fr; }
+      .bars { gap: 2px; height: 140px; }
     }
   </style>
 </head>
 <body>
-  <main class="max-w-4xl mx-auto px-4 py-10 sm:py-16">
-    <section class="glass rounded-3xl shadow-xl p-6 sm:p-10">
-      <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+  <main>
+    <div class="head">
+      <div>
+        <p class="eyebrow">Restricted area · learn.alphaonelabs.com</p>
+        <h1>Admin dashboard</h1>
+      </div>
+      <div class="actions">
+        <button id="theme" class="btn" type="button" aria-label="Toggle dark mode">Theme</button>
+        <button id="reload" class="btn btn--gold" type="button">Refresh</button>
+      </div>
+    </div>
+    <hr class="rule" />
+
+    <section aria-labelledby="views-title" style="margin-top:0">
+      <div class="section-head">
+        <h2 id="views-title">Page views</h2>
+        <p class="eyebrow" id="views-since"></p>
+      </div>
+      <div class="tiles">
+        <div class="tile"><p class="eyebrow">Today</p><p class="num gold" id="v-today">-</p></div>
+        <div class="tile"><p class="eyebrow">Last 7 days</p><p class="num" id="v-7">-</p></div>
+        <div class="tile"><p class="eyebrow">Last 30 days</p><p class="num" id="v-30">-</p></div>
+        <div class="tile"><p class="eyebrow">All time</p><p class="num" id="v-all">-</p></div>
+      </div>
+      <div class="chart">
+        <p class="eyebrow">Views per day, last 30 days (UTC)</p>
+        <div class="bars" id="bars" role="img" aria-label="Views per day"></div>
+        <div class="axis"><span id="axis-start"></span><span id="axis-end"></span></div>
+      </div>
+      <div class="cols">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Restricted area</p>
-          <h1 class="text-3xl font-black mt-1">Database Table Counts</h1>
-          <p class="text-sm text-slate-500 mt-2">Protected by HTTP Basic Auth and loaded from live D1 metadata.</p>
+          <p class="eyebrow" style="margin-bottom:10px">Top activities · 30 days</p>
+          <table><thead><tr><th>Activity</th><th class="n">Views</th></tr></thead><tbody id="top-acts"></tbody></table>
         </div>
-        <button id="reload" class="a1-btn a1-btn--primary a1-btn--sm">Refresh</button>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-          <p class="text-xs uppercase tracking-wider text-slate-500">Tables</p>
-          <p id="stat-tables" class="text-2xl font-extrabold mt-1">-</p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-          <p class="text-xs uppercase tracking-wider text-slate-500">Rows Total</p>
-          <p id="stat-rows" class="text-2xl font-extrabold mt-1">-</p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-          <p class="text-xs uppercase tracking-wider text-slate-500">Largest Table</p>
-          <p id="stat-largest" class="text-xl font-extrabold mt-1">-</p>
+        <div>
+          <p class="eyebrow" style="margin-bottom:10px">Top pages · 30 days</p>
+          <table><thead><tr><th>Page</th><th class="n">Views</th></tr></thead><tbody id="top-pages"></tbody></table>
         </div>
       </div>
-
-      <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <table class="w-full text-left">
-          <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
-            <tr>
-              <th class="px-4 py-3">Table</th>
-              <th class="px-4 py-3">Rows</th>
-            </tr>
-          </thead>
-          <tbody id="rows" class="text-sm"></tbody>
-        </table>
-      </div>
-
-      <p id="status" class="text-sm text-slate-500 mt-4">Loading table counts...</p>
+      <p class="status">Counts page loads by real browsers. Bots, prefetches, API calls and assets are skipped. No IP addresses, cookies or user ids are stored.</p>
     </section>
+
+    <section aria-labelledby="tables-title">
+      <div class="section-head">
+        <h2 id="tables-title">Database</h2>
+        <p class="eyebrow" id="tables-summary"></p>
+      </div>
+      <table><thead><tr><th>Table</th><th class="n">Rows</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+
+    <p id="status" class="status">Loading…</p>
   </main>
 
   <script>
     function esc(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+    function fmt(n) { return Number(n || 0).toLocaleString(); }
+    var base = window.location.pathname.replace(/\/+$/, '');
+    var loadingRow = function (cols) {
+      return '<tr><td class="pulse empty" colspan="' + cols + '">Loading…</td></tr>';
+    };
+    function emptyRow(cols, text) { return '<tr><td class="empty" colspan="' + cols + '">' + esc(text) + '</td></tr>'; }
 
-    function setLoading() {
-      const body = document.getElementById('rows');
-      body.innerHTML =
-        '<tr><td class="px-4 py-3 pulse text-slate-400">Loading...</td><td class="px-4 py-3 pulse text-slate-400">Loading...</td></tr>';
-      document.getElementById('status').textContent = 'Loading table counts...';
-    }
+    function renderViews(d) {
+      var t = d.totals || {};
+      document.getElementById('v-today').textContent = fmt(t.today);
+      document.getElementById('v-7').textContent = fmt(t.last7);
+      document.getElementById('v-30').textContent = fmt(t.last30);
+      document.getElementById('v-all').textContent = fmt(t.all_time);
+      document.getElementById('views-since').textContent = t.since ? 'Tracking since ' + t.since : 'No views recorded yet';
 
-    function render(rows) {
-      const tbody = document.getElementById('rows');
-      if (!rows.length) {
-        tbody.innerHTML = '<tr><td class="px-4 py-4 text-slate-400" colspan="2">No tables found.</td></tr>';
-        document.getElementById('status').textContent = 'No application tables available.';
-        document.getElementById('stat-tables').textContent = '0';
-        document.getElementById('stat-rows').textContent = '0';
-        document.getElementById('stat-largest').textContent = '-';
-        return;
+      var daily = d.daily || [];
+      var max = Math.max.apply(null, daily.map(function (x) { return x.views; }).concat([1]));
+      document.getElementById('bars').innerHTML = daily.map(function (x) {
+        var h = x.views ? Math.max(2, Math.round(x.views / max * 100)) : 1;
+        return '<div class="bar' + (x.views ? '' : ' zero') + '" style="height:' + h + '%" title="' + esc(x.day + ': ' + fmt(x.views) + ' views') + '"></div>';
+      }).join('');
+      document.getElementById('axis-start').textContent = daily.length ? daily[0].day : '';
+      document.getElementById('axis-end').textContent = daily.length ? daily[daily.length - 1].day : '';
+
+      function list(rows, cell) {
+        if (!rows.length) return emptyRow(2, 'No views yet.');
+        var top = rows[0].views || 1;
+        return rows.map(function (r) {
+          return '<tr><td>' + cell(r) + '<div class="meter"><span style="width:' + Math.round(r.views / top * 100) + '%"></span></div></td>' +
+            '<td class="n">' + fmt(r.views) + '</td></tr>';
+        }).join('');
       }
-
-      rows.sort((a, b) => b.count - a.count);
-      tbody.innerHTML = rows.map((r) =>
-        '<tr class="border-t border-slate-100">' +
-          '<td class="px-4 py-3 font-medium text-slate-700">' + esc(r.table) + '</td>' +
-          '<td class="px-4 py-3 text-slate-900">' + Number(r.count).toLocaleString() + '</td>' +
-        '</tr>'
-      ).join('');
-
-      const totalRows = rows.reduce((sum, r) => sum + Number(r.count || 0), 0);
-      const largest = rows[0];
-
-      document.getElementById('stat-tables').textContent = String(rows.length);
-      document.getElementById('stat-rows').textContent = totalRows.toLocaleString();
-      document.getElementById('stat-largest').textContent = largest.table + ' (' + Number(largest.count).toLocaleString() + ')';
-      document.getElementById('status').textContent = 'Updated at ' + new Date().toLocaleTimeString();
+      document.getElementById('top-acts').innerHTML = list(d.top_activities || [], function (r) {
+        return '<a href="' + esc(r.path) + '" target="_blank" rel="noopener">' + esc(r.title || r.slug || r.id) + '</a>';
+      });
+      document.getElementById('top-pages').innerHTML = list(d.top_pages || [], function (r) {
+        return '<a href="' + esc(r.path) + '" target="_blank" rel="noopener"><code>' + esc(r.path) + '</code></a>';
+      });
     }
 
-    async function loadCounts() {
-      setLoading();
-      try {
-        const adminBase = window.location.pathname.replace(/\/+$/, '');
-        const res = await fetch(adminBase + '/api/table-counts', { cache: 'no-store', credentials: 'same-origin' });
-        if (!res.ok) {
-          throw new Error('HTTP ' + res.status + ' while loading admin stats. Open the admin page through the configured ADMIN_URL and sign in with Basic Auth.');
-        }
-        const data = await res.json();
-        render(data.tables || []);
-      } catch (e) {
-        document.getElementById('rows').innerHTML =
-          '<tr><td class="px-4 py-4 text-red-600" colspan="2">Failed to load counts.</td></tr>';
-        document.getElementById('status').textContent = e.message;
-      }
+    function renderTables(rows) {
+      rows.sort(function (a, b) { return b.count - a.count; });
+      var total = rows.reduce(function (s, r) { return s + Number(r.count || 0); }, 0);
+      document.getElementById('tables-summary').textContent = rows.length + ' tables · ' + fmt(total) + ' rows';
+      document.getElementById('rows').innerHTML = rows.length ? rows.map(function (r) {
+        return '<tr><td><code>' + esc(r.table) + '</code></td><td class="n">' + fmt(r.count) + '</td></tr>';
+      }).join('') : emptyRow(2, 'No tables found.');
     }
 
-    document.getElementById('reload').addEventListener('click', loadCounts);
-    loadCounts();
+    async function getJson(path) {
+      var res = await fetch(base + path, { cache: 'no-store', credentials: 'same-origin' });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' from ' + path + '. Open the admin page through ADMIN_URL and sign in with Basic Auth.');
+      return res.json();
+    }
+
+    async function load() {
+      ['top-acts', 'top-pages', 'rows'].forEach(function (id) { document.getElementById(id).innerHTML = loadingRow(2); });
+      var status = document.getElementById('status');
+      status.className = 'status';
+      status.textContent = 'Loading…';
+      var results = await Promise.allSettled([getJson('/api/views'), getJson('/api/table-counts')]);
+      var errors = [];
+      if (results[0].status === 'fulfilled') renderViews(results[0].value);
+      else { errors.push(results[0].reason.message); document.getElementById('top-acts').innerHTML = document.getElementById('top-pages').innerHTML = emptyRow(2, 'Failed to load views.'); }
+      if (results[1].status === 'fulfilled') renderTables(results[1].value.tables || []);
+      else { errors.push(results[1].reason.message); document.getElementById('rows').innerHTML = emptyRow(2, 'Failed to load table counts.'); }
+      status.className = errors.length ? 'status err' : 'status';
+      status.textContent = errors.length ? errors.join(' ') : 'Updated at ' + new Date().toLocaleTimeString();
+    }
+
+    document.getElementById('reload').addEventListener('click', load);
+    document.getElementById('theme').addEventListener('click', function () {
+      var dark = !document.documentElement.classList.contains('dark');
+      document.documentElement.classList.toggle('dark', dark);
+      document.documentElement.setAttribute('data-a1-theme', dark ? 'dark' : 'light');
+      try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch (e) {}
+    });
+    load();
   </script>
 </body>
 </html>
