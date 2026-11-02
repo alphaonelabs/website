@@ -153,5 +153,6 @@ def get_auth_token(request):
     """Get session token for Authorization header"""
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
-        return auth_header[7:]
+        token = auth_header[7:].strip()
+        return token or None
     return None
