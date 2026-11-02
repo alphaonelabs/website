@@ -9,6 +9,7 @@ Thank you for helping! Everything lives in this one repository, so the steps are
 3. **Work in one project folder.** Keep each PR focused on a single project (`learn/`, `botlab/`, ...). Checks run only for the folders you touch.
 4. **Test locally.** Follow the README in the project's folder. For Cloudflare Worker projects, `npx wrangler dev` runs the site locally.
 5. **Open a PR** with a clear title and a short description of what changed and how you tested it. Screenshots help for UI changes.
+6. **Get a peer review.** Another contributor must review and approve your PR before a maintainer looks at it. Share the link in our [Slack](https://join.slack.com/t/alphaonelabs/shared_invite/zt-3glzypiib-8Lq~UZwWvcCFAjeG5uwcPg) and ask for a reviewer, and review someone else's PR in return. Approved PRs get the `peer reviewed` label automatically. New commits clear earlier approvals, so ask for another look after you push changes.
 
 ## Where should my change go?
 

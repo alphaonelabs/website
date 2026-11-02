@@ -1,0 +1,17 @@
+name: Peer Review Event
+
+# Review events on fork PRs only get a read-only token, so this workflow does
+# nothing except finish; "Peer Review Reminder" runs on its completion with a
+# token that can update labels and comments.
+
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions: {}
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Review ${{ github.event.action }} on PR ${{ github.event.pull_request.number }}"
