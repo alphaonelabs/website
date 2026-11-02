@@ -20,7 +20,6 @@ database_id = "7e6bb2f0-bebe-4ea3-9757-d0bef60ebca5"
 
 [vars]
 ANOMALY_ZSCORE_THRESHOLD = "2.5"
-ALERT_CHECK_INTERVAL_MINUTES = "15"
 MAX_READINGS_PER_QUERY = "1000"
 
 [env.staging]
