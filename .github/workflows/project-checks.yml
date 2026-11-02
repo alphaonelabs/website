@@ -65,6 +65,9 @@ jobs:
       - name: Build GSoC ideas page
         if: matrix.project == 'gsoc'
         run: pip install markdown && python scripts/build_ideas.py
+      - name: Check design system tokens
+        if: matrix.project == 'design-system'
+        run: python scripts/check_tokens.py
       - name: Wrangler dry run
         run: npx --yes wrangler@4.40.0 deploy --dry-run --outdir /tmp/wrangler-dry-run
 
