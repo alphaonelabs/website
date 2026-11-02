@@ -94,10 +94,6 @@ wrangler secret put GITHUB_CLIENT_SECRET
 # Generate and set webhook secret
 echo "Enter a random webhook secret (or generate one):"
 wrangler secret put GITHUB_WEBHOOK_SECRET
-
-# Optional: Set session secret
-echo "Enter a random session secret (or generate one):"
-wrangler secret put SESSION_SECRET
 ```
 
 To generate secure secrets:
