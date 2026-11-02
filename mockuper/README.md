@@ -48,6 +48,12 @@ A web-based low-fidelity wireframing application built with vanilla HTML, CSS, a
 
 ## 🛠️ Development
 
+Run the state manager tests with Node.js:
+
+```bash
+node --test mockuper/tests/*.test.js
+```
+
 No build process required! Just open `index.html` in a modern browser or serve it with any web server:
 
 ```bash
@@ -94,4 +100,3 @@ No build step needed - it's pure vanilla JavaScript!
 ## 📝 License
 
 See LICENSE file for details.,
-
