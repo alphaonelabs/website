@@ -3,6 +3,8 @@
  * Handles UI updates and event bindings
  */
 
+import { pageToSvg } from './SvgExporter.js';
+
 class UIController {
     constructor(state) {
         this.state = state;
@@ -20,6 +22,7 @@ class UIController {
         this.deleteBtn = document.getElementById('delete-btn');
         this.exportPngBtn = document.getElementById('export-png-btn');
         this.exportPdfBtn = document.getElementById('export-pdf-btn');
+        this.exportSvgBtn = document.getElementById('export-svg-btn');
         this.exportJsonBtn = document.getElementById('export-json-btn');
         this.importJsonBtn = document.getElementById('import-json-btn');
         this.jsonFileInput = document.getElementById('json-file-input');
@@ -85,6 +88,7 @@ class UIController {
         // Export buttons
         this.exportPngBtn.addEventListener('click', () => this.exportToPNG());
         this.exportPdfBtn.addEventListener('click', () => this.exportToPDF());
+        this.exportSvgBtn.addEventListener('click', () => this.exportToSVG());
         this.exportJsonBtn.addEventListener('click', () => this.exportToJSON());
         this.importJsonBtn.addEventListener('click', () => this.importFromJSON());
         
@@ -387,10 +391,9 @@ class UIController {
     }
 
     async exportToPNG() {
-        const html2canvas = (await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm')).default;
-        const content = document.getElementById('canvas-content');
-        
         try {
+            const html2canvas = (await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm')).default;
+            const content = document.getElementById('canvas-content');
             const canvas = await html2canvas(content, {
                 backgroundColor: '#ffffff',
                 scale: 2
@@ -407,11 +410,10 @@ class UIController {
     }
 
     async exportToPDF() {
-        const html2canvas = (await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm')).default;
-        const { jsPDF } = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm');
-        const content = document.getElementById('canvas-content');
-        
         try {
+            const html2canvas = (await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm')).default;
+            const { jsPDF } = await import('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm');
+            const content = document.getElementById('canvas-content');
             const canvas = await html2canvas(content, {
                 backgroundColor: '#ffffff',
                 scale: 2
@@ -535,6 +537,22 @@ class UIController {
             mobile: 'Mobile App'
         };
         return texts[type] || type;
+    }
+
+    exportToSVG() {
+        try {
+            const svgData = pageToSvg(this.state.getCurrentPage());
+            const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${this.state.getCurrentPage().name}.svg`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Export to SVG failed:', error);
+            alert('SVG export failed. Please try again.');
+        }
     }
 
     exportToJSON() {

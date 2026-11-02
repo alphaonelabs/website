@@ -14,7 +14,7 @@ A web-based low-fidelity wireframing application built with vanilla HTML, CSS, a
 - **Grid Toggle** - Show/hide alignment grid (20px spacing)
 - **Undo/Redo** - Full history support with keyboard shortcuts
 - **Layer Ordering** - Bring to front/send to back for proper layering
-- **Export** - Export to PNG or PDF format
+- **Export** - Export to PNG, PDF, SVG, or JSON format
 - **Local Storage** - Projects automatically save and restore on reload
 - **Modular Architecture** - Clean ES6 modules for easy maintenance
 
@@ -45,8 +45,15 @@ A web-based low-fidelity wireframing application built with vanilla HTML, CSS, a
 ### Exporting
 - Click "📷 PNG" to export current page as PNG
 - Click "📄 PDF" to export current page as PDF
+- Click "◉ SVG" to export current page as SVG
 
 ## 🛠️ Development
+
+Run the SVG exporter tests with Node.js:
+
+```bash
+node --test mockuper/tests/*.test.js
+```
 
 No build process required! Just open `index.html` in a modern browser or serve it with any web server:
 
@@ -94,4 +101,3 @@ No build step needed - it's pure vanilla JavaScript!
 ## 📝 License
 
 See LICENSE file for details.,
-
