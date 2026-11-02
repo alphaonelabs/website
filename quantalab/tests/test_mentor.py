@@ -69,6 +69,20 @@ def test_unknown_domain_and_experiment_are_not_in_the_prompt():
     assert "[Context:" not in system
 
 
+def test_unhashable_history_role_is_dropped():
+    env = _FakeEnv()
+    history = [
+        {"role": ["user"], "content": "list role"},
+        {"role": {"name": "user"}, "content": "dict role"},
+        {"role": "user", "content": "kept"},
+    ]
+    asyncio.run(ask_mentor(env, "Hello", history, "physics", "pendulum"))
+    contents = [item["content"] for item in _messages(env)]
+    assert "list role" not in contents
+    assert "dict role" not in contents
+    assert "kept" in contents
+
+
 def test_non_list_history_does_not_reach_the_model():
     env = _FakeEnv()
     asyncio.run(ask_mentor(env, "Hello", {"role": "user", "content": "secret history"}, "physics", "pendulum"))
@@ -145,3 +159,34 @@ def test_non_string_message_is_rejected_without_calling_ai():
     assert response.status == 400
     assert env.AI.calls == []
     assert "required" in payload["error"]
+
+
+def test_non_object_json_body_is_rejected():
+    _install_js_stub()
+    from index import handle_mentor
+
+    env = _FakeEnv()
+    response = asyncio.run(handle_mentor(_Request(["not", "an", "object"]), env))
+    payload = json.loads(response.body)
+    assert response.status == 400
+    assert env.AI.calls == []
+    assert "JSON" in payload["error"]
+
+
+def test_known_domain_with_unknown_experiment_is_not_in_the_prompt():
+    env = _FakeEnv()
+    asyncio.run(ask_mentor(env, "Hello", [], "physics", "not-a-real-experiment"))
+    system = _messages(env)[0]["content"]
+    assert "[Context:" not in system
+    assert "not-a-real-experiment" not in system
+
+
+def test_invalid_entries_after_more_than_ten_valid_turns_are_dropped():
+    env = _FakeEnv()
+    history = [{"role": "user", "content": f"turn-{index}"} for index in range(12)]
+    history.append({"role": ["user"], "content": "late bad role"})
+    history.append("not-a-dict")
+    asyncio.run(ask_mentor(env, "now", history, "", ""))
+    contents = [item["content"] for item in _messages(env)[1:-1]]
+    assert contents == [f"turn-{index}" for index in range(2, 12)]
+    assert "late bad role" not in json.dumps(_messages(env))

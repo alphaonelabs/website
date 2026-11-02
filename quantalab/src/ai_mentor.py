@@ -47,7 +47,7 @@ def _clean_history(history) -> list[dict]:
             continue
         role = item.get("role")
         content = item.get("content")
-        if role not in _ALLOWED_ROLES or not isinstance(content, str):
+        if not isinstance(role, str) or role not in _ALLOWED_ROLES or not isinstance(content, str):
             continue
         cleaned.append({"role": role, "content": content[:_MAX_CONTENT_LENGTH]})
     return cleaned[-_MAX_HISTORY_TURNS:]
