@@ -61,6 +61,11 @@ class UIController {
         this.dragGhost = null;
     }
 
+    isEditingText(target) {
+        return target instanceof Element &&
+            !!target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
+    }
+
     bindEvents() {
         // Toolbar
         this.undoBtn.addEventListener('click', () => this.state.undo());
@@ -262,20 +267,25 @@ class UIController {
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            // Leave text editing and other form controls to the browser
+            if (this.isEditingText(e.target)) {
+                return;
+            }
+            
             // Delete/Backspace
-            if ((e.key === 'Delete' || e.key === 'Backspace') && 
-                e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (this.state.selectedElementId) {
                     this.state.deleteElement(this.state.selectedElementId);
                 }
             }
             
             // Undo/Redo
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            const key = e.key.toLowerCase();
+            if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 this.state.undo();
             }
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+            if ((e.ctrlKey || e.metaKey) && (key === 'y' || (e.shiftKey && key === 'z'))) {
                 e.preventDefault();
                 this.state.redo();
             }
