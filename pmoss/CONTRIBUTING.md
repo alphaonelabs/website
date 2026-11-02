@@ -1,6 +1,6 @@
-# Contributing to OSS Project Management
+# Contributing to PMOSS
 
-Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to PMOSS, the project management app in the [Alpha One Labs website monorepo](https://github.com/alphaonelabs/website). Keep changes focused on `pmoss/` and follow the [repository contributing guidelines](../CONTRIBUTING.md) and [Code of Conduct](../CODE_OF_CONDUCT.md).
 
 ## Code of Conduct
 
@@ -13,49 +13,32 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ### Prerequisites
 
-- Node.js 16+ and npm
 - Wrangler CLI
-- Cloudflare account (for testing)
+- Cloudflare account (for deploying)
 - GitHub account
 
 ### Development Setup
 
-1. **Fork and clone the repository**
+1. **Fork and clone the monorepo**
 
 ```bash
-git clone https://github.com/your-username/alphaonelabs-oss-project-management.git
-cd alphaonelabs-oss-project-management
+git clone https://github.com/YOUR_USERNAME/website.git
+cd website/pmoss
+git remote add upstream https://github.com/alphaonelabs/website.git
 ```
 
-2. **Install dependencies**
+2. **Configure local development**
 
 ```bash
-npm install
+cp .dev.vars.example .dev.vars
+# Add your GitHub OAuth credentials to .dev.vars
 ```
 
-3. **Set up local D1 database**
+Wrangler uses the `pmoss` D1 binding from `wrangler.toml`. Initialize the local database and start the Worker:
 
 ```bash
-# Create local database for testing
-wrangler d1 create oss-pm-db-dev
-
-# Initialize schema
-wrangler d1 execute oss-pm-db-dev --local --file=./schema.sql
-```
-
-4. **Configure environment**
-
-Copy `.env.example` to `.dev.vars` and fill in your development credentials:
-
-```bash
-cp .env.example .dev.vars
-# Edit .dev.vars with your GitHub OAuth app credentials
-```
-
-5. **Run development server**
-
-```bash
-npm run dev
+wrangler d1 execute pmoss --local --file=./schema.sql
+wrangler dev
 ```
 
 The local server will be available at `http://localhost:8787`
@@ -63,25 +46,18 @@ The local server will be available at `http://localhost:8787`
 ## Project Structure
 
 ```
-├── src/
-│   ├── index.js      # Main worker entry point
-│   ├── auth.js       # OAuth authentication
-│   ├── api.js        # API endpoint handlers
-│   ├── github.js     # GitHub API client
-│   ├── webhook.js    # Webhook handler
-│   ├── metrics.js    # Analytics and metrics
-│   └── ui.js         # Frontend UI
+├── src/              # Python Worker, API, OAuth, and UI
 ├── schema.sql        # D1 database schema
-├── wrangler.toml     # Cloudflare Workers config
-├── package.json      # Node dependencies
-└── requirements.txt  # Python dependencies (reference)
+├── wrangler.toml     # Cloudflare Workers and D1 configuration
+├── README.md         # Project overview and setup
+└── CONTRIBUTING.md   # PMOSS contribution guide
 ```
 
 ## How to Contribute
 
 ### Reporting Bugs
 
-1. Check if the bug has already been reported in [Issues](https://github.com/alphaonelabs/alphaonelabs-oss-project-management/issues)
+1. Check [open PMOSS issues](https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+pmoss%22).
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce
@@ -91,7 +67,7 @@ The local server will be available at `http://localhost:8787`
 
 ### Suggesting Features
 
-1. Check [Issues](https://github.com/alphaonelabs/alphaonelabs-oss-project-management/issues) for similar suggestions
+1. Check [open PMOSS issues](https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+pmoss%22) for similar suggestions.
 2. Create a new issue with:
    - Clear title and description
    - Use case and benefits
@@ -116,7 +92,7 @@ git checkout -b feature/your-feature-name
 
 ```bash
 # Run local development server
-npm run dev
+wrangler dev
 
 # Test in browser
 # Verify all features work as expected
@@ -276,7 +252,7 @@ Good areas to contribute:
 If you have questions:
 
 1. Check the [README](README.md) and [DEPLOYMENT](DEPLOYMENT.md) guides
-2. Search existing [Issues](https://github.com/alphaonelabs/alphaonelabs-oss-project-management/issues)
+2. Search [open PMOSS issues](https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+pmoss%22)
 3. Create a new issue with the "question" label
 4. Join discussions in existing issues and PRs
 

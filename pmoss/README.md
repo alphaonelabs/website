@@ -2,6 +2,8 @@
 
 A minimal, fast open-source project management system that integrates with GitHub Issues. Built as a **Python-based Cloudflare Worker** with D1 database for high-performance caching and synchronization.
 
+The live application is available at [pmoss.alphaonelabs.com](https://pmoss.alphaonelabs.com/).
+
 ## Quick Links
 
 📚 **[Quick Start Guide](QUICKSTART.md)** - Get started in 10 minutes  
@@ -65,14 +67,14 @@ A minimal, fast open-source project management system that integrates with GitHu
 
 ### 1. Clone the Repository
 
-\`\`\`bash
-git clone https://github.com/alphaonelabs/alphaonelabs-oss-project-management.git
-cd alphaonelabs-oss-project-management
-\`\`\`
+```bash
+git clone https://github.com/alphaonelabs/website.git
+cd website/pmoss
+```
 
 ### 2. Install Wrangler CLI
 
-\`\`\`bash
+```bash
 # Using npm (only for Wrangler CLI, not for the project)
 npm install -g wrangler
 
@@ -81,31 +83,33 @@ cargo install wrangler
 
 # Or using Homebrew (macOS)
 brew install cloudflare-wrangler2
-\`\`\`
+```
 
 ### 3. Create a D1 Database
 
-\`\`\`bash
-# Create the database
-wrangler d1 create oss-pm-db
+```bash
+# Create the database named in wrangler.toml
+wrangler d1 create pmoss
 
-# Note the database_id from the output and update wrangler.toml
-\`\`\`
+# Use the returned database_id in wrangler.toml
+```
 
-Update `wrangler.toml` with your database ID:
+The D1 binding in `wrangler.toml` is named `pmoss`. Keep the database name
+`pmoss` in Wrangler commands and configuration, and replace the configured
+`database_id` with the ID for your own database:
 
-\`\`\`toml
+```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "oss-pm-db"
+database_name = "pmoss"
 database_id = "your-database-id-here"
-\`\`\`
+```
 
 ### 4. Initialize Database Schema
 
-\`\`\`bash
-wrangler d1 execute oss-pm-db --file=./schema.sql
-\`\`\`
+```bash
+wrangler d1 execute pmoss --file=./schema.sql
+```
 
 ### 5. Create GitHub OAuth App
 
@@ -113,13 +117,17 @@ wrangler d1 execute oss-pm-db --file=./schema.sql
 2. Click "New OAuth App"
 3. Fill in the details:
    - **Application name**: OSS Project Management
-   - **Homepage URL**: `https://your-worker.workers.dev`
-   - **Authorization callback URL**: `https://your-worker.workers.dev/auth/callback`
+   - **Homepage URL**: `https://pmoss.alphaonelabs.com`
+   - **Authorization callback URL**: `https://pmoss.alphaonelabs.com/auth/callback`
 4. Note the Client ID and generate a Client Secret
+
+These are the URLs for the live deployment. If deploying your own copy, use
+your own domain in the OAuth app and set the matching callback URL in
+`wrangler.toml`.
 
 ### 6. Configure Secrets
 
-\`\`\`bash
+```bash
 # Set GitHub OAuth credentials
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
@@ -129,27 +137,27 @@ wrangler secret put GITHUB_WEBHOOK_SECRET
 
 # Optional: Session secret for additional security
 wrangler secret put SESSION_SECRET
-\`\`\`
+```
 
 Update `wrangler.toml` with your worker URL:
 
-\`\`\`toml
+```toml
 [vars]
-GITHUB_REDIRECT_URI = "https://your-worker.workers.dev/auth/callback"
-\`\`\`
+GITHUB_REDIRECT_URI = "https://pmoss.alphaonelabs.com/auth/callback"
+```
 
 ### 7. Deploy
 
-\`\`\`bash
+```bash
 # Deploy to Cloudflare Workers
 wrangler deploy
-\`\`\`
+```
 
 ## Usage
 
 ### Initial Setup
 
-1. Navigate to your worker URL: `https://your-worker.workers.dev`
+1. Navigate to [pmoss.alphaonelabs.com](https://pmoss.alphaonelabs.com/)
 2. Click "Connect with GitHub" to authenticate
 3. Enter a repository in the format `owner/repo`
 4. Click "Sync" to initially sync issues from GitHub
@@ -174,7 +182,7 @@ For real-time synchronization, set up a webhook:
 
 1. Go to your repository settings → Webhooks
 2. Add a new webhook:
-   - **Payload URL**: `https://your-worker.workers.dev/webhook`
+   - **Payload URL**: `https://pmoss.alphaonelabs.com/webhook`
    - **Content type**: `application/json`
    - **Secret**: Use the same value as `GITHUB_WEBHOOK_SECRET`
    - **Events**: Select "Issues"
@@ -221,12 +229,12 @@ The D1 database includes the following tables:
 
 ### Local Development
 
-\`\`\`bash
+```bash
 # Run local development server
 wrangler dev
 
 # Access at http://localhost:8787
-\`\`\`
+```
 
 **Note**: Python Workers are fully supported by Wrangler. No separate Python installation or pip packages are needed.
 
@@ -234,9 +242,9 @@ wrangler dev
 
 Use a tool like [ngrok](https://ngrok.com/) to test webhooks locally:
 
-\`\`\`bash
+```bash
 ngrok http 8787
-\`\`\`
+```
 
 Then use the ngrok URL for your GitHub webhook.
 
@@ -283,4 +291,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For issues and questions, please use the [GitHub Issues](https://github.com/alphaonelabs/alphaonelabs-oss-project-management/issues) page.
+For issues and questions, use [open PMOSS issues](https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+pmoss%22).

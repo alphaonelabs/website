@@ -33,9 +33,9 @@ wrangler login
 ## 3. Clone and Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/alphaonelabs/alphaonelabs-oss-project-management.git
-cd alphaonelabs-oss-project-management
+# Clone the monorepo (use your fork URL if you forked it)
+git clone https://github.com/alphaonelabs/website.git
+cd website/pmoss
 
 # No npm install or pip install needed! Python Workers run directly
 ```
@@ -44,7 +44,7 @@ cd alphaonelabs-oss-project-management
 
 ```bash
 # Create database
-wrangler d1 create oss-pm-db
+wrangler d1 create pmoss
 ```
 
 Copy the `database_id` from output and update `wrangler.toml`:
@@ -52,24 +52,24 @@ Copy the `database_id` from output and update `wrangler.toml`:
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "oss-pm-db"
+database_name = "pmoss"
 database_id = "paste-your-database-id-here"
 ```
 
 Initialize schema:
 
 ```bash
-wrangler d1 execute oss-pm-db --file=./schema.sql
+wrangler d1 execute pmoss --file=./schema.sql
 ```
 
 ## 5. Create GitHub OAuth App
 
 1. Go to https://github.com/settings/developers
 2. Click **"New OAuth App"**
-3. Fill in (use temporary values, we'll update after deploy):
+3. Use your deployment's URL. The live application uses:
    - Name: `OSS Project Management`
-   - Homepage: `https://oss-project-management.your-subdomain.workers.dev`
-   - Callback: `https://oss-project-management.your-subdomain.workers.dev/auth/callback`
+   - Homepage: `https://pmoss.alphaonelabs.com`
+   - Callback: `https://pmoss.alphaonelabs.com/auth/callback`
 4. Save **Client ID** and **Client Secret**
 
 ## 6. Configure Secrets
@@ -93,20 +93,20 @@ wrangler secret put GITHUB_WEBHOOK_SECRET
 wrangler deploy
 ```
 
-Copy your worker URL from the output (e.g., `https://oss-project-management.your-subdomain.workers.dev`)
+The live application is at [https://pmoss.alphaonelabs.com](https://pmoss.alphaonelabs.com/). For your own deployment, use the URL configured for your Worker/custom domain.
 
 ## 8. Update GitHub OAuth App
 
 1. Go back to https://github.com/settings/developers
 2. Edit your OAuth app
 3. Update **Homepage URL** and **Callback URL** with your actual worker URL
-4. Save changes
+4. Save changes. For your own deployment, use the URL configured for your Worker/custom domain.
 
 Update `wrangler.toml`:
 
 ```toml
 [vars]
-GITHUB_REDIRECT_URI = "https://your-actual-worker-url.workers.dev/auth/callback"
+GITHUB_REDIRECT_URI = "https://pmoss.alphaonelabs.com/auth/callback"
 ```
 
 Redeploy:
@@ -117,7 +117,7 @@ wrangler deploy
 
 ## 9. Start Using!
 
-1. Open your worker URL in browser
+1. Open [pmoss.alphaonelabs.com](https://pmoss.alphaonelabs.com/) or your own deployment URL
 2. Click **"Connect with GitHub"**
 3. Authorize the app
 4. Enter a repository: `owner/repo`
@@ -139,7 +139,7 @@ For automatic syncing when issues change:
 1. Go to your repo → Settings → Webhooks
 2. Click **"Add webhook"**
 3. Enter:
-   - **Payload URL**: `https://your-worker-url.workers.dev/webhook`
+   - **Payload URL**: `https://pmoss.alphaonelabs.com/webhook` (or your own deployment URL)
    - **Content type**: `application/json`
    - **Secret**: Same as your `GITHUB_WEBHOOK_SECRET`
    - **Events**: Select "Issues"
@@ -172,7 +172,7 @@ Having issues?
 
 1. Check [DEPLOYMENT.md](DEPLOYMENT.md) troubleshooting section
 2. View logs with `wrangler tail`
-3. Open an issue on GitHub
+3. Open a [PMOSS issue](https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+pmoss%22)
 
 ---
 

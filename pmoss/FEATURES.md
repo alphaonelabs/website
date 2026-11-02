@@ -254,7 +254,7 @@ Complete list of features in the OSS Project Management system.
 Have an idea? We'd love to hear it!
 
 1. Check if it's already in the [Planned Features](#planned-features) list
-2. Search [existing issues](https://github.com/alphaonelabs/alphaonelabs-oss-project-management/issues)
+2. Search [open PMOSS issues](https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+pmoss%22)
 3. Open a new issue with:
    - Clear description
    - Use case

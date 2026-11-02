@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide walks you through deploying the OSS Project Management system to Cloudflare Workers.
+This guide covers deploying PMOSS, the project management app in the `alphaonelabs/website` monorepo, to Cloudflare Workers. The live application is available at [pmoss.alphaonelabs.com](https://pmoss.alphaonelabs.com/).
 
 ## Prerequisites Checklist
 
@@ -26,25 +26,26 @@ wrangler whoami
 
 ```bash
 # Create the database
-wrangler d1 create oss-pm-db
+wrangler d1 create pmoss
 ```
 
 You'll receive output like:
 ```
-✅ Successfully created DB 'oss-pm-db'
+✅ Successfully created DB 'pmoss'
 
 [[d1_databases]]
 binding = "DB"
-database_name = "oss-pm-db"
+database_name = "pmoss"
 database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-Copy the `database_id` and update `wrangler.toml`:
+Copy the `database_id` and update `wrangler.toml`. Keep the database name
+`pmoss` to match the D1 binding:
 
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "oss-pm-db"
+database_name = "pmoss"
 database_id = "your-actual-database-id"  # Replace this
 ```
 
@@ -52,10 +53,10 @@ database_id = "your-actual-database-id"  # Replace this
 
 ```bash
 # Apply schema to D1 database
-wrangler d1 execute oss-pm-db --file=./schema.sql
+wrangler d1 execute pmoss --file=./schema.sql
 
 # Verify tables created
-wrangler d1 execute oss-pm-db --command="SELECT name FROM sqlite_master WHERE type='table'"
+wrangler d1 execute pmoss --command="SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
 ### 4. Set Up GitHub OAuth App
@@ -64,8 +65,8 @@ wrangler d1 execute oss-pm-db --command="SELECT name FROM sqlite_master WHERE ty
 2. Click **"New OAuth App"**
 3. Fill in:
    - **Application name**: `OSS Project Management`
-   - **Homepage URL**: `https://oss-project-management.your-subdomain.workers.dev`
-   - **Authorization callback URL**: `https://oss-project-management.your-subdomain.workers.dev/auth/callback`
+   - **Homepage URL**: `https://pmoss.alphaonelabs.com`
+   - **Authorization callback URL**: `https://pmoss.alphaonelabs.com/auth/callback`
 4. Click **"Register application"**
 5. Note your **Client ID**
 6. Click **"Generate a new client secret"** and save it securely
@@ -75,11 +76,15 @@ wrangler d1 execute oss-pm-db --command="SELECT name FROM sqlite_master WHERE ty
 Edit `wrangler.toml`:
 
 ```toml
-name = "oss-project-management"  # Choose your worker name
+name = "pmoss"
 
 [vars]
-GITHUB_REDIRECT_URI = "https://oss-project-management.your-subdomain.workers.dev/auth/callback"
+GITHUB_REDIRECT_URI = "https://pmoss.alphaonelabs.com/auth/callback"
 ```
+
+`pmoss.alphaonelabs.com` is the configured live domain. If deploying your
+own copy, configure a domain for your Worker and use that same domain in the
+OAuth app and `GITHUB_REDIRECT_URI`.
 
 ### 6. Set Secrets
 
@@ -112,20 +117,17 @@ openssl rand -hex 32
 ### 7. Deploy the Worker
 
 ```bash
-# Install dependencies
-npm install
-
 # Deploy to Cloudflare
 wrangler deploy
 
 # You should see output like:
 # ✨ Deployment complete!
-# https://oss-project-management.your-subdomain.workers.dev
+# https://pmoss.alphaonelabs.com
 ```
 
 ### 8. Verify Deployment
 
-1. Open your worker URL in a browser
+1. Open [pmoss.alphaonelabs.com](https://pmoss.alphaonelabs.com/) or your own configured domain
 2. You should see the login page
 3. Click "Connect with GitHub"
 4. Authorize the OAuth app
@@ -138,7 +140,7 @@ For real-time synchronization:
 1. Go to your repository: `https://github.com/owner/repo/settings/hooks`
 2. Click **"Add webhook"**
 3. Configure:
-   - **Payload URL**: `https://your-worker.workers.dev/webhook`
+   - **Payload URL**: `https://pmoss.alphaonelabs.com/webhook` (or your own configured domain)
    - **Content type**: `application/json`
    - **Secret**: Use the same value as `GITHUB_WEBHOOK_SECRET`
    - **Which events**: Select "Issues"
@@ -148,7 +150,7 @@ For real-time synchronization:
 
 ### 10. Test the System
 
-1. Navigate to your worker URL
+1. Open [pmoss.alphaonelabs.com](https://pmoss.alphaonelabs.com/) or your own configured domain
 2. Authenticate with GitHub
 3. Enter a repository: `owner/repo`
 4. Click **"Sync"** to import issues
