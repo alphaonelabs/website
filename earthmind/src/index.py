@@ -5,6 +5,7 @@ Handles all HTTP routing for the environmental monitoring platform.
 """
 
 import json
+import math
 from urllib.parse import urlparse, parse_qs
 
 from workers import WorkerEntrypoint, Response
@@ -124,15 +125,40 @@ async def _ingest_reading(request, env) -> Response:
     except Exception:
         return _error("Invalid JSON body")
 
+    if not isinstance(body, dict):
+        return _error("JSON body must be an object")
+
     required = ("source", "source_type", "parameter", "value", "timestamp")
-    missing = [f for f in required if not body.get(f)]
+    missing = [f for f in required if body.get(f) is None or body[f] == ""]
     if missing:
         return _error(f"Missing required fields: {', '.join(missing)}")
 
+    invalid = [f for f in required if isinstance(body[f], (list, dict))]
+    if invalid:
+        return _error(f"Invalid field values: {', '.join(invalid)}")
+
+    if isinstance(body["value"], bool):
+        return _error("'value' must be a finite number")
     try:
-        float(body["value"])
-    except (TypeError, ValueError):
-        return _error("'value' must be a number")
+        value = float(body["value"])
+    except (TypeError, ValueError, OverflowError):
+        return _error("'value' must be a finite number")
+    if not math.isfinite(value):
+        return _error("'value' must be a finite number")
+
+    coordinates = {}
+    for field, bound in (("latitude", 90), ("longitude", 180)):
+        coordinate = body.get(field)
+        if coordinate is not None:
+            if isinstance(coordinate, bool):
+                return _error(f"'{field}' must be a number between {-bound} and {bound}")
+            try:
+                coordinate = float(coordinate)
+            except (TypeError, ValueError, OverflowError):
+                return _error(f"'{field}' must be a number between {-bound} and {bound}")
+            if not math.isfinite(coordinate) or not -bound <= coordinate <= bound:
+                return _error(f"'{field}' must be a number between {-bound} and {bound}")
+        coordinates[field] = coordinate
 
     stmt = env.DB.prepare(
         "INSERT INTO readings "
@@ -142,10 +168,10 @@ async def _ingest_reading(request, env) -> Response:
         body["source"],
         body["source_type"],
         body.get("location"),
-        body.get("latitude"),
-        body.get("longitude"),
+        coordinates["latitude"],
+        coordinates["longitude"],
         body["parameter"],
-        float(body["value"]),
+        value,
         body.get("unit"),
         body["timestamp"],
     )
@@ -154,7 +180,7 @@ async def _ingest_reading(request, env) -> Response:
 
     # Auto-check thresholds and create alert if exceeded
     threshold = _get_threshold(body["parameter"])
-    if threshold is not None and float(body["value"]) > threshold:
+    if threshold is not None and value > threshold:
         await _auto_create_threshold_alert(env, body, threshold)
 
     return _json_response({"id": reading_id, "status": "created"}, 201)
