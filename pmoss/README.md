@@ -245,9 +245,17 @@ URL to exactly http://localhost:8787/auth/callback. The local callback in
 the client secret in .dev.vars; that file is ignored by Git. See Cloudflare's
 [local environment variable guide](https://developers.cloudflare.com/workers/local-development/environment-variables/).
 
-Initialize the local D1 database with wrangler d1 execute pmoss --local --file=schema.sql,
-then start the Worker with the command below. Both commands should run from
-the pmoss directory. Local D1 data is separate from production.
+Initialize the local D1 database using the database_name value in
+wrangler.toml:
+
+```bash
+wrangler d1 execute <database_name> --local --file=schema.sql
+```
+
+Replace <database_name> with the configured value (pmoss in the shipped
+configuration, or oss-pm-db if you followed step 3 above). Then start the
+Worker with the command below. Run both commands from the pmoss directory.
+Local D1 data is separate from production.
 
 ```bash
 # Run local development server
