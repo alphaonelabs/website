@@ -5,7 +5,7 @@ Complete API reference for the OSS Project Management system.
 ## Base URL
 
 ```
-https://your-worker.workers.dev
+https://pmoss.alphaonelabs.com
 ```
 
 ## Authentication
@@ -66,7 +66,7 @@ List issues with filtering and sorting.
 
 **Example Request**:
 ```bash
-curl -X GET 'https://your-worker.workers.dev/api/issues?repository=owner/repo&state=open&sort=created_at&order=desc' \
+curl -X GET 'https://pmoss.alphaonelabs.com/api/issues?repository=owner/repo&state=open&sort=created_at&order=desc' \
   -H 'Cookie: session=<session-id>'
 ```
 
@@ -117,7 +117,7 @@ Get a single issue by number.
 
 **Example Request**:
 ```bash
-curl -X GET 'https://your-worker.workers.dev/api/issues/42?repository=owner/repo' \
+curl -X GET 'https://pmoss.alphaonelabs.com/api/issues/42?repository=owner/repo' \
   -H 'Cookie: session=<session-id>'
 ```
 
@@ -170,7 +170,7 @@ Update an issue on GitHub and sync back to database.
 
 **Example Request**:
 ```bash
-curl -X PATCH 'https://your-worker.workers.dev/api/issues/42?repository=owner/repo' \
+curl -X PATCH 'https://pmoss.alphaonelabs.com/api/issues/42?repository=owner/repo' \
   -H 'Cookie: session=<session-id>' \
   -H 'Content-Type: application/json' \
   -d '{"state": "closed"}'
@@ -209,7 +209,7 @@ Update multiple issues at once.
 
 **Example Request**:
 ```bash
-curl -X PATCH 'https://your-worker.workers.dev/api/issues/bulk' \
+curl -X PATCH 'https://pmoss.alphaonelabs.com/api/issues/bulk' \
   -H 'Cookie: session=<session-id>' \
   -H 'Content-Type: application/json' \
   -d '{"repository":"owner/repo","issue_numbers":[42,43],"updates":{"state":"closed"}}'
@@ -242,7 +242,7 @@ Sync all issues from a GitHub repository to the local database.
 
 **Example Request**:
 ```bash
-curl -X POST 'https://your-worker.workers.dev/api/sync' \
+curl -X POST 'https://pmoss.alphaonelabs.com/api/sync' \
   -H 'Cookie: session=<session-id>' \
   -H 'Content-Type: application/json' \
   -d '{"repository":"owner/repo"}'
@@ -269,7 +269,7 @@ Get analytics and metrics for a repository.
 
 **Example Request**:
 ```bash
-curl -X GET 'https://your-worker.workers.dev/api/metrics?repository=owner/repo' \
+curl -X GET 'https://pmoss.alphaonelabs.com/api/metrics?repository=owner/repo' \
   -H 'Cookie: session=<session-id>'
 ```
 
@@ -340,7 +340,7 @@ GitHub webhook handler for real-time issue synchronization.
 **Request Body**: GitHub webhook payload (JSON)
 
 **Example GitHub Webhook Configuration**:
-- Payload URL: `https://your-worker.workers.dev/webhook`
+- Payload URL: `https://pmoss.alphaonelabs.com/webhook`
 - Content type: `application/json`
 - Secret: Your `GITHUB_WEBHOOK_SECRET`
 - Events: Issues
@@ -457,14 +457,14 @@ Common sorting patterns:
 ### Get all open bugs assigned to user
 
 ```bash
-curl 'https://your-worker.workers.dev/api/issues?repository=owner/repo&state=open&label=bug&assignee=username' \
+curl 'https://pmoss.alphaonelabs.com/api/issues?repository=owner/repo&state=open&label=bug&assignee=username' \
   -H 'Cookie: session=<session-id>'
 ```
 
 ### Close all selected issues
 
 ```bash
-curl -X PATCH 'https://your-worker.workers.dev/api/issues/bulk' \
+curl -X PATCH 'https://pmoss.alphaonelabs.com/api/issues/bulk' \
   -H 'Cookie: session=<session-id>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -478,12 +478,12 @@ curl -X PATCH 'https://your-worker.workers.dev/api/issues/bulk' \
 
 ```bash
 # Sync
-curl -X POST 'https://your-worker.workers.dev/api/sync' \
+curl -X POST 'https://pmoss.alphaonelabs.com/api/sync' \
   -H 'Cookie: session=<session-id>' \
   -H 'Content-Type: application/json' \
   -d '{"repository":"owner/repo"}'
 
 # Get metrics
-curl 'https://your-worker.workers.dev/api/metrics?repository=owner/repo' \
+curl 'https://pmoss.alphaonelabs.com/api/metrics?repository=owner/repo' \
   -H 'Cookie: session=<session-id>'
 ```
