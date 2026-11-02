@@ -51,7 +51,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .page-intro h1 span { color: var(--accent-fill); }
     .eyebrow { font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text); margin-bottom: 10px; }
     .header-info { font-size: 1rem; color: var(--muted); margin-top: 10px; }
-    .pcb-art { width: 150px; height: 108px; flex: none; margin-left: auto; background: var(--accent-fill); -webkit-mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat; mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat; }
+    .pcb-art { width: 150px; height: 108px; flex: none; margin-left: auto; background: var(--accent-fill); -webkit-mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg?v=2") center / contain no-repeat; mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg?v=2") center / contain no-repeat; }
     .a1-trace { margin: 0 0 24px; }
     @media (max-width: 640px) { .pcb-art { display: none; } }
     .live { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: var(--a1-radius, 2px); font: 800 11px/1.2 var(--a1-font-body, sans-serif); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text); }
