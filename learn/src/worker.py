@@ -6641,7 +6641,14 @@ async def record_page_view(request, env, response) -> None:
     try:
         if getattr(response, "status", 200) != 200:
             return
-        ctype = (response.headers.get("Content-Type") or "").lower()
+        # On Workers, Response.headers is a plain dict whose key case varies.
+        headers = response.headers
+        pairs = headers.items() if hasattr(headers, "items") else headers
+        ctype = ""
+        for key, value in pairs:
+            if str(key).lower() == "content-type":
+                ctype = str(value or "").lower()
+                break
         if "text/html" not in ctype:
             return
         path = _page_view_path(request, env)

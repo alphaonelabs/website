@@ -64,6 +64,15 @@ class TestRecordPageView:
         assert args[1] == "/activity/react"
         stmt.bind.return_value.run.assert_awaited()
 
+    async def test_content_type_key_is_case_insensitive(self):
+        stmt = make_stmt()
+        db = MagicMock()
+        db.prepare = MagicMock(return_value=stmt)
+        env = make_env(db=db)
+        resp = SimpleNamespace(status=200, headers={"content-type": "text/html; charset=utf-8"})
+        await worker.record_page_view(_req("/about"), env, resp)
+        assert stmt.bind.call_args[0][1] == "/about"
+
     async def test_ignores_errors_and_non_html(self):
         db = MagicMock()
         db.prepare = MagicMock()
