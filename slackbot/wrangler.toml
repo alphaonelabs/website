@@ -1,0 +1,14 @@
+name = "slackbot"
+main = "src/index.mjs"
+compatibility_date = "2026-10-01"
+
+routes = [{ pattern = "slackbot.alphaonelabs.com", custom_domain = true }]
+
+# Comma-separated Slack channel IDs to watch. Empty = every channel the bot is invited to.
+[vars]
+SLACK_CHANNEL_IDS = ""
+
+# Secrets (set with `npx wrangler secret put <NAME>` from this folder):
+#   SLACK_SIGNING_SECRET  Slack app → Basic Information → Signing Secret
+#   SLACK_BOT_TOKEN       Slack app → OAuth & Permissions → Bot User OAuth Token (xoxb-…)
+#   GITHUB_TOKEN          fine-grained token, read-only "Pull requests" on alphaonelabs repos
