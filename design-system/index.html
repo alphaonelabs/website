@@ -4,280 +4,439 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Design System · Alpha One Labs</title>
-  <meta name="description" content="The Alpha One Labs design system: the A1 mark, black-and-gold maker palette, type, components, illustrations and the shared site header and footer.">
-  <meta property="og:image" content="https://design.alphaonelabs.com/assets/banner.webp">
+  <meta name="description" content="The Alpha One Labs design system: the A1 mark, white, black and brass gold, condensed type, components, PCB circuit art, the mascot and the shared site chrome.">
   <link rel="icon" href="/assets/logo/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/brand.css">
   <script src="/chrome.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin: 0; background: var(--a1-bg); color: var(--a1-text); font-family: var(--a1-font-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
-    a { color: var(--a1-accent); }
-    :focus-visible { outline: 2px solid var(--a1-focus); outline-offset: 3px; border-radius: 6px; }
-    .wrap { width: min(1200px, 100% - 40px); margin-inline: auto; }
-    section { padding-block: clamp(56px, 8vw, 96px); border-top: 1px solid var(--a1-border); }
-    h2 { font-family: var(--a1-font-display); font-size: var(--a1-text-4xl); letter-spacing: -0.03em; line-height: 1.05; margin: 10px 0 12px; }
-    h3 { font-family: var(--a1-font-display); font-size: var(--a1-text-xl); margin: 0 0 8px; }
-    .lede { color: var(--a1-text-muted); font-size: var(--a1-text-lg); max-width: 680px; margin: 0 0 40px; }
+    body { margin: 0; background: var(--a1-bg); color: var(--a1-text); font: 16px/1.55 var(--a1-font-body); -webkit-font-smoothing: antialiased; }
+    a { color: var(--a1-text); }
+    :focus-visible { outline: 3px solid var(--a1-focus); outline-offset: 3px; }
+    img { max-width: 100%; display: block; }
     code, pre { font-family: var(--a1-font-mono); }
-    code { font-size: .88em; background: var(--a1-surface-raised); border: 1px solid var(--a1-border); padding: .1rem .35rem; border-radius: 6px; }
-    pre { margin: 0; padding: 18px 20px; overflow-x: auto; background: var(--a1-surface); border: 1px solid var(--a1-border); border-radius: var(--a1-radius); font-size: var(--a1-text-sm); line-height: 1.7; }
-    .grid { display: grid; gap: 16px; }
-    .g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
-    .muted { color: var(--a1-text-muted); }
-    .dl { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .dl a { font: 600 var(--a1-text-xs) var(--a1-font-mono); letter-spacing: .06em; text-decoration: none; border: 1px solid var(--a1-border); border-radius: var(--a1-radius-full); padding: 5px 10px; color: var(--a1-text); }
-    .dl a:hover { border-color: var(--a1-accent); color: var(--a1-accent); }
+    code { font-size: .86em; border: 1px solid var(--a1-border); padding: 1px 5px; }
+    pre { margin: 0; padding: 18px 20px; overflow-x: auto; border: 1px solid var(--a1-border-strong); font-size: 13px; line-height: 1.7; }
+    .lede { font-size: 1.15rem; font-weight: 500; max-width: 62ch; color: var(--a1-text-muted); margin: 0 0 32px; }
+    .num { font: 700 12px var(--a1-font-mono); letter-spacing: .14em; color: var(--a1-text-muted); }
+    .grid { display: grid; gap: 16px; } .g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+    .dl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 
     /* hero */
-    .hero { border-top: 0; position: relative; overflow: hidden; isolation: isolate; padding-block: clamp(64px, 9vw, 120px); }
-    .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: linear-gradient(var(--a1-border) 1px, transparent 1px), linear-gradient(90deg, var(--a1-border) 1px, transparent 1px); background-size: 48px 48px; opacity: .35; mask-image: radial-gradient(ellipse 70% 80% at 75% 40%, #000 25%, transparent 75%); }
-    .hero-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 40px; align-items: center; }
-    .hero h1 { font-family: var(--a1-font-display); font-size: var(--a1-text-5xl); line-height: .98; letter-spacing: -0.045em; margin: 16px 0 20px; }
-    .hero h1 em { font-style: normal; color: var(--a1-accent); }
-    .hero .mark-big { width: min(100%, 360px); justify-self: center; filter: drop-shadow(0 30px 60px rgb(0 0 0 / .35)); }
-    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 32px; }
+    .hero { border-bottom: 1px solid var(--a1-border); position: relative; overflow: hidden; }
+    .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 32px; min-height: 560px; }
+    .hero-copy { padding: 72px 0 56px; position: relative; z-index: 2; }
+    .hero h1 { font-size: var(--a1-text-6xl); margin: 18px 0 8px; }
+    .hero-art { position: relative; border-left: 1px solid var(--a1-border); display: grid; place-items: center; }
+    .hero-art .lockup { width: 72%; max-width: 420px; }
+    .hero-art .pcb { position: absolute; color: var(--a1-accent-fill); }
+    .hero-art .pcb--a { width: 46%; top: 18px; right: 18px; }
+    .hero-art .pcb--b { width: 38%; bottom: 18px; left: 18px; transform: rotate(180deg); }
 
     /* logo */
-    .tile { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); padding: 28px; display: grid; place-items: center; min-height: 240px; }
-    .tile img { max-height: 180px; }
+    .tile { border: 1px solid var(--a1-border-strong); display: grid; place-items: center; min-height: 230px; padding: 28px; }
     .tile.dark { background: #000; } .tile.light { background: #fff; } .tile.gold { background: var(--a1-gold); }
-    .spec { display: grid; gap: 6px; margin-top: 12px; }
-    .dont { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
-    .dont figure { margin: 0; }
-    .dont .tile { min-height: 150px; padding: 20px; position: relative; }
-    .dont .tile::after { content: "✕"; position: absolute; top: 10px; right: 14px; color: var(--a1-red); font-weight: 700; }
-    .dont img { max-height: 100px; }
-    .dont figcaption { font-size: var(--a1-text-sm); color: var(--a1-text-muted); margin-top: 8px; }
+    .lockup-row { display: flex; align-items: center; gap: 16px; }
+    .lockup-row img { width: 64px; }
+    .lockup-row span { font: 900 46px/1 var(--a1-font-display); text-transform: uppercase; letter-spacing: .01em; }
+    .dont .tile { min-height: 150px; position: relative; }
+    .dont .tile::after { content: "✕"; position: absolute; top: 8px; right: 12px; font-weight: 900; color: var(--a1-red); }
+    .dont img { max-height: 92px; }
+    figure { margin: 0; } figcaption { font-size: 13px; color: var(--a1-text-muted); margin-top: 8px; }
 
     /* color */
-    .swatch { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); overflow: hidden; background: var(--a1-surface); cursor: pointer; text-align: left; font: inherit; color: inherit; padding: 0; }
-    .swatch .chip { height: 110px; display: flex; align-items: flex-end; padding: 12px; font: 700 var(--a1-text-xs) var(--a1-font-mono); }
-    .swatch .meta { padding: 12px 14px; display: grid; gap: 2px; }
-    .swatch b { font-size: var(--a1-text-sm); }
-    .swatch code { justify-self: start; }
-    .swatch:hover { border-color: var(--a1-accent); }
-    .ramp { display: grid; grid-template-columns: repeat(10, 1fr); border-radius: var(--a1-radius); overflow: hidden; border: 1px solid var(--a1-border); margin-top: 16px; }
-    .ramp span { height: 56px; display: flex; align-items: flex-end; padding: 6px; font: 600 10px var(--a1-font-mono); }
+    .swatch { border: 1px solid var(--a1-border-strong); background: var(--a1-bg); color: var(--a1-text); padding: 0; text-align: left; font: inherit; cursor: pointer; }
+    .swatch .chip { height: 120px; display: flex; align-items: flex-end; padding: 10px 12px; font: 700 12px var(--a1-font-mono); }
+    .swatch .meta { padding: 10px 12px; display: grid; gap: 2px; border-top: 1px solid var(--a1-border-strong); }
+    .swatch b { font-weight: 800; }
+    .swatch:hover { background: var(--a1-surface-raised); }
 
     /* type */
-    .type-row { display: grid; grid-template-columns: 200px 1fr; gap: 24px; padding: 24px 0; border-top: 1px solid var(--a1-border); align-items: baseline; }
-    .type-row:first-of-type { border-top: 0; }
-    .type-row .label { font: 600 var(--a1-text-xs) var(--a1-font-mono); color: var(--a1-text-muted); letter-spacing: .08em; text-transform: uppercase; }
+    .type-row { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 22px 0; border-top: 1px solid var(--a1-border); align-items: baseline; }
 
     /* components */
-    .demo { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); padding: 28px; background: var(--a1-bg); }
-    .row-flex { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-    .demo + pre { margin-top: 12px; }
-    .chrome-demo { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); overflow: hidden; }
-    .chrome-demo .page { padding: 40px 28px; color: var(--a1-text-muted); text-align: center; font-size: var(--a1-text-sm); background: var(--a1-surface); }
+    .demo { border: 1px solid var(--a1-border-strong); padding: 24px; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .card-art { color: var(--a1-accent-fill); width: 46%; }
+    .chrome-demo { border: 1px solid var(--a1-border-strong); }
+    .chrome-demo .page { padding: 48px 24px; text-align: center; color: var(--a1-text-muted); border-bottom: 1px solid var(--a1-border); }
 
-    /* illustrations */
-    .illo { border: 1px solid var(--a1-border); border-radius: var(--a1-radius-lg); background: var(--a1-surface); padding: 24px; display: grid; gap: 16px; }
-    .illo .art { height: 200px; display: grid; place-items: center; color: var(--a1-accent); }
-    .illo .art img, .illo .art svg { max-height: 200px; max-width: 100%; }
-    .illo .nerd { color: var(--a1-text); }
+    /* circuits */
+    .art { border: 1px solid var(--a1-border-strong); padding: 24px; display: grid; gap: 14px; }
+    .art .stage { height: 190px; display: grid; place-items: center; color: var(--a1-accent-fill); }
+    .art .stage img { max-height: 190px; }
+    .art h3 { font: 900 1.5rem/1 var(--a1-font-display); text-transform: uppercase; margin: 0; }
 
-    .toast { position: fixed; bottom: 24px; left: 50%; translate: -50% 20px; opacity: 0; background: var(--a1-text); color: var(--a1-bg); padding: 10px 16px; border-radius: var(--a1-radius-full); font: 600 var(--a1-text-sm) var(--a1-font-body); transition: .2s var(--a1-ease); pointer-events: none; z-index: 2000; }
+    /* mascot */
+    .mascots { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 16px; }
+    .portrait { border: 1px solid var(--a1-border-strong); aspect-ratio: 4 / 5; overflow: hidden; }
+    .portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
+    .rules { margin: 0; padding-left: 1.1rem; display: grid; gap: 6px; color: var(--a1-text-muted); }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; translate: -50% 20px; opacity: 0; background: var(--a1-text); color: var(--a1-bg); padding: 10px 16px; font: 700 13px var(--a1-font-body); transition: .2s; pointer-events: none; z-index: 2000; }
     .toast.on { opacity: 1; translate: -50% 0; }
 
+
+    /* ---- overview sheet ---- */
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+    .sheet-top { background: #0f0f0f; color: #fff; border-bottom: 1px solid #262626; }
+    .strip { display:flex; align-items:center; justify-content:space-between; gap:16px 24px; min-height:96px; flex-wrap:wrap; padding-block:14px; }
+    .strip-brand { display:flex; align-items:center; gap:16px; }
+    .strip-brand img { width:54px; }
+    .strip-brand span { font:900 clamp(30px,3.4vw,46px)/1 var(--a1-font-display); text-transform:uppercase; letter-spacing:.005em; white-space:nowrap; }
+    .strip-brand i { width:2px; height:48px; background:var(--a1-gold); margin:0 8px; }
+    .strip-brand b { white-space:nowrap; font:900 clamp(28px,3.2vw,42px)/1 var(--a1-font-display); text-transform:uppercase; color:var(--a1-gold); letter-spacing:.02em; }
+    .strip-tags { display:flex; flex-wrap:wrap; gap:6px 0; list-style:none; margin:0; padding:0; font:600 13px var(--a1-font-body); letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+    .strip-tags li + li::before { content:"•"; margin:0 10px; color:#fff; }
+    .sheet { border-bottom: 1px solid var(--a1-border); }
+    .sheet-grid { display:grid; grid-template-columns: 300px 1fr 400px; }
+    .col { padding: 28px 24px; }
+    .col-left { padding-left:0; border-right:1px solid var(--a1-border); }
+    .col-right { padding-right:0; border-left:1px solid var(--a1-border); }
+    .col-h { font:700 22px/1.2 var(--a1-font-body); letter-spacing:-.01em; margin:0 0 14px; padding-bottom:10px; border-bottom:1px solid var(--a1-border); }
+    .col-h small, .sub small { font-weight:500; color:var(--a1-text-muted); }
+    .sub { font:700 16px/1.2 var(--a1-font-body); margin:0 0 10px; }
+    .ico { width:30px; height:30px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+    .inside-head { display:flex; gap:14px; align-items:flex-start; padding-bottom:16px; border-bottom:1px solid var(--a1-border); }
+    .inside-head .ico { width:44px; height:44px; }
+    .inside-head h2 { font:800 24px/1.1 var(--a1-font-body); margin:0 0 6px; }
+    .inside-head p { margin:0; font-size:14px; color:var(--a1-text-muted); }
+    .inside { display:flex; gap:14px; align-items:flex-start; padding:14px 0; border-bottom:1px solid var(--a1-border); text-decoration:none; color:var(--a1-text); }
+    .inside:hover b { text-decoration:underline; text-underline-offset:3px; }
+    .inside span { font-size:13px; color:var(--a1-text-muted); }
+    .inside b { display:block; font:800 16px/1.3 var(--a1-font-body); color:var(--a1-text); }
+    .tree-title { font:800 22px/1 var(--a1-font-body); margin:24px 0 12px; }
+    .tree { list-style:none; margin:0; padding:0; font:500 13px/1 var(--a1-font-mono); display:grid; gap:12px; }
+    .tree li { display:flex; gap:10px; align-items:center; }
+    .tree li::before { content:""; width:16px; height:12px; border:1.5px solid var(--a1-accent-fill); border-radius:1px; flex:none; }
+    .tree li.file::before { width:11px; height:14px; border-color:var(--a1-text-muted); }
+    .tree li.in { padding-left:22px; }
+    .tree em { font-style:normal; color:var(--a1-text-muted); margin-left:auto; font-size:12px; }
+    .tok-grid { display:grid; grid-template-columns: 1.15fr 1fr; gap:22px 28px; }
+    .tok-grid > div:nth-child(odd) { padding-right:28px; border-right:1px solid var(--a1-border); }
+    .chips { display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; }
+    .chip { border:0; background:none; padding:0; text-align:left; font:500 10.5px/1.3 var(--a1-font-body); color:var(--a1-text-muted); cursor:pointer; }
+    .chip i { display:block; aspect-ratio:1.1; border:1px solid var(--a1-border-strong); border-radius:6px; margin-bottom:6px; }
+    .chip b { display:block; font-weight:700; font-size:11.5px; white-space:nowrap; color:var(--a1-text); }
+    .aa { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; font-size:12px; color:var(--a1-text-muted); }
+    .aa span { display:block; color:var(--a1-text); margin-bottom:8px; }
+    .aa b { display:block; font-size:13px; color:var(--a1-text); }
+    .spacing { display:flex; align-items:flex-end; gap:16px; font:600 13px var(--a1-font-body); height:86px; }
+    .spacing div { display:grid; justify-items:center; gap:8px; }
+    .spacing i { display:block; background:var(--a1-gray-200); }
+    .radii { display:flex; gap:12px; font:600 13px var(--a1-font-body); }
+    .radii div { display:grid; justify-items:center; gap:8px; }
+    .radii i { display:block; width:44px; height:44px; border:1.5px solid var(--a1-border-strong); }
+    .btn-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+    .comp-grid { display:grid; grid-template-columns: 1fr 1.6fr; gap:20px; padding-top:16px; border-top:1px solid var(--a1-border); }
+    .comp-grid > div:first-child { padding-right:20px; border-right:1px solid var(--a1-border); }
+    .act { border-radius:6px; overflow:hidden; border-color:var(--a1-border-strong); }
+    .act-media { background:#0f0f0f; aspect-ratio:16/8.5; }
+    .act-media img { width:58% !important; height:auto !important; object-fit:contain !important; }
+    .act-title { font:800 24px/1 var(--a1-font-display); text-transform:none; margin:2px 0 8px; letter-spacing:.005em; }
+    .act-meta { display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid var(--a1-border); }
+    .act-meta span { display:flex; gap:8px; align-items:center; font:800 12px var(--a1-font-mono); text-transform:uppercase; }
+    .act-meta svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; }
+    .act-meta b { font:900 26px/1 var(--a1-font-display); }
+    .mininav { display:flex; align-items:center; gap:12px; padding:12px 14px; white-space:nowrap; overflow:hidden; border:1px solid var(--a1-border-strong); border-radius:6px; margin-bottom:10px; font:600 12px var(--a1-font-body); }
+    .mininav img { width:26px; }
+    .mininav b { font:900 17px/1 var(--a1-font-display); white-space:nowrap; text-transform:uppercase; margin-right:auto; }
+    .mininav svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; }
+    .mininav.light { background:#fff; color:#101010; }
+    .mininav.dark { background:#0f0f0f; color:#fafafa; border-color:#0f0f0f; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding-top:12px; border-top:1px solid var(--a1-border); }
+    .two > div:first-child { padding-right:16px; border-right:1px solid var(--a1-border); }
+    .search { position:relative; display:block; }
+    .search svg { position:absolute; left:12px; top:50%; translate:0 -50%; width:18px; height:18px; fill:none; stroke:var(--a1-text-muted); stroke-width:1.8; }
+    .search .a1-input { padding-left:40px; }
+    .masc { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .masc figure { margin:0; }
+    .masc img { width:100%; aspect-ratio:4/4.6; object-fit:cover; object-position:50% 22%; }
+    .masc figcaption { text-align:center; font-size:12px; color:var(--a1-text-muted); }
+    .masc figcaption b { display:block; font-size:14px; color:var(--a1-text); }
+    .circ { display:grid; grid-template-columns: 1.6fr 1fr; grid-template-areas: "traces chip" "hatch hatch" "bracket bracket"; gap:14px; align-items:center; }
+    .c-traces { grid-area:traces; width:100%; } .c-chip { grid-area:chip; width:80px; justify-self:center; }
+    .c-hatch { grid-area:hatch; width:100%; } .c-bracket { grid-area:bracket; width:100%; }
+    .sheet-band { background:#0f0f0f; color:#fff; }
+    .band-grid { display:grid; grid-template-columns: 1.6fr 1fr 1fr 1.2fr; }
+    .band-grid > div { padding:26px 24px; border-left:1px solid #2e2e2e; }
+    .band-grid > div:first-child { border-left:0; padding-left:0; }
+    .band-grid h2 { display:flex; align-items:center; gap:10px; font:700 22px/1 var(--a1-font-body); margin:0 0 14px; }
+    .band-grid h2 svg { width:26px; height:26px; fill:none; stroke:var(--a1-gold); stroke-width:1.8; stroke-linejoin:round; }
+    .band-grid p { margin:0; color:#d4d4d4; font-size:15px; line-height:1.6; }
+    .band-grid a { color:var(--a1-gold); }
+    .band-grid code { color:#fff; border-color:#3a3a3a; }
+    .steps { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:12px 24px; font-size:15px; }
+    .steps li { display:flex; align-items:center; gap:10px; }
+    .steps i { display:grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--a1-gold); color:#080808; font:800 13px var(--a1-font-body); flex:none; }
+    @media (max-width: 1200px) { .sheet-grid { grid-template-columns: 1fr 1fr; } .col-mid { grid-column: 1 / -1; order: -1; border-bottom:1px solid var(--a1-border); padding-inline:0; } .col-left { padding-left:0; } .col-right { border-left:1px solid var(--a1-border); } }
     @media (max-width: 900px) {
-      .hero-grid, .g2 { grid-template-columns: 1fr; }
-      .g3, .g4, .dont { grid-template-columns: 1fr 1fr; }
-      .type-row { grid-template-columns: 1fr; gap: 6px; }
-      .ramp { grid-template-columns: repeat(5, 1fr); }
+      .sheet-grid, .tok-grid, .comp-grid, .two, .band-grid { grid-template-columns: 1fr; }
+      .tok-grid > div, .comp-grid > div:first-child, .two > div:first-child { border-right:0; padding-right:0; }
+      .col { padding-inline:0; } .col-left, .col-right { border:0; }
+      .band-grid > div { border-left:0; padding-left:0; border-top:1px solid #2e2e2e; }
+      .chips { grid-template-columns: repeat(3, 1fr); }
     }
-    @media (max-width: 560px) { .g3, .g4, .dont { grid-template-columns: 1fr; } }
+    @media (max-width: 960px) {
+      .hero-grid, .g2, .mascots { grid-template-columns: 1fr; }
+      .hero-art { border-left: 0; border-top: 1px solid var(--a1-border); min-height: 360px; }
+      .g3, .g4 { grid-template-columns: 1fr 1fr; }
+      .type-row { grid-template-columns: 1fr; gap: 6px; }
+    }
+    @media (max-width: 560px) { .g3, .g4 { grid-template-columns: 1fr; } .lockup-row span { font-size: 34px; } }
   </style>
 </head>
 <body>
   <a1-header site="Design" sticky></a1-header>
 
   <main>
-    <!-- ============ HERO ============ -->
-    <section class="hero">
-      <div class="wrap hero-grid">
-        <div>
-          <span class="a1-badge a1-badge--gold">Design system · v1</span>
-          <h1>Made in a makerspace. <em>Built for the web.</em></h1>
-          <p class="lede">The A1 mark, the black-and-gold palette from our 2009 Brooklyn hackerspace poster, and everything you need to make an Alpha One Labs site feel like home in one line of HTML.</p>
-          <div class="row-flex">
-            <a class="a1-btn a1-btn--primary" href="#use">Use it on your site</a>
-            <a class="a1-btn a1-btn--ghost" href="#logo">Download the logo</a>
-          </div>
-          <nav class="toc" aria-label="On this page">
-            <a class="a1-badge" href="#logo">Logo</a><a class="a1-badge" href="#color">Color</a><a class="a1-badge" href="#type">Type</a><a class="a1-badge" href="#components">Components</a><a class="a1-badge" href="#illustrations">Illustrations</a><a class="a1-badge" href="#use">Use it</a>
-          </nav>
-        </div>
-        <img class="mark-big" src="/assets/logo/logo.svg" alt="The Alpha One Labs A1 mark">
+    <!-- OVERVIEW SHEET -->
+    <section class="sheet-top" aria-label="Alpha One Labs design system">
+      <div class="a1-container strip">
+        <div class="strip-brand"><img src="/assets/logo/logo.svg" alt=""><span>Alpha One Labs</span><i aria-hidden="true"></i><b>Design System</b></div>
+        <ul class="strip-tags"><li>Developer-ready</li><li>Light &amp; dark</li><li>Components</li><li>Assets</li><li>Guides</li></ul>
       </div>
     </section>
+    <section class="sheet">
+      <div class="a1-container sheet-grid">
+        <!-- left -->
+        <aside class="col col-left">
+          <div class="inside-head"><svg viewBox="0 0 40 40" class="ico" aria-hidden="true"><path d="M20 4 35 12v16L20 36 5 28V12z"/><path d="M5 12l15 8 15-8M20 20v16"/></svg><div><h2>What's inside</h2><p>Production-ready design system for every Alpha One Labs site.</p></div></div>
+          <a class="inside" href="#color"><svg viewBox="0 0 32 32" class="ico" aria-hidden="true"><path d="M16 4 28 10 16 16 4 10z"/><path d="M4 16l12 6 12-6M4 22l12 6 12-6"/></svg><span><b>Design tokens</b>Colors, typography, spacing (CSS, JSON)</span></a>
+          <a class="inside" href="#components"><svg viewBox="0 0 32 32" class="ico" aria-hidden="true"><rect x="4" y="6" width="24" height="20"/><path d="M4 12h24M12 18l4 4 4-4"/></svg><span><b>Component library</b>Buttons, cards, tags, nav, header and footer</span></a>
+          <a class="inside" href="#circuits"><svg viewBox="0 0 32 32" class="ico" aria-hidden="true"><rect x="4" y="5" width="24" height="22"/><path d="M4 21l7-7 6 6 4-4 7 7"/><circle cx="21" cy="11" r="2"/></svg><span><b>Assets</b>Logo, mascot illustrations, circuit graphics (SVG, PNG, WebP)</span></a>
+          <a class="inside" href="#logo"><svg viewBox="0 0 32 32" class="ico" aria-hidden="true"><path d="M8 3h11l6 6v20H8z"/><path d="M19 3v6h6M12 15h9M12 20h9M12 25h6"/></svg><span><b>Guidelines</b>Brand, usage and accessibility</span></a>
+          <a class="inside" href="/downloads/alpha-one-labs-design-system.zip" download><svg viewBox="0 0 32 32" class="ico" aria-hidden="true"><path d="M16 4 28 10v12L16 28 4 22V10z"/><path d="M16 16v12M4 10l12 6 12-6"/></svg><span><b>Starter kit</b>Download everything as one zip</span></a>
+          <h2 class="tree-title">Folder structure</h2>
+          <ul class="tree">
+            <li class="dir">alpha-one-labs-design-system/</li>
+            <li class="dir in">assets/<em># logo, mascots, circuits</em></li>
+            <li class="file in">brand.css<em># tokens + components</em></li>
+            <li class="file in">tokens.json<em># tokens as data</em></li>
+            <li class="file in">chrome.js<em># shared header + footer</em></li>
+            <li class="file in">index.html<em># this guide</em></li>
+            <li class="file in">README.md<em># quick start</em></li>
+          </ul>
+        </aside>
 
-    <!-- ============ LOGO ============ -->
-    <section id="logo">
-      <div class="wrap">
-        <span class="a1-eyebrow">01 · Logo</span>
-        <h2>The A1 mark</h2>
-        <p class="lede">Two panels at a 1:2 slope: a white front panel carrying the A, a black back panel carrying the 1. The black panel always has a white edge and the white panel a black edge, so the mark reads on any background.</p>
-        <div class="grid g3">
-          <figure style="margin:0">
-            <div class="tile dark"><img src="/assets/logo/logo.svg" alt="A1 mark on black"></div>
-            <div class="dl"><a href="/assets/logo/logo.svg" download>SVG</a><a href="/assets/logo/logo.png" download>PNG 1024</a></div>
-          </figure>
-          <figure style="margin:0">
-            <div class="tile light"><img src="/assets/logo/logo.svg" alt="A1 mark on white"></div>
-            <div class="dl"><a href="/assets/logo/avatar.png" download>Avatar PNG (square)</a></div>
-          </figure>
-          <figure style="margin:0">
-            <div class="tile light"><img src="/assets/logo/logo-print.svg" alt="One-color print version of the A1 mark"></div>
-            <div class="dl"><a href="/assets/logo/logo-print.svg" download>Print SVG</a><a href="/assets/logo/logo-print.png" download>Print PNG</a></div>
-          </figure>
-        </div>
-        <div class="grid g2" style="margin-top:24px">
-          <div class="a1-card"><h3>Clear space</h3><p class="muted" style="margin:0">Keep at least the width of the "1" stem clear on every side. Minimum size: 24px tall on screen, 10mm in print.</p></div>
-          <div class="a1-card"><h3>Source</h3><p class="muted" style="margin:0">Paths come straight from the original Illustrator artwork (<code>alphaonelabs-shirt-art.eps</code>, 2009). Pure black <code>#000</code> and white only.</p></div>
-        </div>
-        <div class="dont" aria-label="Don't">
-          <figure><div class="tile light"><img src="/assets/logo/logo.svg" alt="" style="transform:scaleX(1.5)"></div><figcaption>Don't stretch it</figcaption></figure>
-          <figure><div class="tile light"><img src="/assets/logo/logo.svg" alt="" style="transform:rotate(-20deg)"></div><figcaption>Don't rotate it</figcaption></figure>
-          <figure><div class="tile gold"><img src="/assets/logo/logo.svg" alt="" style="filter:hue-rotate(180deg) saturate(6)"></div><figcaption>Don't recolor it</figcaption></figure>
-          <figure><div class="tile light"><img src="/assets/logo/logo.svg" alt="" style="filter:drop-shadow(8px 8px 0 #e11d2e)"></div><figcaption>Don't add effects</figcaption></figure>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ COLOR ============ -->
-    <section id="color">
-      <div class="wrap">
-        <span class="a1-eyebrow">02 · Color</span>
-        <h2>Black, white and solder gold</h2>
-        <p class="lede">Taken from the makerspace poster. Black and white do the work; gold is for emphasis: one accent per view, not decoration everywhere. Click a swatch to copy its token.</p>
-        <div class="grid g4">
-          <button class="swatch" data-copy="var(--a1-black)"><span class="chip" style="background:#000;color:#fff">#000000</span><span class="meta"><b>Black</b><code>--a1-black</code></span></button>
-          <button class="swatch" data-copy="var(--a1-white)"><span class="chip" style="background:#fff;color:#000;border-bottom:1px solid var(--a1-border)">#FFFFFF</span><span class="meta"><b>White</b><code>--a1-white</code></span></button>
-          <button class="swatch" data-copy="var(--a1-gold)"><span class="chip" style="background:#c7ab4f;color:#000">#C7AB4F</span><span class="meta"><b>Solder gold</b><code>--a1-gold</code></span></button>
-          <button class="swatch" data-copy="var(--a1-gold-ink)"><span class="chip" style="background:#7c692e;color:#fff">#7C692E</span><span class="meta"><b>Gold ink</b><code>--a1-gold-ink</code></span></button>
-        </div>
-        <div class="ramp" aria-label="Neutral ramp">
-          <span style="background:#fafafa;color:#000">50</span><span style="background:#f2f2f2;color:#000">100</span><span style="background:#e4e4e4;color:#000">200</span><span style="background:#c9c9c9;color:#000">300</span><span style="background:#a3a3a3;color:#000">400</span><span style="background:#737373;color:#fff">500</span><span style="background:#525252;color:#fff">600</span><span style="background:#2e2e2e;color:#fff">700</span><span style="background:#1a1a1a;color:#fff">800</span><span style="background:#0d0d0d;color:#fff">900</span>
-        </div>
-        <div class="grid g2" style="margin-top:24px">
-          <div class="a1-card"><h3>Semantic tokens</h3><p class="muted" style="margin:0 0 12px">Build with these, not raw colors. They flip automatically between dark and light.</p>
-            <pre>--a1-bg  --a1-surface  --a1-surface-raised
---a1-border  --a1-text  --a1-text-muted
---a1-accent  --a1-accent-hover  --a1-on-accent
---a1-focus</pre></div>
-          <div class="a1-card"><h3>Contrast</h3><p class="muted" style="margin:0">Solder gold on black is 9.4:1, so it's safe for any text. On white it's decorative only: text, links and buttons use gold ink (5.4:1) or black, which the light theme does for you.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ TYPE ============ -->
-    <section id="type">
-      <div class="wrap">
-        <span class="a1-eyebrow">03 · Type</span>
-        <h2>Three voices</h2>
-        <p class="lede">Space Grotesk for headlines, Inter for reading, JetBrains Mono for labels and code: a lab notebook with good typography.</p>
-        <div class="type-row"><span class="label">Display · Space Grotesk 700</span><span class="a1-display" style="font-size:var(--a1-text-5xl)">Learn. Build.</span></div>
-        <div class="type-row"><span class="label">Heading · Space Grotesk 700</span><span style="font:700 var(--a1-text-3xl)/1.15 var(--a1-font-display);letter-spacing:-.02em">Experiment and teach</span></div>
-        <div class="type-row"><span class="label">Body · Inter 400</span><span style="font-size:var(--a1-text-lg);max-width:60ch">Free, open-source tools that make science and technology hands-on, built by a community of learners and makers.</span></div>
-        <div class="type-row"><span class="label">Eyebrow · JetBrains Mono 700</span><span class="a1-eyebrow">Google Summer of Code 2027</span></div>
-        <div class="type-row"><span class="label">Code · JetBrains Mono 500</span><code>npx wrangler deploy</code></div>
-      </div>
-    </section>
-
-    <!-- ============ COMPONENTS ============ -->
-    <section id="components">
-      <div class="wrap">
-        <span class="a1-eyebrow">04 · Components</span>
-        <h2>The basics, ready to use</h2>
-        <p class="lede">Opt-in classes from <code>brand.css</code>. They never restyle your own elements, so you can adopt them one at a time.</p>
-        <div class="grid g2">
-          <div>
-            <div class="demo"><div class="row-flex"><a class="a1-btn a1-btn--primary" href="#components">Primary</a><a class="a1-btn a1-btn--ghost" href="#components">Ghost</a></div></div>
-            <pre>&lt;a class="a1-btn a1-btn--primary"&gt;Primary&lt;/a&gt;
-&lt;a class="a1-btn a1-btn--ghost"&gt;Ghost&lt;/a&gt;</pre>
-          </div>
-          <div>
-            <div class="demo"><div class="row-flex"><span class="a1-badge">Badge</span><span class="a1-badge a1-badge--gold">7 merged</span><span class="a1-eyebrow">Eyebrow</span></div></div>
-            <pre>&lt;span class="a1-badge a1-badge--gold"&gt;7 merged&lt;/span&gt;
-&lt;span class="a1-eyebrow"&gt;Eyebrow&lt;/span&gt;</pre>
-          </div>
-          <div>
-            <div class="demo"><div class="a1-card a1-card--interactive"><h3>Card</h3><p class="muted" style="margin:0">Hover me for the gold glow.</p></div></div>
-            <pre>&lt;div class="a1-card a1-card--interactive"&gt;…&lt;/div&gt;</pre>
-          </div>
-          <div>
-            <div class="demo" style="display:grid;place-items:center;min-height:128px"><hr class="a1-trace" style="width:100%"></div>
-            <pre>&lt;hr class="a1-trace"&gt;  &lt;!-- a circuit-trace divider --&gt;</pre>
-          </div>
-        </div>
-
-        <h3 style="margin-top:48px">Shared header and footer</h3>
-        <p class="muted" style="margin:0 0 16px">Every Alpha One Labs site uses the same chrome, with the A1 mark, the site switcher, the theme toggle and the GitHub link. It renders inside Shadow DOM, so it can't clash with your CSS.</p>
-        <div class="chrome-demo">
-          <a1-header site="Your site"></a1-header>
-          <div class="page">your page</div>
-          <a1-footer source="your-folder"></a1-footer>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ ILLUSTRATIONS ============ -->
-    <section id="illustrations">
-      <div class="wrap">
-        <span class="a1-eyebrow">05 · Illustrations</span>
-        <h2>Maker art</h2>
-        <p class="lede">The gold line work comes from the original makerspace poster vectors; the nerd is a modern redraw of our "nerd says hi" whiteboard sketch. Every SVG uses <code>currentColor</code>, so set <code>color</code> to recolor it.</p>
-        <div class="grid g3">
-          <figure class="illo" style="margin:0">
-            <div class="art nerd">
-              <svg viewBox="0 0 320 400" role="img" aria-label="The Alpha One Labs nerd waving hi">
-                <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M112 120 C112 80 136 58 170 58 C204 58 228 80 228 120 C228 164 204 190 170 190 C136 190 112 164 112 120 Z"/><path d="M138 64 L124 42 M156 58 L150 30 M174 57 L182 28 M194 61 L212 40 M212 74 L232 62"/><path d="M116 100 C128 80 150 72 170 84 C186 72 210 76 224 98"/><path d="M112 122 C100 118 98 140 112 144"/><path d="M228 122 C240 118 242 140 228 144"/><rect x="120" y="108" width="42" height="32" rx="10"/><rect x="178" y="108" width="42" height="32" rx="10"/><path d="M162 118 C166 113 174 113 178 118"/><path d="M154 162 C164 172 178 172 188 162"/><path d="M155 190 V206 M185 190 V206"/><path d="M140 204 L170 236 L200 204"/><path d="M140 204 L128 234 L156 228"/><path d="M200 204 L212 234 L184 228"/><path d="M200 204 C232 208 252 218 262 244 L276 296 L248 304 L240 270"/><path d="M244 280 L248 400"/><path d="M140 204 C112 208 94 216 84 236"/><path d="M100 262 L96 400"/><path d="M84 236 L60 286 L96 298 L102 262"/><path d="M68 288 L50 206 M90 296 L76 204"/><path d="M50 206 L46 174 C54 166 68 166 76 174 L76 204"/><path d="M49 172 L45 146 M57 168 L55 136 M65 168 L66 134 M73 172 L76 144"/><path d="M76 192 L92 174"/><path d="M190 268 L234 268 L232 312 C226 318 198 318 192 312 Z" stroke-width="6"/>
-                </g>
-                <g fill="currentColor"><circle cx="170" cy="262" r="3.5"/><circle cx="170" cy="300" r="3.5"/><circle cx="170" cy="338" r="3.5"/><circle cx="141" cy="125" r="4.5"/><circle cx="199" cy="125" r="4.5"/></g>
-                <g stroke="var(--a1-accent)" stroke-linecap="round"><path d="M200 276 V242" stroke-width="7"/><path d="M200 242 V234" stroke-width="3.5"/><path d="M212 276 V248" stroke-width="7"/></g>
-                <rect x="218" y="234" width="11" height="42" rx="1.5" fill="var(--a1-accent)"/>
-                <path d="M14 58 H88 A12 12 0 0 1 100 70 V100 A12 12 0 0 1 88 112 H40 L28 126 L30 112 H14 A12 12 0 0 1 2 100 V70 A12 12 0 0 1 14 58 Z" fill="var(--a1-accent)"/>
-                <text x="51" y="96" text-anchor="middle" font-family="Space Grotesk, Inter, sans-serif" font-size="30" font-weight="700" fill="var(--a1-on-accent)">hi!</text>
-              </svg>
+        <!-- center -->
+        <div class="col col-mid">
+          <h2 class="col-h">Design tokens</h2>
+          <div class="tok-grid">
+            <div>
+              <h3 class="sub">Colors</h3>
+              <div class="chips">
+                <button class="chip" data-copy="#D4AF37"><i style="background:#d4af37"></i><b>primary</b>#D4AF37</button>
+                <button class="chip" data-copy="#000000"><i style="background:#000"></i><b>black</b>#000000</button>
+                <button class="chip" data-copy="#FFFFFF"><i style="background:#fff"></i><b>white</b>#FFFFFF</button>
+                <button class="chip" data-copy="#0F0F0F"><i style="background:#0f0f0f"></i><b>gray-900</b>#0F0F0F</button>
+                <button class="chip" data-copy="#262626"><i style="background:#262626"></i><b>gray-700</b>#262626</button>
+                <button class="chip" data-copy="#A3A3A3"><i style="background:#a3a3a3"></i><b>gray-400</b>#A3A3A3</button>
+              </div>
             </div>
-            <figcaption><h3>The nerd</h3><div class="dl"><a href="/assets/illustrations/nerd.svg" download>SVG</a><a href="/assets/illustrations/nerd.png" download>PNG</a></div></figcaption>
-          </figure>
-          <figure class="illo" style="margin:0"><div class="art"><img src="/assets/illustrations/soldering-iron.svg" alt="Soldering iron and screwdriver"></div><figcaption><h3>Soldering iron</h3><div class="dl"><a href="/assets/illustrations/soldering-iron.svg" download>SVG</a><a href="/assets/illustrations/soldering-iron.png" download>PNG</a></div></figcaption></figure>
-          <figure class="illo" style="margin:0"><div class="art"><img src="/assets/illustrations/iss.svg" alt="International Space Station with binary"></div><figcaption><h3>ISS</h3><div class="dl"><a href="/assets/illustrations/iss.svg" download>SVG</a><a href="/assets/illustrations/iss.png" download>PNG</a></div></figcaption></figure>
-          <figure class="illo" style="margin:0"><div class="art"><img src="/assets/illustrations/circuit.svg" alt="Circuit traces with a laser, files and a resistor"></div><figcaption><h3>Circuit traces</h3><div class="dl"><a href="/assets/illustrations/circuit.svg" download>SVG</a><a href="/assets/illustrations/circuit.png" download>PNG</a></div></figcaption></figure>
-          <figure class="illo" style="margin:0"><div class="art"><img src="/assets/illustrations/transistor.svg" alt="Transistor symbol with traces"></div><figcaption><h3>Transistor</h3><div class="dl"><a href="/assets/illustrations/transistor.svg" download>SVG</a><a href="/assets/illustrations/transistor.png" download>PNG</a></div></figcaption></figure>
-          <figure class="illo" style="margin:0"><div class="art"><img src="/assets/banner.webp" alt="The Alpha One Labs banner" style="border-radius:12px"></div><figcaption><h3>Banner</h3><div class="dl"><a href="/assets/banner.webp" download>WebP 2560×720</a></div></figcaption></figure>
+            <div>
+              <h3 class="sub">Typography</h3>
+              <div class="aa">
+                <div><span style="font:900 52px/1 var(--a1-font-display)">Aa</span><b>Display</b>Barlow Condensed 900</div>
+                <div><span style="font:700 48px/1 var(--a1-font-body)">Aa</span><b>Heading</b>Inter Bold</div>
+                <div><span style="font:400 48px/1 var(--a1-font-body)">Aa</span><b>Body</b>Inter Regular</div>
+              </div>
+            </div>
+            <div>
+              <h3 class="sub">Spacing <small>(8pt grid)</small></h3>
+              <div class="spacing">
+                <div><i style="width:4px;height:4px"></i>4</div><div><i style="width:8px;height:8px"></i>8</div><div><i style="width:12px;height:12px"></i>12</div><div><i style="width:16px;height:16px"></i>16</div><div><i style="width:24px;height:24px"></i>24</div><div><i style="width:32px;height:32px"></i>32</div><div><i style="width:40px;height:40px"></i>40</div><div><i style="width:56px;height:56px"></i>64</div>
+              </div>
+            </div>
+            <div>
+              <h3 class="sub">Radius</h3>
+              <div class="radii"><div><i style="border-radius:0"></i>0</div><div><i style="border-radius:4px"></i>4</div><div><i style="border-radius:8px"></i>8</div><div><i style="border-radius:12px"></i>12</div><div><i style="border-radius:16px"></i>16</div></div>
+            </div>
+          </div>
+
+          <h2 class="col-h" style="margin-top:28px">UI components <small>(web-ready)</small></h2>
+          <h3 class="sub">Buttons</h3>
+          <div class="btn-row">
+            <a class="a1-btn a1-btn--primary" href="https://learn.alphaonelabs.com/activity">Explore Activities ↗</a>
+            <a class="a1-btn a1-btn--dark" href="https://learn.alphaonelabs.com/about">Watch Intro ▶</a>
+            <a class="a1-btn" href="https://learn.alphaonelabs.com/virtual-classroom">Join a Live Session ↗</a>
+            <a class="a1-link-more" href="#components">Learn More →</a>
+          </div>
+          <div class="comp-grid">
+            <div>
+              <h3 class="sub">Activity card <small>(example)</small></h3>
+              <article class="a1-card a1-card--media act">
+                <div class="a1-card__media act-media"><span class="a1-tag a1-tag--gold">Live</span><img src="/assets/circuits/pcb-chip.svg" alt=""></div>
+                <div class="a1-card__body"><h4 class="act-title">The Art of Music</h4><p class="a1-card__desc">From theory to production. Explore composition, sound design, and making music in the real world.</p>
+                  <div class="act-meta"><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 15V4l10-2v11"/><circle cx="5" cy="15" r="2.4"/><circle cx="15" cy="13" r="2.4"/></svg>Music</span><b>$150</b></div></div>
+              </article>
+            </div>
+            <div>
+              <h3 class="sub">Navigation <small>(light / dark)</small></h3>
+              <div class="mininav light"><img src="/assets/logo/logo.svg" alt=""><b>Alpha One Labs</b><span>Activities</span><span>Classroom</span><span>Teach</span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5"/><path d="m13 13 4 4"/></svg><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8"/><circle cx="10" cy="8" r="3"/><path d="M4.5 15.5a7 7 0 0 1 11 0"/></svg></div>
+              <div class="mininav dark"><img src="/assets/logo/logo.svg" alt=""><b>Alpha One Labs</b><span>Activities</span><span>Classroom</span><span>Teach</span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5"/><path d="m13 13 4 4"/></svg><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8"/><circle cx="10" cy="8" r="3"/><path d="M4.5 15.5a7 7 0 0 1 11 0"/></svg></div>
+              <div class="two">
+                <div><h3 class="sub">Tags / badges</h3><div class="btn-row"><span class="a1-tag a1-tag--gold">Live</span><span class="a1-tag">Self-paced</span><span class="a1-tag">Study group</span></div></div>
+                <div><h3 class="sub">Form fields</h3><label class="search"><span class="sr-only">Search activities</span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5"/><path d="m13 13 4 4"/></svg><input class="a1-input" placeholder="Search activities…"></label></div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- right -->
+        <aside class="col col-right">
+          <h2 class="col-h">Mascot assets <small>(included)</small></h2>
+          <div class="masc">
+            <figure><img src="/assets/mascots/nerd-noir-portrait.webp" alt="Noir portrait of the Alpha One Labs mascot"><figcaption><b>Primary: Noir</b>WebP 1120×1400</figcaption></figure>
+            <figure><img src="/assets/mascots/nerd-cyber-portrait.webp" alt="Cyber portrait of the Alpha One Labs mascot"><figcaption><b>Alternative: Cyber</b>WebP 1120×1400</figcaption></figure>
+          </div>
+          <h2 class="col-h" style="margin-top:22px">Circuit graphics &amp; UI elements</h2>
+          <div class="circ">
+            <img class="c-traces" src="/assets/circuits/pcb-traces.svg" alt="">
+            <img class="c-chip" src="/assets/circuits/pcb-chip-icon.svg" alt="">
+            <img class="c-hatch" src="/assets/circuits/pcb-hatch.svg" alt="">
+            <img class="c-bracket" src="/assets/circuits/pcb-bracket.svg" alt="">
+          </div>
+        </aside>
+      </div>
+    </section>
+    <section class="sheet-band">
+      <div class="a1-container band-grid">
+        <div><h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Quick start</h2>
+          <ol class="steps"><li><i>1</i>Link <code>brand.css</code></li><li><i>3</i>Use the tokens</li><li><i>2</i>Add <code>chrome.js</code></li><li><i>4</i>Push: it deploys itself</li></ol></div>
+        <div><h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg>Tech stack</h2><p>HTML · CSS · JavaScript · Cloudflare Workers. No build step.</p></div>
+        <div><h2><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13"/><path d="M8 21h8M12 17v4"/></svg>Design files</h2><p>SVG, PNG and WebP sources<br><a href="/downloads/alpha-one-labs-design-system.zip" download>alpha-one-labs-design-system.zip</a></p></div>
+        <div><h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h7a3 3 0 0 1 2 1 3 3 0 0 1 2-1h7v14h-7a2 2 0 0 0-2 1 2 2 0 0 0-2-1H3z"/><path d="M12 6v14"/></svg>Documentation</h2><p>Usage guide and component reference below, and in <a href="https://github.com/alphaonelabs/website/tree/main/design-system">design-system/</a></p></div>
       </div>
     </section>
 
-    <!-- ============ USE IT ============ -->
-    <section id="use">
-      <div class="wrap">
-        <span class="a1-eyebrow">06 · Use it</span>
-        <h2>Two lines and you're on brand</h2>
-        <p class="lede">Add these to any page in the <a href="https://github.com/alphaonelabs/website">monorepo</a>. New folders with a <code>wrangler.toml</code> deploy to <code>&lt;folder&gt;.alphaonelabs.com</code> on their own.</p>
-        <pre>&lt;link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css"&gt;
+    <!-- LOGO -->
+    <section class="a1-section" id="logo"><div class="a1-container">
+      <div class="a1-section__top"><div><span class="num">01</span><h2 class="a1-section__title">The A1 mark</h2></div></div>
+      <p class="lede">Two panels at a 1:2 slope: a white front panel carrying the A, a black back panel carrying the 1. The black panel always has a white edge and the white panel a black edge, so the mark reads on any background. Pair it with the ALPHA ONE LABS wordmark in Barlow Condensed 900.</p>
+      <div class="grid g3">
+        <figure><div class="tile light"><div class="lockup-row"><img src="/assets/logo/logo.svg" alt=""><span style="color:#000">Alpha One Labs</span></div></div><figcaption>Lockup on white</figcaption></figure>
+        <figure><div class="tile dark"><div class="lockup-row"><img src="/assets/logo/logo.svg" alt=""><span style="color:#fff">Alpha One Labs</span></div></div><figcaption>Lockup on black</figcaption></figure>
+        <figure><div class="tile light"><img src="/assets/logo/logo.svg" alt="The A1 mark" style="max-height:180px"></div>
+          <div class="dl"><a class="a1-btn a1-btn--sm" href="/assets/logo/logo.svg" download>SVG</a><a class="a1-btn a1-btn--sm" href="/assets/logo/logo.png" download>PNG</a><a class="a1-btn a1-btn--sm" href="/assets/logo/avatar.png" download>Avatar</a><a class="a1-btn a1-btn--sm" href="/assets/logo/logo-print.svg" download>Print SVG</a></div></figure>
+      </div>
+      <div class="grid g4 dont" style="margin-top:24px" aria-label="Don't">
+        <figure><div class="tile light"><img src="/assets/logo/logo.svg" alt="" style="transform:scaleX(1.5)"></div><figcaption>Don't stretch it</figcaption></figure>
+        <figure><div class="tile light"><img src="/assets/logo/logo.svg" alt="" style="transform:rotate(-20deg)"></div><figcaption>Don't rotate it</figcaption></figure>
+        <figure><div class="tile gold"><img src="/assets/logo/logo.svg" alt="" style="filter:hue-rotate(180deg) saturate(6)"></div><figcaption>Don't recolor it</figcaption></figure>
+        <figure><div class="tile light"><img src="/assets/logo/logo.svg" alt="" style="filter:drop-shadow(8px 8px 0 #d92d20)"></div><figcaption>Don't add effects</figcaption></figure>
+      </div>
+    </div></section>
+
+    <!-- COLOR -->
+    <section class="a1-section" id="color"><div class="a1-container">
+      <div class="a1-section__top"><div><span class="num">02</span><h2 class="a1-section__title">White, black and brass</h2></div></div>
+      <p class="lede">A restrained foundation: plain white and plain black do the work, brass gold is the signature accent for emphasis, labels, calls to action and circuits. Never gold on white for running text. Click a swatch to copy its token.</p>
+      <div class="grid g4">
+        <button class="swatch" data-copy="var(--a1-white)"><span class="chip" style="background:#fff;color:#000">#FFFFFF</span><span class="meta"><b>White</b><code>--a1-white</code></span></button>
+        <button class="swatch" data-copy="var(--a1-black)"><span class="chip" style="background:#000;color:#fff">#000000</span><span class="meta"><b>Black</b><code>--a1-black</code></span></button>
+        <button class="swatch" data-copy="var(--a1-gold)"><span class="chip" style="background:#d4af37;color:#080808">#D4AF37 · dark #E1B746</span><span class="meta"><b>Brass</b><code>--a1-accent-fill</code></span></button>
+        <button class="swatch" data-copy="var(--a1-accent)"><span class="chip" style="background:#7a6418;color:#fff">#7A6418</span><span class="meta"><b>Brass ink</b><code>--a1-accent</code> · small text on white</span></button>
+      </div>
+    </div></section>
+
+    <!-- TYPE -->
+    <section class="a1-section" id="type"><div class="a1-container">
+      <div class="a1-section__top"><div><span class="num">03</span><h2 class="a1-section__title">Type</h2></div></div>
+      <div class="type-row"><span class="num">Display · Barlow Condensed 900</span><span class="a1-display" style="font-size:var(--a1-text-5xl)">Learn. Share. <span class="a1-gold">Explore.</span></span></div>
+      <div class="type-row"><span class="num">Section · Barlow Condensed 900</span><span class="a1-section__title">Featured activities</span></div>
+      <div class="type-row"><span class="num">Card title · Inter 800</span><span class="a1-card__title" style="margin:0">Physics, Math, Alchemy</span></div>
+      <div class="type-row"><span class="num">Body · Inter 500 · 16px min</span><span style="max-width:60ch">Classes, workshops, study groups, and more activities for curious minds.</span></div>
+      <div class="type-row"><span class="num">Eyebrow · JetBrains Mono 700</span><span class="a1-eyebrow">Education / Activities / Community</span></div>
+    </div></section>
+
+    <!-- COMPONENTS -->
+    <section class="a1-section" id="components"><div class="a1-container">
+      <div class="a1-section__top"><div><span class="num">04</span><h2 class="a1-section__title">Components</h2></div></div>
+      <p class="lede">Opt-in classes from <code>brand.css</code>. Bold, direct labels; strong contrast; border separation instead of shadows.</p>
+      <div class="grid g2">
+        <div><div class="demo"><div class="row"><a class="a1-btn a1-btn--primary" href="#components">Explore Activities ↗</a><a class="a1-btn" href="#components">Start Teaching ↗</a><a class="a1-btn a1-btn--sm" href="#components">Small</a></div></div>
+          <pre>&lt;a class="a1-btn a1-btn--primary"&gt;Explore Activities ↗&lt;/a&gt;
+&lt;a class="a1-btn"&gt;Start Teaching ↗&lt;/a&gt;</pre></div>
+        <div><div class="demo"><div class="row"><span class="a1-tag a1-tag--gold a1-tag--live">Live</span><span class="a1-tag">Self-paced</span><span class="a1-tag">Study group</span><span class="a1-eyebrow">Eyebrow</span></div></div>
+          <pre>&lt;span class="a1-tag a1-tag--gold a1-tag--live"&gt;Live&lt;/span&gt;
+&lt;span class="a1-tag"&gt;Self-paced&lt;/span&gt;</pre></div>
+      </div>
+      <div class="grid g3" style="margin-top:16px">
+        <article class="a1-card a1-card--media a1-card--interactive">
+          <div class="a1-card__media" style="background:#000"><span class="a1-tag a1-tag--gold a1-tag--live">Live</span><img class="card-art" src="/assets/circuits/pcb-chip.svg" alt="" style="width:62%;height:auto;object-fit:contain"></div>
+          <div class="a1-card__body"><h3 class="a1-card__title">Why Is Redis So Fast?</h3><p class="a1-card__desc">Understanding high-throughput caching, together.</p><div class="a1-card__meta"><span>Study group</span><span>Free</span></div></div>
+        </article>
+        <article class="a1-card a1-card--media a1-card--interactive">
+          <div class="a1-card__media"><span class="a1-tag">Self-paced</span><img src="/assets/circuits/pcb-divider.svg" alt="" style="width:80%;height:auto;object-fit:contain;filter:none"></div>
+          <div class="a1-card__body"><h3 class="a1-card__title">Introduction to Programming in C</h3><p class="a1-card__desc">Pointers, memory and the machine underneath.</p><div class="a1-card__meta"><span>Course</span><span>$1</span></div></div>
+        </article>
+        <div class="grid" style="align-content:start">
+          <a class="a1-cta a1-cta--gold" href="#components"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9h12a4 4 0 0 1 4 4v19a3 3 0 0 0-3-3H6zM34 9H22a4 4 0 0 0-4 4"/><path d="M34 9v20H25a3 3 0 0 0-3 3"/></svg><span><strong>I want to learn →</strong><small>Discover activities, join groups, build skills.</small></span></a>
+          <a class="a1-cta" href="#components"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 15 20 8l16 7-16 7z"/><path d="M10 18v8c5 4 15 4 20 0v-8M36 15v9"/></svg><span><strong>I want to teach →</strong><small>Share your expertise, run activities.</small></span></a>
+          <label style="display:grid;gap:6px;font:800 12px var(--a1-font-body);text-transform:uppercase;letter-spacing:.06em">Search activities<input class="a1-input" placeholder="What do you want to learn?"></label>
+        </div>
+      </div>
+      <div class="a1-live" style="margin-top:24px"><h3 class="a1-live__title">Live virtual<br>classroom</h3><span class="a1-tag a1-tag--gold a1-tag--live">Live</span><p>Join live classes, workshops, and community activities from anywhere.</p><a class="a1-btn" href="https://learn.alphaonelabs.com/virtual-classroom">Join a live session ↗</a></div>
+      <div class="a1-values" style="margin-top:24px">
+        <div class="a1-value"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="22" height="20"/><path d="M4 12h22M10 3v6M20 3v6"/></svg><div><strong>A wide range of activities</strong><span>Classes, workshops and more.</span></div></div>
+        <div class="a1-value"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2"><circle cx="15" cy="10" r="4"/><circle cx="6" cy="13" r="3"/><circle cx="24" cy="13" r="3"/><path d="M8 25a7 7 0 0 1 14 0M1 24a5 5 0 0 1 6-5M29 24a5 5 0 0 0-6-5"/></svg><div><strong>Collaborative</strong><span>Learn with others.</span></div></div>
+        <div class="a1-value"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3 3 9l12 6 12-6zM3 15l12 6 12-6M3 21l12 6 12-6"/></svg><div><strong>Open &amp; accessible</strong><span>Education for everyone.</span></div></div>
+        <div class="a1-value"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2"><circle cx="15" cy="15" r="12"/><path d="M3 15h24M15 3c4 4 4 20 0 24M15 3c-4 4-4 20 0 24"/></svg><div><strong>Global community</strong><span>Learners from everywhere.</span></div></div>
+      </div>
+      <h3 class="a1-section__title" style="font-size:2rem;margin:48px 0 14px">Shared header and footer</h3>
+      <div class="chrome-demo"><a1-header site="Your site" no-theme-toggle></a1-header><div class="page">your page</div><a1-footer source="your-folder"></a1-footer></div>
+    </div></section>
+
+    <!-- CIRCUITS -->
+    <section class="a1-section" id="circuits"><div class="a1-container">
+      <div class="a1-section__top"><div><span class="num">05</span><h2 class="a1-section__title">Circuit art</h2></div></div>
+      <p class="lede">Drawn like a real board: traces run straight or at 45°, buses keep a fixed pitch, and every trace ends in a via or a pad. Use them for hero framing, dividers, corners and the footer, never over text. All use <code>currentColor</code>; set <code>color: var(--a1-accent-fill)</code>.</p>
+      <div class="grid g4">
+        <figure class="art"><div class="stage"><img src="/assets/circuits/pcb-corner.svg" alt="Corner bus"></div><h3>Corner bus</h3><div class="dl"><a class="a1-btn a1-btn--sm" href="/assets/circuits/pcb-corner.svg" download>SVG</a></div></figure>
+        <figure class="art"><div class="stage"><img src="/assets/circuits/pcb-chip.svg" alt="QFP chip"></div><h3>QFP chip</h3><div class="dl"><a class="a1-btn a1-btn--sm" href="/assets/circuits/pcb-chip.svg" download>SVG</a></div></figure>
+        <figure class="art"><div class="stage"><img src="/assets/circuits/pcb-divider.svg" alt="Divider"></div><h3>Divider</h3><div class="dl"><a class="a1-btn a1-btn--sm" href="/assets/circuits/pcb-divider.svg" download>SVG</a></div></figure>
+        <figure class="art"><div class="stage"><img src="/assets/circuits/pcb-frame.svg" alt="Frame"></div><h3>Frame</h3><div class="dl"><a class="a1-btn a1-btn--sm" href="/assets/circuits/pcb-frame.svg" download>SVG</a></div></figure>
+      </div>
+    </div></section>
+
+    <!-- MASCOT -->
+    <section class="a1-section" id="mascot"><div class="a1-container">
+      <div class="a1-section__top"><div><span class="num">06</span><h2 class="a1-section__title">The mascot</h2></div></div>
+      <p class="lede">Curiosity, intelligence and teaching. Use him in the homepage hero, teacher recruitment, campaigns and onboarding, never in every section.</p>
+      <div class="mascots">
+        <figure><div class="portrait"><img src="/assets/mascots/nerd-noir-portrait.webp" alt="Noir ink portrait of the Alpha One Labs mascot"></div><figcaption><b>Noir: primary.</b> Default hero art, especially on dark. <a href="/assets/mascots/nerd-noir-portrait.webp" download>WebP</a></figcaption></figure>
+        <figure><div class="portrait"><img src="/assets/mascots/nerd-cyber-portrait.webp" alt="Cyberpunk portrait of the Alpha One Labs mascot"></div><figcaption><b>Cyber: campaigns only.</b> Tech events and digital-learning promos. <a href="/assets/mascots/nerd-cyber-portrait.webp" download>WebP</a></figcaption></figure>
+        <div class="a1-card"><h3 class="a1-card__title">Treatment</h3>
+          <ul class="rules">
+            <li>Show portraits in a cropped rectangular panel with <code>object-fit: cover</code>.</li>
+            <li>Keep the eye line and glasses visible; never crop at the eyebrows.</li>
+            <li>They are not transparent cutouts. Don't layer them as one.</li>
+            <li>Pair the noir version with true white, true black, grays and gold.</li>
+            <li>No heavy gradients or glows around him.</li>
+            <li>Meaningful placement: describe him in alt text; decorative: empty alt.</li>
+          </ul>
+        </div>
+      </div>
+    </div></section>
+
+    <!-- USE -->
+    <section class="a1-section" id="use"><div class="a1-container">
+      <div class="a1-section__top"><div><span class="num">07</span><h2 class="a1-section__title">Use it</h2></div></div>
+      <p class="lede">Add these to any page in the <a href="https://github.com/alphaonelabs/website">monorepo</a>. A new folder with a <code>wrangler.toml</code> deploys to <code>&lt;folder&gt;.alphaonelabs.com</code> on its own.</p>
+      <pre>&lt;link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css"&gt;
 &lt;script src="https://design.alphaonelabs.com/chrome.js" defer&gt;&lt;/script&gt;
 
-&lt;a1-header site="Your site" sticky&gt;
-  &lt;a slot="actions" class="a1-btn a1-btn--primary" href="/start"&gt;Start&lt;/a&gt;  &lt;!-- optional --&gt;
-&lt;/a1-header&gt;
-
+&lt;a1-header site="Your site" sticky&gt;&lt;/a1-header&gt;   &lt;!-- add compact for app-like pages --&gt;
 &lt;main style="background: var(--a1-bg); color: var(--a1-text)"&gt;…&lt;/main&gt;
-
 &lt;a1-footer source="your-folder"&gt;&lt;/a1-footer&gt;</pre>
-        <div class="grid g3" style="margin-top:24px">
-          <div class="a1-card"><h3>Light and dark</h3><p class="muted" style="margin:0">Pages follow the system theme. The header's toggle sets <code>data-a1-theme</code> on <code>&lt;html&gt;</code>, remembers it across every alphaonelabs.com site, and fires <code>a1-themechange</code>.</p></div>
-          <div class="a1-card"><h3>Accessible by default</h3><p class="muted" style="margin:0">AA contrast in both themes, visible focus rings, a keyboard-friendly site menu and reduced-motion support.</p></div>
-          <div class="a1-card"><h3>Edit it</h3><p class="muted" style="margin:0">Everything here lives in <a href="https://github.com/alphaonelabs/website/tree/main/design-system"><code>design-system/</code></a>. Change a token and every site picks it up.</p></div>
-        </div>
+      <div class="grid g3" style="margin-top:16px">
+        <div class="a1-card"><h3 class="a1-card__title">Light and dark</h3><p class="a1-card__desc" style="margin:0">Light is the base; dark follows the system. The header toggle sets <code>data-a1-theme</code> on <code>&lt;html&gt;</code>, remembers it across every alphaonelabs.com site and fires <code>a1-themechange</code>.</p></div>
+        <div class="a1-card"><h3 class="a1-card__title">Accessible</h3><p class="a1-card__desc" style="margin:0">AA contrast in both themes, 16px minimum body, 3px gold focus rings, keyboard menus, reduced motion.</p></div>
+        <div class="a1-card"><h3 class="a1-card__title">Edit it</h3><p class="a1-card__desc" style="margin:0">Everything lives in <a href="https://github.com/alphaonelabs/website/tree/main/design-system"><code>design-system/</code></a>. Change a token and every site follows.</p></div>
       </div>
-    </section>
+    </div></section>
   </main>
 
   <a1-footer source="design-system"></a1-footer>
@@ -285,8 +444,7 @@
   <script>
     document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
       const t = document.getElementById("toast");
-      try { await navigator.clipboard.writeText(b.dataset.copy); t.textContent = `Copied ${b.dataset.copy}`; }
-      catch { t.textContent = b.dataset.copy; }
+      try { await navigator.clipboard.writeText(b.dataset.copy); t.textContent = `Copied ${b.dataset.copy}`; } catch { t.textContent = b.dataset.copy; }
       t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1600);
     }));
   </script>
