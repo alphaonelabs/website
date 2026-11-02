@@ -49,12 +49,12 @@
 }
 
 .markdown-content a {
-  color: #0d9488; /* teal-600 */
+  color: #7a6418; /* teal-600 */
   text-decoration: underline;
 }
 
 .markdown-content a:hover {
-  color: #0f766e; /* teal-700 */
+  color: #7a6418; /* teal-700 */
 }
 
 .markdown-content code {
@@ -66,7 +66,7 @@
 }
 
 .dark .markdown-content code {
-  background-color: #374151; /* gray-700 */
+  background-color: #333333; /* gray-700 */
 }
 
 .markdown-content pre {
@@ -78,18 +78,18 @@
 }
 
 .dark .markdown-content pre {
-  background-color: #374151; /* gray-700 */
+  background-color: #333333; /* gray-700 */
 }
 
 .markdown-content blockquote {
   border-left: 4px solid #e5e7eb; /* gray-200 */
   padding-left: 1rem;
   margin: 1rem 0;
-  color: #6b7280; /* gray-500 */
+  color: #737373; /* gray-500 */
 }
 
 .dark .markdown-content blockquote {
-  border-left-color: #4b5563; /* gray-600 */
+  border-left-color: #4a4a4a; /* gray-600 */
   color: #9ca3af; /* gray-400 */
 }
 
@@ -115,5 +115,5 @@
 
 .dark .markdown-content th,
 .dark .markdown-content td {
-  border-color: #4b5563; /* gray-600 */
+  border-color: #4a4a4a; /* gray-600 */
 }

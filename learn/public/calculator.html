@@ -29,7 +29,7 @@
     .panel-section-header {
       font-size: 0.78rem;
       font-weight: 600;
-      color: #4b5563;
+      color: #4a4a4a;
       padding: 0.75rem 1rem 0.35rem;
       border-top: 1px solid #f3f4f6;
       display: flex;
@@ -38,7 +38,7 @@
     }
     .dark .panel-section-header {
       color: #9ca3af;
-      border-color: #1f2937;
+      border-color: #121212;
     }
 
     /* Control grid buttons */
@@ -51,60 +51,60 @@
       font-weight: 600;
       cursor: pointer;
       transition: background 0.13s, border-color 0.13s, color 0.13s, transform 0.1s;
-      background: #f9fafb;
+      background: #fafafa;
       border: 1px solid #e5e7eb;
-      color: #4b5563;
+      color: #4a4a4a;
       user-select: none;
       letter-spacing: 0.01em;
     }
     .dark .ctrl-btn {
-      background: #1f2937;
-      border-color: #374151;
+      background: #121212;
+      border-color: #333333;
       color: #9ca3af;
     }
     .ctrl-btn:hover {
-      background: #f0fdfa;
+      background: #fbf8ee;
       border-color: #99f6e4;
-      color: #0f766e;
+      color: #7a6418;
     }
     .dark .ctrl-btn:hover {
       background: #0d3330;
-      border-color: #2dd4bf;
-      color: #5eead4;
+      border-color: #d4af37;
+      color: #e1b746;
     }
     .ctrl-btn:active { transform: scale(0.91); }
     .ctrl-btn i { font-size: 0.85rem; }
 
     /* Reset button gets a subtle accent */
     .ctrl-btn.reset-btn {
-      background: #f0fdfa;
+      background: #fbf8ee;
       border-color: #ccfbf1;
-      color: #0f766e;
+      color: #7a6418;
     }
     .dark .ctrl-btn.reset-btn {
       background: #0d3330;
       border-color: #115e59;
-      color: #5eead4;
+      color: #e1b746;
     }
     .ctrl-btn.reset-btn:hover {
       background: #ccfbf1;
-      border-color: #5eead4;
+      border-color: #e1b746;
     }
     .dark .ctrl-btn.reset-btn:hover {
-      background: #134e4a;
-      border-color: #2dd4bf;
+      background: #3a3117;
+      border-color: #d4af37;
     }
 
     /* Direction pad subtle background */
     .dpad-wrap {
-      background: #f9fafb;
+      background: #fafafa;
       border: 1px solid #f3f4f6;
       border-radius: 12px;
       padding: 6px;
     }
     .dark .dpad-wrap {
-      background: #111827;
-      border-color: #1f2937;
+      background: #0a0a0a;
+      border-color: #121212;
     }
 
     /* Left panel — full-height sticky sidebar */
@@ -120,13 +120,13 @@
       border-right: 1px solid #e5e7eb;
       border-radius: 0;
     }
-    .dark #left-panel { border-right-color: #1f2937; }
+    .dark #left-panel { border-right-color: #121212; }
 
     /* Thin scrollbar on the sidebar itself */
     #left-panel::-webkit-scrollbar       { width: 4px; }
     #left-panel::-webkit-scrollbar-track { background: transparent; }
     #left-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-    .dark #left-panel::-webkit-scrollbar-thumb { background: #374151; }
+    .dark #left-panel::-webkit-scrollbar-thumb { background: #333333; }
 
     /* Functions list — no max-height, sidebar handles scroll */
     #functions-list { overflow: visible; }
@@ -140,7 +140,7 @@
         border-right: none;
         border-bottom: 1px solid #e5e7eb;
       }
-      .dark #left-panel { border-bottom-color: #1f2937; }
+      .dark #left-panel { border-bottom-color: #121212; }
     }
 
     /* Examples 3×3 grid — clean, no colour */
@@ -150,8 +150,8 @@
       padding: 12px 6px;
       border-radius: 10px;
       border: 1px solid #e5e7eb;
-      background: #f9fafb;
-      color: #111827;
+      background: #fafafa;
+      color: #0a0a0a;
       font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
@@ -162,13 +162,13 @@
     .ex-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
     .ex-btn:active { transform: scale(0.96); }
     .dark .ex-btn {
-      background: #1f2937; border-color: #374151; color: #f9fafb;
+      background: #121212; border-color: #333333; color: #fafafa;
     }
-    .dark .ex-btn:hover { background: #111827; border-color: #4b5563; }
+    .dark .ex-btn:hover { background: #0a0a0a; border-color: #4a4a4a; }
     .ex-btn .ex-math {
       font-family: 'Georgia', serif;
       font-size: 0.68rem;
-      color: #6b7280;
+      color: #737373;
       font-weight: 400;
     }
     .dark .ex-btn .ex-math { color: #9ca3af; }
@@ -183,7 +183,7 @@
       display: flex; flex-direction: column;
       background: #fff;
     }
-    .dark #fs-overlay { background: #111827; }
+    .dark #fs-overlay { background: #0a0a0a; }
     #fs-overlay.hidden { display: none; }
     #fs-canvas { cursor: grab; display: block; flex: 1; width: 100%; touch-action: none; }
     #fs-canvas:active { cursor: grabbing; }
@@ -196,7 +196,7 @@
 {% block content %}
 
 <!-- Hero -->
-<section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 relative overflow-hidden py-12 md:py-14">
+<section class="relative overflow-hidden py-12 md:py-14 a1s-hero">
   <div class="absolute inset-0 pointer-events-none select-none opacity-10" aria-hidden="true">
     <i class="fas fa-chart-line absolute top-6 left-10 text-8xl"></i>
     <i class="fas fa-infinity    absolute bottom-4 right-10 text-8xl"></i>
@@ -500,7 +500,7 @@ function draw() {
   ctx.clearRect(0, 0, w, h);
 
   // Background
-  ctx.fillStyle = dark ? '#1f2937' : '#ffffff';
+  ctx.fillStyle = dark ? '#000000' : '#ffffff';
   ctx.fillRect(0, 0, w, h);
 
   if (showGrid) drawGrid(w, h, dark);
@@ -540,7 +540,7 @@ function drawGrid(w, h, dark) {
   const lx = Math.min(Math.max(origin.px + 5, 5), w - 36);
   const ly = Math.min(Math.max(origin.py + 4, 4), h - 14);
 
-  ctx.fillStyle = dark ? 'rgba(156,163,175,0.85)' : 'rgba(100,116,139,0.85)';
+  ctx.fillStyle = dark ? 'rgba(156,163,175,0.85)' : 'rgba(115,115,115,0.85)';
   ctx.font = '10.5px system-ui,sans-serif';
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -564,7 +564,7 @@ function fmtNum(n) {
 
 function drawAxes(w, h, dark) {
   const o = toPixel(0, 0);
-  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.28)' : 'rgba(15,23,42,0.32)';
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.32)';
   ctx.lineWidth   = 1.5;
 
   ctx.beginPath(); ctx.moveTo(0, o.py); ctx.lineTo(w, o.py); ctx.stroke();
@@ -581,7 +581,7 @@ function drawAxes(w, h, dark) {
   ctx.moveTo(o.px, 1); ctx.lineTo(o.px - s, s * 2); ctx.lineTo(o.px + s, s * 2); ctx.closePath(); ctx.fill();
 
   // Axis labels
-  ctx.fillStyle = dark ? 'rgba(148,163,184,0.9)' : 'rgba(71,85,105,0.9)';
+  ctx.fillStyle = dark ? 'rgba(163,163,163,0.9)' : 'rgba(74,74,74,0.9)';
   ctx.font = 'bold 12px system-ui,sans-serif';
   ctx.textAlign = 'left';  ctx.textBaseline = 'middle'; ctx.fillText('x', w - 14, o.py - 8);
   ctx.textAlign = 'left';  ctx.textBaseline = 'top';    ctx.fillText('y', o.px + 6, 4);
@@ -985,9 +985,9 @@ function toggleGrid() {
   showGrid = !showGrid;
   const btn = document.getElementById('grid-toggle-btn');
   if (btn) {
-    btn.style.background   = showGrid ? '' : (isDark() ? '#134e4a' : '#f0fdfa');
-    btn.style.borderColor  = showGrid ? '' : '#5eead4';
-    btn.style.color        = showGrid ? '' : '#0f766e';
+    btn.style.background   = showGrid ? '' : (isDark() ? '#1a1a1a' : '#f5f5f5');
+    btn.style.borderColor  = showGrid ? '' : '#e1b746';
+    btn.style.color        = showGrid ? '' : '#7a6418';
   }
   draw();
 }
@@ -1049,7 +1049,7 @@ function setupFs() {
 function drawFs(w, h) {
   const dark = isDark();
   fsCtx.clearRect(0,0,w,h);
-  fsCtx.fillStyle = dark ? '#1f2937' : '#fff';
+  fsCtx.fillStyle = dark ? '#000000' : '#fff';
   fsCtx.fillRect(0,0,w,h);
 
   function fsPx(x, y) {
@@ -1074,7 +1074,7 @@ function drawFs(w, h) {
   }
 
   const o = fsPx(0, 0);
-  fsCtx.strokeStyle = dark ? 'rgba(255,255,255,0.28)' : 'rgba(15,23,42,0.32)';
+  fsCtx.strokeStyle = dark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.32)';
   fsCtx.lineWidth = 1.5;
   fsCtx.beginPath(); fsCtx.moveTo(0,o.py); fsCtx.lineTo(w,o.py); fsCtx.stroke();
   fsCtx.beginPath(); fsCtx.moveTo(o.px,0); fsCtx.lineTo(o.px,h); fsCtx.stroke();

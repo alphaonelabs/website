@@ -5,21 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Alpha One Labs Admin</title>
   <link rel="icon" type="image/png" href="/images/logo.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/js/a1-tailwind-theme.js?v=1"></script>
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
   <style>
     :root {
-      --ink: #0f172a;
-      --muted: #64748b;
-      --line: #e2e8f0;
-      --bg: #f8fafc;
+      --ink: #0a0a0a;
+      --muted: #737373;
+      --line: #e6e6e6;
+      --bg: #fafafa;
       --card: #ffffff;
-      --accent: #0f766e;
+      --accent: #7a6418;
       --accent-soft: #ccfbf1;
     }
     body {
       font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: radial-gradient(circle at 10% 10%, #d1fae5 0%, #f8fafc 35%),
-                  radial-gradient(circle at 90% 20%, #bfdbfe 0%, #f8fafc 40%);
+      background: radial-gradient(circle at 10% 10%, #d1fae5 0%, #fafafa 35%),
+                  radial-gradient(circle at 90% 20%, #bfdbfe 0%, #fafafa 40%);
       color: var(--ink);
     }
     .glass {
@@ -46,7 +48,7 @@
           <h1 class="text-3xl font-black mt-1">Database Table Counts</h1>
           <p class="text-sm text-slate-500 mt-2">Protected by HTTP Basic Auth and loaded from live D1 metadata.</p>
         </div>
-        <button id="reload" class="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold transition">Refresh</button>
+        <button id="reload" class="a1-btn a1-btn--primary a1-btn--sm">Refresh</button>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">

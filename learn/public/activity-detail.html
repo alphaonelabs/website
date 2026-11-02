@@ -1,183 +1,187 @@
 {% extends "base.html" %}
 {% block title %}Activity Details - Alpha One Labs{% endblock %}
 {% block meta_description %}Alpha One Labs activity details, sessions, creator, classroom, and checkout.{% endblock %}
-{% block body_class %}min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100 overflow-x-hidden{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 overflow-x-hidden{% endblock %}
 {% block head %}
 <style>
-  .badge { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .75rem; border-radius: 9999px; font-size: .75rem; font-weight: 700; }
+  .ad-page { color: var(--a1-text); }
+  .ad-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  @media (min-width: 900px) { .ad-grid { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 36px; } }
+  .ad-cover { aspect-ratio: 4 / 3; }
+  .ad-cover img { filter: grayscale(100%) contrast(1.05); }
+  .ad-title { font-size: clamp(2.5rem, 5.2vw, 4.4rem); overflow-wrap: anywhere; }
+  .ad-head { border-bottom: 1px solid var(--a1-border-strong); padding-bottom: 22px; }
+  .ad-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .ad-status { font-weight: 700; padding: 3px 7px; color: var(--a1-text-muted); border-color: var(--a1-border); }
+  .ad-status.is-live { color: var(--a1-text); border-color: var(--a1-border-strong); }
+  .ad-section-title { display: flex; align-items: center; gap: 10px; }
+  .ad-section-title i { font-size: 15px; }
+  .ad-prose h2 { font-family: var(--a1-font-display, sans-serif); font-weight: 900; text-transform: uppercase; font-size: 1.35rem; line-height: 1; margin: 0 0 8px; }
+  .ad-prose p { color: var(--a1-text); line-height: 1.65; }
+  .ad-session-meta { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--a1-text-muted); }
+  .ad-joined { display: inline-flex; align-items: center; gap: 8px; font: 800 13px/1 var(--a1-font-body, sans-serif); text-transform: uppercase; letter-spacing: .04em; }
 </style>
 {% endblock %}
 {% block content %}
 {% activity_detail_json %}
-<main class="flex-1 container mx-auto px-4 py-6">
-  <nav class="flex items-center text-sm bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm mb-6" aria-label="Breadcrumb">
-    <a href="/" class="text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400" aria-label="Home">
-      <i class="fas fa-home"></i>
-    </a>
-    <span class="mx-2 text-gray-400 dark:text-gray-600">/</span>
-    <a href="/activity" class="text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400">Activities</a>
-    <span class="mx-2 text-gray-400 dark:text-gray-600">/</span>
-    <span id="crumb-title" class="text-gray-700 dark:text-gray-300 font-medium">Loading...</span>
+<main class="ad-page flex-1 a1s-wrap py-6 md:py-8">
+  <nav class="a1s-crumbs mb-6" aria-label="Breadcrumb">
+    <a href="/" aria-label="Home">Home</a>
+    <span aria-hidden="true">/</span>
+    <a href="/activity">Activities</a>
+    <span aria-hidden="true">/</span>
+    <span id="crumb-title" aria-current="page">Loading...</span>
   </nav>
 
-  <section id="not-found" class="hidden bg-white dark:bg-gray-800 rounded-lg shadow-lg p-10 text-center">
-    <h1 class="text-3xl font-bold mb-3">Activity not found</h1>
-    <p id="not-found-message" class="text-gray-600 dark:text-gray-300 mb-6">This activity could not be loaded.</p>
-    <a href="/activity" class="inline-flex items-center justify-center min-h-11 px-5 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold">
-      <i class="fas fa-arrow-left mr-2"></i>Browse activities
+  <section id="not-found" class="hidden a1s-panel a1s-panel--strong p-10 text-center">
+    <h1 class="a1s-display text-5xl mb-3">Activity not found</h1>
+    <p id="not-found-message" class="a1s-muted mb-6">This activity could not be loaded.</p>
+    <a href="/activity" class="a1-btn a1-btn--primary">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>Browse activities
     </a>
   </section>
 
-  <section id="activity-shell" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-    <div class="p-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <aside class="space-y-4">
-          <div class="aspect-square w-full relative overflow-hidden rounded-lg shadow-md bg-gray-100 dark:bg-gray-900">
-            <img id="act-main-image" src="/images/logo.png" alt="Activity image" width="500" height="500" class="w-full h-full object-cover" loading="eager" decoding="async">
-          </div>
-
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 space-y-3 border border-gray-100 dark:border-gray-700">
-            <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-200 flex items-center">
-              <i class="fas fa-circle-info text-teal-500 dark:text-teal-400 mr-2"></i>Quick Stats
-            </h2>
-            <div id="act-details" class="space-y-3 text-sm">
-              <div class="animate-pulse h-24 rounded bg-gray-100 dark:bg-gray-700"></div>
-            </div>
-          </div>
-
-          <div id="host-card" class="hidden rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
-            <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 mb-4 flex items-center">
-              <i class="fas fa-chalkboard-teacher mr-2 text-teal-600 dark:text-teal-400"></i>Activity Creator
-            </h2>
-            <div id="host-info" class="flex items-center gap-4"></div>
-          </div>
-
-          <div id="certificate-card" class="hidden rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
-            <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-              <i class="fas fa-certificate text-teal-600 dark:text-teal-400"></i>Certificate
-            </h2>
-            <div class="space-y-3">
-              <button id="btn-certificate" type="button" class="w-full inline-flex items-center justify-center gap-2 font-bold px-5 py-3 rounded-xl transition-all"></button>
-              <p id="certificate-note" class="text-sm text-gray-600 dark:text-gray-300"></p>
-              <p id="certificate-error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
-            </div>
-          </div>
-
-          <div id="sessions-card" class="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden shadow-md border border-gray-100 dark:border-gray-700">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20">
-              <h2 class="font-bold text-gray-800 dark:text-gray-200 flex items-center">
-                <i class="fas fa-calendar mr-2 text-teal-600 dark:text-teal-400"></i>Activity Sessions
-              </h2>
-              <span id="sessions-count" class="text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-full font-semibold"></span>
-            </div>
-            <ul id="sessions-list" class="divide-y divide-gray-200 dark:divide-gray-700 max-h-[60vh] overflow-y-auto">
-              <li class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                <i class="fas fa-spinner fa-spin"></i>Loading sessions...
-              </li>
-            </ul>
-            <div id="calendar-export-actions" class="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center">
-                <i class="fas fa-calendar-plus text-teal-500 mr-1.5"></i>Sync & Export
-              </p>
-              <div class="flex flex-col sm:flex-row gap-2">
-                <a id="btn-export-ics" href="#" download class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 shadow-sm transition">
-                  <i class="fas fa-file-arrow-down text-teal-600 dark:text-teal-400"></i>Export .ics
-                </a>
-                <a id="btn-google-calendar" href="#" target="_blank" rel="noopener noreferrer" class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-teal-600 hover:bg-teal-700 text-white shadow-sm transition">
-                  <i class="fab fa-google text-white"></i>Add to Google Calendar
-                </a>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <div class="md:col-span-2 space-y-6">
-          <section class="p-6 bg-gradient-to-r from-teal-50 via-teal-200 to-gray-100 dark:from-teal-900 dark:via-teal-800/60 dark:to-gray-900 rounded-xl shadow-md">
-            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-5">
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-3 mb-2">
-                  <h1 id="act-title" class="text-3xl font-bold text-gray-800 dark:text-white leading-tight">Loading...</h1>
-                  <span id="act-status" class="px-3 py-1 rounded-full text-sm font-medium inline-flex items-center gap-1 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                    <i class="fas fa-circle"></i>Loading
-                  </span>
-                </div>
-                <p id="act-meta" class="text-sm text-gray-600 dark:text-gray-400 mb-4">Loading metadata...</p>
-                <div id="act-badges" class="flex flex-wrap gap-2"></div>
-              </div>
-              <button type="button" onclick="shareActivity()" class="shrink-0 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 p-3 min-h-11 min-w-11 rounded-full transition" aria-label="Share activity">
-                <i class="fas fa-share-alt text-gray-600 dark:text-gray-300"></i>
-              </button>
-            </div>
-            <div id="act-action"></div>
-          </section>
-
-          <div id="member-card" class="hidden rounded-2xl p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <h2 class="font-bold text-lg text-green-800 dark:text-green-300 mb-4 flex items-center">
-              <i class="fas fa-check-circle mr-2"></i>Your Participation
-            </h2>
-            <div id="enr-details" class="flex flex-wrap gap-3 text-sm"></div>
-          </div>
-
-          <section id="virtual-classroom-card" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Virtual Classroom</h2>
-            <p class="text-gray-600 dark:text-gray-400 mb-4">
-              View the classroom for this activity. Sign in when you want to interact, save progress, or join live collaboration.
-            </p>
-            <div class="flex flex-wrap gap-3">
-              <a id="act-classroom-link" href="/classroom_poc" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center min-h-11">
-                <i class="fas fa-door-open mr-2"></i>Enter Virtual Classroom
-              </a>
-              <a href="/whiteboard" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center min-h-11">
-                <i class="fas fa-chalkboard mr-2"></i>Whiteboard
-              </a>
-            </div>
-          </section>
-          
-          <!-- Activity Messaging & Participant Contacts -->
-          <section id="activity-contacts-card" class="hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2 flex items-center">
-              <i class="fa-solid fa-comments text-teal-500 mr-2"></i>Participant Messaging
-            </h2>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Connect directly with the creator and fellow participants of this activity.
-            </p>
-            <div id="activity-contacts-list" class="space-y-3">
-              <div class="text-sm text-gray-500 dark:text-gray-400 italic">Loading contacts...</div>
-            </div>
-          </section>
-
-          <section class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-100 dark:border-gray-700">
-            <div class="flex border-b border-gray-200 dark:border-gray-700">
-              <div class="px-6 py-3 text-sm font-medium border-b-2 border-teal-300 dark:border-teal-500 text-gray-800 dark:text-white bg-white dark:bg-gray-800">
-                <i class="fas fa-book-open mr-2 text-teal-500 dark:text-teal-400"></i>Activity Details
-              </div>
-            </div>
-            <div class="p-6">
-              <div id="welcome-card" class="mb-6 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4">
-                <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 mb-2 flex items-center">
-                  <i class="fas fa-star mr-2 text-yellow-500"></i>Welcome!
-                </h2>
-                <p id="welcome-text" class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">Loading welcome message...</p>
-              </div>
-              <div class="markdown-content space-y-8 text-gray-800 dark:text-gray-200">
-                <div>
-                  <h2 class="text-xl font-bold mb-2">Description</h2>
-                  <p id="act-description" class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">Loading description...</p>
-                </div>
-                <div id="act-objectives-card" class="hidden">
-                  <h2 class="text-xl font-bold mb-2">Learning Objectives</h2>
-                  <p id="act-objectives" class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap"></p>
-                </div>
-                <div id="act-prereq-card" class="hidden">
-                  <h2 class="text-xl font-bold mb-2">Prerequisites</h2>
-                  <p id="act-prerequisites" class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap"></p>
-                </div>
-                <div id="act-video"></div>
-                <div id="act-tags" class="flex flex-wrap gap-2"></div>
-              </div>
-            </div>
-          </section>
+  <section id="activity-shell">
+    <div class="ad-grid">
+      <aside class="space-y-5 order-2 md:order-1">
+        <div class="a1s-media ad-cover hidden md:block">
+          <img id="act-main-image" src="/images/logo.png" alt="Activity image" width="500" height="375" loading="eager" decoding="async">
         </div>
+
+        <div class="a1s-panel a1s-panel--strong">
+          <div class="a1s-panel__head">
+            <h2 class="a1s-h3">Quick stats</h2>
+          </div>
+          <div class="a1s-panel__body">
+            <div id="act-details" class="text-sm">
+              <div class="animate-pulse h-24 rounded bg-gray-100 dark:bg-gray-900"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="host-card" class="hidden a1s-panel">
+          <div class="a1s-panel__head"><h2 class="a1s-h3">Activity creator</h2></div>
+          <div id="host-info" class="a1s-panel__body flex items-center gap-4"></div>
+        </div>
+
+        <div id="certificate-card" class="hidden a1s-panel">
+          <div class="a1s-panel__head"><h2 class="a1s-h3">Certificate</h2><i class="fas fa-certificate" aria-hidden="true"></i></div>
+          <div class="a1s-panel__body space-y-3">
+            <button id="btn-certificate" type="button" class="a1-btn w-full"></button>
+            <p id="certificate-note" class="text-sm a1s-muted"></p>
+            <p id="certificate-error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
+          </div>
+        </div>
+
+        <div id="sessions-card" class="a1s-panel overflow-hidden">
+          <div class="a1s-panel__head">
+            <h2 class="a1s-h3">Activity sessions</h2>
+            <span id="sessions-count" class="a1-tag"></span>
+          </div>
+          <ul id="sessions-list" class="a1s-list max-h-[60vh] overflow-y-auto">
+            <li class="px-5 py-4 text-sm a1s-muted flex items-center gap-2">
+              <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>Loading sessions...
+            </li>
+          </ul>
+          <div id="calendar-export-actions" class="p-4 border-t border-gray-300 dark:border-gray-700">
+            <p class="a1s-eyebrow mb-3">Sync &amp; export</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <a id="btn-export-ics" href="#" download class="a1-btn a1-btn--sm flex-1">
+                <i class="fas fa-file-arrow-down" aria-hidden="true"></i>Export .ics
+              </a>
+              <a id="btn-google-calendar" href="#" target="_blank" rel="noopener noreferrer" class="a1-btn a1-btn--sm flex-1">
+                <i class="fab fa-google" aria-hidden="true"></i>Google Calendar
+              </a>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="space-y-6 order-1 md:order-2 min-w-0">
+        <div class="a1s-media ad-cover md:hidden">
+          <img id="act-main-image-mobile" src="/images/logo.png" alt="" width="500" height="375" loading="eager" decoding="async">
+        </div>
+        <section class="ad-head">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <div id="act-badges" class="flex flex-wrap items-center gap-2 mb-4"></div>
+              <h1 id="act-title" class="a1s-display ad-title">Loading...</h1>
+              <div class="flex flex-wrap items-center gap-3 mt-4">
+                <span id="act-status" class="a1-tag ad-status">Loading</span>
+                <p id="act-meta" class="text-sm a1s-muted m-0">Loading metadata...</p>
+              </div>
+            </div>
+            <button type="button" onclick="shareActivity()" class="a1s-iconbtn shrink-0" aria-label="Share activity">
+              <i class="fas fa-share-alt" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div id="act-action" class="mt-6"></div>
+        </section>
+
+        <div id="member-card" class="hidden a1s-callout">
+          <h2 class="a1s-callout__title">Your participation</h2>
+          <div id="enr-details" class="flex flex-wrap items-center gap-3 text-sm"></div>
+        </div>
+
+        <section id="virtual-classroom-card" class="a1s-panel a1s-panel--strong p-5 md:p-6">
+          <div class="flex flex-col xl:flex-row xl:items-center gap-4 xl:gap-6">
+            <div class="min-w-0 flex-1">
+              <h2 class="a1s-h2 mb-2 flex items-center gap-3">Virtual classroom <span class="a1-tag a1-tag--gold a1-tag--live">Live</span></h2>
+              <p class="a1s-muted text-sm m-0">
+                View the classroom for this activity. Sign in when you want to interact, save progress, or join live collaboration.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-3 shrink-0">
+              <a id="act-classroom-link" href="/classroom_poc" class="a1-btn a1-btn--dark">
+                <i class="fas fa-door-open" aria-hidden="true"></i>Enter virtual classroom
+              </a>
+              <a href="/whiteboard" class="a1-btn">
+                <i class="fas fa-chalkboard" aria-hidden="true"></i>Whiteboard
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <!-- Activity Messaging & Participant Contacts -->
+        <section id="activity-contacts-card" class="hidden a1s-panel p-5 md:p-6">
+          <h2 class="a1s-h2 mb-2">Participant messaging</h2>
+          <p class="text-sm a1s-muted mb-4">
+            Connect directly with the creator and fellow participants of this activity.
+          </p>
+          <div id="activity-contacts-list" class="space-y-3">
+            <div class="text-sm a1s-muted italic">Loading contacts...</div>
+          </div>
+        </section>
+
+        <section>
+          <div class="a1s-tabs" role="tablist">
+            <div class="a1s-tab is-active" role="tab" aria-selected="true">
+              <i class="fas fa-book-open" aria-hidden="true"></i>Activity details
+            </div>
+          </div>
+          <div class="pt-6">
+            <div id="welcome-card" class="a1s-callout mb-8">
+              <h2 class="a1s-callout__title">Welcome</h2>
+              <p id="welcome-text" class="text-sm leading-relaxed m-0">Loading welcome message...</p>
+            </div>
+            <div class="ad-prose space-y-8">
+              <div>
+                <h2>Description</h2>
+                <p id="act-description" class="whitespace-pre-wrap">Loading description...</p>
+              </div>
+              <div id="act-objectives-card" class="hidden">
+                <h2>Learning objectives</h2>
+                <p id="act-objectives" class="whitespace-pre-wrap"></p>
+              </div>
+              <div id="act-prereq-card" class="hidden">
+                <h2>Prerequisites</h2>
+                <p id="act-prerequisites" class="whitespace-pre-wrap"></p>
+              </div>
+              <div id="act-video"></div>
+              <div id="act-tags" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </section>
@@ -190,7 +194,6 @@
   let currentActivityData = null;
   let currentEnrollment = null;
 
-  const typeIcon = { course:'📚', meetup:'🤝', workshop:'🔧', seminar:'🎤', club:'🏛', event:'📅', video:'🎬', study_group:'👥', other:'✨' };
   const typeLabel = { course:'Course', meetup:'Meetup', workshop:'Workshop', seminar:'Seminar', club:'Club', event:'Event', video:'Video', study_group:'Study Group', other:'Activity' };
   const fmtLabel = { live:'Live', self_paced:'Self-paced', hybrid:'Hybrid' };
   const schedLabel = { one_time:'One-time', multi_session:'Multi-session', recurring:'Recurring', ongoing:'Ongoing' };
@@ -300,13 +303,9 @@
   function renderStatus(a) {
     const statusEl = document.getElementById('act-status');
     if (!statusEl) return;
-    const statusLabel = a.status === 'published' ? 'Published' : (a.status === 'waitlist' ? 'Waiting Room' : (a.status || 'Activity'));
-    const statusIcon = a.status === 'published' ? 'fa-globe' : (a.status === 'waitlist' ? 'fa-clock' : 'fa-circle');
-    const statusClass = a.status === 'published'
-      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      : (a.status === 'waitlist' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300');
-    statusEl.className = 'px-3 py-1 rounded-full text-sm font-medium inline-flex items-center gap-1 ' + statusClass;
-    statusEl.innerHTML = '<i class="fas ' + statusIcon + '"></i>' + esc(statusLabel);
+    const statusLabel = a.status === 'published' ? 'Published' : (a.status === 'waitlist' ? 'Waiting room' : (a.status || 'Activity'));
+    statusEl.className = 'a1-tag ad-status' + (a.status === 'published' ? ' is-live' : '');
+    statusEl.textContent = statusLabel;
   }
 
   function renderActivity(data) {
@@ -326,12 +325,13 @@
     setText('act-meta', 'by ' + (a.host_name || 'Alpha One Labs') + ' · ' + Number(a.participant_count || 0) + ' participants · ' + data.sessions.length + ' sessions' + (a.status === 'waitlist' && Number(a.interest_count || 0) > 0 ? ' · ' + Number(a.interest_count || 0) + ' interested' : ''));
     renderStatus(a);
 
-    const mainImage = document.getElementById('act-main-image');
-    if (mainImage) {
-      mainImage.src = a.image_url || '/images/logo.png';
-      mainImage.alt = a.title || 'Activity image';
-      mainImage.onerror = function () { this.onerror = null; this.src = '/images/logo.png'; };
-    }
+    ['act-main-image', 'act-main-image-mobile'].forEach((id, idx) => {
+      const img = document.getElementById(id);
+      if (!img) return;
+      img.src = a.image_url || '/images/logo.png';
+      img.alt = idx === 0 ? (a.title || 'Activity image') : '';
+      img.onerror = function () { this.onerror = null; this.src = '/images/logo.png'; };
+    });
 
     const classroomLink = document.getElementById('act-classroom-link');
     if (classroomLink) {
@@ -341,25 +341,29 @@
       });
     }
 
+    const isLive = a.format === 'live';
     document.getElementById('act-badges').innerHTML =
-      '<span class="badge bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">' + (typeIcon[a.type] || '✨') + ' ' + esc(typeLabel[a.type] || a.type || 'Activity') + '</span>' +
-      '<span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">' + esc(fmtLabel[a.format] || a.format || 'Activity') + '</span>' +
-      '<span class="badge bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">' + esc(schedLabel[a.schedule_type] || a.schedule_type || 'Flexible') + '</span>';
+      '<span class="a1-tag">' + esc(typeLabel[a.type] || a.type || 'Activity') + '</span>' +
+      (isLive ? '<span class="a1-tag a1-tag--gold a1-tag--live">Live</span>' : '<span class="a1-tag">' + esc(fmtLabel[a.format] || a.format || 'Activity') + '</span>') +
+      '<span class="a1-tag">' + esc(schedLabel[a.schedule_type] || a.schedule_type || 'Flexible') + '</span>';
 
+    const statRow = (icon, label, value) => '<div class="a1s-stat"><dt><i class="fas ' + icon + '" aria-hidden="true"></i>' + label + '</dt><dd>' + value + '</dd></div>';
     document.getElementById('act-details').innerHTML =
-      '<div class="flex items-center justify-between border-b dark:border-gray-700 pb-3"><span class="text-gray-600 dark:text-gray-300 font-medium flex items-center"><i class="fas fa-tag text-teal-500 dark:text-teal-400 mr-2"></i>Price</span><span class="text-3xl font-bold text-teal-600 dark:text-teal-400">' + formatPrice(a.price_cents, a.price_currency) + '</span></div>' +
-      '<div class="flex items-center justify-between py-2"><span class="text-gray-600 dark:text-gray-300 font-medium flex items-center"><i class="fas fa-signal text-indigo-500 dark:text-indigo-400 mr-2"></i>Level</span><span class="font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-sm">' + esc(a.level || 'All levels') + '</span></div>' +
-      '<div class="flex items-center justify-between py-2"><span class="text-gray-600 dark:text-gray-300 font-medium flex items-center"><i class="fas fa-users text-blue-500 dark:text-blue-400 mr-2"></i>Students</span><span class="font-medium"><span class="text-blue-600 dark:text-blue-400 font-bold">' + Number(a.participant_count || 0) + '</span>' + (a.max_students ? ' / ' + a.max_students : '') + '</span></div>' +
-      '<div class="flex items-center justify-between py-2"><span class="text-gray-600 dark:text-gray-300 font-medium flex items-center"><i class="fas fa-layer-group text-purple-500 dark:text-purple-400 mr-2"></i>Type</span><span class="font-medium">' + esc(typeLabel[a.type] || a.type || 'Activity') + '</span></div>' +
-      '<div class="flex items-center justify-between py-2"><span class="text-gray-600 dark:text-gray-300 font-medium flex items-center"><i class="fas fa-broadcast-tower text-cyan-500 dark:text-cyan-400 mr-2"></i>Format</span><span class="font-medium">' + esc(fmtLabel[a.format] || a.format || 'Activity') + '</span></div>' +
-      '<div class="flex items-center justify-between py-2"><span class="text-gray-600 dark:text-gray-300 font-medium flex items-center"><i class="fas fa-calendar text-teal-500 dark:text-teal-400 mr-2"></i>Schedule</span><span class="font-medium">' + esc(schedLabel[a.schedule_type] || a.schedule_type || 'Flexible') + '</span></div>' +
-      (a.status === 'waitlist' && Number(a.interest_count || 0) > 0 ? '<div class="flex items-center justify-between py-2 border-t dark:border-gray-700"><span class="text-gray-600 dark:text-gray-300 font-medium flex items-center"><i class="fas fa-hand-paper text-orange-500 mr-2"></i>Interested</span><span class="font-bold text-orange-600 dark:text-orange-300">' + Number(a.interest_count || 0) + '</span></div>' : '');
+      '<div class="flex items-end justify-between gap-3 pb-4 mb-1 border-b border-gray-900 dark:border-gray-200"><span class="a1s-eyebrow">Price</span><span class="a1s-price">' + esc(formatPrice(a.price_cents, a.price_currency)) + '</span></div>' +
+      '<dl class="a1s-stats">' +
+        statRow('fa-signal', 'Level', esc(a.level || 'All levels')) +
+        statRow('fa-users', 'Students', Number(a.participant_count || 0) + (a.max_students ? ' / ' + Number(a.max_students) : '')) +
+        statRow('fa-layer-group', 'Type', esc(typeLabel[a.type] || a.type || 'Activity')) +
+        statRow('fa-tower-broadcast', 'Format', esc(fmtLabel[a.format] || a.format || 'Activity')) +
+        statRow('fa-calendar', 'Schedule', esc(schedLabel[a.schedule_type] || a.schedule_type || 'Flexible')) +
+        (a.status === 'waitlist' && Number(a.interest_count || 0) > 0 ? statRow('fa-hand', 'Interested', Number(a.interest_count || 0)) : '') +
+      '</dl>';
 
     const hostCard = document.getElementById('host-card');
     if (a.host_name && hostCard) {
       document.getElementById('host-info').innerHTML =
-        '<div class="w-16 h-16 rounded-full bg-teal-100 dark:bg-teal-900/40 border-2 border-teal-300 dark:border-teal-600 flex items-center justify-center text-teal-700 dark:text-teal-200 text-2xl font-bold flex-shrink-0">' + esc(String(a.host_name).trim().slice(0, 1).toUpperCase() || 'A') + '</div>' +
-        '<div class="flex-1"><p class="font-semibold text-lg text-gray-800 dark:text-white">' + esc(a.host_name) + '</p><p class="text-sm text-gray-500 dark:text-gray-400">Activity Creator</p></div>';
+        '<div class="a1s-avatar" aria-hidden="true">' + esc(String(a.host_name).trim().slice(0, 1).toUpperCase() || 'A') + '</div>' +
+        '<div class="flex-1 min-w-0"><p class="font-extrabold text-lg m-0">' + esc(a.host_name) + '</p><p class="a1s-eyebrow m-0 mt-1">Activity creator</p></div>';
       hostCard.classList.remove('hidden');
     }
 
@@ -373,10 +377,10 @@
     const videoPanel = document.getElementById('act-video');
     const embed = a.type === 'video' && a.external_url ? videoEmbedUrl(a.external_url) : '';
     videoPanel.innerHTML = a.type === 'video' && a.external_url
-      ? (embed ? '<div class="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-black aspect-video"><iframe src="' + esc(embed) + '" title="' + esc(a.title) + '" class="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>' : '<a href="' + esc(a.external_url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-3"><i class="fas fa-play"></i>Watch video</a>')
+      ? (embed ? '<div class="a1s-media bg-black aspect-video"><iframe src="' + esc(embed) + '" title="' + esc(a.title) + '" class="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>' : '<a href="' + esc(a.external_url) + '" target="_blank" rel="noopener" class="a1-btn a1-btn--dark"><i class="fas fa-play" aria-hidden="true"></i>Watch video</a>')
       : '';
 
-    document.getElementById('act-tags').innerHTML = (a.tags || []).map(t => '<span class="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">' + esc(t) + '</span>').join('');
+    document.getElementById('act-tags').innerHTML = (a.tags || []).map(t => '<span class="a1-tag">' + esc(t) + '</span>').join('');
 
     renderSessions(data);
     renderAction(data);
@@ -411,7 +415,7 @@
   function renderSessions(data) {
     const sessCard = document.getElementById('sessions-card');
     const ul = document.getElementById('sessions-list');
-    document.getElementById('sessions-count').textContent = data.sessions.length + ' sessions';
+    document.getElementById('sessions-count').textContent = data.sessions.length + (data.sessions.length === 1 ? ' session' : ' sessions');
     if (!data.sessions.length) {
       sessCard.classList.add('hidden');
       return;
@@ -443,16 +447,16 @@
         locked ? '' : (s.location || '')
       ) : '';
 
-      return '<li class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">' +
+      return '<li class="px-5 py-4">' +
         '<div class="flex items-start justify-between gap-3">' +
           '<div class="min-w-0 flex-1">' +
-            '<p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">' + esc(s.title || 'Session') + '</p>' +
-            (s.start_time ? '<p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1.5"><i class="fas fa-clock text-teal-500"></i>' + esc(s.start_time) + (s.end_time ? ' - ' + esc(s.end_time) : '') + '</p>' : '') +
-            (locked ? '<p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">🔒 Join to see location and details</p>' :
-              (s.location ? '<p class="text-xs text-teal-600 dark:text-teal-400 mt-1.5 flex items-center gap-1.5"><i class="fas fa-location-dot"></i>' + esc(s.location) + '</p>' : '') +
-              (s.description ? '<p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">' + esc(s.description) + '</p>' : '')) +
+            '<p class="font-extrabold text-sm m-0">' + esc(s.title || 'Session') + '</p>' +
+            (s.start_time ? '<p class="ad-session-meta"><i class="far fa-clock" aria-hidden="true"></i>' + esc(s.start_time) + (s.end_time ? ' - ' + esc(s.end_time) : '') + '</p>' : '') +
+            (locked ? '<p class="ad-session-meta"><i class="fas fa-lock" aria-hidden="true"></i>Join to see location and details</p>' :
+              (s.location ? '<p class="ad-session-meta"><i class="fas fa-location-dot" aria-hidden="true"></i>' + esc(s.location) + '</p>' : '') +
+              (s.description ? '<p class="ad-session-meta">' + esc(s.description) + '</p>' : '')) +
           '</div>' +
-          (sessionGcalUrl ? '<a href="' + esc(sessionGcalUrl) + '" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border border-gray-200 dark:border-gray-600 hover:border-teal-500 text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400 transition" title="Add this session to Google Calendar"><i class="fab fa-google text-xs"></i><span>Add</span></a>' : '') +
+          (sessionGcalUrl ? '<a href="' + esc(sessionGcalUrl) + '" target="_blank" rel="noopener noreferrer" class="a1-btn a1-btn--sm shrink-0" style="min-height:32px" title="Add this session to Google Calendar"><i class="fab fa-google" aria-hidden="true"></i><span>Add</span></a>' : '') +
         '</div>' +
         '</li>';
     }).join('');
@@ -470,7 +474,7 @@
     note.textContent = '';
     button.disabled = false;
     button.onclick = null;
-    button.className = 'w-full inline-flex items-center justify-center gap-2 font-bold px-5 py-3 rounded-xl transition-all';
+    button.className = 'a1-btn w-full';
   }
 
   function renderCertificateSection(data) {
@@ -487,7 +491,7 @@
 
     if (isCompleted) {
       button.innerHTML = '<i class="fas fa-certificate"></i>Generate Certificate';
-      button.classList.add('bg-green-600', 'hover:bg-green-700', 'text-white', 'shadow-md');
+      button.classList.add('a1-btn--primary');
       note.textContent = 'Your activity is complete. Generate your certificate and download it as a PDF.';
       button.onclick = generateCertificate;
       return;
@@ -495,7 +499,7 @@
 
     button.innerHTML = '<i class="fas fa-lock"></i>Certificate not available yet';
     button.disabled = true;
-    button.classList.add('bg-gray-300', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-300', 'cursor-not-allowed', 'opacity-60');
+    button.classList.add('cursor-not-allowed', 'opacity-60');
     note.textContent = 'Complete all sessions or mark the activity complete to unlock your certificate.';
     error.classList.add('hidden');
   }
@@ -562,7 +566,7 @@
     if (data.is_host) {
       currentEnrollment = null;
       resetCertificateSection();
-      action.innerHTML = '<a href="/teach?activity_id=' + esc(a.id) + '" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all min-h-11"><i class="fas fa-cog"></i>Manage Activity</a>';
+      action.innerHTML = '<div class="ad-actions"><a href="/teach?activity_id=' + esc(a.id) + '" class="a1-btn a1-btn--primary"><i class="fas fa-cog" aria-hidden="true"></i>Manage activity</a></div>';
       welcome.textContent = 'You are the creator of this activity. Use the Manage button to update details and sessions.';
       return;
     }
@@ -571,8 +575,8 @@
       renderCertificateSection(data);
       document.getElementById('member-card').classList.remove('hidden');
       const enr = data.enrollment || {};
-      document.getElementById('enr-details').innerHTML = '<span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">' + esc(enr.status || 'active') + '</span><span class="text-green-700 dark:text-green-300">✅ You have full access to session details.</span>';
-      action.innerHTML = '<div class="flex flex-wrap items-center gap-3"><span class="inline-flex items-center gap-2 text-teal-700 dark:text-teal-200 text-sm font-semibold">✅ Joined</span>' + (data.is_completed ? '<span class="inline-flex items-center gap-2 text-blue-600 dark:text-blue-300 text-sm font-semibold">Completed</span>' : '<button onclick="markComplete()" class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-check"></i>Mark complete</button>') + '</div>';
+      document.getElementById('enr-details').innerHTML = '<span class="a1-tag">' + esc(enr.status || 'active') + '</span><span>You have full access to session details.</span>';
+      action.innerHTML = '<div class="ad-actions"><span class="a1-tag a1-tag--gold"><i class="fas fa-check" aria-hidden="true"></i>Joined</span>' + (data.is_completed ? '<span class="a1-tag">Completed</span>' : '<button onclick="markComplete()" class="a1-btn"><i class="fas fa-check" aria-hidden="true"></i>Mark complete</button>') + '</div>';
       welcome.textContent = 'You are participating in this activity. Session locations and details are visible above.';
       return;
     }
@@ -582,7 +586,7 @@
       if (token) {
         action.innerHTML = data.user_interested
           ? waitingRoomJoinedHtml()
-          : waitingRoomButtonHtml('Join Waiting Room', 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg');
+          : waitingRoomButtonHtml('Join waiting room', 'a1-btn--primary');
         const btn = document.getElementById('detail-express-interest');
         if (btn) btn.addEventListener('click', expressInterest);
       } else {
@@ -592,9 +596,9 @@
       return;
     }
     action.innerHTML =
-      '<div class="flex flex-wrap items-center gap-3">' +
-        '<button id="detail-add-to-cart" class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-cart-plus"></i>Add to Cart - ' + formatPrice(a.price_cents, a.price_currency) + '</button>' +
-        (data.user_interested ? waitingRoomJoinedHtml() : (token ? waitingRoomButtonHtml('Join Waiting Room', 'bg-white/80 hover:bg-white text-teal-700 dark:bg-gray-900/80 dark:hover:bg-gray-900 dark:text-teal-300 border border-teal-200 dark:border-teal-700') : loginWaitingRoomHtml())) +
+      '<div class="ad-actions">' +
+        '<button id="detail-add-to-cart" class="a1-btn a1-btn--primary"><i class="fas fa-cart-plus" aria-hidden="true"></i>' + (Number(a.price_cents || 0) ? 'Add to cart <span aria-hidden="true">&middot;</span> ' + esc(formatPrice(a.price_cents, a.price_currency)) : 'Join for free') + '</button>' +
+        (data.user_interested ? waitingRoomJoinedHtml() : (token ? waitingRoomButtonHtml('Join waiting room', '') : loginWaitingRoomHtml())) +
       '</div>';
     document.getElementById('detail-add-to-cart').addEventListener('click', () => addToCart(a.id, true));
     const waitBtn = document.getElementById('detail-express-interest');
@@ -603,15 +607,15 @@
   }
 
   function waitingRoomButtonHtml(label, classes) {
-    return '<button id="detail-express-interest" class="inline-flex items-center gap-2 font-bold px-6 py-3 rounded-xl min-h-11 ' + classes + '"><i class="fas fa-hand-paper"></i>' + esc(label || 'Join Waiting Room') + '</button>';
+    return '<button id="detail-express-interest" class="a1-btn ' + (classes || '') + '"><i class="fas fa-hand" aria-hidden="true"></i>' + esc(label || 'Join waiting room') + '</button>';
   }
 
   function waitingRoomJoinedHtml() {
-    return '<span class="inline-flex items-center gap-2 bg-white/70 dark:bg-gray-800 text-teal-700 dark:text-teal-300 font-bold px-6 py-3 rounded-xl min-h-11"><i class="fas fa-check"></i>Waiting room joined</span>';
+    return '<span class="a1-tag"><i class="fas fa-check" aria-hidden="true"></i>Waiting room joined</span>';
   }
 
   function loginWaitingRoomHtml() {
-    return '<a href="/login" onclick="return redirectForWaitingRoomLogin()" class="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-teal-600 dark:text-teal-400 font-bold px-6 py-3 rounded-xl shadow-lg min-h-11"><i class="fas fa-right-to-bracket"></i>Login to Join Waiting Room</a>';
+    return '<a href="/login" onclick="return redirectForWaitingRoomLogin()" class="a1-btn"><i class="fas fa-right-to-bracket" aria-hidden="true"></i>Sign in to join waiting room</a>';
   }
 
   function redirectForWaitingRoomLogin() {
@@ -699,7 +703,7 @@
 
       const contacts = (body.data && body.data.contacts) || body.contacts || [];
       if (!contacts.length) {
-        list.innerHTML = '<div class="text-xs text-gray-500 italic">No other participants yet.</div>';
+        list.innerHTML = '<div class="text-xs a1s-muted italic">No other participants yet.</div>';
         card.classList.remove('hidden');
         return;
       }
@@ -707,15 +711,15 @@
       list.innerHTML = contacts.map(c => {
         let actionBtn = '';
         if (c.thread_status === 'accepted') {
-          actionBtn = '<a href="/messages" class="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200 hover:bg-teal-200 transition"><i class="fa-solid fa-comments mr-1.5"></i>View conversation</a>';
+          actionBtn = '<a href="/messages" class="a1-btn a1-btn--sm"><i class="fa-solid fa-comments" aria-hidden="true"></i>View conversation</a>';
         } else if (c.thread_status === 'pending') {
-          actionBtn = '<span class="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><i class="fa-solid fa-clock mr-1.5"></i>Request pending</span>';
+          actionBtn = '<span class="a1-tag"><i class="fa-solid fa-clock" aria-hidden="true"></i>Request pending</span>';
         } else {
-          actionBtn = '<button type="button" data-user-id="' + esc(c.user_id) + '" class="act-msg-btn inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition"><i class="fa-solid fa-paper-plane mr-1.5"></i>Message</button>';
+          actionBtn = '<button type="button" data-user-id="' + esc(c.user_id) + '" class="act-msg-btn a1-btn a1-btn--sm a1-btn--primary"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>Message</button>';
         }
 
-        return '<div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">' +
-          '<div><div class="text-sm font-bold text-gray-800 dark:text-gray-200">' + esc(c.display_name) + '</div></div>' +
+        return '<div class="flex items-center justify-between gap-3 p-3 a1s-panel">' +
+          '<div><div class="text-sm font-bold">' + esc(c.display_name) + '</div></div>' +
           '<div>' + actionBtn + '</div>' +
           '</div>';
       }).join('');
@@ -740,7 +744,7 @@
               window.location.href = '/messages';
             } else {
               btn.textContent = 'Request sent';
-              btn.className = 'inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200';
+              btn.className = 'a1-tag';
             }
           } catch (err) {
             alert(err.message);

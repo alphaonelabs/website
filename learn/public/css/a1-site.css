@@ -1,0 +1,172 @@
+/* Alpha One Labs: shared page layer for learn (design system v2).
+   Tokens and base components (.a1-btn, .a1-tag, .a1-card ...) come from
+   https://design.alphaonelabs.com/brand.css; this file adds page building
+   blocks used across learn plus safety nets for legacy Tailwind colors. */
+
+/* ---- Page building blocks ------------------------------------------------ */
+.a1s-wrap { width: min(calc(100% - 2 * clamp(16px, 4vw, 48px)), 1280px); margin-inline: auto; }
+.a1s-display { font-family: var(--a1-font-display, "Barlow Condensed", "Arial Narrow", Impact, sans-serif); font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; line-height: .92; margin: 0; }
+.a1s-h2 { font-family: var(--a1-font-display, "Barlow Condensed", sans-serif); font-weight: 900; text-transform: uppercase; font-size: 1.6rem; line-height: 1; letter-spacing: -0.005em; margin: 0; }
+.a1s-h3 { font-family: var(--a1-font-display, "Barlow Condensed", sans-serif); font-weight: 800; text-transform: uppercase; font-size: 1.2rem; line-height: 1.05; margin: 0; }
+.a1s-eyebrow { font: 700 12px/1.3 var(--a1-font-mono, ui-monospace, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--a1-text-muted); }
+.a1s-muted { color: var(--a1-text-muted); }
+
+.a1s-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 700 12px/1.3 var(--a1-font-mono, ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--a1-text-muted); }
+.a1s-crumbs a { color: var(--a1-text-muted); text-decoration: none; }
+.a1s-crumbs a:hover { color: var(--a1-text); text-decoration: underline; text-underline-offset: 3px; }
+.a1s-crumbs [aria-current] { color: var(--a1-text); }
+
+.a1s-panel { background: var(--a1-surface); border: 1px solid var(--a1-border); border-radius: 6px; }
+.a1s-panel--strong { border-color: var(--a1-border-strong); }
+.a1s-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--a1-border); }
+.a1s-panel__body { padding: 18px; }
+
+.a1s-media { position: relative; overflow: hidden; border: 1px solid var(--a1-border-strong); border-radius: 6px; background: var(--a1-surface-raised); }
+.a1s-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.a1s-callout { border: 1px solid var(--a1-border); border-left: 4px solid var(--a1-accent-fill); border-radius: 4px; padding: 14px 16px; background: transparent; }
+.a1s-callout__title { font-family: var(--a1-font-display, sans-serif); font-weight: 900; text-transform: uppercase; font-size: 1.15rem; line-height: 1; margin: 0 0 6px; }
+
+.a1s-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--a1-border); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.a1s-tabs::-webkit-scrollbar { display: none; }
+.a1s-tab { display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 800 13px/1 var(--a1-font-body, Inter, sans-serif); letter-spacing: .04em; text-transform: uppercase; color: var(--a1-text-muted); background: none; white-space: nowrap; }
+.a1s-tab:hover { color: var(--a1-text); }
+.a1s-tab.is-active, .a1s-tab[aria-selected="true"] { color: var(--a1-text); border-bottom-color: var(--a1-accent-fill); }
+
+.a1s-stats { margin: 0; }
+.a1s-stat { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--a1-border); font-size: 14px; }
+.a1s-stat:first-child { border-top: 0; }
+.a1s-stat dt { display: inline-flex; align-items: center; gap: 10px; color: var(--a1-text-muted); font-weight: 600; }
+.a1s-stat dt i, .a1s-stat dt svg { width: 16px; text-align: center; color: var(--a1-text); }
+.a1s-stat dd { margin: 0; font-weight: 800; text-align: right; }
+.a1s-price { font: 900 clamp(2.2rem, 4vw, 2.8rem)/.9 var(--a1-font-display, sans-serif); letter-spacing: -.01em; }
+
+.a1s-iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--a1-border-strong); border-radius: 4px; background: var(--a1-bg); color: var(--a1-text); }
+.a1s-iconbtn:hover { background: var(--a1-surface-raised); }
+
+.a1s-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 56px; height: 56px; border-radius: 999px; border: 1px solid var(--a1-border-strong); background: var(--a1-surface-raised); color: var(--a1-text); font: 900 1.6rem/1 var(--a1-font-display, sans-serif); }
+
+.a1s-list > li { border-top: 1px solid var(--a1-border); }
+.a1s-list > li:first-child { border-top: 0; }
+
+.a1s-trace { display: block; height: 14px; color: var(--a1-accent-fill); background:
+  radial-gradient(circle at calc(100% - 4px) 3px, currentColor 2.6px, transparent 3px),
+  radial-gradient(circle at calc(100% - 4px) 11px, currentColor 2.6px, transparent 3px),
+  linear-gradient(currentColor, currentColor) 0 2px / calc(100% - 8px) 1.5px no-repeat,
+  linear-gradient(currentColor, currentColor) 0 10px / calc(100% - 8px) 1.5px no-repeat; }
+
+/* Text links: text color with an underline that turns gold ink on hover. */
+.a1s-link { color: var(--a1-text); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.a1s-link:hover { color: var(--a1-accent); }
+
+/* Noir mascot panel: rectangular, faded into the page (never a boxed photo). */
+.a1s-mascot { position: relative; overflow: hidden; min-height: 280px; }
+.a1s-mascot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; filter: grayscale(100%) contrast(1.05);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%), linear-gradient(0deg, transparent 0%, #000 18%), linear-gradient(180deg, transparent 0%, #000 8%), linear-gradient(270deg, transparent 0%, #000 12%);
+  -webkit-mask-composite: source-in, source-in, source-in;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 38%), linear-gradient(0deg, transparent 0%, #000 18%), linear-gradient(180deg, transparent 0%, #000 8%), linear-gradient(270deg, transparent 0%, #000 12%);
+  mask-composite: intersect; }
+.a1s-pcb { display: block; color: var(--a1-accent-fill); opacity: .9; }
+.a1s-pcb img, .a1s-pcb svg { display: block; width: 100%; height: auto; }
+
+/* Activity cards (listing): same anatomy as the homepage featured cards. */
+.a1s-card { display: flex; flex-direction: column; min-width: 0; height: 100%; border: 1px solid var(--a1-border-strong); border-radius: 6px; overflow: hidden; background: var(--a1-bg); color: var(--a1-text); text-decoration: none; transition: transform .15s; }
+.a1s-card:hover { transform: translateY(-2px); }
+.a1s-card__media { position: relative; aspect-ratio: 16 / 8; margin: 8px 8px 0; border-radius: 3px; overflow: hidden; background: #0d0d0d; display: grid; place-items: center; }
+.a1s-card__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%) contrast(1.08); }
+.a1s-card__media .a1-tag { position: absolute; top: 10px; left: 10px; z-index: 1; }
+.a1s-card__media .a1s-card__mark { width: 36%; max-width: 120px; color: var(--a1-gold, #d4af37); opacity: .9; font: 900 3rem/1 var(--a1-font-display, sans-serif); }
+.a1s-card__body { display: flex; flex-direction: column; flex: 1; padding: 12px 14px 12px; }
+.a1s-card__title { font: 800 26px/1 var(--a1-font-display, sans-serif); text-transform: none; letter-spacing: -.005em; margin: 2px 0 8px; overflow-wrap: anywhere; }
+.a1s-card__by { font: 700 11px/1.3 var(--a1-font-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--a1-text-muted); margin: 0 0 8px; }
+.a1s-card__desc { font-size: 14px; line-height: 1.45; color: var(--a1-text-muted); margin: 0 0 14px; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4.35em; }
+.a1s-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; border-top: 1px solid var(--a1-border); }
+.a1s-card__cat { display: inline-flex; align-items: center; gap: 8px; font: 700 12px/1.2 var(--a1-font-mono, monospace); text-transform: uppercase; letter-spacing: .04em; min-width: 0; }
+.a1s-card__cat i { width: 18px; text-align: center; }
+.a1s-card__price { font: 900 28px/1 var(--a1-font-display, sans-serif); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .a1s-card { transition: none; } .a1s-card:hover { transform: none; } }
+
+/* ---- Safety nets for legacy Tailwind color utilities ---------------------
+   base.html maps rainbow palettes onto gold/neutral; these rules make any
+   stray rainbow-colored button render as an outlined neutral button. */
+a[class*="bg-purple-"], button[class*="bg-purple-"], a[class*="bg-violet-"], button[class*="bg-violet-"],
+a[class*="bg-indigo-"], button[class*="bg-indigo-"], a[class*="bg-blue-"], button[class*="bg-blue-"],
+a[class*="bg-sky-"], button[class*="bg-sky-"], a[class*="bg-pink-"], button[class*="bg-pink-"],
+a[class*="bg-fuchsia-"], button[class*="bg-fuchsia-"], a[class*="bg-rose-"], button[class*="bg-rose-"],
+a[class*="bg-green-"], button[class*="bg-green-"], a[class*="bg-emerald-"], button[class*="bg-emerald-"],
+a[class*="bg-lime-"], button[class*="bg-lime-"], a[class*="bg-orange-"], button[class*="bg-orange-"],
+a[class*="bg-amber-"], button[class*="bg-amber-"], a[class*="bg-yellow-"], button[class*="bg-yellow-"] {
+  background: var(--a1-bg) !important; color: var(--a1-text) !important; border: 1px solid var(--a1-border-strong) !important; background-image: none !important;
+}
+a[class*="bg-purple-"]:hover, button[class*="bg-purple-"]:hover, a[class*="bg-indigo-"]:hover, button[class*="bg-indigo-"]:hover,
+a[class*="bg-blue-"]:hover, button[class*="bg-blue-"]:hover, a[class*="bg-green-"]:hover, button[class*="bg-green-"]:hover,
+a[class*="bg-emerald-"]:hover, button[class*="bg-emerald-"]:hover, a[class*="bg-orange-"]:hover, button[class*="bg-orange-"]:hover,
+a[class*="bg-pink-"]:hover, button[class*="bg-pink-"]:hover, a[class*="bg-violet-"]:hover, button[class*="bg-violet-"]:hover {
+  background: var(--a1-surface-raised) !important;
+}
+/* Pills become square tags; avatars and status dots (sized w-/h-) stay round. */
+span.rounded-full[class*="px-"], div.rounded-full[class*="px-"] { border-radius: 2px; }
+/* Gradient surfaces render flat; gradient text renders as plain text color. */
+[class*="bg-gradient-to-"]:not(.bg-clip-text) { background-image: none !important; }
+.bg-clip-text.text-transparent { color: inherit !important; -webkit-text-fill-color: currentColor; background-image: none !important; }
+/* Underlined links turn gold ink on hover; focus rings are brass. */
+main a.underline:hover, main a.hover\:underline:hover { color: var(--a1-accent); }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--a1-focus, #d4af37); outline-offset: 1px; }
+
+/* Former gradient banners: page background, ink text, hard rule. */
+.a1s-hero { background: var(--a1-bg) !important; background-image: none !important; color: var(--a1-text) !important; border-bottom: 1px solid var(--a1-border-strong); }
+.a1s-hero[class*="rounded-"] { border: 1px solid var(--a1-border-strong); }
+.a1s-hero p, .a1s-hero [class*="text-white/"], .a1s-hero [class*="text-teal-"], .a1s-hero [class*="text-cyan-"], .a1s-hero [class*="text-gray-"] { color: var(--a1-text-muted) !important; }
+.a1s-hero h1, .a1s-hero h2, .a1s-hero h3, .a1s-hero .text-white { color: var(--a1-text) !important; }
+.a1s-hero > .absolute.pointer-events-none, .a1s-hero > [aria-hidden="true"].absolute { display: none !important; }
+.a1s-hero [class*="bg-white/"], .a1s-hero [class*="bg-black/"] { background: transparent !important; border: 1px solid var(--a1-border) !important; }
+.a1s-hero a.bg-white, .a1s-hero button.bg-white { background: var(--a1-accent-fill) !important; border: 1px solid var(--a1-accent-fill) !important; color: var(--a1-on-accent, #080808) !important; }
+.a1s-hero a.bg-white:hover, .a1s-hero button.bg-white:hover { background: var(--a1-gold-hover, #f0c658) !important; }
+.a1s-hero a[class*="border-white"], .a1s-hero button[class*="border-white"] { border-color: var(--a1-border-strong) !important; color: var(--a1-text) !important; }
+.a1s-hero [class*="blur-"], .a1s-hero .animate-pulse.rounded-full { display: none !important; }
+/* Former gradient icon tiles and initials avatars: outlined, monochrome. */
+.a1s-icontile { background: transparent !important; background-image: none !important; border: 1px solid var(--a1-border-strong); color: var(--a1-text) !important; }
+.a1s-icontile i, .a1s-icontile svg, .a1s-icontile span { color: var(--a1-text) !important; }
+
+/* Tags placed on dark card media keep fixed contrast in both themes. */
+.a1s-tag-black { background: #000 !important; border-color: #fff !important; color: #fff !important; }
+.a1s-tag-white { background: #fff !important; border-color: #101010 !important; color: #101010 !important; }
+.a1s-card__art { width: 78%; color: #d4af37; opacity: .9; }
+.a1s-card__art svg { display: block; width: 100%; height: auto; }
+.a1s-icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Filter bar: bordered inputs and square tag chips. */
+.a1s-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 768px) { .a1s-filters { grid-template-columns: minmax(0, 1fr) 200px 200px; } }
+.a1s-filters .a1-input { min-height: 46px; font-size: 15px; }
+select.a1-input { padding-right: 36px; }
+.a1s-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 10px; border: 1px solid var(--a1-border-strong); border-radius: 2px; background: var(--a1-bg); color: var(--a1-text); font: 800 11px/1.2 var(--a1-font-body, sans-serif); letter-spacing: .06em; text-transform: uppercase; text-decoration: none; cursor: pointer; }
+.a1s-chip:hover { background: var(--a1-surface-raised); }
+.a1s-chip.active, .a1s-chip[aria-pressed="true"] { background: var(--a1-accent-fill); border-color: var(--a1-accent-fill); color: var(--a1-on-accent, #080808); }
+.a1s-chip .a1s-chip__n { opacity: .6; font-weight: 700; }
+
+.a1s-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-top: 18px; border-top: 1px solid var(--a1-border-strong); }
+.a1s-pager__btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border: 1px solid var(--a1-border-strong); border-radius: 4px; background: var(--a1-bg); color: var(--a1-text); font: 800 14px/1 var(--a1-font-body, sans-serif); }
+.a1s-pager__btn:hover:not(:disabled) { background: var(--a1-surface-raised); }
+.a1s-pager__btn[aria-current="page"] { background: var(--a1-accent-fill); border-color: var(--a1-accent-fill); color: var(--a1-on-accent, #080808); }
+.a1s-pager__btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Pastel pills (legacy rounded-full + tinted bg) render as square outlined tags. */
+span.rounded-full[class*="px-"][class*="bg-"]:not([class*="bg-red-"]):not([class*=" w-"]):not([class^="w-"]),
+span.badge[class*="bg-"]:not([class*="bg-red-"]) {
+  background: transparent !important; border: 1px solid var(--a1-border-strong) !important; border-radius: 2px !important; color: var(--a1-text) !important;
+  font-size: 11px !important; font-weight: 800 !important; letter-spacing: .06em; text-transform: uppercase; line-height: 1.2 !important;
+}
+/* Tinted callout panels lose the tint and gain the brass left rule. */
+div[class*="bg-teal-50"]:not([class*="hover:bg-teal-50"]):not([class*=" w-"]):not([class^="w-"]):not([class*=" h-"]), section[class*="bg-teal-50"], div[class*="bg-teal-100"][class*="p-"]:not([class*=" w-"]):not([class^="w-"]):not([class*=" h-"]) {
+  background: transparent !important; border-left: 4px solid var(--a1-accent-fill) !important;
+}
+html.dark div[class*="dark:bg-teal-900/"], html.dark section[class*="dark:bg-teal-900/"] { background: transparent !important; }
+/* Monochrome icons: no accent-tinted glyphs in body content. */
+main i[class*="fa-"][class*="text-teal-"], main i[class*="fa-"][class*="text-gray-"]:not([class*="text-gray-3"]):not([class*="text-gray-4"]) { color: inherit !important; }
+/* Small outlined gold-ink links become neutral outlined buttons. */
+a[class*="border-teal-2"], button[class*="border-teal-2"] { border-color: var(--a1-border-strong) !important; color: var(--a1-text) !important; }
+a[class*="border-teal-2"]:hover, button[class*="border-teal-2"]:hover { background: var(--a1-surface-raised) !important; }
+.a1s-hero h1 { font-family: var(--a1-font-display, "Barlow Condensed", sans-serif); font-weight: 900; text-transform: uppercase; line-height: .92; letter-spacing: -.01em; }
+.a1s-hero h1 + p, .a1s-hero h1 ~ p { font-family: var(--a1-font-mono, ui-monospace, monospace); font-size: 15px; letter-spacing: -.01em; }
+.a1s-hero p.uppercase { font-family: var(--a1-font-mono, ui-monospace, monospace); color: var(--a1-text) !important; }

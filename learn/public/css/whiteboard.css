@@ -12,7 +12,7 @@
   overflow: hidden;
   cursor: default;
   background-color: #f8f9fa;
-  background-image: radial-gradient(circle, #cbd5e1 1.25px, transparent 1.25px);
+  background-image: radial-gradient(circle, #d8d8d8 1.25px, transparent 1.25px);
   background-size: 20px 20px;
 }
 
@@ -26,7 +26,7 @@
 
 .dark #canvas-viewport {
   background-color: #121212;
-  background-image: radial-gradient(circle, #334155 1.25px, transparent 1.25px);
+  background-image: radial-gradient(circle, #333333 1.25px, transparent 1.25px);
 }
 
 /* Transform layer for pan & zoom */
@@ -40,12 +40,12 @@
 
 /* Tool buttons active state */
 .tool-button[aria-pressed="true"] {
-  background-color: #0f766e !important;
+  background-color: #7a6418 !important;
   color: #ffffff !important;
 }
 
 .dark .tool-button[aria-pressed="true"] {
-  background-color: #0f766e !important;
+  background-color: #7a6418 !important;
   color: #ffffff !important;
 }
 

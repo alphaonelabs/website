@@ -20,9 +20,9 @@ const VoteUtils = {
     updateVoteCount: (btn, count) => {
         const countElement = btn.querySelector('.count');
         if (countElement) {
-            countElement.classList.add('scale-125', 'text-blue-600');
+            countElement.classList.add('scale-125', 'text-gray-600');
             countElement.textContent = count;
-            setTimeout(() => countElement.classList.remove('scale-125', 'text-blue-600'), 500);
+            setTimeout(() => countElement.classList.remove('scale-125', 'text-gray-600'), 500);
         }
     },
 
@@ -33,7 +33,7 @@ const VoteUtils = {
     resetButtonStyles: (buttons) => {
         buttons.forEach(btn => {
             btn.classList.remove(
-                'bg-green-50', 'dark:bg-green-900', 'border-green-400', 'text-green-600',
+                'bg-gray-50', 'dark:bg-gray-900', 'border-gray-400', 'text-gray-600',
                 'bg-red-50', 'dark:bg-red-900', 'border-red-400', 'text-red-600'
             );
         });
@@ -48,7 +48,7 @@ const VoteUtils = {
     setSelectedState: (btn, isSelected, isUpvote) => {
         if (isSelected) {
             const colorClasses = isUpvote ?
-                ['bg-green-50', 'dark:bg-green-900', 'border-green-400', 'text-green-600'] :
+                ['bg-gray-50', 'dark:bg-gray-900', 'border-gray-400', 'text-gray-600'] :
                 ['bg-red-50', 'dark:bg-red-900', 'border-red-400', 'text-red-600'];
 
             btn.classList.add(...colorClasses);

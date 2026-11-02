@@ -19,7 +19,7 @@ export class InlineTextEditor {
     return Boolean(this.activeEditor);
   }
 
-  open(normalizedPoint, existingEvent = null, defaultSize = 4, defaultColor = '#0f766e') {
+  open(normalizedPoint, existingEvent = null, defaultSize = 4, defaultColor = '#7a6418') {
     if (this.activeEditor) this.commit();
 
     const rect = this.canvas.getBoundingClientRect();

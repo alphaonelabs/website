@@ -4,7 +4,7 @@
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 transition-colors duration-300{% endblock %}
 {% block content %}
 <main class="flex-1">
-    <section class="relative overflow-hidden bg-gradient-to-br from-teal-700 via-cyan-700 to-blue-800 text-white py-16 md:py-20">
+    <section class="relative overflow-hidden text-white py-16 md:py-20 a1s-hero">
       <div class="absolute inset-0 opacity-10 pointer-events-none" aria-hidden="true">
         <i class="fas fa-chalkboard-teacher absolute top-10 left-10 text-7xl"></i>
         <i class="fas fa-lightbulb absolute bottom-10 right-12 text-8xl"></i>
@@ -46,7 +46,7 @@
               <label class="block text-sm font-semibold mb-1" for="description">Details</label>
               <textarea id="description" rows="5" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Describe the topic, level, schedule, location, or format."></textarea>
             </div>
-            <button id="submit-intent" class="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-3 shadow-lg" type="submit">
+            <button id="submit-intent" class="w-full rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold px-5 py-3 shadow-lg" type="submit">
               Post request
             </button>
             <p id="form-message" class="hidden rounded-xl p-3 text-sm"></p>
@@ -97,7 +97,7 @@
     function setMessage(message, isError) {
       const el = document.getElementById('form-message');
       el.textContent = message;
-      el.className = 'rounded-xl p-3 text-sm ' + (isError ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300');
+      el.className = 'rounded-xl p-3 text-sm ' + (isError ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300');
       el.classList.remove('hidden');
     }
 
@@ -134,7 +134,7 @@
       }
       holder.innerHTML = intents.map(item => {
         const isTeach = item.kind === 'teach';
-        const badge = isTeach ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+        const badge = isTeach ? 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300' : 'bg-gray-100 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300';
         const icon = isTeach ? 'fa-chalkboard-user' : 'fa-graduation-cap';
         const label = isTeach ? 'Teaching offer' : 'Learning request';
         return `

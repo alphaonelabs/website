@@ -146,7 +146,7 @@ import {
     onPreview: (draftEvent) => renderer.redrawAll(events, draftEvent),
     onRequireLogin: loginForWhiteboard,
     getTool: () => toolSelect?.value || 'pen',
-    getPenColor: () => penColorInput?.value || '#0f766e',
+    getPenColor: () => penColorInput?.value || '#7a6418',
     getPenWidth: () => Number(penWidthInput?.value || 4),
     getEvents: () => events,
     getImages: () => images.map((i) => ({ img: i.img, bounds: i.bounds })),

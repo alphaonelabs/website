@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Community Directory - Alpha One Labs{% endblock %}
 {% block meta_description %}Discover teachers, learners, and experts in the Alpha One Labs community{% endblock %}
-{% block body_class %}min-h-screen flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white dark:bg-black text-gray-900 dark:text-gray-100 transition-colors{% endblock %}
 {% block head %}
 <style>
   .user-card { transition: transform .2s, box-shadow .2s; }
@@ -9,7 +9,7 @@
 </style>
 {% endblock %}
 {% block content %}
-<section class="bg-gradient-to-br from-teal-600 via-teal-500 to-cyan-500 dark:from-teal-900 dark:via-teal-800 dark:to-cyan-900 py-16 relative overflow-hidden">
+<section class="py-16 relative overflow-hidden a1s-hero">
   <div class="absolute inset-0 opacity-10 pointer-events-none select-none" aria-hidden="true">
     <i class="fas fa-users absolute top-6 left-8 text-7xl"></i>
     <i class="fas fa-globe absolute bottom-6 right-8 text-7xl"></i>
@@ -123,7 +123,7 @@ function renderGrid(users) {
       : `<span class="text-white text-xl font-bold">${esc(initials)}</span>`;
 
     const teacherBadge = u.is_teacher
-      ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200"><i class="fas fa-chalkboard-teacher text-[10px]"></i> Teacher</span>`
+      ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200"><i class="fas fa-chalkboard-teacher text-[10px]"></i> Teacher</span>`
       : '';
 
     const skills = u.expertise
@@ -139,7 +139,7 @@ function renderGrid(users) {
       <a href="/public-profile.html?username=${encodeURIComponent(u.username)}"
          class="user-card block bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:border-teal-300 dark:hover:border-teal-700 transition">
         <div class="flex gap-4 items-start mb-3">
-          <div class="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md">
+          <div class="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md a1s-icontile">
             ${avatarEl}
           </div>
           <div class="flex-1 min-w-0">

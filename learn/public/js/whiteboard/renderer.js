@@ -49,8 +49,8 @@ export class WhiteboardRenderer {
     ctx.lineWidth = Number(event.size || 4);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = event.color || '#0f766e';
-    ctx.fillStyle = event.color || '#0f766e';
+    ctx.strokeStyle = event.color || '#7a6418';
+    ctx.fillStyle = event.color || '#7a6418';
     ctx.globalAlpha = Number(event.alpha || 1);
     ctx.globalCompositeOperation = event.mode === 'eraser' ? 'destination-out' : 'source-over';
   }
@@ -124,7 +124,7 @@ export class WhiteboardRenderer {
     const ctx = this.ctx;
     ctx.save();
 
-    ctx.strokeStyle = '#0f766e';
+    ctx.strokeStyle = '#7a6418';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([5, 4]);
     ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -135,7 +135,7 @@ export class WhiteboardRenderer {
     const pillX = bounds.x + bounds.width / 2 - pillW / 2;
     const pillY = bounds.y - pillH - 6;
     if (pillY >= 4) {
-      ctx.fillStyle = '#0f766e';
+      ctx.fillStyle = '#7a6418';
       ctx.beginPath();
       if (typeof ctx.roundRect === 'function') {
         ctx.roundRect(pillX, pillY, pillW, pillH, 6);
@@ -152,7 +152,7 @@ export class WhiteboardRenderer {
 
     const drawHandle = (hx, hy) => {
       ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#0f766e';
+      ctx.strokeStyle = '#7a6418';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(hx, hy, 5.5, 0, Math.PI * 2);

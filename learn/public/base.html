@@ -146,51 +146,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
+  <link rel="stylesheet" href="/css/a1-site.css?v=1" />
   <link rel="preconnect" href="https://cdn.tailwindcss.com" />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" /></noscript>
-  <script>
-    // Alpha One Labs brand palette. learn's teal/cyan accent classes map onto a
-    // gold scale so every page picks up the brand without per-page edits.
-    // 600/700 are darkened from gold-deep so white text and gold text on white
-    // meet WCAG AA (600 on white 5.4:1, white on 600 5.4:1).
-    window.A1_TAILWIND_THEME = {
-      colors: (function () {
-        var gold = { 50: '#fbf8ee', 100: '#f6efd9', 200: '#ecdeb0', 300: '#e2c66a', 400: '#c7ab4f', 500: '#9a8236', 600: '#7c692e', 700: '#685721', 800: '#524520', 900: '#3a3117', 950: '#221d0d' };
-        return { teal: gold, cyan: gold, gold: gold, a1: { black: '#000000', white: '#ffffff', gold: '#c7ab4f', 'gold-bright': '#e2c66a', 'gold-deep': '#9a8236' } };
-      })(),
-      fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-        display: ['Barlow Condensed', 'Arial Narrow', 'Impact', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
-      },
-      // Design system v2: near-square corners (tags 2px, buttons/inputs 4px, cards 6px,
-      // panels 8px). `full` stays round for avatars and status dots.
-      borderRadius: { sm: '2px', DEFAULT: '4px', md: '4px', lg: '4px', xl: '6px', '2xl': '6px', '3xl': '8px' },
-      // Hard 1px borders instead of soft drop shadows.
-      boxShadow: { sm: 'none', DEFAULT: 'none', md: 'none', lg: 'none', xl: 'none', '2xl': 'none', inner: 'none' }
-    };
-    window.applyA1TailwindTheme = function () {
-      var cfg = window.tailwind && window.tailwind.config ? window.tailwind.config : {};
-      var theme = cfg.theme || {};
-      var extend = theme.extend || {};
-      window.tailwind.config = Object.assign({}, cfg, {
-        darkMode: cfg.darkMode || 'class',
-        theme: Object.assign({}, theme, {
-          extend: Object.assign({}, extend, {
-            colors: Object.assign({}, extend.colors || {}, window.A1_TAILWIND_THEME.colors),
-            fontFamily: Object.assign({}, extend.fontFamily || {}, window.A1_TAILWIND_THEME.fontFamily),
-            borderRadius: Object.assign({}, extend.borderRadius || {}, window.A1_TAILWIND_THEME.borderRadius),
-            boxShadow: Object.assign({}, extend.boxShadow || {}, window.A1_TAILWIND_THEME.boxShadow)
-          })
-        })
-      });
-    };
-    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
-    window.applyA1TailwindTheme();
-  </script>
+  <script src="/js/a1-tailwind-theme.js?v=1"></script>
   <style>
     html, body { overflow-x: hidden; box-sizing: border-box; }
     html.auth-redirecting body { visibility: hidden; }
@@ -201,6 +163,9 @@
     body { font-family: var(--a1-font-body, Inter, system-ui, sans-serif); }
     h1, h2, .font-display { font-family: var(--a1-font-display, "Barlow Condensed", "Arial Narrow", Impact, sans-serif); font-weight: 800; letter-spacing: -0.005em; }
     h3 { font-family: var(--a1-font-body, Inter, system-ui, sans-serif); letter-spacing: -0.02em; }
+    /* Design system v2: page headings are condensed 900 uppercase (long-form prose keeps sentence case). */
+    main h1, main h2 { font-weight: 900; text-transform: uppercase; line-height: .95; }
+    main :is(.prose, .markdown-content, .markdown-body) :is(h1, h2) { text-transform: none; }
     :focus-visible { outline: 3px solid #d4af37; outline-offset: 2px; }
     html.dark :focus-visible { outline-color: #e1b746; }
     ::selection { background: #e1b746; color: #000; }

@@ -138,7 +138,7 @@
 <div id="lobby" class="flex-1 flex items-center justify-center p-4">
     <div class="w-full max-w-md">
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-extrabold bg-gradient-to-r from-teal-400 to-emerald-300 bg-clip-text text-transparent">
+            <h1 class="text-3xl font-extrabold">
                 Virtual Classroom
             </h1>
             <p class="text-gray-400 mt-2 text-sm">Real Time Classroom Experience</p>
@@ -171,7 +171,7 @@
                     </div>
                 </div>
                 <button id="btnJoin" type="button"
-                        class="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-lg shadow-lg shadow-teal-600/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[.98]">
+                        class="w-full py-3 text-white font-semibold rounded-lg shadow-lg shadow-teal-600/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[.98] bg-teal-600 hover:bg-teal-700">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
                         <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                         <polyline points="10 17 15 12 10 7"></polyline>
@@ -231,7 +231,7 @@
         </div>
     </header>
 
-    <div id="viewerBanner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-xs sm:text-sm text-amber-100">
+    <div id="viewerBanner" class="hidden bg-teal-500/10 border-b border-teal-500/30 px-4 py-2 text-xs sm:text-sm text-teal-100">
         You are viewing this classroom. <a id="viewerLoginLink" href="/login" class="font-semibold text-white underline underline-offset-2">Sign in to chat, move, sit, react, or use the whiteboard.</a>
     </div>
 
@@ -262,7 +262,7 @@
                 <!-- Current user character -->
                 <div id="myCharacter" class="absolute transition-all duration-75 ease-linear" style="z-index:50; display:none;">
                     <div class="flex flex-col items-center">
-                        <div class="relative w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-teal-500/30 border-2 border-white/30">
+                        <div class="relative w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-teal-500/30 border-2 border-white/30 a1s-icontile">
                             <span id="myInitial">?</span>
                             <span id="myPresenceBadge" class="absolute -top-1 -right-1 text-[12px] leading-none"></span>
                         </div>
@@ -553,11 +553,11 @@
                 desk.className = 'absolute flex flex-col items-center';
                 desk.style.cssText = `top:${top}%; left:${left}%; width:8%; transform:translateX(-50%);`;
                 desk.innerHTML = `
-                    <div class="w-full aspect-[4/3] rounded shadow-md bg-amber-800 border border-amber-900 flex items-center justify-center relative">
+                    <div class="w-full aspect-[4/3] rounded shadow-md bg-teal-800 border border-teal-900 flex items-center justify-center relative">
                         <span class="text-[8px] text-white/40 select-none">${seatNum}</span>
                         <div data-seat-label="${seatId}" class="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] text-white bg-gray-800/90 px-1.5 py-0.5 rounded whitespace-nowrap hidden"></div>
                     </div>
-                    <div data-seat-chair="${seatId}" class="w-[60%] h-2 mt-0.5 rounded-sm bg-indigo-900 border border-indigo-950"></div>
+                    <div data-seat-chair="${seatId}" class="w-[60%] h-2 mt-0.5 rounded-sm bg-gray-900 border border-gray-950"></div>
                 `;
                 desksContainer.appendChild(desk);
             }
@@ -608,9 +608,9 @@
         const el = document.getElementById('seatStatusMsg');
         if (!el) return;
         el.textContent = msg;
-        el.classList.remove('hidden', 'text-emerald-400', 'text-amber-400', 'text-red-400', 'text-gray-300');
-        if (type === 'success') el.classList.add('text-emerald-400');
-        else if (type === 'warning' || type === 'error') el.classList.add('text-amber-400');
+        el.classList.remove('hidden', 'text-gray-400', 'text-teal-400', 'text-red-400', 'text-gray-300');
+        if (type === 'success') el.classList.add('text-gray-400');
+        else if (type === 'warning' || type === 'error') el.classList.add('text-teal-400');
         else el.classList.add('text-gray-300');
 
         if (seatStatusTimer) clearTimeout(seatStatusTimer);
@@ -624,8 +624,8 @@
         const wrapper = document.createElement('div');
         wrapper.className = 'flex justify-center my-1 fade-in-up';
         let bgClass = 'bg-gray-800/80 text-gray-400 border border-gray-700/50';
-        if (type === 'success') bgClass = 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
-        else if (type === 'warning' || type === 'error') bgClass = 'bg-amber-500/10 text-amber-300 border border-amber-500/30';
+        if (type === 'success') bgClass = 'bg-gray-500/10 text-gray-300 border border-gray-500/30';
+        else if (type === 'warning' || type === 'error') bgClass = 'bg-teal-500/10 text-teal-300 border border-teal-500/30';
 
         wrapper.innerHTML = `
             <div class="px-2.5 py-1 rounded-md text-[11px] font-medium tracking-wide ${bgClass}">
@@ -815,9 +815,9 @@
     }
 
     function setConnStatus(ok) {
-        connDot.className = `w-2 h-2 rounded-full dot-pulse ${ok ? 'bg-emerald-400' : 'bg-red-500'}`;
+        connDot.className = `w-2 h-2 rounded-full dot-pulse ${ok ? 'bg-gray-400' : 'bg-red-500'}`;
         connText.textContent = ok ? 'Connected' : 'Disconnected';
-        connText.className = ok ? 'text-emerald-400' : 'text-red-400';
+        connText.className = ok ? 'text-gray-400' : 'text-red-400';
     }
 
     function wsSend(obj) {
@@ -1179,7 +1179,7 @@
             participantsList.appendChild(makeParticipantCard(myParticipantId, myDisplayName, currentSeat, true));
         } else {
             const viewerCard = document.createElement('div');
-            viewerCard.className = 'p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs text-amber-100';
+            viewerCard.className = 'p-3 rounded-lg border border-teal-500/30 bg-teal-500/10 text-xs text-teal-100';
             viewerCard.textContent = 'Viewing only. Sign in to appear in the room and interact.';
             participantsList.appendChild(viewerCard);
         }

@@ -4,11 +4,11 @@
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
 {% block content %}
 <main class="flex-1">
-    <section class="bg-gradient-to-br from-purple-700 via-indigo-700 to-cyan-700 text-white py-16">
+    <section class="text-white py-16 a1s-hero">
       <div class="max-w-5xl mx-auto px-4 md:px-6">
-        <p class="text-sm font-bold uppercase tracking-[0.2em] text-purple-100 mb-3">Referral program</p>
+        <p class="text-sm font-bold uppercase tracking-[0.2em] text-gray-100 mb-3">Referral program</p>
         <h1 class="text-4xl md:text-6xl font-extrabold mb-4">Referral Leaderboard</h1>
-        <p class="max-w-2xl text-purple-50 text-lg">
+        <p class="max-w-2xl text-gray-50 text-lg">
           Top referrers ranked by successful signups, enrollments, and referral earnings.
         </p>
       </div>
@@ -18,7 +18,7 @@
       <div class="rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h2 class="text-xl font-extrabold">Top referrers</h2>
-          <a href="/" class="text-sm font-bold text-purple-700 dark:text-purple-300 hover:underline">Back home</a>
+          <a href="/" class="text-sm font-bold text-gray-700 dark:text-gray-300 hover:underline">Back home</a>
         </div>
         <div id="leaderboard" class="divide-y divide-gray-200 dark:divide-gray-700">
           <div class="p-10 text-center text-gray-500 dark:text-gray-400">
@@ -50,7 +50,7 @@
         holder.innerHTML = leaders.map(item => `
           <article class="p-5 flex items-center justify-between gap-4">
             <div class="flex items-center gap-4 min-w-0">
-              <div class="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-extrabold">${item.rank}</div>
+              <div class="w-12 h-12 rounded-2xl bg-gray-600 text-white flex items-center justify-center font-extrabold">${item.rank}</div>
               <div class="min-w-0">
                 <h3 class="font-extrabold text-lg truncate">${esc(item.name)}</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -60,7 +60,7 @@
             </div>
             <div class="text-right">
               <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-bold">Earnings</p>
-              <p class="font-extrabold text-purple-700 dark:text-purple-300">${money(item.referral_earnings_cents)}</p>
+              <p class="font-extrabold text-gray-700 dark:text-gray-300">${money(item.referral_earnings_cents)}</p>
             </div>
           </article>
         `).join('');
