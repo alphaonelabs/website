@@ -92,6 +92,8 @@ class EarthMind(WorkerEntrypoint):
             return await _list_alerts(self.env, parsed)
 
         if path.startswith("/api/alerts/") and path.endswith("/resolve"):
+            if method not in ("POST", "PUT"):
+                return _error("Method not allowed", 405)
             alert_id = path.split("/")[3]
             return await _resolve_alert(self.env, alert_id)
 
@@ -166,7 +168,9 @@ async def _query_readings(request, env, parsed) -> Response:
     parameter = _first(params, "parameter")
     source = _first(params, "source")
     location = _first(params, "location")
-    limit = min(int(_first(params, "limit") or 100), 1000)
+    limit = _parse_limit(params, 100, env)
+    if limit is None:
+        return _error("'limit' must be an integer")
     since = _first(params, "since")
 
     conditions = []
@@ -202,7 +206,9 @@ async def _query_readings(request, env, parsed) -> Response:
 async def _get_anomalies(request, env, parsed) -> Response:
     params = parse_qs(parsed.query)
     parameter = _first(params, "parameter")
-    limit = min(max(int(_first(params, "limit") or 200), 1), _max_readings(env))
+    limit = _parse_limit(params, 200, env)
+    if limit is None:
+        return _error("'limit' must be an integer")
     zscore_threshold = float(
         _first(params, "zscore_threshold")
         or _env_positive_float(env, "ANOMALY_ZSCORE_THRESHOLD", 2.5)
@@ -232,7 +238,9 @@ async def _get_anomalies(request, env, parsed) -> Response:
 async def _get_trends(request, env, parsed) -> Response:
     params = parse_qs(parsed.query)
     parameter = _first(params, "parameter")
-    limit = min(max(int(_first(params, "limit") or 200), 1), _max_readings(env))
+    limit = _parse_limit(params, 200, env)
+    if limit is None:
+        return _error("'limit' must be an integer")
 
     if not parameter:
         return _error("'parameter' query param is required")
@@ -541,6 +549,14 @@ def _max_readings(env) -> int:
     except (TypeError, ValueError, OverflowError):
         return 1000
     return value if value > 0 else 1000
+
+
+def _parse_limit(params: dict, default: int, env) -> int | None:
+    try:
+        value = int(_first(params, "limit") or default)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return min(max(value, 1), _max_readings(env))
 
 
 def _env_positive_float(env, name: str, default: float) -> float:

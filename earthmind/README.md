@@ -141,7 +141,7 @@ CORS headers are set for all responses.
 |---|---|---|
 | `GET` | `/api/alerts` | List alerts (`?active=true&severity=high`) |
 | `POST` | `/api/alerts` | Create a manual alert |
-| `PUT` | `/api/alerts/:id/resolve` | Resolve an alert |
+| `POST` | `/api/alerts/:id/resolve` | Resolve an alert |
 
 ### AI Analytics
 
