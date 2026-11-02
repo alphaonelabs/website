@@ -4,21 +4,34 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VoxBridge – AI Accessibility Toolkit</title>
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   <style>
     /* ---------- design tokens ---------- */
     :root {
-      --clr-bg:      #0f1117;
-      --clr-surface: #1a1d27;
-      --clr-border:  #2e3347;
-      --clr-accent:  #6c63ff;
-      --clr-accent2: #00d4aa;
-      --clr-text:    #e2e8f0;
-      --clr-muted:   #8892a4;
-      --clr-error:   #ff6b6b;
+      /* mapped onto the Alpha One Labs brand tokens (design.alphaonelabs.com) */
+      --clr-bg:      var(--a1-bg, #000);
+      --clr-surface: var(--a1-surface, #0d0d0d);
+      --clr-raised:  var(--a1-surface-raised, #1a1a1a);
+      --clr-border:  var(--a1-border, #2e2e2e);
+      --clr-accent:  var(--a1-accent, #c7ab4f);
+      --clr-accent-hover: var(--a1-accent-hover, #e2c66a);
+      --clr-on-accent: var(--a1-on-accent, #000);
+      --clr-accent2: var(--a1-accent, #c7ab4f);
+      --clr-text:    var(--a1-text, #fff);
+      --clr-muted:   var(--a1-text-muted, #a3a3a3);
+      --clr-error:   #ff7a7a;
+      --clr-on-error: #000;
       --clr-success: #51cf66;
-      --radius:      12px;
-      --shadow:      0 4px 24px rgba(0,0,0,.45);
+      --clr-focus:   var(--a1-focus, #e2c66a);
+      --radius:      var(--a1-radius, 12px);
+      --shadow:      var(--a1-shadow, 0 4px 24px rgba(0,0,0,.45));
     }
+    /* light theme: darker status colours keep AA contrast on white */
+    @media (prefers-color-scheme: light) {
+      :root:not([data-a1-theme="dark"]) { --clr-error: #c0262d; --clr-on-error: #fff; --clr-success: #1f7a35; }
+    }
+    :root[data-a1-theme="light"] { --clr-error: #c0262d; --clr-on-error: #fff; --clr-success: #1f7a35; }
 
     /* ---------- reset / base ---------- */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,55 +39,48 @@
     body {
       background: var(--clr-bg);
       color: var(--clr-text);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: var(--a1-font-body, system-ui, -apple-system, sans-serif);
       line-height: 1.6;
       min-height: 100vh;
     }
 
     a { color: var(--clr-accent); }
+    a:hover { color: var(--clr-accent-hover); }
+    :focus-visible { outline: 2px solid var(--clr-focus); outline-offset: 3px; }
+    a1-header { display: block; min-height: 65px; background: var(--clr-bg); }
+    h1, h2 { font-family: var(--a1-font-display, sans-serif); letter-spacing: -0.02em; }
 
-    /* ---------- header ---------- */
-    header {
-      background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
-      border-bottom: 1px solid var(--clr-border);
-      padding: 1.5rem 2rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .logo {
-      width: 44px; height: 44px;
-      background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent2));
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem;
-    }
-    header h1 { font-size: 1.6rem; font-weight: 700; }
-    header p  { color: var(--clr-muted); font-size: 0.9rem; margin-top: 0.1rem; }
+    /* ---------- page intro ---------- */
+    .page-intro { max-width: 860px; margin: 0 auto; padding: 2rem 2rem 1rem; display: flex; align-items: center; gap: 1.25rem; }
+    .maker-art { width: 84px; height: 84px; flex: none; background: var(--clr-accent); -webkit-mask: url("https://design.alphaonelabs.com/assets/illustrations/transistor.svg") center / contain no-repeat; mask: url("https://design.alphaonelabs.com/assets/illustrations/transistor.svg") center / contain no-repeat; }
+    .eyebrow { font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--clr-accent); margin-bottom: 0.4rem; }
+    .page-intro h1 { font-size: var(--a1-text-3xl, 2.25rem); font-weight: 700; line-height: 1.05; }
+    .page-intro p.lead { color: var(--clr-muted); font-size: 1rem; margin-top: 0.4rem; }
 
     /* ---------- nav tabs ---------- */
-    nav {
+    nav.tabs {
       display: flex;
       gap: 0.25rem;
-      padding: 1rem 2rem 0;
+      padding: 0 2rem;
+      max-width: 860px;
+      margin: 0 auto;
       border-bottom: 1px solid var(--clr-border);
       overflow-x: auto;
     }
-    nav button {
+    nav.tabs button {
       background: none;
       border: none;
       color: var(--clr-muted);
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      padding: 0.6rem 1.2rem;
+      font: 500 0.9rem/1.4 var(--a1-font-body, sans-serif);
+      padding: 0.7rem 1.2rem;
       border-radius: var(--radius) var(--radius) 0 0;
       border-bottom: 2px solid transparent;
       white-space: nowrap;
       transition: color 0.2s, border-color 0.2s, background 0.2s;
     }
-    nav button:hover { color: var(--clr-text); background: var(--clr-surface); }
-    nav button.active {
+    nav.tabs button:hover { color: var(--clr-text); background: var(--clr-surface); }
+    nav.tabs button.active {
       color: var(--clr-accent);
       border-bottom-color: var(--clr-accent);
       background: var(--clr-surface);
@@ -135,21 +141,21 @@
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      padding: 0.55rem 1.25rem;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
+      padding: 0.6rem 1.25rem;
+      min-height: 40px;
+      border: 1px solid transparent;
+      border-radius: var(--a1-radius-full, 999px);
+      font: 600 0.9rem/1.2 var(--a1-font-body, sans-serif);
       cursor: pointer;
       transition: opacity 0.2s, transform 0.1s;
     }
     .btn:active { transform: scale(0.97); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    .btn-primary { background: var(--clr-accent); color: #fff; }
-    .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+    .btn-primary { background: var(--clr-accent); color: var(--clr-on-accent); }
+    .btn-primary:hover:not(:disabled) { background: var(--clr-accent-hover); }
 
-    .btn-danger  { background: var(--clr-error); color: #fff; }
+    .btn-danger  { background: var(--clr-error); color: var(--clr-on-error); }
     .btn-danger:hover:not(:disabled) { opacity: 0.9; }
 
     .btn-outline {
@@ -232,9 +238,10 @@
       font-weight: 600;
       padding: 0.15rem 0.5rem;
       border-radius: 20px;
-      background: rgba(108,99,255,.2);
+      font-family: var(--a1-font-mono, monospace);
+      background: rgba(199,171,79,.08);
       color: var(--clr-accent);
-      border: 1px solid rgba(108,99,255,.4);
+      border: 1px solid rgba(199,171,79,.5);
     }
 
     /* ---------- speak button ---------- */
@@ -249,32 +256,46 @@
     }
     .speak-btn:hover { opacity: 0.75; }
 
-    /* ---------- footer ---------- */
-    footer {
+    /* ---------- credits ---------- */
+    .credits {
       text-align: center;
-      padding: 2rem;
+      padding: 0 1rem 2rem;
       color: var(--clr-muted);
       font-size: 0.8rem;
-      border-top: 1px solid var(--clr-border);
-      margin-top: 2rem;
+    }
+
+    /* ---------- small screens ---------- */
+    @media (max-width: 600px) {
+      .page-intro { padding: 1.5rem 1rem 0.75rem; gap: 0.9rem; }
+      .maker-art { width: 56px; height: 56px; }
+      nav.tabs { padding: 0 1rem; }
+      main { padding: 1.25rem 1rem; }
+      .card { padding: 1.1rem; }
+      select { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .rec-dot, .spinner { animation: none; }
     }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="logo" aria-hidden="true">🌉</div>
-  <div>
-    <h1>VoxBridge</h1>
-    <p>AI-powered accessibility &amp; communication toolkit</p>
-  </div>
-</header>
+<a1-header site="VoxBridge" site-href="/" sticky></a1-header>
 
-<nav role="tablist" aria-label="Features">
-  <button role="tab" aria-selected="true"  aria-controls="tab-caption"      id="btn-caption"      class="active">🎤 Captioning</button>
-  <button role="tab" aria-selected="false" aria-controls="tab-s2sign"       id="btn-s2sign"                     >🗣️ Speech → Sign</button>
-  <button role="tab" aria-selected="false" aria-controls="tab-sign2s"       id="btn-sign2s"                     >🤟 Sign → Speech</button>
-  <button role="tab" aria-selected="false" aria-controls="tab-scene"        id="btn-scene"                      >🖼️ Scene Description</button>
+<div class="page-intro">
+  <div class="maker-art" aria-hidden="true"></div>
+  <div>
+    <p class="eyebrow">Alpha One Labs</p>
+    <h1>VoxBridge</h1>
+    <p class="lead">AI-powered accessibility &amp; communication toolkit</p>
+  </div>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Features">
+  <button role="tab" aria-selected="true"  aria-controls="tab-caption"      id="btn-caption"      class="active"><span aria-hidden="true">🎤</span> Captioning</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-s2sign"       id="btn-s2sign"                     ><span aria-hidden="true">🗣️</span> Speech → Sign</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-sign2s"       id="btn-sign2s"                     ><span aria-hidden="true">🤟</span> Sign → Speech</button>
+  <button role="tab" aria-selected="false" aria-controls="tab-scene"        id="btn-scene"                      ><span aria-hidden="true">🖼️</span> Scene Description</button>
 </nav>
 
 <main>
@@ -282,7 +303,7 @@
   <!-- ==================== CAPTIONING ==================== -->
   <section id="tab-caption" class="tab-panel active" role="tabpanel" aria-labelledby="btn-caption">
     <div class="card">
-      <h2>🎤 Real-time Captioning <span class="badge">Whisper</span></h2>
+      <h2><span aria-hidden="true">🎤</span> Real-time Captioning <span class="badge">Whisper</span></h2>
       <p class="subtitle">Record or upload audio to generate an instant text transcript.</p>
 
       <label for="caption-file">Upload audio file (WAV / MP3 / WebM)</label>
@@ -290,13 +311,13 @@
 
       <div class="btn-group">
         <button class="btn btn-primary" id="caption-record-btn" aria-label="Start recording">
-          <span class="rec-dot"></span> Record
+          <span class="rec-dot" aria-hidden="true"></span> Record
         </button>
-        <div class="spinner" id="caption-spinner" aria-label="Processing"></div>
+        <div class="spinner" id="caption-spinner" role="status" aria-label="Processing"></div>
         <button class="btn btn-primary" id="caption-submit-btn" disabled>Transcribe ▶</button>
       </div>
 
-      <audio id="caption-audio-preview" controls style="display:none; margin-top:.75rem; width:100%;"></audio>
+      <audio id="caption-audio-preview" aria-label="Recorded audio preview" controls style="display:none; margin-top:.75rem; width:100%;"></audio>
       <div id="caption-result" class="result-box" aria-live="polite"></div>
     </div>
   </section>
@@ -304,7 +325,7 @@
   <!-- ==================== SPEECH → SIGN ==================== -->
   <section id="tab-s2sign" class="tab-panel" role="tabpanel" aria-labelledby="btn-s2sign">
     <div class="card">
-      <h2>🗣️ Speech → Sign Language <span class="badge">Whisper + LLaMA</span></h2>
+      <h2><span aria-hidden="true">🗣️</span> Speech → Sign Language <span class="badge">Whisper + LLaMA</span></h2>
       <p class="subtitle">Speak or upload audio; receive step-by-step sign-language instructions.</p>
 
       <label for="s2sign-file">Upload audio file (WAV / MP3 / WebM)</label>
@@ -321,13 +342,13 @@
 
       <div class="btn-group">
         <button class="btn btn-primary" id="s2sign-record-btn" aria-label="Start recording">
-          <span class="rec-dot"></span> Record
+          <span class="rec-dot" aria-hidden="true"></span> Record
         </button>
-        <div class="spinner" id="s2sign-spinner" aria-label="Processing"></div>
+        <div class="spinner" id="s2sign-spinner" role="status" aria-label="Processing"></div>
         <button class="btn btn-primary" id="s2sign-submit-btn" disabled>Generate Signs ▶</button>
       </div>
 
-      <audio id="s2sign-audio-preview" controls style="display:none; margin-top:.75rem; width:100%;"></audio>
+      <audio id="s2sign-audio-preview" aria-label="Recorded audio preview" controls style="display:none; margin-top:.75rem; width:100%;"></audio>
 
       <div id="s2sign-result" class="result-box" aria-live="polite"></div>
     </div>
@@ -336,7 +357,7 @@
   <!-- ==================== SIGN → SPEECH ==================== -->
   <section id="tab-sign2s" class="tab-panel" role="tabpanel" aria-labelledby="btn-sign2s">
     <div class="card">
-      <h2>🤟 Sign → Speech <span class="badge">Vision + LLaMA</span></h2>
+      <h2><span aria-hidden="true">🤟</span> Sign → Speech <span class="badge">Vision + LLaMA</span></h2>
       <p class="subtitle">Upload or capture an image of a sign-language gesture; receive the spoken equivalent.</p>
 
       <label for="sign2s-file">Upload image (JPEG / PNG / WebP)</label>
@@ -344,11 +365,11 @@
 
       <div class="btn-group">
         <button class="btn btn-outline" id="sign2s-camera-btn" aria-label="Capture from camera">📷 Use Camera</button>
-        <div class="spinner" id="sign2s-spinner" aria-label="Processing"></div>
+        <div class="spinner" id="sign2s-spinner" role="status" aria-label="Processing"></div>
         <button class="btn btn-primary" id="sign2s-submit-btn" disabled>Interpret Sign ▶</button>
       </div>
 
-      <video id="sign2s-video" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
+      <video id="sign2s-video" aria-label="Camera preview" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
       <button class="btn btn-outline" id="sign2s-snap-btn" style="display:none; margin-top:.5rem;">📸 Capture Frame</button>
       <img id="sign2s-preview" class="img-preview" alt="Selected sign-language image preview" />
 
@@ -359,7 +380,7 @@
   <!-- ==================== SCENE DESCRIPTION ==================== -->
   <section id="tab-scene" class="tab-panel" role="tabpanel" aria-labelledby="btn-scene">
     <div class="card">
-      <h2>🖼️ Visual Scene Description <span class="badge">Vision AI</span></h2>
+      <h2><span aria-hidden="true">🖼️</span> Visual Scene Description <span class="badge">Vision AI</span></h2>
       <p class="subtitle">Upload or capture an image; receive an accessible description for visually impaired users.</p>
 
       <label for="scene-file">Upload image (JPEG / PNG / WebP)</label>
@@ -376,11 +397,11 @@
 
       <div class="btn-group">
         <button class="btn btn-outline" id="scene-camera-btn" aria-label="Capture from camera">📷 Use Camera</button>
-        <div class="spinner" id="scene-spinner" aria-label="Processing"></div>
+        <div class="spinner" id="scene-spinner" role="status" aria-label="Processing"></div>
         <button class="btn btn-primary" id="scene-submit-btn" disabled>Describe Scene ▶</button>
       </div>
 
-      <video id="scene-video" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
+      <video id="scene-video" aria-label="Camera preview" autoplay playsinline style="display:none; width:100%; border-radius:8px; margin-top:.75rem;"></video>
       <button class="btn btn-outline" id="scene-snap-btn" style="display:none; margin-top:.5rem;">📸 Capture Frame</button>
       <img id="scene-preview" class="img-preview" alt="Selected scene image preview" />
 
@@ -390,12 +411,14 @@
 
 </main>
 
-<footer>
-  VoxBridge &mdash; built with <a href="https://developers.cloudflare.com/workers/languages/python/" target="_blank" rel="noopener">Cloudflare Python Workers</a>
-  &amp; <a href="https://developers.cloudflare.com/workers-ai/" target="_blank" rel="noopener">Workers AI</a>
-</footer>
+<p class="credits">
+  VoxBridge &mdash; built with <a href="https://developers.cloudflare.com/workers/languages/python/">Cloudflare Python Workers</a>
+  &amp; <a href="https://developers.cloudflare.com/workers-ai/">Workers AI</a>
+</p>
 
-<canvas id="hidden-canvas" style="display:none;"></canvas>
+<a1-footer source="voxbridge"></a1-footer>
+
+<canvas id="hidden-canvas" aria-hidden="true" style="display:none;"></canvas>
 
 <script>
 "use strict";
@@ -440,9 +463,9 @@ function showResultHTML(boxId, html) {
 /* ─────────────────────────────────────────────
    Tab navigation
    ───────────────────────────────────────────── */
-document.querySelectorAll("nav button").forEach(btn => {
+document.querySelectorAll("nav.tabs button").forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll("nav button").forEach(b => {
+    document.querySelectorAll("nav.tabs button").forEach(b => {
       b.classList.remove("active");
       b.setAttribute("aria-selected", "false");
     });
@@ -479,7 +502,7 @@ function makeAudioRecorder({ recordBtn, audioPreview, submitBtn }) {
         mediaRecorder.start();
         recording = true;
         recordBtn.classList.add("recording");
-        recordBtn.innerHTML = '<span class="rec-dot"></span> Stop';
+        recordBtn.innerHTML = '<span class="rec-dot" aria-hidden="true"></span> Stop';
         recordBtn.classList.remove("btn-primary");
         recordBtn.classList.add("btn-danger");
       } catch (err) {
@@ -491,7 +514,7 @@ function makeAudioRecorder({ recordBtn, audioPreview, submitBtn }) {
       recording = false;
       recordBtn.classList.remove("recording", "btn-danger");
       recordBtn.classList.add("btn-primary");
-      recordBtn.innerHTML = '<span class="rec-dot"></span> Record';
+      recordBtn.innerHTML = '<span class="rec-dot" aria-hidden="true"></span> Record';
     }
   });
 
@@ -587,7 +610,7 @@ function makeCamera({ cameraBtn, video, snapBtn, preview, submitBtn }) {
       showResultHTML("caption-result",
         `<div class="result-label">Transcript</div>` +
         `<span>${escapeHtml(data.text)}</span>` +
-        `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(data.text)})">🔊</button>`
+        `<button class="speak-btn" title="Read aloud" aria-label="Read aloud" onclick="speak(${escapeHtml(JSON.stringify(data.text))})"><span aria-hidden="true">🔊</span></button>`
       );
     } catch (err) {
       showResult("caption-result", "Error: " + err.message, true);
@@ -688,7 +711,7 @@ function makeCamera({ cameraBtn, video, snapBtn, preview, submitBtn }) {
       showResultHTML("sign2s-result",
         `<div class="result-label">Interpreted Speech</div>` +
         `<strong style="font-size:1.1rem;">${escapeHtml(data.speech_text)}</strong> ` +
-        `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(data.speech_text)})">🔊</button>` +
+        `<button class="speak-btn" title="Read aloud" aria-label="Read aloud" onclick="speak(${escapeHtml(JSON.stringify(data.speech_text))})"><span aria-hidden="true">🔊</span></button>` +
         `<div class="result-label" style="margin-top:.8rem;">Gesture Analysis</div>` +
         `<span style="color:var(--clr-muted);">${escapeHtml(data.gesture_description)}</span>`
       );
@@ -742,7 +765,7 @@ function makeCamera({ cameraBtn, video, snapBtn, preview, submitBtn }) {
       showResultHTML("scene-result",
         `<div class="result-label">Scene Description</div>` +
         `${escapeHtml(data.description)} ` +
-        `<button class="speak-btn" title="Read aloud" onclick="speak(${JSON.stringify(data.description)})">🔊</button>`
+        `<button class="speak-btn" title="Read aloud" aria-label="Read aloud" onclick="speak(${escapeHtml(JSON.stringify(data.description))})"><span aria-hidden="true">🔊</span></button>`
       );
     } catch (err) {
       showResult("scene-result", "Error: " + err.message, true);

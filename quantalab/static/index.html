@@ -4,32 +4,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QuantaLab — Virtual Science Laboratory</title>
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
   <link rel="stylesheet" href="/style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
 </head>
 <body>
   <!-- ── Header ─────────────────────────────────────────────── -->
-  <header class="app-header">
-    <div class="logo">
-      <span class="logo-icon">⚗️</span>
-      <span class="logo-text">Quanta<strong>Lab</strong></span>
-    </div>
-    <nav class="domain-nav" id="domainNav">
-      <button class="domain-btn active" data-domain="physics">⚛️ Physics</button>
-      <button class="domain-btn" data-domain="chemistry">🧪 Chemistry</button>
-      <button class="domain-btn" data-domain="biology">🧬 Biology</button>
+  <a1-header site="QuantaLab" site-href="/"></a1-header>
+
+  <!-- ── Lab toolbar: science domains + mentor toggle ───────── -->
+  <div class="app-header">
+    <nav class="domain-nav" id="domainNav" aria-label="Science domains">
+      <button class="domain-btn active" data-domain="physics" aria-pressed="true"><span aria-hidden="true">⚛️</span> Physics</button>
+      <button class="domain-btn" data-domain="chemistry" aria-pressed="false"><span aria-hidden="true">🧪</span> Chemistry</button>
+      <button class="domain-btn" data-domain="biology" aria-pressed="false"><span aria-hidden="true">🧬</span> Biology</button>
     </nav>
     <div class="header-actions">
-      <button class="icon-btn" id="toggleMentorBtn" title="Toggle AI Mentor">🤖 Mentor</button>
+      <button class="icon-btn" id="toggleMentorBtn" aria-controls="mentorPanel" title="Toggle AI Mentor"><span aria-hidden="true">🤖</span> Mentor</button>
     </div>
-  </header>
+  </div>
 
   <!-- ── Main Layout ─────────────────────────────────────────── -->
   <main class="app-layout">
+    <h1 class="sr-only">QuantaLab — Virtual Science Laboratory</h1>
 
     <!-- Experiment Sidebar -->
-    <aside class="experiment-sidebar" id="experimentSidebar">
+    <aside class="experiment-sidebar" id="experimentSidebar" aria-label="Experiments">
       <h2 class="sidebar-title">Experiments</h2>
       <ul class="experiment-list" id="experimentList">
         <li class="skeleton-item"></li>
@@ -43,23 +43,24 @@
       <!-- Welcome Screen -->
       <div class="welcome-screen" id="welcomeScreen">
         <div class="welcome-content">
-          <div class="welcome-icon">🔬</div>
-          <h1>Welcome to QuantaLab</h1>
+          <div class="welcome-art" aria-hidden="true"></div>
+          <h2 class="welcome-title">Welcome to QuantaLab</h2>
           <p>Select an experiment from the sidebar to begin your scientific exploration.</p>
           <p class="welcome-hint">Your AI mentor is always ready to answer questions and guide you through each experiment.</p>
+          <hr class="a1-trace" />
           <div class="feature-grid">
             <div class="feature-card">
-              <span>⚛️</span>
+              <span aria-hidden="true">⚛️</span>
               <strong>Physics</strong>
               <small>Pendulums, projectiles, circuits</small>
             </div>
             <div class="feature-card">
-              <span>🧪</span>
+              <span aria-hidden="true">🧪</span>
               <strong>Chemistry</strong>
               <small>pH, gas laws, titrations</small>
             </div>
             <div class="feature-card">
-              <span>🧬</span>
+              <span aria-hidden="true">🧬</span>
               <strong>Biology</strong>
               <small>Cell division, evolution, photosynthesis</small>
             </div>
@@ -79,7 +80,7 @@
 
         <!-- Simulation Canvas -->
         <div class="simulation-wrapper">
-          <canvas id="simCanvas" width="700" height="400"></canvas>
+          <canvas id="simCanvas" width="700" height="400" role="img" aria-label="Interactive simulation of the selected experiment; values are listed under Measurements"></canvas>
           <div class="sim-overlay" id="simOverlay"></div>
         </div>
 
@@ -88,30 +89,30 @@
 
         <!-- Measurements / Results -->
         <div class="results-panel" id="resultsPanel">
-          <h3>📊 Measurements</h3>
-          <div class="measurements" id="measurements"></div>
+          <h3><span aria-hidden="true">📊</span> Measurements</h3>
+          <div class="measurements" id="measurements" aria-live="polite"></div>
         </div>
 
         <!-- Learning Objectives -->
         <div class="objectives-panel" id="objectivesPanel">
-          <h3>🎯 Learning Objectives</h3>
+          <h3><span aria-hidden="true">🎯</span> Learning Objectives</h3>
           <ul id="objectivesList"></ul>
         </div>
       </div>
     </section>
 
     <!-- AI Mentor Panel -->
-    <aside class="mentor-panel" id="mentorPanel">
+    <aside class="mentor-panel" id="mentorPanel" aria-label="AI mentor chat">
       <div class="mentor-header">
-        <span class="mentor-avatar">🤖</span>
+        <span class="mentor-avatar" aria-hidden="true">🤖</span>
         <div>
-          <strong>QuantaMentor</strong>
+          <h2 class="mentor-title">QuantaMentor</h2>
           <small>Your AI Science Guide</small>
         </div>
-        <button class="icon-btn close-mentor" id="closeMentorBtn">✕</button>
+        <button class="icon-btn close-mentor" id="closeMentorBtn" aria-label="Close AI mentor"><span aria-hidden="true">✕</span></button>
       </div>
 
-      <div class="chat-messages" id="chatMessages">
+      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite">
         <div class="chat-message assistant">
           <div class="message-content">
             Hi there! 👋 I'm <strong>QuantaMentor</strong>, your AI science guide.<br /><br />
@@ -121,6 +122,7 @@
       </div>
 
       <div class="chat-input-area">
+        <label for="chatInput" class="sr-only">Message the AI mentor</label>
         <textarea
           id="chatInput"
           placeholder="Ask me anything about science..."
@@ -132,6 +134,8 @@
     </aside>
 
   </main>
+
+  <a1-footer source="quantalab"></a1-footer>
 
   <script src="/app.js"></script>
 </body>

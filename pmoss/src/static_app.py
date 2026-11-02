@@ -72,7 +72,7 @@ function displayIssues(issues) {
   tbody.innerHTML = '';
 
   if (issues.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #8b949e;">No issues found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">No issues found</td></tr>';
     document.getElementById('issues-table').style.display = 'table';
     return;
   }
@@ -94,8 +94,8 @@ function displayIssues(issues) {
       : '-';
 
     row.innerHTML = `
-      <td><input type="checkbox" class="checkbox issue-checkbox" data-number="${issue.number}" onchange="updateSelection()" /></td>
-      <td><a href="${issue.html_url}" target="_blank" class="issue-number">#${issue.number}</a></td>
+      <td><input type="checkbox" class="checkbox issue-checkbox" data-number="${issue.number}" aria-label="Select issue #${issue.number}" onchange="updateSelection()" /></td>
+      <td><a href="${issue.html_url}" target="_blank" rel="noopener" class="issue-number">#${issue.number}</a></td>
       <td><span class="issue-title">${escapeHtml(issue.title)}</span></td>
       <td><span class="state-badge state-${issue.state}">${issue.state}</span></td>
       <td>${labels}</td>
@@ -120,19 +120,19 @@ async function loadMetrics(repository) {
 
     const metricsHtml = `
       <div class="metric-card">
-        <h3>Total Issues</h3>
+        <h2>Total Issues</h2>
         <div class="value">${data.current.total_issues || 0}</div>
       </div>
       <div class="metric-card">
-        <h3>Open Issues</h3>
+        <h2>Open Issues</h2>
         <div class="value">${data.current.open_issues || 0}</div>
       </div>
       <div class="metric-card">
-        <h3>Closed Issues</h3>
+        <h2>Closed Issues</h2>
         <div class="value">${data.current.closed_issues || 0}</div>
       </div>
       <div class="metric-card">
-        <h3>Avg Time to Close</h3>
+        <h2>Avg Time to Close</h2>
         <div class="value">${data.current.avg_time_to_close_days || 0} days</div>
       </div>
     `;
@@ -176,7 +176,7 @@ function displayPagination(pagination) {
     html += `<button class="btn btn-secondary btn-small" onclick="loadIssues(${pagination.page - 1})">Previous</button>`;
   }
 
-  html += `<span style="padding: 0 16px; color: #8b949e;">Page ${pagination.page} of ${pagination.total_pages}</span>`;
+  html += `<span class="muted" style="padding: 0 16px;">Page ${pagination.page} of ${pagination.total_pages}</span>`;
 
   if (pagination.page < pagination.total_pages) {
     html += `<button class="btn btn-secondary btn-small" onclick="loadIssues(${pagination.page + 1})">Next</button>`;
@@ -321,4 +321,14 @@ function formatTimeToClose(hours) {
 
 // Initialize
 checkAuth();
-"""
+
+// Keyboard access for sortable column headers
+document.querySelectorAll('th.sortable').forEach((th) => {
+  th.tabIndex = 0;
+  th.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      th.click();
+    }
+  });
+});"""

@@ -13,7 +13,7 @@
 | 🧬 **Biology** | Mitosis, Natural Selection, Photosynthesis |
 
 - **Real-time simulations** rendered on an HTML5 Canvas with live parameter controls
-- **AI Mentor** chat powered by `@cf/meta/llama-3.1-8b-instruct` via Cloudflare Workers AI
+- **AI Mentor** chat powered by `@cf/meta/llama-3.3-70b-instruct-fp8-fast` via Cloudflare Workers AI
 - **Interactive controls** — sliders to adjust experiment parameters and instantly see results
 - **Live measurements** panel with calculated metrics for each experiment
 - Fully serverless — runs as a **Cloudflare Python Worker** with static assets
@@ -129,7 +129,7 @@ pytest tests/ -v
 | Layer | Technology |
 |---|---|
 | Runtime | Cloudflare Python Workers (Pyodide) |
-| AI | Cloudflare Workers AI (`@cf/meta/llama-3.1-8b-instruct`) |
+| AI | Cloudflare Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) |
 | Frontend | Vanilla HTML5/CSS3/JavaScript + Canvas API |
 | Fonts | Inter + JetBrains Mono (Google Fonts) |
 | Testing | pytest + pytest-asyncio |
