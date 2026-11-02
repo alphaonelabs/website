@@ -5,6 +5,8 @@ in-lab science tutor.
 
 import json
 
+from experiments import get_experiment
+
 try:  # Workers AI needs plain JS objects; a bare Python dict arrives as a JS Map.
     from js import Object
     from pyodide.ffi import to_js as _to_js
@@ -30,6 +32,26 @@ Use simple Markdown (bold, bullet lists) to structure longer answers.
 Do NOT solve homework or give direct answers to exam questions — guide instead.
 """
 
+_MAX_CONTENT_LENGTH = 2000
+_MAX_HISTORY_TURNS = 10
+_ALLOWED_ROLES = {"user", "assistant"}
+
+
+def _clean_history(history) -> list[dict]:
+    """Keep the last 10 dict items whose role is user or assistant and whose content is a string."""
+    if not isinstance(history, list):
+        return []
+    cleaned = []
+    for item in history:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = item.get("content")
+        if role not in _ALLOWED_ROLES or not isinstance(content, str):
+            continue
+        cleaned.append({"role": role, "content": content[:_MAX_CONTENT_LENGTH]})
+    return cleaned[-_MAX_HISTORY_TURNS:]
+
 
 async def ask_mentor(env, user_message: str, history: list[dict], domain: str = "", experiment: str = "") -> str:
     """
@@ -45,13 +67,17 @@ async def ask_mentor(env, user_message: str, history: list[dict], domain: str = 
     Returns:
         The mentor's reply as a plain string.
     """
+    if not isinstance(user_message, str):
+        user_message = ""
+    user_message = user_message[:_MAX_CONTENT_LENGTH]
+
     context_note = ""
-    if domain and experiment:
+    if get_experiment(domain, experiment) is not None:
         context_note = f"\n\n[Context: student is working on the '{experiment}' experiment in {domain}.]"
 
     messages = [
         {"role": "system", "content": _SYSTEM_PROMPT + context_note},
-        *history[-10:],  # keep the last 10 turns to stay within context limits
+        *_clean_history(history),
         {"role": "user", "content": user_message},
     ]
 
