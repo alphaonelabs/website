@@ -12,11 +12,17 @@ from workers import WorkerEntrypoint, Response
 from services.anomaly import detect_anomalies
 from services.trends import analyze_trends
 from services.ai_service import (
+
     analyze_trends_with_ai,
     assess_ecological_risk,
     explain_anomaly,
     generate_dashboard_summary,
 )
+
+
+def _py(value):
+    """request.json() on the raw Workers request returns a JS object; make it a dict."""
+    return value.to_py() if hasattr(value, "to_py") else value
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +120,7 @@ class EarthMind(WorkerEntrypoint):
 
 async def _ingest_reading(request, env) -> Response:
     try:
-        body = await request.json()
+        body = _py(await request.json())
     except Exception:
         return _error("Invalid JSON body")
 
@@ -278,7 +284,7 @@ async def _list_alerts(env, parsed) -> Response:
 
 async def _create_alert(request, env) -> Response:
     try:
-        body = await request.json()
+        body = _py(await request.json())
     except Exception:
         return _error("Invalid JSON body")
 

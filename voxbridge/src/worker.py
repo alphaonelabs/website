@@ -16,6 +16,21 @@ import traceback
 
 from workers import Response, WorkerEntrypoint
 
+try:  # Workers AI needs plain JS objects; a bare Python dict arrives as a JS Map.
+    from js import Object
+    from pyodide.ffi import to_js as _to_js
+
+    def _js(value):
+        return _to_js(value, dict_converter=Object.fromEntries)
+except ImportError:  # local tests run outside Pyodide
+    def _js(value):
+        return value
+
+
+def _py(value):
+    """request.json() on the raw Workers request returns a JS object; make it a dict."""
+    return value.to_py() if hasattr(value, "to_py") else value
+
 # ---------------------------------------------------------------------------
 # Cloudflare AI model identifiers
 # ---------------------------------------------------------------------------
@@ -72,13 +87,13 @@ async def _caption(request: object, env: object) -> Response:
         text: str   – Transcript produced by Whisper
     """
     try:
-        body = await request.json()
+        body = _py(await request.json())
         audio_b64: str = body.get("audio", "")
         if not audio_b64:
             return _json({"error": "Missing required field: 'audio'"}, status=400)
 
         audio_bytes = base64.b64decode(audio_b64)
-        result = await env.AI.run(MODEL_WHISPER, {"audio": list(audio_bytes)})
+        result = await env.AI.run(MODEL_WHISPER, _js({"audio": list(audio_bytes)}))
         transcript = result.get("text", "") if isinstance(result, dict) else getattr(result, "text", str(result))
 
         return _json({"text": transcript, "model": MODEL_WHISPER})
@@ -100,7 +115,7 @@ async def _speech_to_sign(request: object, env: object) -> Response:
         instructions: str – Step-by-step signing instructions
     """
     try:
-        body = await request.json()
+        body = _py(await request.json())
         audio_b64: str = body.get("audio", "")
         language: str = body.get("language", "ASL")
 
@@ -109,7 +124,7 @@ async def _speech_to_sign(request: object, env: object) -> Response:
 
         # Step 1 – transcribe with Whisper
         audio_bytes = base64.b64decode(audio_b64)
-        whisper_result = await env.AI.run(MODEL_WHISPER, {"audio": list(audio_bytes)})
+        whisper_result = await env.AI.run(MODEL_WHISPER, _js({"audio": list(audio_bytes)}))
         transcript = (
             whisper_result.get("text", "") if isinstance(whisper_result, dict) else getattr(whisper_result, "text", str(whisper_result))
         )
@@ -117,7 +132,7 @@ async def _speech_to_sign(request: object, env: object) -> Response:
         # Step 2 – generate sign-language instructions with LLaMA
         llm_result = await env.AI.run(
             MODEL_LLAMA,
-            {
+            _js({
                 "messages": [
                     {
                         "role": "system",
@@ -136,7 +151,7 @@ async def _speech_to_sign(request: object, env: object) -> Response:
                     },
                 ],
                 "max_tokens": 1024,
-            },
+            }),
         )
         instructions = (
             llm_result.get("response", "") if isinstance(llm_result, dict) else getattr(llm_result, "response", str(llm_result))
@@ -166,7 +181,7 @@ async def _sign_to_speech(request: object, env: object) -> Response:
         speech_text:         str – Interpreted spoken equivalent
     """
     try:
-        body = await request.json()
+        body = _py(await request.json())
         image_b64: str = body.get("image", "")
         if not image_b64:
             return _json({"error": "Missing required field: 'image'"}, status=400)
@@ -180,14 +195,14 @@ async def _sign_to_speech(request: object, env: object) -> Response:
         # Step 1 – identify the gesture with the vision model
         vision_result = await env.AI.run(
             MODEL_VISION,
-            {
+            _js({
                 "image": list(image_bytes),
                 "prompt": (
                     "This image shows a person making a hand gesture or sign-language sign. "
                     "Describe the hand shape, finger positions, and any movement visible. "
                     "What sign or word does this gesture represent?"
                 ),
-            },
+            }),
         )
         gesture_description = (
             vision_result.get("description", "") if isinstance(vision_result, dict) else getattr(vision_result, "description", str(vision_result))
@@ -196,7 +211,7 @@ async def _sign_to_speech(request: object, env: object) -> Response:
         # Step 2 – refine with LLaMA for a clean speech output
         llm_result = await env.AI.run(
             MODEL_LLAMA,
-            {
+            _js({
                 "messages": [
                     {
                         "role": "system",
@@ -215,7 +230,7 @@ async def _sign_to_speech(request: object, env: object) -> Response:
                     },
                 ],
                 "max_tokens": 256,
-            },
+            }),
         )
         speech_text = (
             llm_result.get("response", "") if isinstance(llm_result, dict) else getattr(llm_result, "response", str(llm_result))
@@ -245,7 +260,7 @@ async def _visual_scene(request: object, env: object) -> Response:
         detail_level: str – Echo of the requested detail level
     """
     try:
-        body = await request.json()
+        body = _py(await request.json())
         image_b64: str = body.get("image", "")
         detail_level: str = body.get("detail_level", "standard")
 
@@ -273,7 +288,7 @@ async def _visual_scene(request: object, env: object) -> Response:
 
         vision_result = await env.AI.run(
             MODEL_VISION,
-            {"image": list(image_bytes), "prompt": prompt},
+            _js({"image": list(image_bytes), "prompt": prompt}),
         )
         description = (
             vision_result.get("description", "") if isinstance(vision_result, dict) else getattr(vision_result, "description", str(vision_result))
