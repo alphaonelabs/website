@@ -30,13 +30,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  platforms:
-    android:
-    ios:
-    linux:
-    macos:
-    web:
-    windows:
 
 # Override file_picker for desktop platforms to fix warnings
 dependency_overrides:

@@ -3,6 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+const apiBase = String.fromEnvironment(
+  'API_BASE',
+  defaultValue: 'https://learn.alphaonelabs.com',
+);
+
 class AuthService with ChangeNotifier {
   bool _isAuthenticated = false;
   String? _token;
@@ -12,12 +17,12 @@ class AuthService with ChangeNotifier {
   String? get token => _token;
   String? get userId => _userId;
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String username, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8000/api/auth/login/'),
+        Uri.parse('$apiBase/api/login'),
         body: json.encode({
-          'email': email,
+          'username': username,
           'password': password,
         }),
         headers: {
@@ -26,13 +31,19 @@ class AuthService with ChangeNotifier {
         },
       );
 
-      print('Login response: ${response.body}'); // For debugging
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['status'] == 'success') {
-          _token = data['token'];
-          _userId = data['userId'].toString();
+        if (data['success'] == true && data['data'] is Map) {
+          final loginData = data['data'] as Map<String, dynamic>;
+          final user = loginData['user'] as Map<String, dynamic>?;
+          final token = loginData['token']?.toString();
+          final userId = user?['id']?.toString();
+          if (token == null || token.isEmpty || userId == null) {
+            return false;
+          }
+
+          _token = token;
+          _userId = userId;
           _isAuthenticated = true;
 
           final prefs = await SharedPreferences.getInstance();
@@ -43,10 +54,8 @@ class AuthService with ChangeNotifier {
           return true;
         }
       }
-      print('Login failed with status code: ${response.statusCode}');
       return false;
-    } catch (e) {
-      print('Login error: $e');
+    } catch (_) {
       return false;
     }
   }

@@ -23,7 +23,7 @@ void main() {
       expect(find.byType(ClassListScreen), findsNothing);
     });
 
-    testWidgets('Login screen has email and password fields',
+    testWidgets('Login screen has username/email and password fields',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -52,11 +52,11 @@ void main() {
       await tester.tap(find.byType(ElevatedButton));
       await tester.pump();
 
-      expect(find.text('Please enter your email'), findsOneWidget);
+      expect(find.text('Please enter your username or email'), findsOneWidget);
       expect(find.text('Please enter your password'), findsOneWidget);
     });
 
-    testWidgets('Email validation checks for @ symbol',
+    testWidgets('Username or email validation accepts non-empty input',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -71,7 +71,7 @@ void main() {
       await tester.tap(find.byType(ElevatedButton));
       await tester.pump();
 
-      expect(find.text('Please enter a valid email'), findsOneWidget);
+      expect(find.text('Please enter a valid email'), findsNothing);
     });
 
     testWidgets('Password validation checks for minimum length',

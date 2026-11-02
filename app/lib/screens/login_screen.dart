@@ -11,7 +11,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
@@ -22,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final success = await Provider.of<AuthService>(context, listen: false)
-          .login(_emailController.text, _passwordController.text);
+          .login(_usernameController.text, _passwordController.text);
 
       if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -48,15 +48,12 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
+                controller: _usernameController,
+                decoration:
+                    const InputDecoration(labelText: 'Username or email'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
+                    return 'Please enter your username or email';
                   }
                   return null;
                 },
@@ -92,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }

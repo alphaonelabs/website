@@ -26,7 +26,7 @@ class _ClassListScreenState extends State<ClassListScreen> {
     try {
       final token = Provider.of<AuthService>(context, listen: false).token;
       final response = await http.get(
-        Uri.parse('https://alphaonelabs.com/api/classes'),
+        Uri.parse('$apiBase/api/activities'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -35,8 +35,15 @@ class _ClassListScreenState extends State<ClassListScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final activities = data['activities'] as List<dynamic>? ?? [];
         setState(() {
-          _classes = List<Map<String, dynamic>>.from(data['classes']);
+          _classes = activities.map<Map<String, dynamic>>((activity) {
+            final item = activity as Map<String, dynamic>;
+            return {
+              ...item,
+              'name': item['title'] ?? 'Unnamed Class',
+            };
+          }).toList();
           _isLoading = false;
         });
       } else {
