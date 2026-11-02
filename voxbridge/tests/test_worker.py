@@ -37,7 +37,9 @@ def _install_cf_stubs() -> None:
             return json.loads(self.body)
 
     class WorkerEntrypoint:
-        pass
+        def __init__(self, ctx, env):
+            self.ctx = ctx
+            self.env = env
 
     workers_mod.Response = Response
     workers_mod.WorkerEntrypoint = WorkerEntrypoint
@@ -411,16 +413,24 @@ class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
         req = _MockRequest(method=method, url=url, body=body or {})
         env = _MockEnv()
         env.AI.run.return_value = {"text": "ok", "response": "ok", "description": "ok"}
-        w = worker.VoxBridgeWorker()
-        return await w.fetch(req, env, _MockCtx())
+        w = worker.VoxBridgeWorker(_MockCtx(), env)
+        return await w.fetch(req)
 
     async def test_options_returns_204(self):
         url = "https://voxbridge.example.com/api/health"
         req = _MockRequest(method="OPTIONS", url=url)
         env = _MockEnv()
-        w = worker.VoxBridgeWorker()
-        resp = await w.fetch(req, env, _MockCtx())
+        w = worker.VoxBridgeWorker(_MockCtx(), env)
+        resp = await w.fetch(req)
         self.assertEqual(resp.status, 204)
+
+    async def test_caption_route_reaches_handler(self):
+        audio = base64.b64encode(b"fake-audio").decode()
+        resp = await self._fetch("POST", "/api/caption", body={"audio": audio})
+        self.assertEqual(resp.status, 200)
+        data = json.loads(resp.body)
+        self.assertEqual(data["text"], "ok")
+        self.assertEqual(data["model"], worker.MODEL_WHISPER)
 
     async def test_health_route(self):
         resp = await self._fetch("GET", "/api/health")
