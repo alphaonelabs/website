@@ -60,12 +60,15 @@ Response = sys.modules["workers"].Response
 # ---------------------------------------------------------------------------
 
 class _MockRequest:
-    def __init__(self, method="GET", url="https://example.com/api/health", body=None):
+    def __init__(self, method="GET", url="https://example.com/api/health", body=None, json_error=None):
         self.method = method
         self.url = url
-        self._body = body or {}
+        self._body = {} if body is None else body
+        self._json_error = json_error
 
     async def json(self):
+        if self._json_error is not None:
+            raise self._json_error
         return self._body
 
 
@@ -438,3 +441,44 @@ class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# Tests for malformed client input (400 / 413, not 500)
+# ---------------------------------------------------------------------------
+
+class TestMalformedInput(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_json_returns_400_not_500(self):
+        req = _MockRequest(method="POST", json_error=json.JSONDecodeError("Expecting value", "doc", 0))
+        resp = await worker._caption(req, _MockEnv())
+        self.assertEqual(resp.status, 400)
+        self.assertIn("JSON", json.loads(resp.body)["error"])
+
+    async def test_non_object_json_returns_400(self):
+        req = _MockRequest(method="POST", body=["not", "an", "object"])
+        resp = await worker._caption(req, _MockEnv())
+        self.assertEqual(resp.status, 400)
+        self.assertIn("object", json.loads(resp.body)["error"])
+
+    async def test_invalid_base64_audio_returns_400(self):
+        req = _MockRequest(method="POST", body={"audio": "abc"})  # incorrect padding
+        resp = await worker._caption(req, _MockEnv())
+        self.assertEqual(resp.status, 400)
+        self.assertIn("base64", json.loads(resp.body)["error"].lower())
+
+    async def test_oversized_image_returns_413(self):
+        huge = base64.b64encode(b"x" * (worker.MAX_IMAGE_BYTES + 1)).decode()
+        req = _MockRequest(method="POST", body={"image": huge})
+        resp = await worker._sign_to_speech(req, _MockEnv())
+        self.assertEqual(resp.status, 413)
+
+    async def test_data_url_image_still_accepted(self):
+        raw = b"tiny-image"
+        data_url = "data:image/png;base64," + base64.b64encode(raw).decode()
+        env = _MockEnv()
+        env.AI.run.side_effect = [{"description": "ok"}, {"response": "hi"}]
+        req = _MockRequest(method="POST", body={"image": data_url})
+        resp = await worker._sign_to_speech(req, env)
+        self.assertEqual(resp.status, 200)
+        _, payload = env.AI.run.call_args_list[0][0]
+        self.assertEqual(payload["image"], list(raw))

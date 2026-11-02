@@ -11,6 +11,7 @@ Cloudflare Python Worker providing four AI-driven features:
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import traceback
 
@@ -66,6 +67,46 @@ def _server_error(exc: Exception) -> Response:
     return _json({"error": "An internal error occurred. Please try again."}, status=500)
 
 
+# Decoded payload caps before sending bytes to Workers AI.
+MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+async def _read_json_object(request: object) -> tuple[dict | None, Response | None]:
+    """Parse a JSON object body, or return a 400 response for client mistakes."""
+    try:
+        body = _py(await request.json())
+    except Exception:  # noqa: BLE001 — invalid JSON / Workers parse errors
+        return None, _json({"error": "Request body must be valid JSON"}, status=400)
+    if not isinstance(body, dict):
+        return None, _json({"error": "Request body must be a JSON object"}, status=400)
+    return body, None
+
+
+def _decode_base64(
+    value: object,
+    *,
+    max_bytes: int,
+    allow_data_url: bool = False,
+) -> tuple[bytes | None, Response | None]:
+    """Decode base64 (optionally stripping a data-URL prefix) with size limits."""
+    if not isinstance(value, str) or not value:
+        return None, _json({"error": "Missing or invalid base64 field"}, status=400)
+    raw = value
+    if allow_data_url and "," in raw:
+        raw = raw.split(",", 1)[1]
+    try:
+        data = base64.b64decode(raw, validate=True)
+    except (binascii.Error, ValueError):
+        return None, _json({"error": "Invalid base64 encoding"}, status=400)
+    if len(data) > max_bytes:
+        return None, _json(
+            {"error": f"Decoded payload exceeds {max_bytes} byte limit"},
+            status=413,
+        )
+    return data, None
+
+
 # ---------------------------------------------------------------------------
 # Route handlers
 # ---------------------------------------------------------------------------
@@ -87,12 +128,13 @@ async def _caption(request: object, env: object) -> Response:
         text: str   – Transcript produced by Whisper
     """
     try:
-        body = _py(await request.json())
-        audio_b64: str = body.get("audio", "")
-        if not audio_b64:
-            return _json({"error": "Missing required field: 'audio'"}, status=400)
+        body, err = await _read_json_object(request)
+        if err is not None:
+            return err
+        audio_bytes, err = _decode_base64(body.get("audio", ""), max_bytes=MAX_AUDIO_BYTES)
+        if err is not None:
+            return err
 
-        audio_bytes = base64.b64decode(audio_b64)
         result = await env.AI.run(MODEL_WHISPER, _js({"audio": list(audio_bytes)}))
         transcript = result.get("text", "") if isinstance(result, dict) else getattr(result, "text", str(result))
 
@@ -115,15 +157,15 @@ async def _speech_to_sign(request: object, env: object) -> Response:
         instructions: str – Step-by-step signing instructions
     """
     try:
-        body = _py(await request.json())
-        audio_b64: str = body.get("audio", "")
-        language: str = body.get("language", "ASL")
-
-        if not audio_b64:
-            return _json({"error": "Missing required field: 'audio'"}, status=400)
+        body, err = await _read_json_object(request)
+        if err is not None:
+            return err
+        language: str = body.get("language", "ASL") if isinstance(body.get("language", "ASL"), str) else "ASL"
+        audio_bytes, err = _decode_base64(body.get("audio", ""), max_bytes=MAX_AUDIO_BYTES)
+        if err is not None:
+            return err
 
         # Step 1 – transcribe with Whisper
-        audio_bytes = base64.b64decode(audio_b64)
         whisper_result = await env.AI.run(MODEL_WHISPER, _js({"audio": list(audio_bytes)}))
         transcript = (
             whisper_result.get("text", "") if isinstance(whisper_result, dict) else getattr(whisper_result, "text", str(whisper_result))
@@ -181,16 +223,14 @@ async def _sign_to_speech(request: object, env: object) -> Response:
         speech_text:         str – Interpreted spoken equivalent
     """
     try:
-        body = _py(await request.json())
-        image_b64: str = body.get("image", "")
-        if not image_b64:
-            return _json({"error": "Missing required field: 'image'"}, status=400)
-
-        # Strip data-URL prefix if present ("data:image/jpeg;base64,...")
-        if "," in image_b64:
-            image_b64 = image_b64.split(",", 1)[1]
-
-        image_bytes = base64.b64decode(image_b64)
+        body, err = await _read_json_object(request)
+        if err is not None:
+            return err
+        image_bytes, err = _decode_base64(
+            body.get("image", ""), max_bytes=MAX_IMAGE_BYTES, allow_data_url=True
+        )
+        if err is not None:
+            return err
 
         # Step 1 – identify the gesture with the vision model
         vision_result = await env.AI.run(
@@ -260,17 +300,15 @@ async def _visual_scene(request: object, env: object) -> Response:
         detail_level: str – Echo of the requested detail level
     """
     try:
-        body = _py(await request.json())
-        image_b64: str = body.get("image", "")
-        detail_level: str = body.get("detail_level", "standard")
-
-        if not image_b64:
-            return _json({"error": "Missing required field: 'image'"}, status=400)
-
-        if "," in image_b64:
-            image_b64 = image_b64.split(",", 1)[1]
-
-        image_bytes = base64.b64decode(image_b64)
+        body, err = await _read_json_object(request)
+        if err is not None:
+            return err
+        detail_level: str = body.get("detail_level", "standard") if isinstance(body.get("detail_level", "standard"), str) else "standard"
+        image_bytes, err = _decode_base64(
+            body.get("image", ""), max_bytes=MAX_IMAGE_BYTES, allow_data_url=True
+        )
+        if err is not None:
+            return err
 
         prompts = {
             "brief": "Briefly describe this image in one sentence.",
