@@ -1,354 +1,394 @@
 {% extends "base.html" %}
-{% block title %}Alpha One Labs - Activity Platform{% endblock %}
-{% block meta_description %}Alpha One Labs - Activity Platform{% endblock %}
+{% block title %}Alpha One Labs: Learn. Share. Explore.{% endblock %}
+{% block meta_description %}Alpha One Labs: classes, workshops, study groups, and more activities for curious minds.{% endblock %}
 {% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100 overflow-x-hidden{% endblock %}
 {% block head %}
-<meta name="keywords" content="education, open source, courses, learning, Alpha One Labs">
-    <!-- Favicon -->
-    <!-- Tailwind CSS CDN -->
-    <!-- Font Awesome -->
-    <style>
-        html, body {
-            overflow-x: hidden;
-            box-sizing: border-box;
-        }
-        
-        .dark { color-scheme: dark; }
-        :root { color-scheme: light; }
-        html.prepaint-home { background: #000; }
-        html.prepaint-home.dark { background: #000; }
-        body { background: #fff; }
-        html.prepaint-home body { background: #000; }
-        html.dark body { background: #000; }
-        html.prepaint-home.dark body { background: #000; }
+<meta name="keywords" content="education, activities, classes, workshops, study groups, learning community, Alpha One Labs">
+<link rel="preload" as="image" href="/images/brand/nerd-noir-portrait.webp" fetchpriority="high">
+<style>
+  /* ===== Homepage: Alpha One Labs design system v2 (approved light/dark concept) ===== */
+  .a1h { --h-bg: var(--a1-bg, #fff); --h-fg: var(--a1-text, #101010); --h-muted: var(--a1-text-muted, #4a4a4a); --h-soft: var(--a1-border, #d8d8d8); --h-hard: var(--a1-border-strong, #101010); --h-raised: var(--a1-surface-raised, #f5f5f5); --h-gold: var(--a1-accent-fill, #d4af37); --h-gold-hi: var(--a1-gold-hover, #f0c658); --h-gold-ink: var(--a1-accent, #7a6418); --h-gold-display: #ad8b25;
+    --h-display: var(--a1-font-display, "Barlow Condensed", "Arial Narrow", Impact, sans-serif); --h-mono: var(--a1-font-mono, "JetBrains Mono", ui-monospace, monospace); --h-body: var(--a1-font-body, Inter, system-ui, sans-serif);
+    background: var(--h-bg); color: var(--h-fg); font-family: var(--h-body); }
+  html.dark .a1h { --h-bg: #000; --h-fg: #fafafa; --h-muted: #c6c6c6; --h-soft: #383838; --h-hard: #e1e1e1; --h-raised: #161616; --h-gold: #e1b746; --h-gold-hi: #f3cc61; --h-gold-ink: #e1b746; --h-gold-display: #e1b746; }
+  .a1h a { color: inherit; text-decoration: none; }
+  .a1h :focus-visible { outline: 3px solid var(--h-gold); outline-offset: 3px; }
+  .a1h-wrap { width: min(calc(100% - 2 * clamp(16px, 4vw, 48px)), 1280px); margin-inline: auto; }
+  .a1h-display { font-family: var(--h-display); font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; line-height: .9; margin: 0; }
+  .a1h-eyebrow { font: 700 13px/1.3 var(--h-mono); letter-spacing: .08em; text-transform: uppercase; margin: 0; }
+  .a1h-rule { display: block; width: 56px; height: 6px; background: var(--h-gold); border: 0; margin: 22px 0 26px; }
 
-        .home-auth-only { display: none !important; }
-        .home-guest-only { display: flex !important; }
-        html.is-authenticated .home-auth-only { display: flex !important; }
-        html.is-authenticated .home-guest-only { display: none !important; }
+  .a1h-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 1px solid var(--h-hard); border-radius: 4px; background: var(--h-bg); color: var(--h-fg) !important; font: 800 15px/1 var(--h-body); white-space: nowrap; transition: background .15s; }
+  .a1h-btn:hover { background: var(--h-raised); }
+  .a1h-btn--gold { background: var(--h-gold); border-color: var(--h-gold); color: #080808 !important; }
+  .a1h-btn--gold:hover { background: var(--h-gold-hi); border-color: var(--h-gold-hi); }
+  .a1h-btn svg { width: 14px; height: 14px; }
 
-        .home-below-fold {
-            content-visibility: auto;
-            contain-intrinsic-size: 1800px;
-        }
+  /* Hero */
+  .a1h-hero { position: relative; overflow: hidden; }
+  .a1h-hero__grid { display: grid; grid-template-columns: 44% 56%; min-height: 560px; }
+  .a1h-hero__copy { position: relative; z-index: 3; padding: 44px 0 40px; display: flex; flex-direction: column; justify-content: center; }
+  .a1h-hero__title { font-size: clamp(72px, 9.6vw, 148px); margin: 18px 0 18px; }
+  .a1h-hero__title .a1h-gold { color: var(--h-gold-display); display: block; }
+  .a1h-hero__lead { max-width: 25em; margin: 0; font: 500 17px/1.5 var(--h-mono); letter-spacing: -.01em; }
+  .a1h-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .a1h-hero__art { position: relative; min-height: 520px; }
+  .a1h-hero__portrait { position: absolute; top: 0; bottom: 0; right: 0; width: 76%; overflow: hidden; background: #0b0b0b; }
+  .a1h-hero__portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; filter: grayscale(100%) contrast(1.05); }
+  .a1h-hero__portrait::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, var(--h-bg) 0%, transparent 28%), linear-gradient(0deg, var(--h-bg) 0%, transparent 12%); }
+  .a1h-hero__traces { position: absolute; z-index: 2; left: 0; top: 22%; width: 52%; color: var(--h-gold); pointer-events: none; }
+  .a1h-hero__traces svg { display: block; width: 100%; height: auto; }
+  .a1h-hero__mark { position: absolute; z-index: 2; top: 6%; right: 2%; width: clamp(110px, 15vw, 200px); filter: drop-shadow(0 0 0 transparent); }
+  .a1h-hero__mark img { display: block; width: 100%; height: auto; }
 
-        .delay-\[1500ms\] {
-            animation-delay: 1500ms;
-        }
-        .delay-\[2000ms\] {
-            animation-delay: 2000ms;
-        }
-        .delay-\[3000ms\] {
-            animation-delay: 3000ms;
-        }
-        .delay-\[4000ms\] {
-            animation-delay: 4000ms;
-        }
-    </style>
+  /* Live strip */
+  .a1h-live { border-top: 1px solid var(--h-hard); border-bottom: 1px solid var(--h-hard); }
+  .a1h-live__inner { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 28px; padding: 16px 0; }
+  .a1h-live__title { font-size: clamp(30px, 3vw, 40px); padding-right: 28px; border-right: 1px solid var(--h-soft); }
+  .a1h-live__badge { display: flex; align-items: center; gap: 12px; }
+  .a1h-live__badge svg { width: 30px; height: 30px; color: var(--h-fg); }
+  .a1h-live p { margin: 0; font-size: 15px; color: var(--h-fg); max-width: 34em; }
+
+  .a1h-tag { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--h-hard); border-radius: 2px; font: 900 13px/1 var(--h-display); letter-spacing: .05em; text-transform: uppercase; }
+  .a1h-tag--gold { background: var(--h-gold); border-color: var(--h-gold); color: #080808; }
+  .a1h-tag--live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .a1h-tag--black { background: #000; border-color: #fff; color: #fff; }
+  .a1h-tag--white { background: #fff; border-color: #101010; color: #101010; }
+  .a1h-tag--lg { font-size: 18px; padding: 6px 10px; }
+
+  /* Sections */
+  .a1h-section { padding: 30px 0; }
+  .a1h-section__top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .a1h-section__title { font-size: clamp(38px, 3.6vw, 52px); }
+  .a1h-link { font: 800 15px/1.2 var(--h-body); text-decoration: underline !important; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+  .a1h-link:hover { color: var(--h-gold-ink); }
+
+  /* Cards */
+  .a1h-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .a1h-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--h-hard); border-radius: 6px; overflow: hidden; background: var(--h-bg); transition: transform .15s; }
+  .a1h-card:hover { transform: translateY(-2px); }
+  .a1h-card__media { position: relative; aspect-ratio: 16 / 7.4; margin: 8px 8px 0; border-radius: 3px; overflow: hidden; background: #0d0d0d; display: grid; place-items: center; }
+  .a1h-card__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%) contrast(1.08); }
+  .a1h-card__media .a1h-tag { position: absolute; top: 10px; left: 10px; z-index: 1; }
+  .a1h-card__art { width: 78%; color: #d4af37; opacity: .9; }
+  .a1h-card__art svg { width: 100%; height: auto; display: block; }
+  .a1h-card__body { display: flex; flex-direction: column; flex: 1; padding: 12px 14px 12px; }
+  .a1h-card__title { font: 800 27px/1 var(--h-display); letter-spacing: -.005em; margin: 2px 0 8px; overflow-wrap: anywhere; }
+  .a1h-card__desc { font-size: 14px; line-height: 1.45; color: var(--h-muted); margin: 0 0 14px; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4.35em; }
+  .a1h-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .a1h-card__cat { display: inline-flex; align-items: center; gap: 10px; font: 700 13px/1.2 var(--h-mono); text-transform: uppercase; letter-spacing: .04em; min-width: 0; }
+  .a1h-card__cat svg { width: 22px; height: 22px; flex: none; }
+  .a1h-card__price { font: 900 30px/1 var(--h-display); white-space: nowrap; }
+  .a1h-card--skeleton .a1h-card__media { background: var(--h-raised); }
+  .a1h-card--skeleton .a1h-sk { display: block; height: 14px; margin: 6px 0; background: var(--h-raised); border-radius: 2px; }
+  .a1h-empty { grid-column: 1 / -1; border: 1px solid var(--h-soft); border-radius: 6px; padding: 28px; text-align: center; color: var(--h-muted); }
+
+  /* CTA tiles */
+  .a1h-ctas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; padding-top: 6px; }
+  .a1h-cta { display: flex; align-items: center; gap: 22px; padding: 18px 26px; border: 1px solid var(--h-hard); border-radius: 4px; background: var(--h-bg); transition: background .15s; }
+  .a1h-cta:hover { background: var(--h-raised); }
+  .a1h-cta svg { width: 44px; height: 44px; flex: none; }
+  .a1h-cta strong { display: block; font: 900 clamp(28px, 2.7vw, 38px)/.95 var(--h-display); text-transform: uppercase; }
+  .a1h-cta small { display: block; margin-top: 6px; font-size: 14px; font-weight: 600; }
+  .a1h-cta--gold { background: var(--h-gold); border-color: var(--h-gold); color: #080808 !important; }
+  .a1h-cta--gold:hover { background: var(--h-gold-hi); }
+
+  /* Statement */
+  .a1h-statement { display: grid; grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); gap: 44px; align-items: start; }
+  .a1h-statement__title { font-size: clamp(44px, 4.6vw, 64px); line-height: .92; }
+  .a1h-statement__vr { align-self: stretch; background: var(--h-hard); }
+  .a1h-statement__copy p { margin: 6px 0 0; font: italic 500 clamp(18px, 1.6vw, 22px)/1.45 var(--h-mono); letter-spacing: -.02em; }
+  .a1h-statement__copy .a1h-rule { margin: 20px 0 14px; }
+  .a1h-statement__trace { color: var(--h-gold); width: min(100%, 420px); }
+  .a1h-statement__trace svg { width: 100%; height: auto; display: block; }
+
+  /* Values */
+  .a1h-values { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--h-hard); padding: 22px 0 34px; }
+  .a1h-value { display: flex; align-items: flex-start; gap: 16px; padding: 4px 22px; border-left: 1px solid var(--h-soft); }
+  .a1h-value:first-child { border-left: 0; padding-left: 0; }
+  .a1h-value svg { width: 34px; height: 34px; flex: none; }
+  .a1h-value strong { display: block; font: 800 19px/1 var(--h-display); text-transform: uppercase; }
+  .a1h-value span { display: block; margin-top: 4px; font-size: 14px; color: var(--h-muted); }
+
+  .a1h-icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .home-auth-only { display: none !important; }
+  .home-guest-only { display: inline-flex !important; }
+  html.is-authenticated .home-auth-only { display: inline-flex !important; }
+  html.is-authenticated .home-guest-only { display: none !important; }
+
+  @media (max-width: 1023px) {
+    .a1h-hero__grid { grid-template-columns: 1fr; min-height: 0; }
+    .a1h-hero__copy { padding: 40px 0 8px; }
+    .a1h-hero__art { min-height: 0; height: clamp(320px, 58vw, 460px); margin-inline: calc(-1 * clamp(16px, 4vw, 48px)); }
+    .a1h-hero__portrait { width: 100%; }
+    .a1h-hero__portrait::after { background: linear-gradient(180deg, var(--h-bg) 0%, transparent 18%), linear-gradient(0deg, var(--h-bg) 0%, transparent 12%); }
+    .a1h-hero__traces { top: 30%; width: 44%; }
+    .a1h-live__inner { grid-template-columns: auto 1fr; gap: 14px 20px; }
+    .a1h-live__title { border-right: 0; padding-right: 0; }
+    .a1h-live p { grid-column: 1 / -1; }
+    .a1h-live .a1h-btn { grid-column: 1 / -1; justify-self: start; }
+    .a1h-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .a1h-statement { grid-template-columns: 1fr; gap: 20px; }
+    .a1h-statement__vr { display: none; }
+    .a1h-values { grid-template-columns: repeat(2, 1fr); row-gap: 22px; }
+    .a1h-value:nth-child(3) { border-left: 0; padding-left: 0; }
+  }
+  @media (max-width: 639px) {
+    .a1h-hero__title { font-size: clamp(64px, 22vw, 104px); }
+    .a1h-hero__lead { font-size: 15px; }
+    .a1h-hero__actions .a1h-btn { flex: 1 1 100%; }
+    .a1h-cards, .a1h-ctas, .a1h-values { grid-template-columns: 1fr; }
+    .a1h-value { border-left: 0; padding-left: 0; }
+    .a1h-cta { padding: 16px 18px; gap: 16px; }
+    .a1h-cta svg { width: 36px; height: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .a1h-card, .a1h-btn, .a1h-cta { transition: none; } .a1h-card:hover { transform: none; } }
+</style>
 {% endblock %}
 {% block content %}
-<!-- ===== MAIN CONTENT ===== -->
-    <main class="flex-1 w-full">
-        <!-- ===== 3D HERO SECTION ===== -->
-        <section class="a1-hero bg-black relative overflow-hidden py-20 md:py-28">
-            <div class="absolute inset-0 pointer-events-none select-none" aria-hidden="true">
-                <img src="/images/illustrations/circuit.svg" alt="" class="hidden md:block absolute -right-10 top-6 w-[26rem] max-w-[45%] opacity-25" loading="lazy" decoding="async">
-                <img src="/images/illustrations/soldering-iron.svg" alt="" class="absolute -left-8 bottom-4 w-48 md:w-64 opacity-15" loading="lazy" decoding="async">
-                <div class="animate-bounce absolute top-[10%] left-[8%] text-[#c7ab4f]/20 text-6xl"><i class="fas fa-atom"></i></div>
-                <div class="animate-pulse absolute top-[20%] right-[12%] text-[#c7ab4f]/15 text-7xl"><i class="fas fa-book-open"></i></div>
-                <div class="animate-bounce absolute bottom-[15%] left-[15%] text-[#c7ab4f]/20 text-5xl"><i class="fas fa-flask"></i></div>
-                <div class="animate-bounce absolute bottom-[20%] right-[8%] text-[#c7ab4f]/15 text-6xl" style="animation-delay: 3s;"><i class="fas fa-graduation-cap"></i></div>
-                <div class="animate-pulse absolute top-[50%] left-[50%] text-[#c7ab4f]/10 text-8xl" style="animation-delay: 2s;"><i class="fas fa-brain"></i></div>
-                <div class="animate-bounce absolute top-[5%] left-[45%] text-[#c7ab4f]/15 text-5xl" style="animation-delay: 1.5s;"><i class="fas fa-lightbulb"></i></div>
-                <div class="animate-bounce absolute bottom-[5%] left-[60%] text-[#c7ab4f]/10 text-6xl" style="animation-delay: 4s;"><i class="fas fa-rocket"></i></div>
-            </div>
+<main class="a1h flex-1 w-full" id="main-content">
 
-            <div class="relative max-w-[90rem] mx-auto px-4 md:px-6">
-                <div class="flex flex-col lg:flex-row items-center gap-10">
-                    <div class="lg:w-3/5 text-center lg:text-left">
-                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
-                            Activities, <span class="text-[#e2c66a]">Classes</span>, and
-                            <span class="text-[#c7ab4f]">Community</span> in One Place
-                        </h1>
-                        <p class="text-lg md:text-xl text-white max-w-2xl mb-8 leading-relaxed">
-                            Alpha One Labs is an activity platform for classes, workshops, study groups, classrooms, events, and community projects. Browse what is live, request what you want next, or offer something you can teach.
-                        </p>
-                        <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                            <a href="/activity" aria-label="Browse activity catalog" class="group px-8 py-4 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
-                                <i class="fas fa-graduation-cap text-xl"></i>
-                                Browse Activities
-                                <i class="fas fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                            </a>
-                            <a href="/teach" class="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-1">
-                                <i class="fas fa-chalkboard-user text-xl"></i>
-                                Offer an Activity
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="lg:w-2/5">
-                        <div class="bg-white/10 dark:bg-black/20 backdrop-blur-lg border border-white/20 dark:border-white/10 rounded-2xl p-6 text-white shadow-lg shadow-teal-300/30">
-                            <div class="flex items-center gap-2 mb-3">
-                                <span class="w-3 h-3 bg-green-300 rounded-full animate-pulse"></span>
-                                <span class="text-sm font-semibold uppercase tracking-wide">Live Now</span>
-                            </div>
-                            <h2 class="text-2xl font-bold mb-2">Global Virtual Classroom</h2>
-                            <p class="text-white text-sm mb-4">Drop in, collaborate, and connect with learners worldwide.</p>
-                            <div class="flex items-center gap-2 mb-4 text-sm text-white">
-                                <div class="flex -space-x-2">
-                                    <div class="w-6 h-6 rounded-full bg-orange-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
-                                    <div class="w-6 h-6 rounded-full bg-blue-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
-                                    <div class="w-6 h-6 rounded-full bg-purple-400 border-2 border-white/30 flex items-center justify-center text-xs">👤</div>
-                                </div>
-                                <span>21 learners inside</span>
-                            </div>
-                            <div id="classroom-join-container">
-                                <a href="/classroom_poc?autojoin=1&room=lobby" class="home-auth-only w-full bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg items-center justify-center gap-2" id="join-logged-in">
-                                    <i class="fas fa-door-open"></i> Join Lobby Classroom
-                                </a>
-                                <a href="/classroom_poc?autojoin=1&room=lobby" class="home-guest-only w-full bg-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white hover:text-black transition-all shadow-lg items-center justify-center gap-2" id="join-not-logged-in">
-                                    <i class="fas fa-eye"></i> View Lobby Classroom
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <div class="a1-trace" aria-hidden="true"></div>
-
-        <!-- ===== PAGE SECTIONS ===== -->
-        <div class="home-below-fold max-w-[90rem] mx-auto px-4 md:px-6 mt-10 pb-12 space-y-14">
-
-            <!-- ===== SECTION 1: WHAT WOULD YOU LIKE TO DO? ===== -->
-            <section>
-                <div class="relative flex py-5 items-center mb-8">
-                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
-                    <div class="flex-shrink mx-4 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
-                            <i class="fas fa-question-circle text-white text-lg"></i>
-                        </div>
-                        <span class="text-2xl font-extrabold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">What Would You Like To Do?</span>
-                    </div>
-                    <div class="flex-grow border-t-2 border-teal-200 dark:border-teal-800"></div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <a href="/requests?kind=learn" class="group flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
-                        <i class="fa-solid fa-graduation-cap text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
-                        <span class="text-2xl font-bold mb-2">I Want to Learn</span>
-                        <span class="text-sm font-normal opacity-90">Discover new skills and expand your knowledge</span>
-                    </a>
-                    <a href="/requests?kind=teach" class="group flex flex-col items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-8 py-12 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center">
-                        <i class="fa-solid fa-chalkboard-user text-5xl mb-4 group-hover:scale-110 transition-transform duration-300"></i>
-                        <span class="text-2xl font-bold mb-2">I Want to Teach</span>
-                        <span class="text-sm font-normal opacity-90">Share your knowledge with others</span>
-                    </a>
-                </div>
-            </section>
-
-            <!-- ===== SECTION 2: RECENT COURSES ===== -->
-            <section>
-                <div class="mb-6 rounded-2xl border border-teal-100 dark:border-teal-900/70 bg-white/85 dark:bg-gray-900/85 px-4 py-3 shadow-sm">
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 flex items-center justify-center">
-                                <i class="fas fa-graduation-cap text-base"></i>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-[0.22em] text-teal-700 dark:text-teal-300">Discover</p>
-                                <h2 class="text-lg sm:text-xl font-extrabold text-gray-950 dark:text-white">Featured Activities</h2>
-                            </div>
-                        </div>
-                        <a href="/activity" aria-label="Browse all activities" class="text-sm font-semibold text-teal-700 hover:text-teal-900 dark:text-teal-300 dark:hover:text-teal-100 transition-colors">
-                            Browse all
-                            <i class="fas fa-arrow-right ml-1"></i>
-                        </a>
-                    </div>
-                </div>
-                <div id="recent-courses-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                    {% featured_activity_cards limit=3 %}
-                </div>
-                <div class="text-center mt-6">
-                    <a href="/activity" aria-label="View the full activity catalog" class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-                        View All Activities
-                        <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </section>
-
-                        <!-- ===== SECTION 4: TESTIMONIALS ===== -->
-            <section>
-                <div class="relative flex py-5 items-center mb-8">
-                    <div class="flex-grow border-t-2 border-yellow-200 dark:border-yellow-800"></div>
-                    <div class="flex-shrink mx-4 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
-                            <i class="fas fa-quote-left text-white text-lg"></i>
-                        </div>
-                        <span class="text-2xl font-extrabold bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent">Testimonials</span>
-                    </div>
-                    <div class="flex-grow border-t-2 border-yellow-200 dark:border-yellow-800"></div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Testimonial 1 -->
-                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <div class="flex items-center mb-4">
-                            <div class="flex -space-x-1">
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                            </div>
-                        </div>
-                        <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
-                            "Alpha One Labs helped me find useful activities, supportive instructors, and a community that made it easier to keep going. Highly recommended!"
-                        </p>
-                        <div class="flex items-center gap-3">
-                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80" alt="Learner testimonial portrait" width="48" height="48" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" loading="lazy" decoding="async">
-                            <div>
-                                <p class="font-semibold text-gray-800 dark:text-gray-200">Sarah Johnson</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Web Developer</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Testimonial 2 -->
-                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <div class="flex items-center mb-4">
-                            <div class="flex -space-x-1">
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                            </div>
-                        </div>
-                        <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
-                            "The community here is amazing! I've learned so much from peers and mentors. It's not just about courses, it's about growing together."
-                        </p>
-                         <div class="flex items-center gap-3">
-                            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80" alt="Community testimonial portrait" width="48" height="48" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" loading="lazy" decoding="async">
-                            <div>
-                                <p class="font-semibold text-gray-800 dark:text-gray-200">Alex Chen</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Data Scientist</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Testimonial 3 -->
-                    <div class="rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                        <div class="flex items-center mb-4">
-                            <div class="flex -space-x-1">
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                                <i class="fas fa-star text-yellow-400 text-lg"></i>
-                            </div>
-                        </div>
-                        <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm leading-relaxed">
-                            "Teaching on Alpha One Labs has been rewarding. The platform makes it easy to share knowledge and connect with eager learners worldwide."
-                        </p>
-                        <div class="flex items-center gap-3">
-                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=160&q=80" alt="Teacher testimonial portrait" width="48" height="48" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" loading="lazy" decoding="async">
-                            <div>
-                                <p class="font-semibold text-gray-800 dark:text-gray-200">Emily Brown</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">UI/UX Instructor</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ===== SECTION 6: FOR LEARNERS | FOR TEACHERS ===== -->
-            <section>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- For Learners -->
-                    <div class="border border-gray-200 dark:border-gray-700 rounded-2xl p-6 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-blue-500">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg">
-                                <i class="fa-solid fa-user-graduate text-white"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">For Learners</h3>
-                        </div>
-                        <ul class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-robot text-blue-600 dark:text-blue-400"></i>
-                                </span>
-                                AI-powered course recommendations
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-calendar-check text-blue-600 dark:text-blue-400"></i>
-                                </span>
-                                Flexible scheduling & calendar
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-trophy text-blue-600 dark:text-blue-400"></i>
-                                </span>
-                                Progress tracking & achievements
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-users text-blue-600 dark:text-blue-400"></i>
-                                </span>
-                                Study groups & peer connections
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-chalkboard-teacher text-blue-600 dark:text-blue-400"></i>
-                                </span>
-                                Virtual & in-person classes
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- For Teachers -->
-                    <div class="border border-gray-200 dark:border-gray-700 rounded-2xl p-6 bg-white dark:bg-gray-800 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-orange-500">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg">
-                                <i class="fa-solid fa-chalkboard-user text-white"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200">For Teachers</h3>
-                        </div>
-                        <ul class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-clipboard-list text-orange-600 dark:text-orange-400"></i>
-                                </span>
-                                Course management tools
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-chart-line text-orange-600 dark:text-orange-400"></i>
-                                </span>
-                                Analytics & progress tracking
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-credit-card text-orange-600 dark:text-orange-400"></i>
-                                </span>
-                                Secure payments & earnings
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-bullhorn text-orange-600 dark:text-orange-400"></i>
-                                </span>
-                                Marketing tools for courses
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <span class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                                    <i class="fa-solid fa-comments text-orange-600 dark:text-orange-400"></i>
-                                </span>
-                                Direct student communication
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-
+  <!-- ===== HERO ===== -->
+  <section class="a1h-hero" aria-labelledby="home-hero-title">
+    <div class="a1h-wrap a1h-hero__grid">
+      <div class="a1h-hero__copy">
+        <p class="a1h-eyebrow">Education&nbsp;&nbsp;/&nbsp;&nbsp;Activities&nbsp;&nbsp;/&nbsp;&nbsp;Community</p>
+        <h1 id="home-hero-title" class="a1h-display a1h-hero__title">Learn.<br>Share.<br><span class="a1h-gold">Explore.</span></h1>
+        <p class="a1h-hero__lead">Classes, workshops, study groups, and more activities for curious minds.</p>
+        <span class="a1h-rule" aria-hidden="true"></span>
+        <div class="a1h-hero__actions">
+          <a href="/activity" class="a1h-btn a1h-btn--gold">Explore Activities <span aria-hidden="true">&#8599;</span></a>
+          <a href="/about" class="a1h-btn"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 1.2v11.6L12.4 7z" fill="currentColor"/></svg>Watch Intro</a>
         </div>
-    </main>
+      </div>
+
+      <div class="a1h-hero__art">
+        <div class="a1h-hero__portrait">
+          <img src="/images/brand/nerd-noir-portrait.webp" alt="Illustrated Alpha One Labs learner with glasses" width="1120" height="1400" fetchpriority="high" decoding="async">
+        </div>
+        <div class="a1h-hero__traces" aria-hidden="true">
+          <svg viewBox="0 0 300 260" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"><path d="M0 40 H130 L170 80 H254"/><path d="M0 70 H118 L158 110 H242"/><path d="M0 100 H106 L146 140 H230"/><path d="M0 130 H94 L134 170 H218"/><path d="M0 160 H82 L122 200 H206"/><g stroke-width="4"><circle cx="264" cy="80" r="7"/><circle cx="252" cy="110" r="7"/><circle cx="240" cy="140" r="7"/><circle cx="228" cy="170" r="7"/><circle cx="216" cy="200" r="7"/></g></svg>
+        </div>
+        <div class="a1h-hero__mark" aria-hidden="true"><img src="/images/logo.svg" alt="" width="200" height="225"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== LIVE VIRTUAL CLASSROOM ===== -->
+  <section class="a1h-live" aria-labelledby="home-live-title">
+    <div class="a1h-wrap a1h-live__inner">
+      <h2 id="home-live-title" class="a1h-display a1h-live__title">Live Virtual<br>Classroom</h2>
+      <div class="a1h-live__badge">
+        <svg viewBox="0 0 32 32" class="a1h-icon" aria-hidden="true"><circle cx="16" cy="16" r="2.6" fill="currentColor" stroke="none"/><path d="M11 11a7 7 0 0 0 0 10M21 11a7 7 0 0 1 0 10M7 7.5a12 12 0 0 0 0 17M25 7.5a12 12 0 0 1 0 17"/></svg>
+        <span class="a1h-tag a1h-tag--gold a1h-tag--lg">Live</span>
+      </div>
+      <p>Join live classes, workshops, and community activities from anywhere.</p>
+      <div id="classroom-join-container">
+        <a href="/classroom_poc?autojoin=1&amp;room=lobby" id="join-logged-in" class="a1h-btn home-auth-only">Join a Live Session <span aria-hidden="true">&#8599;</span></a>
+        <a href="/classroom_poc?autojoin=1&amp;room=lobby" id="join-not-logged-in" class="a1h-btn home-guest-only">Join a Live Session <span aria-hidden="true">&#8599;</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FEATURED ACTIVITIES ===== -->
+  <section class="a1h-section" aria-labelledby="home-featured-title">
+    <div class="a1h-wrap">
+      <div class="a1h-section__top">
+        <h2 id="home-featured-title" class="a1h-display a1h-section__title">Featured Activities</h2>
+        <a href="/activity" class="a1h-link">Explore All Activities <span aria-hidden="true">&#8599;</span></a>
+      </div>
+      <div id="recent-courses-grid" class="a1h-cards" aria-live="polite" aria-busy="true">
+        <div class="a1h-card a1h-card--skeleton" aria-hidden="true"><div class="a1h-card__media"></div><div class="a1h-card__body"><span class="a1h-sk" style="width:70%;height:22px"></span><span class="a1h-sk"></span><span class="a1h-sk" style="width:85%"></span></div></div>
+        <div class="a1h-card a1h-card--skeleton" aria-hidden="true"><div class="a1h-card__media"></div><div class="a1h-card__body"><span class="a1h-sk" style="width:60%;height:22px"></span><span class="a1h-sk"></span><span class="a1h-sk" style="width:80%"></span></div></div>
+        <div class="a1h-card a1h-card--skeleton" aria-hidden="true"><div class="a1h-card__media"></div><div class="a1h-card__body"><span class="a1h-sk" style="width:65%;height:22px"></span><span class="a1h-sk"></span><span class="a1h-sk" style="width:75%"></span></div></div>
+      </div>
+      <noscript><p class="a1h-empty"><a class="a1h-link" href="/activity">Browse the activity catalog</a></p></noscript>
+      <script type="application/json" id="featured-activities-data">{% featured_activities_json limit=12 %}</script>
+
+      <!-- ===== LEARN / TEACH ===== -->
+      <div class="a1h-ctas" style="margin-top:22px">
+        <a href="/requests?kind=learn" class="a1h-cta a1h-cta--gold">
+          <svg viewBox="0 0 44 44" class="a1h-icon" aria-hidden="true"><path d="M22 12c-4-3-10-4-17-3v24c7-1 13 0 17 3 4-3 10-4 17-3V9c-7-1-13 0-17 3z"/><path d="M22 12v24M9 15c3 0 6 .5 9 2M9 20c3 0 6 .5 9 2M9 25c3 0 6 .5 9 2M26 17c3-1.5 6-2 9-2M26 22c3-1.5 6-2 9-2M26 27c3-1.5 6-2 9-2"/></svg>
+          <span><strong>I Want to Learn <span aria-hidden="true">&rarr;</span></strong><small>Discover activities, join groups, and build new skills.</small></span>
+        </a>
+        <a href="/requests?kind=teach" class="a1h-cta">
+          <svg viewBox="0 0 44 44" class="a1h-icon" aria-hidden="true"><path d="M3 17l19-8 19 8-19 8z"/><path d="M11 21v8c3 3 7 4 11 4s8-1 11-4v-8"/><path d="M41 17v10"/></svg>
+          <span><strong>I Want to Teach <span aria-hidden="true">&rarr;</span></strong><small>Share your expertise, run activities, and grow a community.</small></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== STATEMENT ===== -->
+  <section class="a1h-section" aria-labelledby="home-statement-title">
+    <div class="a1h-wrap a1h-statement">
+      <h2 id="home-statement-title" class="a1h-display a1h-statement__title">A place to learn, explore, and grow together.</h2>
+      <span class="a1h-statement__vr" aria-hidden="true"></span>
+      <div class="a1h-statement__copy">
+        <p>A community-powered learning platform where curious people teach, learn, and explore together &mdash; online and around the world.</p>
+        <span class="a1h-rule" aria-hidden="true"></span>
+        <div class="a1h-statement__trace" aria-hidden="true">
+          <svg viewBox="0 0 760 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="340" y="20" width="84" height="80" stroke-width="3.5"/><circle cx="352" cy="32" r="3.2" fill="currentColor" stroke="none"/><rect x="326" y="31" width="14" height="6" fill="currentColor" stroke="none"/><rect x="424" y="31" width="14" height="6" fill="currentColor" stroke="none"/><path d="M0 18 L196 18 L212 34 L326 34"/><path d="M438 34 L456 34 L472 18 L690 18 L704 32"/><circle cx="708" cy="36" r="5.5"/><rect x="326" y="47" width="14" height="6" fill="currentColor" stroke="none"/><rect x="424" y="47" width="14" height="6" fill="currentColor" stroke="none"/><path d="M0 34 L202 34 L218 50 L326 50"/><path d="M438 50 L462 50 L478 34 L668 34 L682 48"/><circle cx="686" cy="52" r="5.5"/><rect x="326" y="63" width="14" height="6" fill="currentColor" stroke="none"/><rect x="424" y="63" width="14" height="6" fill="currentColor" stroke="none"/><path d="M0 50 L208 50 L224 66 L326 66"/><path d="M438 66 L468 66 L484 50 L646 50 L660 64"/><circle cx="664" cy="68" r="5.5"/><rect x="326" y="79" width="14" height="6" fill="currentColor" stroke="none"/><rect x="424" y="79" width="14" height="6" fill="currentColor" stroke="none"/><path d="M0 66 L214 66 L230 82 L326 82"/><path d="M438 82 L474 82 L490 66 L624 66 L638 80"/><circle cx="642" cy="84" r="5.5"/></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== VALUES ===== -->
+  <section aria-label="What Alpha One Labs offers">
+    <div class="a1h-wrap a1h-values">
+      <div class="a1h-value">
+        <svg viewBox="0 0 34 34" class="a1h-icon" aria-hidden="true"><rect x="4" y="7" width="26" height="23" rx="1.5"/><path d="M4 13h26M11 3.5v6M23 3.5v6M9 18h4M15 18h4M21 18h4M9 23h4M15 23h4"/></svg>
+        <div><strong>A Wide Range<br>of Activities</strong><span>Classes, workshops, and more.</span></div>
+      </div>
+      <div class="a1h-value">
+        <svg viewBox="0 0 34 34" class="a1h-icon" aria-hidden="true"><circle cx="17" cy="11" r="4.5"/><circle cx="7.5" cy="14" r="3.2"/><circle cx="26.5" cy="14" r="3.2"/><path d="M9 28c0-5 3.5-8.5 8-8.5s8 3.5 8 8.5M2 26c0-3.5 2.4-6 5.5-6M32 26c0-3.5-2.4-6-5.5-6"/></svg>
+        <div><strong>Collaborative</strong><span>Learn with others.</span></div>
+      </div>
+      <div class="a1h-value">
+        <svg viewBox="0 0 34 34" class="a1h-icon" aria-hidden="true"><path d="M17 4l13 7-13 7-13-7z"/><path d="M4 17l13 7 13-7M4 23l13 7 13-7"/></svg>
+        <div><strong>Open &amp; Accessible</strong><span>Education for everyone.</span></div>
+      </div>
+      <div class="a1h-value">
+        <svg viewBox="0 0 34 34" class="a1h-icon" aria-hidden="true"><circle cx="17" cy="17" r="13"/><path d="M4 17h26M17 4c3.5 3.6 5.2 8 5.2 13s-1.7 9.4-5.2 13c-3.5-3.6-5.2-8-5.2-13S13.5 7.6 17 4z"/></svg>
+        <div><strong>Global Community</strong><span>Learners from everywhere.</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var grid = document.getElementById('recent-courses-grid');
+  if (!grid) return;
+
+  var CHIP = '<svg viewBox="0 0 760 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="340" y="20" width="84" height="80" stroke-width="3.5"/><circle cx="352" cy="32" r="3.2" fill="currentColor" stroke="none"/><path d="M0 18 L196 18 L212 34 L326 34"/><path d="M438 34 L456 34 L472 18 L690 18 L704 32"/><circle cx="708" cy="36" r="5.5"/><path d="M0 34 L202 34 L218 50 L326 50"/><path d="M438 50 L462 50 L478 34 L668 34 L682 48"/><circle cx="686" cy="52" r="5.5"/><path d="M0 50 L208 50 L224 66 L326 66"/><path d="M438 66 L468 66 L484 50 L646 50 L660 64"/><circle cx="664" cy="68" r="5.5"/><path d="M0 66 L214 66 L230 82 L326 82"/><path d="M438 82 L474 82 L490 66 L624 66 L638 80"/><circle cx="642" cy="84" r="5.5"/></svg>';
+  var ICONS = {
+    group: '<path d="M8 8.5a3 3 0 1 1 0 .01M16 8.5a3 3 0 1 1 0 .01"/><path d="M2.5 20c0-3.5 2.5-6 5.5-6s5.5 2.5 5.5 6M12.5 15.2c.9-.8 2.2-1.2 3.5-1.2 3 0 5.5 2.5 5.5 6"/>',
+    live: '<circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.5 5.5a9.2 9.2 0 0 0 0 13M18.5 5.5a9.2 9.2 0 0 1 0 13"/>',
+    video: '<rect x="2.5" y="5" width="19" height="14" rx="1.5"/><path d="M10 9v6l5-3z"/>',
+    book: '<path d="M12 6.5c-2.4-1.8-5.6-2.2-9-1.6v13.2c3.4-.6 6.6-.2 9 1.6 2.4-1.8 5.6-2.2 9-1.6V4.9c-3.4-.6-6.6-.2-9 1.6zM12 6.5v13.2"/>',
+    tool: '<path d="M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.5-7.5"/><path d="M14.5 6.5l3-3 3 3-3 3"/>'
+  };
+  var TYPE_LABELS = { course: 'Course', meetup: 'Meetup', workshop: 'Workshop', seminar: 'Seminar', club: 'Club', event: 'Event', video: 'Video', study_group: 'Study Group', other: 'Activity' };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+  function price(a) {
+    var cents = parseInt(a.price_cents, 10) || 0;
+    if (cents <= 0) return 'Free';
+    var cur = (a.price_currency || 'USD').toUpperCase();
+    var amount = cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
+    var sym = { USD: '$', EUR: '€', GBP: '£' }[cur];
+    return sym ? sym + amount : cur + ' ' + amount;
+  }
+  function tagFor(a) {
+    if (a.type === 'study_group') return '<span class="a1h-tag a1h-tag--white">Study Group</span>';
+    if (a.format === 'live') return '<span class="a1h-tag a1h-tag--gold a1h-tag--live">Live</span>';
+    return '<span class="a1h-tag a1h-tag--black">Self-Paced</span>';
+  }
+  function iconFor(a) {
+    var key = a.type === 'study_group' ? 'group' : a.type === 'video' ? 'video' : a.type === 'workshop' ? 'tool' : a.format === 'live' ? 'live' : 'book';
+    return '<svg viewBox="0 0 24 24" class="a1h-icon" aria-hidden="true">' + ICONS[key] + '</svg>';
+  }
+  function category(a) {
+    var tags = Array.isArray(a.tags) ? a.tags.filter(Boolean) : [];
+    if (tags.length) return tags.slice(0, 2).join(' / ');
+    return TYPE_LABELS[a.type] || 'Activity';
+  }
+  var host = location.hostname;
+  var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || location.protocol === 'file:';
+  var ORIGIN = isLocal ? 'https://learn.alphaonelabs.com' : '';
+  function safeImage(url) {
+    url = String(url || '').trim();
+    if (/^https:\/\//i.test(url)) return url;
+    if (/^\/(?!\/)/.test(url)) return (url.indexOf('/media/') === 0 ? ORIGIN : '') + url;
+    return '';
+  }
+  function plain(text) {
+    // Descriptions are Markdown; show a clean one-paragraph summary on the card.
+    return String(text || '')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/`{1,3}/g, '')
+      .replace(/^\s{0,3}(#{1,6}|[-*+]|\d+\.|>)\s+/gm, '')
+      .replace(/(\*\*|__|\*|_|~~)/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  window.a1hImgFallback = function (img) {
+    var media = img.parentNode;
+    img.remove();
+    if (media && !media.querySelector('.a1h-card__art')) media.insertAdjacentHTML('beforeend', '<span class="a1h-card__art" aria-hidden="true">' + CHIP + '</span>');
+  };
+  function card(a) {
+    var href = '/activity/' + encodeURIComponent(a.id || a.slug || '');
+    var desc = plain(a.description);
+    if (!desc) desc = (TYPE_LABELS[a.type] || 'Activity') + (a.host_name ? ' hosted by ' + a.host_name : '') + '.';
+    if (desc.length > 170) desc = desc.slice(0, 167).replace(/\s+\S*$/, '') + '…';
+    var img = safeImage(a.image_url);
+    var media = img
+      ? '<img src="' + esc(img) + '" alt="" loading="lazy" decoding="async" onerror="a1hImgFallback(this)">'
+      : '<span class="a1h-card__art" aria-hidden="true">' + CHIP + '</span>';
+    return '<a class="a1h-card" href="' + esc(href) + '">' +
+      '<div class="a1h-card__media">' + tagFor(a) + media + '</div>' +
+      '<div class="a1h-card__body">' +
+        '<h3 class="a1h-card__title">' + esc(a.title || 'Untitled activity') + '</h3>' +
+        '<p class="a1h-card__desc">' + esc(desc) + '</p>' +
+        '<div class="a1h-card__meta"><span class="a1h-card__cat">' + iconFor(a) + '<span>' + esc(category(a)) + '</span></span>' +
+        '<span class="a1h-card__price">' + esc(price(a)) + '</span></div>' +
+      '</div></a>';
+  }
+  function rank(list) {
+    // Published first, then featured / activity signals, then entries with a description and image.
+    return list
+      .filter(function (a) { return a && a.id && a.title && a.status !== 'draft' && a.status !== 'archived'; })
+      .map(function (a, i) {
+        var score = (a.status === 'published' ? 1e6 : 0) + (a.is_featured ? 1e5 : 0) +
+          (parseInt(a.interest_count, 10) || 0) * 50 + (parseInt(a.participant_count, 10) || 0) * 25 +
+          (parseInt(a.session_count, 10) || 0) * 10 + (a.description ? 400 : 0) + (a.image_url ? 200 : 0);
+        return { a: a, s: score, i: i };
+      })
+      .sort(function (x, y) { return y.s - x.s || x.i - y.i; })
+      .map(function (x) { return x.a; });
+  }
+  function render(list) {
+    var picks = rank(list).slice(0, 3);
+    grid.setAttribute('aria-busy', 'false');
+    if (!picks.length) {
+      grid.innerHTML = '<p class="a1h-empty">No activities are listed yet. <a class="a1h-link" href="/teach">Offer the first one</a></p>';
+      return;
+    }
+    grid.innerHTML = picks.map(card).join('');
+  }
+  function fail() {
+    grid.setAttribute('aria-busy', 'false');
+    grid.innerHTML = '<p class="a1h-empty">Featured activities could not be loaded right now. <a class="a1h-link" href="/activity">Browse all activities</a></p>';
+  }
+
+  // 1) Server-rendered seed (same data as /api/activities, no extra request).
+  var seeded = null;
+  try {
+    var raw = (document.getElementById('featured-activities-data') || {}).textContent || '';
+    var parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) seeded = parsed;
+  } catch (_) { /* fall through to the API */ }
+  var hasPublished = seeded && seeded.some(function (a) { return a && a.status === 'published'; });
+  if (seeded && hasPublished) { render(seeded); return; }
+
+  // 2) Live API. Same origin in production; local static previews read the public API.
+  var url = (isLocal ? 'https://learn.alphaonelabs.com' : '') + '/api/activities';
+  fetch(url, { headers: { Accept: 'application/json' } })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (data) {
+      var list = Array.isArray(data) ? data : (data && (data.activities || (data.data && data.data.activities) || data.data)) || [];
+      if (!Array.isArray(list)) list = [];
+      if (!list.length && seeded) list = seeded;
+      render(list);
+    })
+    .catch(function () { if (seeded && seeded.length) render(seeded); else fail(); });
+})();
+</script>
 {% endblock %}

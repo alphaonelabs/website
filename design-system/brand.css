@@ -1,51 +1,42 @@
 /*
- * Alpha One Labs brand tokens — https://design.alphaonelabs.com
+ * Alpha One Labs design system v2 — https://design.alphaonelabs.com
  *
- * Link it from any site:
  *   <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
  *
- * Everything is a CSS custom property prefixed --a1-, plus a handful of
- * opt-in .a1-* classes. Nothing here restyles a site's own elements.
+ * Sharp, editorial, intelligent: plain white and black, brass gold used
+ * sparingly, hard 1px borders, almost no rounding, condensed uppercase
+ * headlines. Tokens are CSS custom properties prefixed --a1-; components are
+ * opt-in .a1-* classes and never restyle a site's own elements.
  */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap");
 
 :root {
-  /* Core palette (from the 2009 makerspace poster) */
+  /* Core palette */
   --a1-black: #000000;
+  --a1-ink: #101010;
   --a1-white: #ffffff;
-  --a1-gold: #c7ab4f;
-  --a1-gold-bright: #e2c66a;
+  --a1-gold: #d4af37;          /* brass: fills, rules, circuits, large display type */
+  --a1-gold-hover: #f0c658;
+  --a1-gold-dark: #e1b746;      /* brass tuned for black backgrounds */
+  --a1-gold-ink: #7a6418;       /* gold for small text on white (5.9:1) */
   --a1-gold-deep: #9a8236;
-  --a1-gold-ink: #7c692e;   /* gold for text and buttons on light backgrounds (5.4:1 on white) */
-  --a1-red: #e11d2e;
+  --a1-red: #d92d20;
 
   /* Neutrals */
   --a1-gray-50: #fafafa;
-  --a1-gray-100: #f2f2f2;
-  --a1-gray-200: #e4e4e4;
-  --a1-gray-300: #c9c9c9;
+  --a1-gray-100: #f5f5f5;
+  --a1-gray-200: #e6e6e6;
+  --a1-gray-300: #d8d8d8;
   --a1-gray-400: #a3a3a3;
   --a1-gray-500: #737373;
-  --a1-gray-600: #525252;
-  --a1-gray-700: #2e2e2e;
+  --a1-gray-600: #4a4a4a;
+  --a1-gray-700: #262626;
   --a1-gray-800: #1a1a1a;
-  --a1-gray-900: #0d0d0d;
-
-  /* Semantic (dark is the brand default) */
-  --a1-bg: var(--a1-black);
-  --a1-surface: var(--a1-gray-900);
-  --a1-surface-raised: var(--a1-gray-800);
-  --a1-border: var(--a1-gray-700);
-  --a1-text: var(--a1-white);
-  --a1-text-muted: var(--a1-gray-400);
-  --a1-accent: var(--a1-gold);
-  --a1-accent-hover: var(--a1-gold-bright);
-  --a1-on-accent: var(--a1-black);
-  --a1-focus: var(--a1-gold-bright);
+  --a1-gray-900: #0f0f0f;
 
   /* Type */
-  --a1-font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --a1-font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --a1-font-display: "Barlow Condensed", "Arial Narrow", Impact, "Arial Black", sans-serif;
+  --a1-font-body: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   --a1-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --a1-text-xs: 0.75rem;
   --a1-text-sm: 0.875rem;
@@ -53,150 +44,259 @@
   --a1-text-lg: 1.125rem;
   --a1-text-xl: 1.375rem;
   --a1-text-2xl: 1.75rem;
-  --a1-text-3xl: 2.25rem;
-  --a1-text-4xl: clamp(2.5rem, 5vw, 3.5rem);
-  --a1-text-5xl: clamp(3rem, 7vw, 5rem);
+  --a1-text-3xl: clamp(2rem, 3.4vw, 2.75rem);
+  --a1-text-4xl: clamp(2.5rem, 5vw, 3.75rem);
+  --a1-text-5xl: clamp(3.75rem, 9vw, 7.5rem);
+  --a1-text-6xl: clamp(4.5rem, 11vw, 9.5rem);
 
-  /* Space, radius, shadow, motion */
-  --a1-space-1: 0.25rem;
-  --a1-space-2: 0.5rem;
-  --a1-space-3: 0.75rem;
-  --a1-space-4: 1rem;
-  --a1-space-6: 1.5rem;
-  --a1-space-8: 2rem;
-  --a1-space-12: 3rem;
-  --a1-space-16: 4rem;
-  --a1-space-24: 6rem;
-  --a1-radius-sm: 6px;
-  --a1-radius: 12px;
-  --a1-radius-lg: 20px;
-  --a1-radius-full: 999px;
-  --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
-  --a1-glow: 0 0 0 1px rgb(199 171 79 / 0.35), 0 8px 32px rgb(199 171 79 / 0.15);
+  /* Space, shape, motion */
+  /* 8pt grid (with 4px half-steps) */
+  --a1-space-1: 4px;
+  --a1-space-2: 8px;
+  --a1-space-3: 12px;
+  --a1-space-4: 16px;
+  --a1-space-6: 24px;
+  --a1-space-8: 32px;
+  --a1-space-10: 40px;
+  --a1-space-12: 48px;
+  --a1-space-16: 64px;
+  --a1-space-24: 96px;
+  --a1-radius-0: 0;
+  --a1-radius-4: 4px;
+  --a1-radius-8: 8px;
+  --a1-radius-12: 12px;
+  --a1-radius-16: 16px;
+  --a1-radius-sm: 2px;    /* tags */
+  --a1-radius: 4px;       /* buttons, inputs, cards */
+  --a1-radius-lg: 8px;    /* panels */
+  --a1-radius-full: 999px; /* avatars and status dots only */
+  --a1-max-width: 1280px;
+  --a1-gutter: clamp(16px, 4vw, 48px);
+  --a1-header-height: 76px;
   --a1-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --a1-header-height: 64px;
+
+  /* Semantic — light is the base, as in the approved concept */
+  --a1-bg: var(--a1-white);
+  --a1-surface: var(--a1-white);
+  --a1-surface-raised: var(--a1-gray-100);
+  --a1-border: var(--a1-gray-300);        /* soft rules between items */
+  --a1-border-strong: var(--a1-ink);      /* hard frames, buttons, cards on hover */
+  --a1-text: var(--a1-ink);
+  --a1-text-muted: var(--a1-gray-600);
+  --a1-accent: var(--a1-gold-ink);        /* accent for text and links */
+  --a1-accent-fill: var(--a1-gold);       /* accent for fills, tags, rules, art */
+  --a1-accent-hover: var(--a1-black);
+  --a1-on-accent: #080808;
+  --a1-focus: var(--a1-gold);
+  --a1-shadow: none;
+  --a1-glow: none;
+  color-scheme: light;
 }
 
-/*
- * Light theme. Pages follow the visitor's system setting by default; the
- * theme toggle in <a1-header> sets data-a1-theme="light" | "dark" on <html>
- * and remembers it. Any container can also force a theme with the attribute.
- */
-@media (prefers-color-scheme: light) {
-  :root:not([data-a1-theme="dark"]) {
-    --a1-bg: var(--a1-white);
-    --a1-surface: var(--a1-gray-50);
-    --a1-surface-raised: var(--a1-white);
-    --a1-border: var(--a1-gray-200);
-    --a1-text: var(--a1-black);
-    --a1-text-muted: var(--a1-gray-600);
-    --a1-accent: var(--a1-gold-ink);
-    --a1-accent-hover: var(--a1-black);
-    --a1-on-accent: var(--a1-white);
-    --a1-focus: var(--a1-gold-ink);
-    --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
-    --a1-glow: 0 0 0 1px rgb(154 130 54 / 0.4), 0 8px 32px rgb(154 130 54 / 0.12);
-    color-scheme: light;
+/* Dark: follows the system unless the visitor picked a theme (data-a1-theme). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-a1-theme="light"]) {
+    --a1-bg: var(--a1-black);
+    --a1-surface: var(--a1-black);
+    --a1-surface-raised: var(--a1-gray-900);
+    --a1-border: #383838;
+    --a1-border-strong: #e1e1e1;
+    --a1-text: #fafafa;
+    --a1-text-muted: #c6c6c6;
+    --a1-accent: var(--a1-gold-dark);
+    --a1-accent-fill: var(--a1-gold-dark);
+    --a1-accent-hover: var(--a1-gold-hover);
+    --a1-focus: var(--a1-gold-dark);
+    color-scheme: dark;
   }
 }
-:root { color-scheme: dark; }
 [data-a1-theme="dark"] {
-  color-scheme: dark;
   --a1-bg: var(--a1-black);
-  --a1-surface: var(--a1-gray-900);
-  --a1-surface-raised: var(--a1-gray-800);
-  --a1-border: var(--a1-gray-700);
-  --a1-text: var(--a1-white);
-  --a1-text-muted: var(--a1-gray-400);
-  --a1-accent: var(--a1-gold);
-  --a1-accent-hover: var(--a1-gold-bright);
-  --a1-on-accent: var(--a1-black);
-  --a1-focus: var(--a1-gold-bright);
-  --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
-  --a1-glow: 0 0 0 1px rgb(199 171 79 / 0.35), 0 8px 32px rgb(199 171 79 / 0.15);
+  --a1-surface: var(--a1-black);
+  --a1-surface-raised: var(--a1-gray-900);
+  --a1-border: #383838;
+  --a1-border-strong: #e1e1e1;
+  --a1-text: #fafafa;
+  --a1-text-muted: #c6c6c6;
+  --a1-accent: var(--a1-gold-dark);
+  --a1-accent-fill: var(--a1-gold-dark);
+  --a1-accent-hover: var(--a1-gold-hover);
+  --a1-focus: var(--a1-gold-dark);
+  color-scheme: dark;
 }
 [data-a1-theme="light"] {
-  color-scheme: light;
-  --a1-focus: var(--a1-gold-ink);
-  --a1-glow: 0 0 0 1px rgb(154 130 54 / 0.4), 0 8px 32px rgb(154 130 54 / 0.12);
   --a1-bg: var(--a1-white);
-  --a1-surface: var(--a1-gray-50);
-  --a1-surface-raised: var(--a1-white);
-  --a1-border: var(--a1-gray-200);
-  --a1-text: var(--a1-black);
+  --a1-surface: var(--a1-white);
+  --a1-surface-raised: var(--a1-gray-100);
+  --a1-border: var(--a1-gray-300);
+  --a1-border-strong: var(--a1-ink);
+  --a1-text: var(--a1-ink);
   --a1-text-muted: var(--a1-gray-600);
   --a1-accent: var(--a1-gold-ink);
+  --a1-accent-fill: var(--a1-gold);
   --a1-accent-hover: var(--a1-black);
-  --a1-on-accent: var(--a1-white);
-  --a1-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
+  --a1-focus: var(--a1-gold);
+  color-scheme: light;
 }
 
-/* ---- Opt-in components ------------------------------------------------ */
+/* ---- Type helpers ----------------------------------------------------- */
 
+.a1-display {
+  font-family: var(--a1-font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.015em;
+  line-height: 0.9;
+}
+.a1-display em, .a1-display .a1-gold { font-style: normal; color: var(--a1-accent-fill); }
 .a1-eyebrow {
   font-family: var(--a1-font-mono);
   font-size: var(--a1-text-xs);
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--a1-accent);
+  color: var(--a1-text);
 }
+.a1-smallcaps {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.a1-rule { display: block; width: 56px; height: 6px; background: var(--a1-accent-fill); border: 0; margin: var(--a1-space-6) 0; }
 
-.a1-display {
-  font-family: var(--a1-font-display);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.02;
-}
+/* ---- Buttons ---------------------------------------------------------- */
 
 .a1-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--a1-space-2);
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--a1-radius-full);
-  border: 1px solid transparent;
-  font: 600 var(--a1-text-sm) / 1 var(--a1-font-body);
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--a1-border-strong);
+  border-radius: var(--a1-radius);
+  background: var(--a1-bg);
+  color: var(--a1-text);
+  font: 800 var(--a1-text-sm) / 1 var(--a1-font-body);
+  letter-spacing: 0.01em;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.2s var(--a1-ease), color 0.2s var(--a1-ease), border-color 0.2s var(--a1-ease), transform 0.2s var(--a1-ease);
+  transition: background 0.15s var(--a1-ease), color 0.15s var(--a1-ease), border-color 0.15s var(--a1-ease);
 }
-.a1-btn:hover { transform: translateY(-1px); }
-.a1-btn:focus-visible { outline: 2px solid var(--a1-focus); outline-offset: 3px; }
-.a1-btn--primary { background: var(--a1-accent); color: var(--a1-on-accent); }
-.a1-btn--primary:hover { background: var(--a1-accent-hover); }
-.a1-btn--ghost { border-color: var(--a1-border); color: var(--a1-text); background: transparent; }
-.a1-btn--ghost:hover { border-color: var(--a1-accent); color: var(--a1-accent); }
+.a1-btn:hover { background: var(--a1-surface-raised); }
+.a1-btn:focus-visible { outline: 3px solid var(--a1-focus); outline-offset: 3px; }
+.a1-btn--primary { background: var(--a1-accent-fill); border-color: var(--a1-accent-fill); color: var(--a1-on-accent); }
+.a1-btn--primary:hover { background: var(--a1-gold-hover); border-color: var(--a1-gold-hover); }
+.a1-btn--ghost { background: transparent; }
+.a1-btn--dark { background: var(--a1-ink); border-color: var(--a1-ink); color: var(--a1-white); }
+.a1-btn--dark:hover { background: var(--a1-gray-700); border-color: var(--a1-gray-700); }
+[data-a1-theme="dark"] .a1-btn--dark { background: var(--a1-white); border-color: var(--a1-white); color: var(--a1-ink); }
+.a1-link-more { display: inline-flex; align-items: center; gap: 6px; font: 800 var(--a1-text-sm) / 1 var(--a1-font-body); color: var(--a1-text); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.a1-link-more:hover { color: var(--a1-accent); }
+.a1-btn--sm { min-height: 36px; padding: 0 12px; font-size: var(--a1-text-xs); }
+.a1-btn .a1-arrow { font-weight: 900; }
 
-.a1-card {
-  background: var(--a1-surface);
-  border: 1px solid var(--a1-border);
-  border-radius: var(--a1-radius-lg);
-  padding: var(--a1-space-6);
-  transition: border-color 0.2s var(--a1-ease), box-shadow 0.2s var(--a1-ease), transform 0.2s var(--a1-ease);
-}
-.a1-card--interactive:hover { border-color: var(--a1-accent); box-shadow: var(--a1-glow); transform: translateY(-2px); }
+/* ---- Tags and badges -------------------------------------------------- */
 
-.a1-badge {
+.a1-tag, .a1-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35em;
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--a1-radius-full);
-  border: 1px solid var(--a1-border);
-  font: 700 var(--a1-text-xs) / 1.2 var(--a1-font-mono);
+  gap: 0.4em;
+  padding: 4px 8px;
+  border: 1px solid var(--a1-border-strong);
+  border-radius: var(--a1-radius-sm);
+  font: 800 11px / 1.2 var(--a1-font-body);
   letter-spacing: 0.06em;
-  color: var(--a1-text-muted);
+  text-transform: uppercase;
+  color: var(--a1-text);
+  background: transparent;
 }
-.a1-badge--gold { border-color: rgb(199 171 79 / 0.5); color: var(--a1-accent); background: rgb(199 171 79 / 0.08); }
+.a1-tag--gold, .a1-badge--gold { background: var(--a1-accent-fill); border-color: var(--a1-accent-fill); color: var(--a1-on-accent); }
+.a1-tag--live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-/* A thin gold circuit trace, for section dividers */
+/* ---- Cards ------------------------------------------------------------ */
+
+.a1-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--a1-surface);
+  border: 1px solid var(--a1-border);
+  border-radius: var(--a1-radius);
+  padding: var(--a1-space-6);
+  transition: border-color 0.15s var(--a1-ease);
+}
+.a1-card--media { padding: 0; }
+.a1-card__media { position: relative; aspect-ratio: 16 / 8; background: var(--a1-surface-raised); overflow: hidden; display: grid; place-items: center; border-bottom: 1px solid var(--a1-border); }
+.a1-card__media img { width: 100%; height: 100%; object-fit: cover; }
+.a1-card__media .a1-tag { position: absolute; top: 10px; left: 10px; }
+.a1-card__body { padding: var(--a1-space-4); display: flex; flex-direction: column; flex: 1; }
+.a1-card__title { font: 800 var(--a1-text-xl) / 1.15 var(--a1-font-body); letter-spacing: -0.03em; margin: 2px 0 10px; }
+.a1-card__desc { font-size: var(--a1-text-sm); color: var(--a1-text-muted); margin: 0 0 18px; flex: 1; }
+.a1-card__meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--a1-border); font: 800 12px var(--a1-font-body); text-transform: uppercase; letter-spacing: 0.04em; }
+.a1-card--interactive:hover { border-color: var(--a1-border-strong); }
+
+/* ---- Sections --------------------------------------------------------- */
+
+.a1-container { width: min(calc(100% - 2 * var(--a1-gutter)), var(--a1-max-width)); margin-inline: auto; }
+.a1-section { padding-block: clamp(40px, 6vw, 72px); border-bottom: 1px solid var(--a1-border); }
+.a1-section__top { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 24px; }
+.a1-section__title { font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; font-size: var(--a1-text-4xl); line-height: 0.92; letter-spacing: -0.01em; margin: 0; }
+.a1-link-arrow { font-weight: 800; font-size: var(--a1-text-sm); color: var(--a1-text); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.a1-link-arrow:hover { color: var(--a1-accent); }
+
+/* Live strip: title | tag | text | button */
+.a1-live { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 24px; padding: 18px 0; border-top: 1px solid var(--a1-border-strong); border-bottom: 1px solid var(--a1-border); }
+.a1-live__title { font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.75rem, 3vw, 2.4rem); line-height: 0.9; margin: 0; padding-right: 24px; border-right: 1px solid var(--a1-border); }
+.a1-live p { margin: 0; color: var(--a1-text-muted); font-size: var(--a1-text-sm); }
+
+/* Big two-up calls to action */
+.a1-cta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.a1-cta { display: flex; align-items: center; gap: 20px; padding: 22px 24px; border: 1px solid var(--a1-border-strong); border-radius: var(--a1-radius); text-decoration: none; color: var(--a1-text); background: var(--a1-bg); transition: background 0.15s var(--a1-ease); }
+.a1-cta:hover { background: var(--a1-surface-raised); }
+.a1-cta strong { display: block; font-family: var(--a1-font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.6rem, 2.6vw, 2.25rem); line-height: 0.95; }
+.a1-cta small { display: block; font-size: var(--a1-text-sm); font-weight: 600; margin-top: 4px; }
+.a1-cta svg { flex: none; width: 40px; height: 40px; }
+.a1-cta--gold { background: var(--a1-accent-fill); border-color: var(--a1-accent-fill); color: var(--a1-on-accent); }
+.a1-cta--gold:hover { background: var(--a1-gold-hover); }
+
+/* Values row */
+.a1-values { display: grid; grid-template-columns: repeat(4, 1fr); }
+.a1-value { display: flex; gap: 14px; align-items: flex-start; padding: 6px 20px; border-left: 1px solid var(--a1-border); }
+.a1-value:first-child { border-left: 0; padding-left: 0; }
+.a1-value svg { flex: none; width: 30px; height: 30px; }
+.a1-value strong { display: block; font-family: var(--a1-font-display); font-weight: 800; text-transform: uppercase; font-size: 1.15rem; line-height: 1; }
+.a1-value span { font-size: var(--a1-text-sm); color: var(--a1-text-muted); }
+
+/* Form fields */
+.a1-input { width: 100%; min-height: 44px; padding: 0 14px; border: 1px solid var(--a1-border-strong); border-radius: var(--a1-radius); background: var(--a1-bg); color: var(--a1-text); font: 500 var(--a1-text-base) var(--a1-font-body); }
+.a1-input:focus-visible { outline: 3px solid var(--a1-focus); outline-offset: 2px; }
+
+/* Circuit divider: a row of parallel gold traces ending in vias */
 .a1-trace {
-  height: 10px;
+  height: 14px;
   border: 0;
+  color: var(--a1-accent-fill);
   background:
-    radial-gradient(circle at 0 50%, var(--a1-accent) 3px, transparent 3.5px) left center / 10px 10px no-repeat,
-    radial-gradient(circle at 100% 50%, var(--a1-accent) 3px, transparent 3.5px) right center / 10px 10px no-repeat,
-    linear-gradient(var(--a1-accent), var(--a1-accent)) center / calc(100% - 16px) 1.5px no-repeat;
-  opacity: 0.7;
+    radial-gradient(circle at calc(100% - 4px) 3px, currentColor 2.6px, transparent 3px),
+    radial-gradient(circle at calc(100% - 4px) 11px, currentColor 2.6px, transparent 3px),
+    linear-gradient(currentColor, currentColor) 0 2px / calc(100% - 8px) 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 10px / calc(100% - 8px) 1.5px no-repeat;
+  background-color: transparent;
+}
+
+@media (max-width: 900px) {
+  .a1-live { grid-template-columns: 1fr auto; }
+  .a1-live__title { border-right: 0; padding-right: 0; }
+  .a1-live p { grid-column: 1 / -1; }
+  .a1-values { grid-template-columns: repeat(2, 1fr); row-gap: 20px; }
+  .a1-value:nth-child(3) { border-left: 0; padding-left: 0; }
+}
+@media (max-width: 600px) {
+  .a1-cta-grid, .a1-values { grid-template-columns: 1fr; }
+  .a1-value { border-left: 0; padding-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .a1-btn, .a1-card, .a1-cta { transition: none; }
 }

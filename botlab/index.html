@@ -16,7 +16,7 @@
           fontFamily: {
             mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
             sans: ['Inter', 'system-ui', 'sans-serif'],
-            display: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
+            display: ['"Barlow Condensed"', '"Arial Narrow"', 'Impact', 'sans-serif'],
           },
           colors: {
             sys: {
@@ -25,7 +25,8 @@
               grid: 'var(--a1-surface)',
               raised: 'var(--a1-surface-raised)',
               line: 'var(--a1-border)',
-              accent: 'var(--bl-accent-text)',
+              accent: 'var(--a1-accent)',
+              accentfill: 'var(--a1-accent-fill)',
               muted: 'var(--a1-text-muted)',
               text: 'var(--a1-text)',
               onaccent: 'var(--a1-on-accent)',
@@ -75,35 +76,40 @@
       font-family: var(--a1-font-mono);
       letter-spacing: -0.02em;
     }
+    /* v2 type: condensed 900 uppercase titles, Inter for running text */
     .system-font h1, .system-font h2, .system-font h3 {
       font-family: var(--a1-font-display);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: -0.01em;
+      line-height: 0.92;
     }
+    .system-font h3 { letter-spacing: 0.02em; }
     .system-font p { font-family: var(--a1-font-body); }
-    a1-header { display: block; min-height: 67px; }
-    /* Gold for small text: brand accent, darkened in light theme for AA contrast */
-    :root { --bl-accent-text: var(--a1-accent); }
-    @media (prefers-color-scheme: light) { :root:not([data-a1-theme="dark"]) { --bl-accent-text: #6f5d24; } }
-    [data-a1-theme="light"] { --bl-accent-text: #6f5d24; }
-    [data-a1-theme="dark"] { --bl-accent-text: var(--a1-accent); }
+    a1-header { display: block; min-height: var(--a1-header-height, 76px); }
     a1-footer { display: block; position: relative; z-index: 20; }
+    /* Secondary action slotted into the brand header: hard border, 2px radius */
     .a1-slot-btn {
-      padding: 8px 14px; border-radius: 999px; white-space: nowrap; text-decoration: none;
-      font: 600 14px/1 var(--a1-font-body); color: var(--a1-on-accent); background: var(--a1-accent);
+      display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px;
+      border: 1px solid var(--a1-border-strong); border-radius: var(--a1-radius);
+      white-space: nowrap; text-decoration: none;
+      font: 800 var(--a1-text-xs)/1 var(--a1-font-body); letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--a1-text); background: var(--a1-bg);
     }
-    .a1-slot-btn:hover { background: var(--a1-accent-hover); }
-    @media (max-width: 480px) { .a1-slot-btn { display: none; } }
-    /* Maker illustrations from the design system, tinted with the theme accent */
+    .a1-slot-btn:hover { background: var(--a1-surface-raised); }
+    @media (max-width: 720px) { .a1-slot-btn { display: none; } }
+    /* PCB circuit art from the design system, tinted with the brass fill */
     .a1-illo {
-      background: var(--a1-accent);
+      background: var(--a1-accent-fill);
       -webkit-mask: var(--illo) center / contain no-repeat;
       mask: var(--illo) center / contain no-repeat;
       pointer-events: none;
     }
-    .a1-illo--soldering { --illo: url("https://design.alphaonelabs.com/assets/illustrations/soldering-iron.svg"); }
-    .a1-illo--circuit { --illo: url("https://design.alphaonelabs.com/assets/illustrations/circuit.svg"); }
-    .a1-illo--transistor { --illo: url("https://design.alphaonelabs.com/assets/illustrations/transistor.svg"); }
+    .a1-illo--chip { --illo: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg"); }
+    .a1-illo--frame { --illo: url("https://design.alphaonelabs.com/assets/circuits/pcb-frame.svg"); }
+    .a1-illo--corner { --illo: url("https://design.alphaonelabs.com/assets/circuits/pcb-corner.svg"); }
     :focus-visible {
-      outline: 2px solid var(--a1-focus, #e2c66a);
+      outline: 3px solid var(--a1-focus);
       outline-offset: 3px;
     }
     .stagger-text span {
@@ -116,159 +122,49 @@
       cursor: crosshair;
     }
 
-    /* High-Tech Button */
+    /* Buttons: v2 secondary (hard border) and primary (brass fill) */
     .tech-btn {
       position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 12px;
-      padding: 16px 40px;
-      background: var(--a1-surface);
-      border: 1px solid rgba(199, 171, 79, 0.45);
-      color: var(--bl-accent-text);
-      font-family: var(--a1-font-mono);
-      font-size: 13px;
-      letter-spacing: 0.25em;
+      gap: 10px;
+      min-height: 48px;
+      padding: 0 22px;
+      background: var(--a1-bg);
+      border: 1px solid var(--a1-border-strong);
+      border-radius: var(--a1-radius);
+      color: var(--a1-text);
+      font: 800 var(--a1-text-sm)/1 var(--a1-font-body);
+      letter-spacing: 0.04em;
       text-transform: uppercase;
       text-decoration: none;
       cursor: pointer;
-      overflow: hidden;
-      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      transition: background 0.15s var(--a1-ease), border-color 0.15s var(--a1-ease);
       z-index: 20;
     }
-
-    .tech-btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(199, 171, 79, 0.05) 40%,
-        rgba(199, 171, 79, 0.05) 60%,
-        transparent 100%
-      );
-      transform: translateX(-100%);
-      transition: transform 0.6s ease;
+    .tech-btn:hover { background: var(--a1-surface-raised); }
+    .tech-btn--primary {
+      background: var(--a1-accent-fill);
+      border-color: var(--a1-accent-fill);
+      color: var(--a1-on-accent);
     }
-
-    .tech-btn:hover::before {
-      transform: translateX(100%);
-    }
-
-    .tech-btn::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(199, 171, 79, 0.03) 2px,
-        rgba(199, 171, 79, 0.03) 4px
-      );
-      pointer-events: none;
-    }
-
-    .tech-btn:hover {
-      border-color: rgba(199, 171, 79, 0.8);
-      box-shadow:
-        0 0 20px rgba(199, 171, 79, 0.15),
-        0 0 60px rgba(199, 171, 79, 0.05),
-        inset 0 0 20px rgba(199, 171, 79, 0.05);
-      color: var(--a1-text);
-      background: rgba(199, 171, 79, 0.12);
-      transform: translateY(-2px);
-    }
-
-    .tech-btn .btn-icon {
-      width: 20px;
-      height: 20px;
-      transition: transform 0.3s ease;
-    }
-
-    .tech-btn:hover .btn-icon {
-      transform: translateX(4px);
-    }
-
-    .tech-btn .btn-corner {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      border-color: rgba(199, 171, 79, 0.6);
-      transition: all 0.3s ease;
-    }
-
-    .tech-btn .btn-corner.tl {
-      top: -1px;
-      left: -1px;
-      border-top: 2px solid;
-      border-left: 2px solid;
-    }
-
-    .tech-btn .btn-corner.tr {
-      top: -1px;
-      right: -1px;
-      border-top: 2px solid;
-      border-right: 2px solid;
-    }
-
-    .tech-btn .btn-corner.bl {
-      bottom: -1px;
-      left: -1px;
-      border-bottom: 2px solid;
-      border-left: 2px solid;
-    }
-
-    .tech-btn .btn-corner.br {
-      bottom: -1px;
-      right: -1px;
-      border-bottom: 2px solid;
-      border-right: 2px solid;
-    }
-
-    .tech-btn:hover .btn-corner {
-      border-color: var(--a1-accent);
-      width: 12px;
-      height: 12px;
-    }
-
-    .tech-btn .btn-pulse {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 120%;
-      height: 120%;
-      transform: translate(-50%, -50%);
-      border: 1px solid rgba(199, 171, 79, 0.1);
-      border-radius: 2px;
-      animation: techPulse 2.5s ease-in-out infinite;
-      pointer-events: none;
-    }
-
-    @keyframes techPulse {
-      0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.98); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); }
-    }
-
+    .tech-btn--primary:hover { background: var(--a1-gold-hover); border-color: var(--a1-gold-hover); }
+    .tech-btn .btn-icon { width: 18px; height: 18px; transition: transform 0.2s var(--a1-ease); }
+    .tech-btn:hover .btn-icon { transform: translateX(3px); }
+    .tech-btn .btn-corner, .tech-btn .btn-pulse { display: none; }
     .tech-btn .btn-status {
-      width: 6px;
-      height: 6px;
-      background: var(--a1-accent);
+      width: 7px;
+      height: 7px;
+      background: currentColor;
       border-radius: 50%;
       animation: statusBlink 1.5s ease-in-out infinite;
-      box-shadow: 0 0 6px rgba(199, 171, 79, 0.8);
     }
-
     @keyframes statusBlink {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
 
-    /* Page Transition Overlay */
+    /* Page transition overlay: flat wipe with a single brass rule */
     .page-transition {
       position: fixed;
       inset: 0;
@@ -277,13 +173,7 @@
       opacity: 0;
       visibility: hidden;
     }
-
-    .page-transition.active {
-      pointer-events: all;
-      opacity: 1;
-      visibility: visible;
-    }
-
+    .page-transition.active { pointer-events: all; opacity: 1; visibility: visible; }
     .page-transition .overlay-bg {
       position: absolute;
       inset: 0;
@@ -292,44 +182,18 @@
       transform-origin: bottom;
       transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
     }
-
-    .page-transition.active .overlay-bg {
-      transform: scaleY(1);
-    }
-
-    .page-transition .scanlines {
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(199, 171, 79, 0.03) 2px,
-        rgba(199, 171, 79, 0.03) 4px
-      );
-      opacity: 0;
-      transition: opacity 0.3s ease 0.3s;
-    }
-
-    .page-transition.active .scanlines {
-      opacity: 1;
-    }
-
+    .page-transition.active .overlay-bg { transform: scaleY(1); }
+    .page-transition .scanlines { display: none; }
     .page-transition .wipe-line {
       position: absolute;
       left: 0;
       right: 0;
       height: 2px;
-      background: linear-gradient(90deg, transparent, #c7ab4f, transparent);
-      box-shadow: 0 0 30px 10px rgba(199, 171, 79, 0.3);
+      background: var(--a1-accent-fill);
       top: 100%;
       transition: top 0.6s cubic-bezier(0.77, 0, 0.175, 1) 0.2s;
     }
-
-    .page-transition.active .wipe-line {
-      top: -2px;
-    }
-
+    .page-transition.active .wipe-line { top: -2px; }
     .page-transition .loader-text {
       position: absolute;
       top: 50%;
@@ -337,48 +201,42 @@
       transform: translate(-50%, -50%);
       font-family: var(--a1-font-mono);
       font-size: 12px;
-      letter-spacing: 0.3em;
+      font-weight: 700;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: var(--bl-accent-text);
+      color: var(--a1-text);
       opacity: 0;
       transition: opacity 0.3s ease 0.5s;
       display: flex;
       align-items: center;
       gap: 12px;
     }
-
-    .page-transition.active .loader-text {
-      opacity: 1;
-    }
-
+    .page-transition.active .loader-text { opacity: 1; }
     .page-transition .loader-text .spinner {
       width: 14px;
       height: 14px;
-      border: 2px solid rgba(199, 171, 79, 0.2);
-      border-top-color: var(--a1-accent);
+      border: 2px solid var(--a1-border);
+      border-top-color: var(--a1-accent-fill);
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
     }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
+    @keyframes spin { to { transform: rotate(360deg); } }
     .page-transition .corner-mark {
       position: absolute;
       width: 20px;
       height: 20px;
-      border-color: rgba(199, 171, 79, 0.4);
+      border-color: var(--a1-accent-fill);
       opacity: 0;
       transition: opacity 0.3s ease 0.5s;
     }
-
     .page-transition.active .corner-mark { opacity: 1; }
-
     .page-transition .corner-mark.tl { top: 20px; left: 20px; border-top: 2px solid; border-left: 2px solid; }
     .page-transition .corner-mark.tr { top: 20px; right: 20px; border-top: 2px solid; border-right: 2px solid; }
     .page-transition .corner-mark.bl { bottom: 20px; left: 20px; border-bottom: 2px solid; border-left: 2px solid; }
     .page-transition .corner-mark.br { bottom: 20px; right: 20px; border-bottom: 2px solid; border-right: 2px solid; }
+    @media (prefers-reduced-motion: reduce) {
+      .tech-btn .btn-status { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -621,7 +479,7 @@
             </p>
 
             <div className="flex flex-wrap gap-4 mt-10">
-              <a href="home.html" className="tech-btn" onClick={(e) => {
+              <a href="home.html" className="tech-btn tech-btn--primary" onClick={(e) => {
                 e.preventDefault();
                 const overlay = document.getElementById('page-transition');
                 overlay.classList.add('active');
@@ -666,9 +524,9 @@
                 </svg>
               </a>
             </div>
-            <div aria-hidden="true" className="a1-illo a1-illo--soldering hidden lg:block absolute right-8 xl:right-16 2xl:right-32 top-1/2 -translate-y-1/2 w-[200px] h-[200px] xl:w-[300px] xl:h-[300px] opacity-70"></div>
+            <div aria-hidden="true" className="a1-illo a1-illo--chip hidden lg:block absolute right-8 xl:right-16 2xl:right-32 top-1/2 -translate-y-1/2 w-[280px] h-[200px] xl:w-[420px] xl:h-[300px] opacity-80"></div>
             <div className="absolute bottom-12 left-6 sm:left-12 md:left-24 text-xs text-sys-muted flex items-center gap-4">
-              <span className="animate-pulse h-2 w-2 bg-sys-accent rounded-full" aria-hidden="true"></span>
+              <span className="animate-pulse h-2 w-2 bg-sys-accentfill rounded-full" aria-hidden="true"></span>
               SCROLL TO INITIATE SEQUENCE
             </div>
           </section>
@@ -701,15 +559,14 @@
               </div>
               <div className="relative h-[400px] border border-sys-line bg-sys-dark p-6 flex flex-col justify-between overflow-hidden group">
                 <div className="text-xs text-sys-muted">Simulation Bay Monitor</div>
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sys-raised via-sys-grid to-sys-dark z-0"></div>
-                <div aria-hidden="true" className="a1-illo a1-illo--circuit absolute inset-8 opacity-20 z-0"></div>
+                <div aria-hidden="true" className="a1-illo a1-illo--frame absolute inset-8 opacity-25 z-0"></div>
                 <div className="z-10 text-center">
-                  <div className="inline-block p-4 border border-sys-line rounded-full mb-4 group-hover:scale-110 transition-transform bg-sys-dark">
+                  <div className="inline-block p-4 border border-sys-line mb-4 group-hover:scale-110 transition-transform bg-sys-dark">
                     <svg aria-hidden="true" className="w-8 h-8 text-sys-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={1} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <div className="text-xl tracking-tight"><a href="home.html" className="hover:underline">Boot Sequence</a></div>
+                  <div className="text-xl font-bold uppercase tracking-wide"><a href="home.html" className="underline underline-offset-4 hover:text-sys-accent">Boot Sequence</a></div>
                 </div>
               </div>
             </div>
@@ -784,7 +641,7 @@
               {/* Column 1 */}
               <div className="space-y-8">
                 <div className="border border-sys-line p-6 hover:bg-sys-raised transition-colors cursor-crosshair">
-                  <div className="text-xs text-sys-muted uppercase mb-4">🏆 Deployment Scenarios</div>
+                  <div className="text-xs text-sys-muted uppercase mb-4">Deployment Scenarios</div>
                   <div className="text-lg mb-2 text-sys-accent">Navigate the complex maze environment</div>
                   <p className="text-sm text-sys-muted leading-relaxed">
                     Test your robot's sensors and mobility by navigating through a procedurally generated maze without colliding.
@@ -792,7 +649,7 @@
                   </p>
                 </div>
                 <div className="border border-sys-line p-6 hover:bg-sys-raised transition-colors cursor-crosshair">
-                  <div className="text-xs text-sys-muted uppercase mb-4"> Leaderboard</div>
+                  <div className="text-xs text-sys-muted uppercase mb-4">Leaderboard</div>
                   <p className="text-sm text-sys-muted">
                     No entries yet. Complete scenarios to earn your spot!
                   </p>
@@ -802,8 +659,8 @@
               {/* Column 2 */}
               <div className="space-y-8">
                 <div className="border border-sys-line p-6 hover:bg-sys-raised transition-colors cursor-crosshair h-full">
-                  <div className="text-xs text-sys-muted uppercase mb-4">🎬 Simulation Logs</div>
-                  <div className="text-5xl font-light mb-4 text-sys-accent">24</div>
+                  <div className="text-xs text-sys-muted uppercase mb-4">Simulation Logs</div>
+                  <div className="text-6xl font-black mb-4 text-sys-accent" style={{ fontFamily: "var(--a1-font-display)" }}>24</div>
                   <p className="text-sm text-sys-muted leading-relaxed">
                     Review past deployments and test runs to analyze performance, sensor blind-spots, and movement efficiency.
                   </p>
@@ -827,7 +684,7 @@
                 </div>
                 <div className="border border-sys-line p-6 text-sm text-sys-muted cursor-crosshair flex justify-between items-center bg-sys-grid">
                   <span className="uppercase text-xs tracking-widest text-sys-accent">Diagnostic Tool</span>
-                  <a href="#" className="border border-sys-line px-3 py-1 hover:bg-sys-accent hover:text-sys-onaccent transition-colors">Run</a>
+                  <a href="#" className="border border-sys-line px-3 py-1 hover:bg-sys-accentfill hover:text-sys-onaccent hover:border-sys-accentfill transition-colors">Run</a>
                 </div>
               </div>
             </div>
@@ -837,15 +694,15 @@
 
           {/* SECTION 5: COMMITMENT */}
           <section className="min-h-screen flex flex-col justify-center items-center text-center px-6 sm:px-12 py-24 js-section">
-            <h2 className="text-4xl md:text-7xl font-medium tracking-tight mb-16 text-sys-accent">INITIALIZE DEPLOYMENT</h2>
+            <h2 className="text-4xl md:text-7xl font-medium tracking-tight mb-16 text-sys-text">INITIALIZE DEPLOYMENT</h2>
             
             <div className="flex flex-col md:flex-row gap-6 md:gap-12 w-full max-w-4xl">
-              <a href="home.html" className="flex-1 border border-sys-line p-8 md:p-12 hover:bg-sys-accent hover:text-sys-onaccent hover:border-sys-accent transition-all group flex flex-col items-center">
-                <span className="text-2xl md:text-3xl mb-4 font-display font-medium">Deploy Blank Chassis</span>
+              <a href="home.html" className="flex-1 border border-sys-line p-8 md:p-12 hover:bg-sys-accentfill hover:text-sys-onaccent hover:border-sys-accentfill transition-colors group flex flex-col items-center">
+                <span className="text-3xl md:text-4xl mb-4 font-display font-black uppercase">Deploy Blank Chassis</span>
                 <span className="text-sm text-sys-muted group-hover:text-sys-onaccent transition-colors">Start from scratch and build your custom robot rig</span>
               </a>
-              <a href="home.html" className="flex-1 border border-sys-line p-8 md:p-12 hover:bg-sys-accent hover:text-sys-onaccent hover:border-sys-accent transition-all group flex flex-col items-center">
-                <span className="text-2xl md:text-3xl mb-4 font-display font-medium">Load Preset Rig</span>
+              <a href="home.html" className="flex-1 border border-sys-line p-8 md:p-12 hover:bg-sys-accentfill hover:text-sys-onaccent hover:border-sys-accentfill transition-colors group flex flex-col items-center">
+                <span className="text-3xl md:text-4xl mb-4 font-display font-black uppercase">Load Preset Rig</span>
                 <span className="text-sm text-sys-muted group-hover:text-sys-onaccent transition-colors">Launch a pre-configured robot with standard sensors</span>
               </a>
             </div>

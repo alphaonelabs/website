@@ -3,247 +3,339 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Virtual World — Alpha One Labs</title>
+    <title>Virtual Campus — Alpha One Labs</title>
     <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&display=swap" />
     <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
     <style>
+      /* Overlay tokens: dark by default, light when the site (or OS) says so. */
+      :root {
+        --v-gold: #e1b746;
+        --v-gold-text: #e1b746;
+        --v-scrim: rgba(0, 0, 0, 0.72);
+        --v-surface: #0d0d0d;
+        --v-raised: #1a1a1a;
+        --v-text: #ffffff;
+        --v-muted: #a3a3a3;
+        --v-border: #2e2e2e;
+        --v-chip: rgba(10, 10, 10, 0.78);
+        --v-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+        --v-body: var(--a1-font-body, Inter, system-ui, sans-serif);
+        --v-mono: var(--a1-font-mono, ui-monospace, monospace);
+      }
+      @media (prefers-color-scheme: light) {
+        :root:not([data-a1-theme="dark"]) {
+          --v-gold: #d4af37;
+          --v-gold-text: #7c692e;
+          --v-scrim: rgba(242, 242, 240, 0.8);
+          --v-surface: #ffffff;
+          --v-raised: #fafafa;
+          --v-text: #0a0a0a;
+          --v-muted: #525252;
+          --v-border: #d4d4d4;
+          --v-chip: rgba(255, 255, 255, 0.88);
+        }
+      }
+      :root[data-a1-theme="light"] {
+        --v-gold: #d4af37;
+        --v-gold-text: #7c692e;
+        --v-scrim: rgba(242, 242, 240, 0.8);
+        --v-surface: #ffffff;
+        --v-raised: #fafafa;
+        --v-text: #0a0a0a;
+        --v-muted: #525252;
+        --v-border: #d4d4d4;
+        --v-chip: rgba(255, 255, 255, 0.88);
+      }
+
       html, body {
         margin: 0;
         padding: 0;
         height: 100%;
         overflow: hidden;
         background: #0a0a0a;
-        font-family: var(--a1-font-body, Inter, system-ui, sans-serif);
+        font-family: var(--v-body);
       }
-      :focus-visible { outline: 2px solid var(--a1-focus, #e2c66a); outline-offset: 3px; }
+      :focus-visible { outline: 2px solid var(--v-gold); outline-offset: 3px; }
+      .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-      /* Brand header floats over the full-screen canvas while the menu is
-         open; it disappears once the pointer is locked so the world stays
-         full-screen. */
-      #world-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 15;
-        min-height: 67px;
-      }
+      #world-header { position: fixed; top: 0; left: 0; right: 0; z-index: 15; min-height: 67px; }
       body:has(#blocker.hidden) #world-header { display: none; }
-      #app { width: 100vw; height: 100vh; display: block; }
+      #app { width: 100vw; height: 100vh; display: block; touch-action: none; }
 
+      .eyebrow {
+        margin: 0 0 0.5rem;
+        font: 700 0.75rem/1 var(--v-mono);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--v-gold-text);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.7rem 1.4rem;
+        border-radius: 2px;
+        border: 2px solid var(--v-gold);
+        background: var(--v-gold);
+        color: #000;
+        font: 800 1.05rem/1 var(--v-display);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .btn:hover { background: transparent; color: var(--v-text); }
+      .btn-ghost { background: transparent; color: var(--v-text); border-color: var(--v-border); }
+      .btn-ghost:hover { border-color: var(--v-gold); color: var(--v-gold-text); }
+
+      /* ── Menu ─────────────────────────────────────────────── */
       #blocker {
         position: fixed;
         inset: 0;
+        z-index: 10;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.72);
-        color: #fff;
-        text-align: center;
-        cursor: pointer;
-        z-index: 10;
-        padding-top: 67px;
+        background: var(--v-scrim);
+        color: var(--v-text);
+        padding: 67px 1rem 1rem;
         box-sizing: border-box;
+        overflow-y: auto;
       }
       #blocker.hidden { display: none; }
-      #blocker > div { max-width: 26rem; max-height: calc(100vh - 67px - 2rem); overflow-y: auto; padding: 1rem; }
-      #blocker .eyebrow {
-        margin: 0 0 0.6rem;
-        font: 700 0.75rem/1 var(--a1-font-mono, monospace);
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: #c7ab4f;
+      #menu {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 54rem;
+        max-height: 100%;
+        background: var(--v-surface);
+        border: 1px solid var(--v-border);
+        border-top: 4px solid var(--v-gold);
+        border-radius: 2px;
+        padding: 1.75rem;
+        box-sizing: border-box;
+        overflow-y: auto;
       }
-      #blocker h1 { font: 700 clamp(1.75rem, 6vw, 2.25rem)/1.05 var(--a1-font-display, sans-serif); letter-spacing: -0.03em; margin: 0 0 0.75rem; }
-      #blocker .a1-trace { margin: 1.25rem 0 0; }
-      #blocker p { margin: 0 0 0.5rem; color: #c9c9c9; }
-      #enter-button {
-        margin-top: 1rem;
-        padding: 0.65rem 1.5rem;
-        border-radius: 999px;
-        border: none;
-        background: #c7ab4f;
-        color: #000;
-        font: 600 1rem/1 var(--a1-font-body, sans-serif);
+      @media (max-width: 760px) { #menu { grid-template-columns: 1fr; padding: 1.25rem; gap: 1.25rem; } }
+      #menu h1 {
+        margin: 0 0 0.75rem;
+        font: 900 clamp(2.4rem, 7vw, 3.4rem)/0.92 var(--v-display);
+        text-transform: uppercase;
+        letter-spacing: 0.01em;
+      }
+      #menu h1 span { color: var(--v-gold-text); }
+      #menu p { margin: 0 0 0.6rem; color: var(--v-muted); line-height: 1.5; font-size: 0.92rem; }
+      #menu .keys { font: 600 0.8rem/1.6 var(--v-mono); color: var(--v-muted); }
+      #menu .keys kbd {
+        display: inline-block;
+        min-width: 1.4em;
+        padding: 0 0.3em;
+        border: 1px solid var(--v-border);
+        border-radius: 2px;
+        text-align: center;
+        color: var(--v-text);
+        font: inherit;
+      }
+      #enter-button { margin-top: 0.75rem; width: 100%; padding: 0.9rem; font-size: 1.25rem; }
+      #load-status { margin-top: 0.9rem; font: 600 0.75rem/1.4 var(--v-mono); color: var(--v-muted); }
+      #menu h2 {
+        margin: 0 0 0.6rem;
+        font: 800 1.1rem/1 var(--v-display);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #zone-list { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; }
+      #zone-list button {
+        width: 100%;
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--v-border);
+        border-left: 3px solid var(--v-gold);
+        border-radius: 2px;
+        background: var(--v-raised);
+        color: var(--v-text);
+        font: 800 1rem/1.05 var(--v-display);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
         cursor: pointer;
       }
-      #enter-button:hover { background: #e2c66a; }
-      #enter-button:focus-visible { outline: 2px solid #e2c66a; outline-offset: 3px; }
-
-      #activity-nav { margin-top: 2rem; text-align: left; }
-      #activity-nav h2 { font: 700 0.75rem/1 var(--a1-font-mono, monospace); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 0.75rem; text-align: center; color: #c7ab4f; }
-      #activity-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-      #activity-list li {
-        border: 1px solid #2e2e2e;
-        background: rgba(13, 13, 13, 0.85);
-        border-radius: 12px;
-        padding: 0.75rem 1rem;
+      #zone-list button small { display: block; margin-top: 0.2rem; font: 500 0.72rem/1.2 var(--v-body); letter-spacing: 0; text-transform: none; color: var(--v-muted); }
+      #zone-list button:hover { border-color: var(--v-gold); }
+      #search-label { display: block; }
+      #activity-search {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.65rem 0.8rem;
+        border: 1px solid var(--v-border);
+        border-radius: 2px;
+        background: var(--v-raised);
+        color: var(--v-text);
+        font: 400 0.95rem/1.3 var(--v-body);
       }
-      #activity-list h3 { margin: 0 0 0.3rem; font: 600 1rem/1.2 var(--a1-font-display, sans-serif); color: #fff; }
-      #activity-list p { margin: 0 0 0.5rem; font-size: 0.85rem; }
-      #activity-list .activity-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-      #activity-list a {
-        color: #c7ab4f;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.85rem;
+      #activity-search:focus { outline: 2px solid var(--v-gold); outline-offset: 1px; }
+      #search-results { list-style: none; margin: 0.5rem 0 0; padding: 0; max-height: 15.5rem; overflow-y: auto; }
+      #search-results li + li { border-top: 1px solid var(--v-border); }
+      #search-results button {
+        display: block;
+        width: 100%;
+        padding: 0.55rem 0.25rem;
+        border: 0;
+        background: transparent;
+        color: var(--v-text);
+        text-align: left;
+        cursor: pointer;
+        font: 600 0.9rem/1.25 var(--v-body);
       }
-      #activity-list a:hover,
-      #activity-list a:focus-visible { text-decoration: underline; }
+      #search-results button:hover .r-title, #search-results button:focus-visible .r-title { color: var(--v-gold-text); text-decoration: underline; }
+      #search-results .r-meta { display: block; margin-top: 0.15rem; font: 700 0.68rem/1 var(--v-mono); letter-spacing: 0.1em; color: var(--v-muted); }
+      #search-results .empty { padding: 0.6rem 0.25rem; color: var(--v-muted); font-size: 0.85rem; }
 
+      /* ── In-world HUD ─────────────────────────────────────── */
       #crosshair {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        width: 6px;
-        height: 6px;
-        margin: -3px 0 0 -3px;
-        border-radius: 50%;
-        background: #fff;
-        opacity: 0.8;
-        z-index: 5;
-        pointer-events: none;
+        position: fixed; top: 50%; left: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+        background: #fff; mix-blend-mode: difference; z-index: 5; pointer-events: none;
       }
       #crosshair.hidden { display: none; }
 
       #prompt {
         position: fixed;
-        bottom: 8%;
+        bottom: 7%;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.6);
-        color: #fff;
-        padding: 0.6rem 1.2rem;
-        border-radius: 999px;
-        font-size: 0.95rem;
-        z-index: 5;
-        pointer-events: none;
+        max-width: min(34rem, calc(100vw - 2rem));
+        display: flex;
+        align-items: stretch;
+        border: 1px solid var(--v-border);
+        border-left: 4px solid var(--v-gold);
+        border-radius: 2px;
+        background: var(--v-chip);
+        color: var(--v-text);
+        padding: 0;
+        z-index: 6;
+        cursor: pointer;
+        text-align: left;
+        font: inherit;
+        backdrop-filter: blur(6px);
       }
       #prompt.hidden { display: none; }
+      #prompt .key {
+        display: flex; align-items: center; padding: 0 0.8rem;
+        background: var(--v-gold); color: #000; font: 900 1.3rem/1 var(--v-display);
+      }
+      #prompt .body { padding: 0.55rem 0.9rem; min-width: 0; }
+      #prompt .p-eyebrow { display: block; font: 700 0.66rem/1 var(--v-mono); letter-spacing: 0.14em; color: var(--v-gold-text); text-transform: uppercase; }
+      #prompt .p-title { display: block; margin-top: 0.25rem; font: 800 1.15rem/1.05 var(--v-display); text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #prompt .p-desc { display: block; margin-top: 0.25rem; font-size: 0.8rem; line-height: 1.35; color: var(--v-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+      #hint {
+        position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 6;
+        color: var(--v-text); background: var(--v-chip); border: 1px solid var(--v-border); border-radius: 2px;
+        font: 600 0.72rem/1 var(--v-mono); letter-spacing: 0.06em; padding: 0.45rem 0.7rem; pointer-events: none; white-space: nowrap;
+      }
+      #hint.hidden { display: none; }
+      @media (max-width: 600px) { #hint { display: none; } }
+
+      #menu-button { position: fixed; top: 0.75rem; left: 0.75rem; z-index: 7; padding: 0.55rem 0.9rem; font-size: 0.95rem; }
+      #menu-button.hidden, #touch-controls.hidden { display: none; }
+      #touch-controls {
+        position: fixed; left: 1rem; bottom: 1rem; z-index: 7;
+        display: grid; grid-template-columns: repeat(3, 3.25rem); grid-template-rows: repeat(2, 3.25rem); gap: 0.3rem;
+      }
+      #touch-controls button {
+        border: 1px solid var(--v-border); border-radius: 2px; background: var(--v-chip); color: var(--v-text);
+        font: 800 1.3rem/1 var(--v-display); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+      }
+      #touch-controls button:active, #touch-controls button.pressed { background: var(--v-gold); color: #000; border-color: var(--v-gold); }
+      #touch-controls [data-move="forward"] { grid-column: 2; grid-row: 1; }
+      #touch-controls [data-move="turnLeft"] { grid-column: 1; grid-row: 2; }
+      #touch-controls [data-move="backward"] { grid-column: 2; grid-row: 2; }
+      #touch-controls [data-move="turnRight"] { grid-column: 3; grid-row: 2; }
+
+      /* ── Panel ───────────────────────────────────────────── */
       #panel {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.6);
-        z-index: 20;
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: var(--v-scrim); z-index: 20; padding: 1rem; box-sizing: border-box;
       }
       #panel.hidden { display: none; }
       #panel-card {
-        background: #0d0d0d;
-        color: #fff;
-        border: 1px solid #2e2e2e;
-        border-radius: 20px;
-        padding: 2rem;
-        max-width: 26rem;
-        width: 90%;
+        background: var(--v-surface); color: var(--v-text);
+        border: 1px solid var(--v-border); border-top: 4px solid var(--v-gold); border-radius: 2px;
+        padding: 1.75rem; max-width: 28rem; width: 100%; box-sizing: border-box; max-height: 100%; overflow-y: auto;
       }
-      #panel-card h2 { margin: 0 0 0.75rem; font: 700 1.5rem/1.15 var(--a1-font-display, sans-serif); letter-spacing: -0.02em; }
-      #panel-card p { margin: 0 0 1.5rem; color: #c9c9c9; line-height: 1.5; }
-      #panel-links { display: flex; flex-direction: column; gap: 0.6rem; }
-      #panel-links a {
-        display: block;
-        text-align: center;
-        text-decoration: none;
-        color: #000;
-        background: #c7ab4f;
-        padding: 0.75rem 1rem;
-        border-radius: 999px;
-        font-weight: 600;
-      }
-      #panel-links a:hover { background: #e2c66a; }
-      #panel-close {
-        margin-top: 1.25rem;
-        width: 100%;
-        padding: 0.6rem;
-        border-radius: 999px;
-        border: 1px solid #2e2e2e;
-        background: transparent;
-        color: #fff;
-        font: 500 0.9rem/1 var(--a1-font-body, sans-serif);
-        cursor: pointer;
-      }
-      #panel-close:hover { border-color: #c7ab4f; color: #c7ab4f; }
+      #panel-card h2 { margin: 0 0 0.75rem; font: 900 2rem/0.98 var(--v-display); text-transform: uppercase; letter-spacing: 0.01em; }
+      #panel-card p { margin: 0 0 1.5rem; color: var(--v-muted); line-height: 1.5; }
+      #panel-links { display: flex; flex-direction: column; gap: 0.5rem; }
+      #panel-links .btn { width: 100%; box-sizing: border-box; }
+      #panel-close { margin-top: 0.75rem; width: 100%; box-sizing: border-box; }
 
       /* Slotted into the brand header, which sits above #blocker (z 10) */
       #logout {
-        padding: 8px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--a1-border, #2e2e2e);
-        background: transparent;
-        color: var(--a1-text, #fff);
-        font: 500 14px/1 var(--a1-font-body, sans-serif);
-        white-space: nowrap;
-        cursor: pointer;
+        padding: 8px 14px; border-radius: 2px; border: 1px solid var(--a1-border, #2e2e2e); background: transparent;
+        color: var(--a1-text, #fff); font: 800 15px/1 var(--v-display); letter-spacing: 0.06em; text-transform: uppercase;
+        white-space: nowrap; cursor: pointer;
       }
-      #logout:hover { border-color: var(--a1-accent, #c7ab4f); color: var(--a1-accent, #c7ab4f); }
-      /* No room in the phone-width header: float it bottom-right instead */
+      #logout:hover { border-color: var(--v-gold); color: var(--v-gold-text); }
       @media (max-width: 480px) {
-        #logout {
-          position: fixed;
-          right: 1rem;
-          bottom: 1rem;
-          background: rgba(0, 0, 0, 0.7);
-          border-color: #525252;
-          color: #fff;
-        }
+        #logout { position: fixed; right: 1rem; bottom: 1rem; background: var(--v-chip); border-color: var(--v-border); color: var(--v-text); }
       }
       #logout.hidden { display: none; }
-
-      #hint {
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        z-index: 6;
-        color: #ccc;
-        font-size: 0.75rem;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 0.4rem 0.7rem;
-        border-radius: 999px;
-        pointer-events: none;
-      }
-      #hint.hidden { display: none; }
     </style>
   </head>
   <body>
-    <canvas id="app"></canvas>
+    <canvas id="app" aria-label="3D view of the Alpha One Labs virtual campus"></canvas>
 
     <div id="crosshair" class="hidden"></div>
-    <div id="prompt" class="hidden"></div>
+    <button id="prompt" class="hidden" type="button" aria-live="polite"></button>
+    <div id="hint" class="hidden"></div>
+    <button id="menu-button" class="btn btn-ghost hidden" type="button" aria-label="Open campus menu">☰ Menu</button>
+    <div id="touch-controls" class="hidden" role="group" aria-label="Movement controls">
+      <button type="button" data-move="forward" aria-label="Move forward">▲</button>
+      <button type="button" data-move="turnLeft" aria-label="Turn left">◀</button>
+      <button type="button" data-move="backward" aria-label="Move backward">▼</button>
+      <button type="button" data-move="turnRight" aria-label="Turn right">▶</button>
+    </div>
+
     <a1-header id="world-header" site="Virtual World" site-href="/">
       <button id="logout" slot="actions" type="button" class="hidden">Log out</button>
     </a1-header>
-    <div id="hint" class="hidden">Press ESC to free your cursor</div>
 
     <div id="blocker">
-      <div>
-        <p class="eyebrow">Alpha One Labs</p>
-        <h1>Virtual World</h1>
-        <p>Click to enter · WASD to move · Mouse to look · E to interact</p>
-        <p>Press ESC anytime to release your cursor and use the menu</p>
-        <button id="enter-button" type="button">Enter world</button>
-        <hr class="a1-trace" />
-        <nav id="activity-nav" aria-label="Activities">
-          <h2>Activities</h2>
-          <ul id="activity-list"></ul>
-        </nav>
+      <div id="menu" role="dialog" aria-labelledby="menu-title">
+        <section>
+          <p class="eyebrow">Alpha One Labs</p>
+          <h1 id="menu-title">Virtual <span>Campus</span></h1>
+          <p>Walk the campus of learn.alphaonelabs.com. Every kiosk is a real class or activity; every building opens the real page.</p>
+          <p class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse look · <kbd>E</kbd> interact · <kbd>Esc</kbd> menu</p>
+          <button id="enter-button" class="btn" type="button">Enter campus</button>
+          <p id="load-status" role="status" aria-live="polite">Loading activities…</p>
+        </section>
+        <section>
+          <nav aria-labelledby="travel-title">
+            <h2 id="travel-title">Quick travel</h2>
+            <ul id="zone-list"></ul>
+          </nav>
+          <div role="search">
+            <h2><label id="search-label" for="activity-search">Find an activity</label></h2>
+            <input id="activity-search" type="search" placeholder="Search courses, study groups…" autocomplete="off" aria-controls="search-results" />
+            <ul id="search-results" aria-label="Matching activities"></ul>
+          </div>
+        </section>
       </div>
     </div>
 
     <div id="panel" class="hidden">
-      <div
-        id="panel-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="panel-title"
-        aria-describedby="panel-description"
-      >
+      <div id="panel-card" role="dialog" aria-modal="true" aria-labelledby="panel-title" aria-describedby="panel-description">
+        <p id="panel-eyebrow" class="eyebrow"></p>
         <h2 id="panel-title"></h2>
         <p id="panel-description"></p>
         <div id="panel-links"></div>
-        <button id="panel-close" type="button">Close (Esc)</button>
+        <button id="panel-close" class="btn btn-ghost" type="button">Close (Esc)</button>
       </div>
     </div>
 

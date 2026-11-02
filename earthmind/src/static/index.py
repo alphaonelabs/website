@@ -22,9 +22,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       --border: var(--a1-border, #2e2e2e);
       --text: var(--a1-text, #fff);
       --muted: var(--a1-text-muted, #a3a3a3);
-      --accent: var(--a1-accent, #c7ab4f);
-      --accent-hover: var(--a1-accent-hover, #e2c66a);
-      --focus: var(--a1-focus, #e2c66a);
+      --border-strong: var(--a1-border-strong, #101010);
+      --accent: var(--a1-accent, #7a6418);            /* text-safe gold */
+      --accent-fill: var(--a1-accent-fill, #d4af37);  /* brass fills, rules, art */
+      --accent-hover: var(--a1-accent-hover, #000);
+      --on-accent: var(--a1-on-accent, #080808);
+      --focus: var(--a1-focus, #d4af37);
       /* status colours: tuned per theme for AA contrast */
       --warning: #ffb347;
       --danger: #ff7a7a;
@@ -38,21 +41,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     :root[data-a1-theme="light"] { --warning: #9a5800; --danger: #c0262d; --info: #1f5fa8; --map-filter: none; --hover-tint: rgba(0,0,0,0.03); }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: var(--a1-font-body, system-ui, sans-serif); min-height: 100vh; line-height: 1.5; }
-    a1-header { display: block; min-height: 65px; background: var(--bg); }
-    :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    a1-header { display: block; min-height: var(--a1-header-height, 76px); background: var(--bg); }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
     /* Page intro */
-    .page-intro { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-    .page-intro h1 { font-family: var(--a1-font-display, sans-serif); font-size: var(--a1-text-3xl, 2.25rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
-    .page-intro h1 span { color: var(--accent); }
-    .eyebrow { font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
-    .header-info { font-size: 0.95rem; color: var(--muted); }
-    .maker-art { width: 88px; height: 88px; flex: none; background: var(--accent); -webkit-mask: url("https://design.alphaonelabs.com/assets/illustrations/iss.svg") center / contain no-repeat; mask: url("https://design.alphaonelabs.com/assets/illustrations/iss.svg") center / contain no-repeat; }
+    .page-intro { position: relative; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    .page-intro h1 { font-family: var(--a1-font-display, sans-serif); font-size: var(--a1-text-4xl, 3rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; line-height: 0.92; }
+    .page-intro h1 span { color: var(--accent-fill); }
+    .eyebrow { font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text); margin-bottom: 10px; }
+    .header-info { font-size: 1rem; color: var(--muted); margin-top: 10px; }
+    .pcb-art { width: 150px; height: 108px; flex: none; margin-left: auto; background: var(--accent-fill); -webkit-mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat; mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat; }
     .a1-trace { margin: 0 0 24px; }
-    @media (max-width: 480px) { .maker-art { width: 56px; height: 56px; } }
-    .live { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @media (max-width: 640px) { .pcb-art { display: none; } }
+    .live { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: var(--a1-radius, 2px); font: 800 11px/1.2 var(--a1-font-body, sans-serif); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-fill); animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @media (prefers-reduced-motion: reduce) { .status-dot, .loading { animation: none !important; } }
 
@@ -66,16 +69,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     @media (max-width: 480px) { .container { padding: 20px 16px; } .card { padding: 16px; } }
 
     /* Cards */
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--a1-radius, 12px); padding: 20px; }
-    .card-title { font-family: var(--a1-font-mono, monospace); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent); margin-bottom: 12px; }
-    .metric-value { font-family: var(--a1-font-display, sans-serif); font-size: 2.2rem; font-weight: 700; color: var(--text); line-height: 1; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--a1-radius, 2px); padding: 20px; }
+    .card-title { font-family: var(--a1-font-display, sans-serif); font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0; line-height: 1; color: var(--text); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .metric-value { font-family: var(--a1-font-display, sans-serif); font-size: 3rem; font-weight: 900; color: var(--text); line-height: 1; }
     .metric-label { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
     .metric-change { font-size: 0.85rem; margin-top: 8px; }
     .metric-change.up { color: var(--warning); }
     .metric-change.down { color: var(--info); }
 
     /* Map: OpenStreetMap tiles, darkened to sit on the black theme */
-    #map { height: 400px; border-radius: 8px; background: var(--surface2); isolation: isolate; z-index: 0; }
+    #map { height: 400px; border-radius: var(--a1-radius, 2px); border: 1px solid var(--border); background: var(--surface2); isolation: isolate; z-index: 0; }
     #map .leaflet-tile-pane { filter: var(--map-filter); }
     #map .leaflet-control-attribution { background: var(--surface); color: var(--muted); opacity: 0.92; }
     #map .leaflet-control-attribution a { color: var(--accent); }
@@ -90,11 +93,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .controls { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
     select, button {
       background: var(--surface2); border: 1px solid var(--border); color: var(--text);
-      padding: 8px 14px; border-radius: var(--a1-radius-full, 999px); font: 500 0.875rem/1.2 var(--a1-font-body, sans-serif); cursor: pointer; min-height: 40px;
+      padding: 8px 14px; border-radius: var(--a1-radius, 2px); font: 700 0.875rem/1.2 var(--a1-font-body, sans-serif); cursor: pointer; min-height: 40px;
     }
-    select { border-radius: 8px; }
-    button:hover { border-color: var(--accent); color: var(--accent); }
-    button.active { border-color: var(--accent); color: var(--accent); background: rgba(199,171,79,0.1); }
+    button { background: var(--bg); border-color: var(--border-strong); font-weight: 800; }
+    button:hover { background: var(--surface2); }
+    button.active { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
     button:disabled { opacity: 0.6; cursor: wait; }
 
     /* Alerts */
@@ -103,12 +106,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .alert-item:last-child { border-bottom: none; }
     .severity-badge {
       font: 700 0.7rem/1.2 var(--a1-font-mono, monospace); text-transform: uppercase; padding: 3px 8px;
-      border-radius: 20px; white-space: nowrap; letter-spacing: 0.06em; display: inline-block;
+      border-radius: var(--a1-radius, 2px); white-space: nowrap; letter-spacing: 0.06em; display: inline-block;
     }
     .sev-critical { background: rgba(255,122,122,0.15); color: var(--danger); border: 1px solid var(--danger); }
     .sev-high { background: rgba(255,179,71,0.15); color: var(--warning); border: 1px solid var(--warning); }
     .sev-medium { background: rgba(158,203,255,0.12); color: var(--info); border: 1px solid var(--info); }
-    .sev-low { background: rgba(199,171,79,0.1); color: var(--accent); border: 1px solid var(--accent); }
+    .sev-low { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
     .alert-msg { font-size: 0.875rem; }
     .alert-time { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
     .resolve-btn { margin-left: auto; font-size: 0.75rem; padding: 4px 10px; min-height: 32px; }
@@ -128,31 +131,30 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     /* Risk indicator */
     .risk-indicator { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-    .risk-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
-    .risk-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
-    .risk-low .risk-fill { background: var(--accent); width: 20%; }
+    .risk-bar { flex: 1; height: 8px; border-radius: var(--a1-radius, 2px); background: var(--border); overflow: hidden; }
+    .risk-fill { height: 100%; transition: width 0.6s ease; }
+    .risk-low .risk-fill { background: var(--accent-fill); width: 20%; }
     .risk-medium .risk-fill { background: var(--warning); width: 55%; }
     .risk-high .risk-fill { background: var(--danger); width: 90%; }
 
     /* Credits */
     .credits { text-align: center; padding: 8px 0 24px; color: var(--muted); font-size: 0.8rem; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { color: var(--accent-hover); text-decoration: underline; }
+    a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+    a:hover { color: var(--accent-hover); }
   </style>
 </head>
 <body>
-  <a1-header site="EarthMind" site-href="/" sticky></a1-header>
+  <a1-header site="EarthMind" site-href="/" sticky compact></a1-header>
 
   <main class="container" id="main">
 
     <div class="page-intro">
-      <div class="maker-art" aria-hidden="true"></div>
       <div>
-        <p class="eyebrow">Alpha One Labs</p>
+        <p class="eyebrow">Alpha One Labs / Environment</p>
         <h1>Earth<span>Mind</span></h1>
-        <p class="header-info">AI-powered environmental monitoring</p>
+        <p class="header-info">AI-powered environmental monitoring <span class="live"><span class="status-dot" aria-hidden="true"></span>Live</span></p>
       </div>
-      <div class="live"><span class="status-dot" aria-hidden="true"></span>Live</div>
+      <div class="pcb-art" aria-hidden="true"></div>
     </div>
     <hr class="a1-trace">
 
@@ -177,14 +179,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     <!-- AI Dashboard Summary -->
     <div class="grid-full card">
-      <h2 class="card-title"><span aria-hidden="true">🤖</span> AI Insights — Executive Summary</h2>
+      <h2 class="card-title">AI Insights — Executive Summary</h2>
       <div id="ai-summary" aria-live="polite" class="insight-text loading">Loading AI analysis…</div>
     </div>
 
     <!-- Map + Alerts -->
     <div class="grid-2">
       <div class="card">
-        <h2 class="card-title"><span aria-hidden="true">📍</span> Geospatial Overview</h2>
+        <h2 class="card-title">Geospatial Overview</h2>
         <div class="controls">
           <label class="sr-only" for="map-param-filter">Map parameter</label>
           <select id="map-param-filter" onchange="refreshMap()">
@@ -202,7 +204,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div id="map" role="region" aria-label="Map of sensor readings"></div>
       </div>
       <div class="card">
-        <h2 class="card-title"><span aria-hidden="true">🚨</span> Active Alerts</h2>
+        <h2 class="card-title">Active Alerts</h2>
         <div class="controls">
           <label class="sr-only" for="alert-severity-filter">Alert severity</label>
           <select id="alert-severity-filter" onchange="loadAlerts()">
@@ -220,7 +222,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     <!-- Trend Chart -->
     <div class="card grid-full">
-      <h2 class="card-title"><span aria-hidden="true">📈</span> Trend Analysis</h2>
+      <h2 class="card-title">Trend Analysis</h2>
       <div class="controls">
         <label class="sr-only" for="trend-param">Trend parameter</label>
         <select id="trend-param" onchange="loadTrendChart()">
@@ -243,18 +245,18 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <!-- AI Trend Analysis + Risk Assessment -->
     <div class="grid-2">
       <div class="card">
-        <h2 class="card-title"><span aria-hidden="true">🧠</span> AI Trend Narrative</h2>
+        <h2 class="card-title">AI Trend Narrative</h2>
         <div id="ai-trend" class="insight-text loading">Select a parameter above to analyse.</div>
       </div>
       <div class="card">
-        <h2 class="card-title"><span aria-hidden="true">⚠️</span> Ecological Risk Assessment</h2>
+        <h2 class="card-title">Ecological Risk Assessment</h2>
         <div id="ai-risk" class="insight-text loading">Loading risk assessment…</div>
       </div>
     </div>
 
     <!-- Anomalies Table -->
     <div class="card grid-full">
-      <h2 class="card-title"><span aria-hidden="true">🔍</span> Detected Anomalies</h2>
+      <h2 class="card-title">Detected Anomalies</h2>
       <div class="controls">
         <label class="sr-only" for="anomaly-param">Anomaly parameter</label>
         <select id="anomaly-param" onchange="loadAnomalies()">
@@ -265,7 +267,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <option value="no2">NO₂</option>
         </select>
         <button onclick="loadAnomalies()">Detect Anomalies</button>
-        <button onclick="explainTopAnomaly()"><span aria-hidden="true">🤖</span> Explain with AI</button>
+        <button onclick="explainTopAnomaly()">Explain with AI</button>
       </div>
       <div id="anomaly-table">
         <span class="loading">Select a parameter to run anomaly detection.</span>

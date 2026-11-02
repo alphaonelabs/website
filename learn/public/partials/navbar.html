@@ -1,139 +1,197 @@
-<!-- ===== HEADER ===== -->
-<header class="a1-site-header fixed top-0 left-0 z-50 w-full bg-black text-white">
+<!-- ===== HEADER (Alpha One Labs design system v2: matches <a1-header>) ===== -->
+<header class="a1n fixed top-0 left-0 z-50 w-full">
   <style>
-    .a1-site-header { border-bottom: 1px solid #2e2e2e; font-family: var(--a1-font-body, Inter, system-ui, sans-serif); }
-    .a1-site-header .a1-brand-name { font-family: var(--a1-font-display, "Space Grotesk", Inter, sans-serif); letter-spacing: -0.01em; }
-    .a1-site-header .a1-hover:hover { background-color: #141414; color: #e2c66a; }
-    .a1-site-header a.nav-link { color: #d4d4d4; }
-    .a1-site-header a.nav-link:hover { background-color: #141414; color: #ffffff; }
-    .a1-site-header a.nav-link[aria-current="page"] { background-color: #141414; color: #e2c66a; box-shadow: inset 0 -2px 0 #c7ab4f; }
-    .a1-site-header :focus-visible { outline: 2px solid #e2c66a; outline-offset: 2px; }
-    .a1-site-header .a1-header-trace { display: block; height: 2px; background: linear-gradient(90deg, transparent, #c7ab4f 20%, #c7ab4f 80%, transparent); opacity: .55; }
-    .a1-site-header .a1-cta { background: #c7ab4f; color: #000; }
-    .a1-site-header .a1-cta:hover { background: #e2c66a; color: #000; }
-    .a1-site-header .a1-avatar { background: #c7ab4f; color: #000; }
-    .a1-site-header #mobile-menu { background: #0d0d0d; border-color: #2e2e2e; }
+    .a1n { --n-bg: var(--a1-bg, #fff); --n-fg: var(--a1-text, #101010); --n-muted: var(--a1-text-muted, #4a4a4a); --n-soft: var(--a1-border, #d8d8d8); --n-hard: var(--a1-border-strong, #101010); --n-hover: var(--a1-surface-raised, #f5f5f5); --n-gold: var(--a1-accent-fill, #d4af37); --n-gold-hi: var(--a1-gold-hover, #f0c658);
+      background: var(--n-bg); color: var(--n-fg); border-bottom: 1px solid var(--n-soft); font-family: var(--a1-font-body, Inter, system-ui, sans-serif); }
+    html.dark .a1n { --n-bg: #000; --n-fg: #fafafa; --n-muted: #c6c6c6; --n-soft: #383838; --n-hard: #e1e1e1; --n-hover: #161616; --n-gold: #e1b746; --n-gold-hi: #f3cc61; }
+    .a1n a { color: inherit; text-decoration: none; }
+    .a1n :focus-visible { outline: 3px solid var(--n-gold); outline-offset: 3px; }
+    .a1n__bar { max-width: 1280px; margin: 0 auto; min-height: 76px; padding: 0 clamp(16px, 4vw, 48px); display: flex; align-items: center; gap: 18px; }
+    .a1n__brand { display: flex; align-items: center; gap: 12px; flex: none; }
+    .a1n__brand img { width: 34px; height: auto; display: block; }
+    .a1n__word { font: 900 26px/1 var(--a1-font-display, "Barlow Condensed", "Arial Narrow", Impact, sans-serif); letter-spacing: .01em; text-transform: uppercase; white-space: nowrap; }
+    .a1n__divider { width: 1px; align-self: stretch; margin: 20px 2px; background: var(--n-soft); flex: none; }
+    .a1n__nav { display: flex; align-items: center; gap: 22px; margin-left: 4px; }
+    .a1n__nav a.nav-link { font: 700 14px/1 var(--a1-font-body, Inter, sans-serif); padding: 8px 0; border-bottom: 2px solid transparent; color: var(--n-fg); white-space: nowrap; }
+    .a1n__nav a.nav-link:hover, .a1n__nav a.nav-link[aria-current="page"] { border-bottom-color: var(--n-gold); }
+    .a1n__end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .a1n__icon { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; border: 1px solid transparent; border-radius: 2px; background: none; color: var(--n-fg); cursor: pointer; font-size: 16px; list-style: none; }
+    .a1n__icon:hover, .a1n details[open] > .a1n__icon { border-color: var(--n-soft); background: var(--n-hover); }
+    .a1n__icon::-webkit-details-marker { display: none; }
+    .a1n__badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 2px; font: 800 11px/18px var(--a1-font-body, Inter, sans-serif); text-align: center; }
+    .a1n__badge--gold { background: var(--n-gold); color: #080808; }
+    .a1n__badge--red { background: #b42318; color: #fff; }
+    .a1n__btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--n-hard); border-radius: 4px; background: var(--n-bg); color: var(--n-fg); font: 800 13px/1 var(--a1-font-body, Inter, sans-serif); white-space: nowrap; cursor: pointer; transition: background .15s; }
+    .a1n__btn:hover { background: var(--n-hover); }
+    .a1n__btn--gold { background: var(--n-gold); border-color: var(--n-gold); color: #080808 !important; }
+    .a1n__btn--gold:hover { background: var(--n-gold-hi); border-color: var(--n-gold-hi); }
+    .a1n__search { position: relative; }
+    .a1n__search-panel { position: absolute; right: 0; top: calc(100% + 10px); width: min(360px, 86vw); padding: 10px; background: var(--n-bg); border: 1px solid var(--n-hard); border-radius: 4px; z-index: 60; }
+    .a1n__search-panel form { display: flex; gap: 6px; margin: 0; }
+    .a1n input[type="text"] { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--n-hard); border-radius: 4px; background: var(--n-bg); color: var(--n-fg); font: 500 15px var(--a1-font-body, Inter, sans-serif); }
+    .a1n input[type="text"]::placeholder { color: var(--n-muted); }
+    .a1n__user { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 8px 0 4px; border: 1px solid transparent; border-radius: 2px; background: none; color: var(--n-fg); cursor: pointer; font: 700 13px var(--a1-font-body, Inter, sans-serif); max-width: 200px; }
+    .a1n__user:hover { border-color: var(--n-soft); background: var(--n-hover); }
+    .a1n__avatar { width: 30px; height: 30px; flex: none; border-radius: 2px; background: var(--n-gold); color: #080808; display: flex; align-items: center; justify-content: center; font: 800 12px var(--a1-font-body, Inter, sans-serif); overflow: hidden; }
+    .a1n__avatar img { border-radius: 2px !important; }
+    .a1n__menu { position: absolute; right: 0; top: calc(100% + 10px); width: 240px; padding: 6px; background: var(--n-bg); border: 1px solid var(--n-hard); border-radius: 2px; z-index: 60; }
+    .a1n__menu a, .a1n__menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid transparent; border-radius: 2px; background: none; color: var(--n-fg); font: 600 14px var(--a1-font-body, Inter, sans-serif); text-align: left; cursor: pointer; }
+    .a1n__menu a:hover, .a1n__menu button:hover { border-color: var(--n-soft); background: var(--n-hover); }
+    .a1n__menu i { width: 16px; text-align: center; color: var(--n-muted); }
+    .a1n__menu .a1n__logout, .a1n__menu .a1n__logout i { color: #b42318; }
+    html.dark .a1n__menu .a1n__logout, html.dark .a1n__menu .a1n__logout i { color: #ff8a80; }
+    .a1n__menu-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--n-soft); }
+    .a1n__menu-head p { margin: 0; }
+    .a1n__muted { color: var(--n-muted); font-size: 12px; }
+    .a1n__burger { display: none; }
+    /* Mobile drawer */
+    .a1n #mobile-menu { border-top: 1px solid var(--n-soft); background: var(--n-bg); max-height: calc(100vh - 77px); overflow-y: auto; }
+    .a1n__drawer { max-width: 1280px; margin: 0 auto; padding: 12px clamp(16px, 4vw, 48px) 20px; display: grid; gap: 14px; }
+    .a1n__drawer form { position: relative; display: flex; gap: 6px; margin: 0; }
+    .a1n__drawer-nav { display: grid; }
+    .a1n__drawer-nav a.nav-link { padding: 12px 0; border-bottom: 1px solid var(--n-soft); font: 900 24px/1 var(--a1-font-display, "Barlow Condensed", sans-serif); text-transform: uppercase; color: var(--n-fg); }
+    .a1n__drawer-nav a.nav-link[aria-current="page"] { box-shadow: inset 3px 0 0 var(--n-gold); padding-left: 10px; }
+    .a1n__drawer-sub { display: flex; flex-wrap: wrap; gap: 6px; }
+    .a1n__drawer-sub a, .a1n__drawer-sub button { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid var(--n-soft); border-radius: 2px; background: none; color: var(--n-fg); font: 700 13px var(--a1-font-body, Inter, sans-serif); cursor: pointer; }
+    .a1n__drawer-row { display: flex; gap: 8px; padding-top: 4px; }
+    .a1n__drawer-row > * { flex: 1; }
+    .a1n__drawer-user { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--n-soft); }
+    .a1n__drawer-user a, .a1n__drawer-user button { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 4px; background: none; border: 0; color: var(--n-fg); font: 600 15px var(--a1-font-body, Inter, sans-serif); text-align: left; cursor: pointer; }
+    @media (max-width: 1179px) {
+      .a1n__nav, .a1n__divider { display: none; }
+      .a1n__burger { display: inline-grid; }
+    }
+    @media (min-width: 1180px) { .a1n #mobile-menu { display: none !important; } }
+    @media (max-width: 767px) {
+      .a1n__hide-sm { display: none !important; }
+      .a1n__word { font-size: 22px; }
+      .a1n__bar { gap: 10px; }
+    }
+    @media (max-width: 359px) { .a1n__word { font-size: 19px; } .a1n__brand { gap: 8px; } .a1n__brand img { width: 28px; } }
   </style>
 
-  <div class="max-w-[90rem] mx-auto px-4 md:px-6 flex items-center justify-between min-h-[70px] relative gap-3 py-3">
-    <a href="/" class="flex items-center space-x-3 min-w-[170px] rounded-lg">
-      <img src="/images/logo.svg" alt="Alpha One Labs logo" height="40" width="36" class="h-10 w-auto">
-      <span class="a1-brand-name text-xl font-bold text-white whitespace-nowrap">Alpha One Labs</span>
+  <div class="a1n__bar">
+    <a href="/" class="a1n__brand" aria-label="Alpha One Labs home">
+      <img src="/images/logo.svg" alt="" width="34" height="38">
+      <span class="a1n__word">Alpha One Labs</span>
     </a>
+    <span class="a1n__divider" aria-hidden="true"></span>
 
-    <nav class="hidden xl:flex items-center gap-1" aria-label="Primary navigation">
-      <a href="/activity" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-book-open mr-1"></i>Browse</a>
-      <a href="/requests?kind=learn" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-graduation-cap mr-1"></i>Learn</a>
-      <a href="/requests?kind=teach" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-chalkboard-user mr-1"></i>Teach</a>
-      <a href="/waiting-rooms" class="nav-link min-h-11 inline-flex items-center px-3 py-2 rounded-lg font-semibold text-sm transition-colors"><i class="fas fa-door-open mr-1"></i>Wait</a>
+    <nav class="a1n__nav" aria-label="Primary navigation">
+      <a href="/activity" class="nav-link">Activities</a>
+      <a href="/classroom_poc?autojoin=1&amp;room=lobby" class="nav-link">Classroom</a>
+      <a href="/teach" class="nav-link">Teach</a>
+      <a href="/forum" class="nav-link">Community</a>
+      <a href="/about" class="nav-link">About</a>
     </nav>
 
-    <div class="relative hidden lg:block w-[260px]">
-      <form action="/activity" method="get" class="m-0">
-        <label class="sr-only" for="site-search">Search classes</label>
-        <input id="site-search" type="text" name="q" placeholder="What do you want to learn?" class="rounded-full w-full bg-white dark:bg-[#1a1a1a] dark:border dark:border-[#2e2e2e] text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 px-4 py-2 pr-12 min-h-11 focus:outline-none focus:ring-2 focus:ring-[#c7ab4f] text-sm">
-        <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-gray-600 dark:text-gray-200" aria-label="Search">
-          <i class="fas fa-search"></i>
-        </button>
-      </form>
-    </div>
+    <div class="a1n__end">
+      <details class="a1n__search a1n__hide-sm">
+        <summary class="a1n__icon" aria-label="Search activities" title="Search" onclick="setTimeout(function(){var i=document.getElementById('site-search');if(i)i.focus();},30)"><i class="fas fa-search" aria-hidden="true"></i></summary>
+        <div class="a1n__search-panel">
+          <form action="/activity" method="get" role="search">
+            <label class="sr-only" for="site-search">Search activities</label>
+            <input id="site-search" type="text" name="q" placeholder="What do you want to learn?">
+            <button type="submit" class="a1n__btn a1n__btn--gold" aria-label="Search">Search</button>
+          </form>
+        </div>
+      </details>
 
-    <div class="hidden md:flex items-center gap-1">
-      <a href="/cart" id="cart-nav-link" class="hidden relative items-center justify-center min-h-11 min-w-11 p-2 a1-hover rounded-lg" aria-label="Cart" title="Cart">
-        <i class="fa-solid fa-shopping-cart"></i>
-        <span id="cart-count-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full a1-avatar flex items-center justify-center text-xs font-bold"></span>
+      <a href="/cart" id="cart-nav-link" class="hidden a1n__icon a1n__hide-sm" aria-label="Cart" title="Cart">
+        <i class="fa-solid fa-shopping-cart" aria-hidden="true"></i>
+        <span id="cart-count-badge" class="hidden a1n__badge a1n__badge--gold"></span>
       </a>
-      <a href="/notifications" id="notif-bell-link" class="hidden relative items-center justify-center min-h-11 min-w-11 p-2 a1-hover rounded-lg" aria-label="Notifications" title="Notifications">
-        <i class="fas fa-bell"></i>
-        <span id="notif-unread-badge" class="hidden absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold"></span>
+      <a href="/notifications" id="notif-bell-link" class="hidden a1n__icon a1n__hide-sm" aria-label="Notifications" title="Notifications">
+        <i class="fas fa-bell" aria-hidden="true"></i>
+        <span id="notif-unread-badge" class="hidden a1n__badge a1n__badge--red"></span>
       </a>
-      <button class="focus:outline-none flex items-center justify-center min-h-11 min-w-11 p-2 rounded-lg a1-hover transition-colors" title="Switch dark mode" aria-label="Switch dark mode" onclick="toggleDarkMode()">
-        <i id="darkModeIcon" class="fas fa-moon"></i>
+      <button type="button" class="a1n__icon" title="Toggle light and dark theme" aria-label="Toggle light and dark theme" onclick="toggleDarkMode()">
+        <i id="darkModeIcon" class="fas fa-moon" aria-hidden="true"></i>
       </button>
-    </div>
 
-    <div class="hidden md:flex items-center space-x-2 min-w-[180px]">
-      <div id="auth-not-logged-in" class="flex items-center space-x-2 w-full">
-        <a href="/login" class="flex items-center min-h-11 p-2 a1-hover rounded-lg flex-1 justify-center">
-          <i class="fa-solid fa-right-to-bracket mr-1"></i>
-          <span class="hidden sm:inline">Login</span>
-        </a>
-        <a href="/login?tab=register" class="px-3 py-2.5 min-h-11 rounded-full a1-cta font-semibold flex items-center transition">
-          <i class="fa-solid fa-user-plus mr-1"></i>
-          <span class="hidden sm:inline text-sm">Signup</span>
-        </a>
+      <div id="auth-not-logged-in" class="a1n__hide-sm" style="display:flex;align-items:center;gap:6px">
+        <a href="/login" class="a1n__btn">Sign in</a>
       </div>
 
-      <div id="auth-logged-in" class="hidden items-center space-x-2 w-full">
-        <div class="relative flex-1">
-          <button onclick="toggleProfileDropdown()" class="flex items-center space-x-2 a1-hover rounded-lg p-2 min-h-11 w-full" aria-label="Open profile menu">
-            <div id="profile-avatar" class="w-8 h-8 rounded-full a1-avatar flex items-center justify-center font-bold text-sm"></div>
-            <span id="profile-greeting" class="text-sm font-medium truncate"></span>
-            <i class="fas fa-chevron-down text-xs"></i>
+      <div id="auth-logged-in" class="hidden a1n__hide-sm" style="align-items:center">
+        <div class="relative">
+          <button type="button" onclick="toggleProfileDropdown()" class="a1n__user" aria-label="Open profile menu" aria-haspopup="true">
+            <span id="profile-avatar" class="a1n__avatar"></span>
+            <span id="profile-greeting" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <i class="fas fa-chevron-down" style="font-size:10px" aria-hidden="true"></i>
           </button>
-          <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-[#0d0d0d] border border-gray-200 dark:border-[#2e2e2e] rounded-lg shadow-lg py-2 z-50">
-            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
-              <div class="w-9 h-9 rounded-full a1-avatar flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
+          <div id="profile-dropdown" class="hidden a1n__menu">
+            <div class="a1n__menu-head">
+              <div class="a1n__avatar" style="width:36px;height:36px">
                 <span id="dropdown-avatar-initials"></span>
                 <img id="dropdown-avatar-img" class="hidden w-full h-full object-cover" alt="" />
               </div>
-              <div class="min-w-0">
-                <p id="dropdown-username" class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate"></p>
-                <p id="dropdown-user-role" class="text-xs text-gray-500 dark:text-gray-400 capitalize"></p>
+              <div style="min-width:0">
+                <p id="dropdown-username" style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
+                <p id="dropdown-user-role" class="a1n__muted" style="text-transform:capitalize"></p>
               </div>
             </div>
-            <a href="/dashboard" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-tachometer-alt mr-2 text-teal-500"></i>Dashboard</a>
-            <a href="/profile" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-user mr-2 text-teal-500"></i>Profile</a>
-            <a id="dropdown-view-profile-link" href="/users.html" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-id-badge mr-2 text-teal-500"></i>My Public Profile</a>
-            <a href="/notification-preferences" class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]"><i class="fas fa-sliders mr-2 text-teal-500"></i>Notifications</a>
-            <button onclick="logout()" class="w-full text-left block px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
+            <a href="/dashboard"><i class="fas fa-tachometer-alt" aria-hidden="true"></i>Dashboard</a>
+            <a href="/profile"><i class="fas fa-user" aria-hidden="true"></i>Profile</a>
+            <a id="dropdown-view-profile-link" href="/users.html"><i class="fas fa-id-badge" aria-hidden="true"></i>My Public Profile</a>
+            <a href="/notification-preferences"><i class="fas fa-sliders" aria-hidden="true"></i>Notifications</a>
+            <button type="button" onclick="logout()" class="a1n__logout"><i class="fas fa-sign-out-alt" aria-hidden="true"></i>Logout</button>
           </div>
         </div>
       </div>
-    </div>
 
-    <button class="md:hidden p-2 min-h-11 min-w-11 a1-hover rounded-lg" onclick="toggleMobileMenu()" aria-label="Open menu">
-      <i class="fas fa-bars text-xl"></i>
-    </button>
+      <a href="/activity" class="a1n__btn a1n__btn--gold a1n__hide-sm">Explore Activities <span aria-hidden="true">&#8599;</span></a>
+
+      <button type="button" class="a1n__icon a1n__burger" onclick="toggleMobileMenu()" aria-label="Open menu" aria-controls="mobile-menu">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+      </button>
+    </div>
   </div>
 
-  <div id="mobile-menu" class="hidden md:hidden border-t mobile-menu-content">
-    <div class="px-4 py-4 space-y-3">
-      <form action="/activity" method="get" class="relative">
-        <label class="sr-only" for="mobile-site-search">Search classes</label>
-        <input id="mobile-site-search" type="text" name="q" placeholder="Search classes" class="rounded-full w-full bg-white dark:bg-[#1a1a1a] dark:border dark:border-[#2e2e2e] text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 px-4 py-2 pr-12 min-h-11 focus:outline-none focus:ring-2 focus:ring-[#c7ab4f]">
-        <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-gray-600 dark:text-gray-300" aria-label="Search"><i class="fas fa-search"></i></button>
+  <div id="mobile-menu" class="hidden mobile-menu-content">
+    <div class="a1n__drawer">
+      <form action="/activity" method="get" role="search">
+        <label class="sr-only" for="mobile-site-search">Search activities</label>
+        <input id="mobile-site-search" type="text" name="q" placeholder="Search activities">
+        <button type="submit" class="a1n__btn" aria-label="Search"><i class="fas fa-search" aria-hidden="true"></i></button>
       </form>
-      <div class="grid grid-cols-1 gap-1 text-sm font-semibold">
-        <a href="/activity" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-book-open mr-2"></i>Browse</a>
-        <a href="/requests?kind=learn" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-graduation-cap mr-2"></i>Learn</a>
-        <a href="/requests?kind=teach" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-chalkboard-user mr-2"></i>Teach</a>
-        <a href="/waiting-rooms" class="nav-link min-h-11 flex items-center px-3 py-2 rounded-lg"><i class="fas fa-door-open mr-2"></i>Wait</a>
-        <a href="/cart" class="min-h-11 flex items-center px-3 py-2 rounded-lg a1-hover"><i class="fas fa-shopping-cart mr-2"></i>Cart</a>
-        <a href="#site-footer" class="min-h-11 flex items-center px-3 py-2 rounded-lg a1-hover"><i class="fas fa-compass mr-2"></i>All Site Links</a>
-        <button type="button" onclick="toggleDarkMode()" class="min-h-11 flex items-center px-3 py-2 rounded-lg a1-hover text-left font-semibold"><i id="darkModeIconMobile" class="fas fa-moon mr-2 text-teal-300"></i>Light / dark theme</button>
+      <nav class="a1n__drawer-nav" aria-label="Primary navigation (mobile)">
+        <a href="/activity" class="nav-link">Activities</a>
+        <a href="/classroom_poc?autojoin=1&amp;room=lobby" class="nav-link">Classroom</a>
+        <a href="/teach" class="nav-link">Teach</a>
+        <a href="/forum" class="nav-link">Community</a>
+        <a href="/about" class="nav-link">About</a>
+      </nav>
+      <div class="a1n__drawer-sub">
+        <a href="/requests?kind=learn"><i class="fas fa-graduation-cap" aria-hidden="true"></i>Learn requests</a>
+        <a href="/requests?kind=teach"><i class="fas fa-chalkboard-user" aria-hidden="true"></i>Teach requests</a>
+        <a href="/waiting-rooms"><i class="fas fa-door-open" aria-hidden="true"></i>Waiting rooms</a>
+        <a href="/cart"><i class="fas fa-shopping-cart" aria-hidden="true"></i>Cart</a>
+        <a href="#site-footer"><i class="fas fa-compass" aria-hidden="true"></i>All site links</a>
+        <button type="button" onclick="toggleDarkMode()"><i id="darkModeIconMobile" class="fas fa-moon" aria-hidden="true"></i>Light / dark</button>
       </div>
-      <div id="mobile-auth-not-logged-in" class="flex gap-2 pt-3 border-t border-[#2e2e2e]">
-        <a href="/login" class="flex-1 min-h-11 flex items-center justify-center px-3 py-2 rounded-lg border border-[#2e2e2e] a1-hover"><i class="fa-solid fa-right-to-bracket mr-1"></i>Login</a>
-        <a href="/login?tab=register" class="flex-1 min-h-11 flex items-center justify-center px-3 py-2 rounded-lg a1-cta font-semibold"><i class="fa-solid fa-user-plus mr-1"></i>Signup</a>
+      <div id="mobile-auth-not-logged-in" class="a1n__drawer-row">
+        <a href="/login" class="a1n__btn">Sign in</a>
+        <a href="/login?tab=register" class="a1n__btn">Create account</a>
       </div>
-      <div id="mobile-auth-logged-in" class="hidden pt-3 border-t border-[#2e2e2e] space-y-2">
-        <div class="flex items-center gap-2 px-3 py-2">
-          <div class="w-8 h-8 rounded-full a1-avatar flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
+      <a href="/activity" class="a1n__btn a1n__btn--gold" style="min-height:44px">Explore Activities <span aria-hidden="true">&#8599;</span></a>
+      <div id="mobile-auth-logged-in" class="hidden a1n__drawer-user">
+        <div style="display:flex;align-items:center;gap:10px;padding:4px">
+          <div class="a1n__avatar" style="width:34px;height:34px">
             <span id="mobile-avatar-initials"></span>
             <img id="mobile-avatar-img" class="hidden w-full h-full object-cover" alt="" />
           </div>
-          <div class="min-w-0">
-            <span id="mobile-profile-greeting" class="font-semibold block truncate"></span>
-            <span id="mobile-user-role" class="text-xs text-gray-400 capitalize block"></span>
+          <div style="min-width:0">
+            <span id="mobile-profile-greeting" style="display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <span id="mobile-user-role" class="a1n__muted" style="display:block;text-transform:capitalize"></span>
           </div>
         </div>
-        <a href="/dashboard" class="block px-3 py-2 rounded-lg"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</a>
-        <a href="/profile" class="block px-3 py-2 rounded-lg"><i class="fas fa-user mr-2"></i>Profile</a>
-        <a id="mobile-view-profile-link" href="/users.html" class="block px-3 py-2 rounded-lg"><i class="fas fa-id-badge mr-2"></i>My Public Profile</a>
-        <button onclick="logout()" class="w-full text-left px-3 py-2 rounded-lg"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
+        <a href="/dashboard"><i class="fas fa-tachometer-alt" aria-hidden="true"></i>Dashboard</a>
+        <a href="/profile"><i class="fas fa-user" aria-hidden="true"></i>Profile</a>
+        <a href="/notifications"><i class="fas fa-bell" aria-hidden="true"></i>Notifications</a>
+        <a id="mobile-view-profile-link" href="/users.html"><i class="fas fa-id-badge" aria-hidden="true"></i>My Public Profile</a>
+        <button type="button" onclick="logout()"><i class="fas fa-sign-out-alt" aria-hidden="true"></i>Logout</button>
       </div>
     </div>
   </div>
-  <span class="a1-header-trace" aria-hidden="true"></span>
 </header>

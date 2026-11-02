@@ -7,8 +7,9 @@ from js import Response, Headers
 # CSS content
 CSS_CONTENT = """/* PMOSS styles, mapped onto the Alpha One Labs brand tokens
    (https://design.alphaonelabs.com/brand.css). The --a1-* semantic tokens
-   switch between the dark and light theme, so only use those for surfaces,
-   text and accents. */
+   switch between the light (base) and dark theme, so only use those for
+   surfaces, text and accents. --a1-accent is the text-safe gold;
+   --a1-accent-fill is the brass used for fills, rules and circuit art. */
 :root {
   --pm-success: #3fb950;
   --pm-on-success: #000;
@@ -43,10 +44,10 @@ body {
   line-height: 1.6;
 }
 
-a1-header { display: block; min-height: 65px; background: var(--a1-bg, #000); }
+a1-header { display: block; min-height: var(--a1-header-height, 76px); background: var(--a1-bg, #fff); }
 
 :focus-visible {
-  outline: 2px solid var(--a1-focus, #e2c66a);
+  outline: 3px solid var(--a1-focus, #d4af37);
   outline-offset: 2px;
 }
 
@@ -64,38 +65,42 @@ a1-header { display: block; min-height: 65px; background: var(--a1-bg, #000); }
 /* Page intro (below the shared Alpha One Labs header) */
 .page-intro {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: space-between;
   gap: 20px;
-  padding-top: 32px;
+  padding-top: 40px;
 }
 
 .page-intro h1 {
   font-family: var(--a1-font-display, sans-serif);
-  font-size: var(--a1-text-3xl, 2.25rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  font-size: var(--a1-text-4xl, 3rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.92;
 }
+
+.page-intro .a1-rule { margin: 14px 0 12px; }
 
 .eyebrow {
   font-family: var(--a1-font-mono, monospace);
   font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--a1-accent, #c7ab4f);
-  margin-bottom: 6px;
+  color: var(--a1-text, #101010);
+  margin-bottom: 10px;
 }
 
 .lead { color: var(--a1-text-muted, #a3a3a3); }
 
-.maker-art {
-  width: 84px;
-  height: 84px;
+.pcb-art {
+  width: 150px;
+  height: 108px;
   flex: none;
-  background: var(--a1-accent, #c7ab4f);
-  -webkit-mask: url("https://design.alphaonelabs.com/assets/illustrations/circuit.svg") center / contain no-repeat;
-  mask: url("https://design.alphaonelabs.com/assets/illustrations/circuit.svg") center / contain no-repeat;
+  background: var(--a1-accent-fill, #d4af37);
+  -webkit-mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat;
+  mask: url("https://design.alphaonelabs.com/assets/circuits/pcb-chip.svg") center / contain no-repeat;
 }
 
 .a1-trace { margin: 8px 0 24px; }
@@ -105,15 +110,17 @@ a1-header { display: block; min-height: 65px; background: var(--a1-bg, #000); }
   padding: 60px 20px;
   background: var(--a1-surface, #0d0d0d);
   border: 1px solid var(--a1-border, #2e2e2e);
-  border-radius: var(--a1-radius-lg, 20px);
+  border-radius: var(--a1-radius-lg, 2px);
 }
 
 .auth-section h2 {
   margin-bottom: 16px;
   font-family: var(--a1-font-display, sans-serif);
-  font-size: 32px;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  font-size: 40px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 0.95;
 }
 
 .auth-section p {
@@ -122,37 +129,40 @@ a1-header { display: block; min-height: 65px; background: var(--a1-bg, #000); }
 }
 
 .btn {
-  display: inline-block;
-  padding: 10px 18px;
-  background: var(--a1-accent, #c7ab4f);
-  color: var(--a1-on-accent, #000);
-  border: 1px solid var(--a1-accent, #c7ab4f);
-  border-radius: var(--a1-radius-full, 999px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  background: var(--a1-accent-fill, #d4af37);
+  color: var(--a1-on-accent, #080808);
+  border: 1px solid var(--a1-accent-fill, #d4af37);
+  border-radius: var(--a1-radius, 2px);
   cursor: pointer;
-  font: 600 14px/1.2 var(--a1-font-body, sans-serif);
+  font: 800 14px/1.2 var(--a1-font-body, sans-serif);
   text-decoration: none;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .btn:hover {
-  background: var(--a1-accent-hover, #e2c66a);
-  border-color: var(--a1-accent-hover, #e2c66a);
+  background: var(--a1-gold-hover, #f0c658);
+  border-color: var(--a1-gold-hover, #f0c658);
 }
 
 .btn-secondary {
-  background: transparent;
-  color: var(--a1-text, #fff);
-  border: 1px solid var(--a1-border, #2e2e2e);
+  background: var(--a1-bg, #fff);
+  color: var(--a1-text, #101010);
+  border: 1px solid var(--a1-border-strong, #101010);
 }
 
 .btn-secondary:hover {
-  background: transparent;
-  border-color: var(--a1-accent, #c7ab4f);
-  color: var(--a1-accent, #c7ab4f);
+  background: var(--a1-surface-raised, #f5f5f5);
+  border-color: var(--a1-border-strong, #101010);
 }
 
 .btn-small {
-  padding: 8px 14px;
+  min-height: 36px;
+  padding: 0 12px;
   font-size: 13px;
 }
 
@@ -160,7 +170,7 @@ a1-header { display: block; min-height: 65px; background: var(--a1-bg, #000); }
   background: var(--a1-surface, #0d0d0d);
   border: 1px solid var(--a1-border, #2e2e2e);
   padding: 16px;
-  border-radius: var(--a1-radius, 12px);
+  border-radius: var(--a1-radius, 2px);
   margin-bottom: 16px;
   display: grid;
   gap: 12px;
@@ -182,15 +192,16 @@ a1-header { display: block; min-height: 65px; background: var(--a1-bg, #000); }
 
 input[type="text"], select {
   background: var(--a1-bg, #000);
-  border: 1px solid var(--a1-border, #2e2e2e);
+  border: 1px solid var(--a1-border-strong, #101010);
   color: var(--a1-text, #fff);
+  min-height: 40px;
   padding: 8px 12px;
-  border-radius: var(--a1-radius-sm, 6px);
+  border-radius: var(--a1-radius-sm, 2px);
   font: 14px/1.3 var(--a1-font-body, sans-serif);
 }
 
 input[type="text"]:focus, select:focus {
-  border-color: var(--a1-accent, #c7ab4f);
+  border-color: var(--a1-border-strong, #101010);
 }
 
 input[type="text"]::placeholder { color: var(--a1-text-muted, #a3a3a3); }
@@ -201,8 +212,8 @@ input[type="text"] {
 
 label {
   font-size: 14px;
-  font-weight: 500;
-  color: var(--a1-text-muted, #a3a3a3);
+  font-weight: 600;
+  color: var(--a1-text, #101010);
 }
 
 .bulk-actions {
@@ -211,7 +222,7 @@ label {
   padding: 12px;
   background: var(--a1-surface-raised, #1a1a1a);
   border: 1px solid var(--a1-border, #2e2e2e);
-  border-radius: var(--a1-radius, 12px);
+  border-radius: var(--a1-radius, 2px);
   margin-bottom: 16px;
   align-items: center;
   flex-wrap: wrap;
@@ -223,7 +234,7 @@ label {
 
 .table-wrap {
   overflow-x: auto;
-  border-radius: var(--a1-radius, 12px);
+  border-radius: var(--a1-radius, 2px);
 }
 
 table {
@@ -256,7 +267,7 @@ th.sortable {
 }
 
 th.sortable:hover {
-  color: var(--a1-accent, #c7ab4f);
+  color: var(--a1-text, #101010);
 }
 
 th.sortable::after {
@@ -285,7 +296,7 @@ tbody tr:hover {
 }
 
 .issue-number:hover {
-  color: var(--a1-accent, #c7ab4f);
+  color: var(--a1-accent, #7a6418);
 }
 
 .issue-title {
@@ -295,10 +306,11 @@ tbody tr:hover {
 
 .state-badge {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--a1-radius-sm, 2px);
+  font: 800 11px/1.2 var(--a1-font-body, sans-serif);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .state-open {
@@ -314,8 +326,9 @@ tbody tr:hover {
 .label {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: var(--a1-radius-sm, 2px);
   font-size: 11px;
+  font-weight: 700;
   margin-right: 4px;
   margin-bottom: 4px;
 }
@@ -323,7 +336,7 @@ tbody tr:hover {
 .assignee {
   display: inline-block;
   margin-right: 4px;
-  color: var(--a1-accent, #c7ab4f);
+  color: var(--a1-accent, #7a6418);
 }
 
 .metrics {
@@ -336,25 +349,28 @@ tbody tr:hover {
 .metric-card {
   background: var(--a1-surface, #0d0d0d);
   padding: 16px;
-  border-radius: var(--a1-radius, 12px);
+  border-radius: var(--a1-radius, 2px);
   border: 1px solid var(--a1-border, #2e2e2e);
+  border-top: 3px solid var(--a1-accent-fill, #d4af37);
 }
 
 .metric-card h2,
 .metric-card h3 {
-  font-family: var(--a1-font-mono, monospace);
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  color: var(--a1-accent, #c7ab4f);
+  font-family: var(--a1-font-display, sans-serif);
+  font-size: 20px;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--a1-text, #101010);
   text-transform: uppercase;
   margin-bottom: 8px;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .metric-card .value {
   font-family: var(--a1-font-display, sans-serif);
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 44px;
+  line-height: 1;
+  font-weight: 900;
   color: var(--a1-text, #fff);
 }
 
@@ -382,7 +398,7 @@ tbody tr:hover {
   background: var(--pm-danger);
   color: var(--pm-on-danger);
   padding: 12px;
-  border-radius: var(--a1-radius-sm, 6px);
+  border-radius: var(--a1-radius-sm, 2px);
   margin-bottom: 16px;
 }
 
@@ -390,7 +406,7 @@ tbody tr:hover {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: var(--a1-accent, #c7ab4f);
+  accent-color: var(--a1-accent-fill, #d4af37);
 }
 
 .time-value {
@@ -402,9 +418,10 @@ tbody tr:hover {
 @media (max-width: 600px) {
   .container { padding: 16px; }
   .page-intro { gap: 14px; padding-top: 20px; }
-  .maker-art { width: 56px; height: 56px; }
+  .pcb-art { display: none; }
   .auth-section { padding: 40px 16px; }
-  .auth-section h2 { font-size: 26px; }
+  .auth-section h2 { font-size: 30px; }
+  .page-intro h1 { font-size: 2.4rem; }
   input[type="text"] { min-width: 0; width: 100%; }
   .control-group { width: 100%; }
   .control-group select { flex: 1; }

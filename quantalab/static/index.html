@@ -10,17 +10,17 @@
 </head>
 <body>
   <!-- ── Header ─────────────────────────────────────────────── -->
-  <a1-header site="QuantaLab" site-href="/"></a1-header>
+  <a1-header site="QuantaLab" site-href="/" compact></a1-header>
 
   <!-- ── Lab toolbar: science domains + mentor toggle ───────── -->
   <div class="app-header">
     <nav class="domain-nav" id="domainNav" aria-label="Science domains">
-      <button class="domain-btn active" data-domain="physics" aria-pressed="true"><span aria-hidden="true">⚛️</span> Physics</button>
-      <button class="domain-btn" data-domain="chemistry" aria-pressed="false"><span aria-hidden="true">🧪</span> Chemistry</button>
-      <button class="domain-btn" data-domain="biology" aria-pressed="false"><span aria-hidden="true">🧬</span> Biology</button>
+      <button class="domain-btn active" data-domain="physics" aria-pressed="true">Physics</button>
+      <button class="domain-btn" data-domain="chemistry" aria-pressed="false">Chemistry</button>
+      <button class="domain-btn" data-domain="biology" aria-pressed="false">Biology</button>
     </nav>
     <div class="header-actions">
-      <button class="icon-btn" id="toggleMentorBtn" aria-controls="mentorPanel" title="Toggle AI Mentor"><span aria-hidden="true">🤖</span> Mentor</button>
+      <button class="icon-btn" id="toggleMentorBtn" aria-controls="mentorPanel" title="Toggle AI Mentor">AI Mentor</button>
     </div>
   </div>
 
@@ -50,17 +50,14 @@
           <hr class="a1-trace" />
           <div class="feature-grid">
             <div class="feature-card">
-              <span aria-hidden="true">⚛️</span>
               <strong>Physics</strong>
               <small>Pendulums, projectiles, circuits</small>
             </div>
             <div class="feature-card">
-              <span aria-hidden="true">🧪</span>
               <strong>Chemistry</strong>
               <small>pH, gas laws, titrations</small>
             </div>
             <div class="feature-card">
-              <span aria-hidden="true">🧬</span>
               <strong>Biology</strong>
               <small>Cell division, evolution, photosynthesis</small>
             </div>
@@ -89,13 +86,13 @@
 
         <!-- Measurements / Results -->
         <div class="results-panel" id="resultsPanel">
-          <h3><span aria-hidden="true">📊</span> Measurements</h3>
+          <h3>Measurements</h3>
           <div class="measurements" id="measurements" aria-live="polite"></div>
         </div>
 
         <!-- Learning Objectives -->
         <div class="objectives-panel" id="objectivesPanel">
-          <h3><span aria-hidden="true">🎯</span> Learning Objectives</h3>
+          <h3>Learning Objectives</h3>
           <ul id="objectivesList"></ul>
         </div>
       </div>
@@ -104,7 +101,7 @@
     <!-- AI Mentor Panel -->
     <aside class="mentor-panel" id="mentorPanel" aria-label="AI mentor chat">
       <div class="mentor-header">
-        <span class="mentor-avatar" aria-hidden="true">🤖</span>
+        <span class="mentor-avatar" aria-hidden="true">AI</span>
         <div>
           <h2 class="mentor-title">QuantaMentor</h2>
           <small>Your AI Science Guide</small>
@@ -115,8 +112,8 @@
       <div class="chat-messages" id="chatMessages" role="log" aria-live="polite">
         <div class="chat-message assistant">
           <div class="message-content">
-            Hi there! 👋 I'm <strong>QuantaMentor</strong>, your AI science guide.<br /><br />
-            Select an experiment and feel free to ask me <em>anything</em> — from basic concepts to deeper theory. Let's explore science together! 🔬
+            Hi there! I'm <strong>QuantaMentor</strong>, your AI science guide.<br /><br />
+            Select an experiment and feel free to ask me <em>anything</em> — from basic concepts to deeper theory. Let's explore science together.
           </div>
         </div>
       </div>
