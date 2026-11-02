@@ -111,6 +111,16 @@ alphaonelabs-virtual-robotics-playground/
         └── pr-check.yml    # PR validation
 ```
 
+## 🧪 Tests
+
+The LiDAR geometry tests use Node.js's built-in test runner and need no extra dependencies. From the repository root, run:
+
+```bash
+node --test botlab/tests
+```
+
+You can also run `npm test` from the `botlab/` directory.
+
 ---
 
 ## 🤝 Contributing
