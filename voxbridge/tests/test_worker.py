@@ -429,12 +429,24 @@ class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
 
     async def test_caption_route_reaches_handler(self):
         """POST /api/caption reaches the caption handler and returns its transcript."""
-        audio = base64.b64encode(b"fake-audio").decode()
-        resp = await self._fetch("POST", "/api/caption", body={"audio": audio})
+        raw = b"fake-audio"
+        audio = base64.b64encode(raw).decode()
+        req = _MockRequest(
+            method="POST",
+            url="https://voxbridge.example.com/api/caption",
+            body={"audio": audio},
+        )
+        env = _MockEnv()
+        env.AI.run.return_value = {"text": "ok", "response": "ok", "description": "ok"}
+        w = worker.VoxBridgeWorker(_MockCtx(), env)
+        resp = await w.fetch(req)
         self.assertEqual(resp.status, 200)
         data = json.loads(resp.body)
         self.assertEqual(data["text"], "ok")
         self.assertEqual(data["model"], worker.MODEL_WHISPER)
+        model, payload = env.AI.run.call_args[0]
+        self.assertEqual(model, worker.MODEL_WHISPER)
+        self.assertEqual(payload["audio"], list(raw))
 
     async def test_health_route(self):
         resp = await self._fetch("GET", "/api/health")
