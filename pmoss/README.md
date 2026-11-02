@@ -65,14 +65,14 @@ A minimal, fast open-source project management system that integrates with GitHu
 
 ### 1. Clone the Repository
 
-\`\`\`bash
-git clone https://github.com/alphaonelabs/alphaonelabs-oss-project-management.git
-cd alphaonelabs-oss-project-management
-\`\`\`
+```bash
+git clone https://github.com/alphaonelabs/website.git
+cd website/pmoss
+```
 
 ### 2. Install Wrangler CLI
 
-\`\`\`bash
+```bash
 # Using npm (only for Wrangler CLI, not for the project)
 npm install -g wrangler
 
@@ -81,35 +81,35 @@ cargo install wrangler
 
 # Or using Homebrew (macOS)
 brew install cloudflare-wrangler2
-\`\`\`
+```
 
 ### 3. Create a D1 Database
 
-\`\`\`bash
+```bash
 # Create the database
 wrangler d1 create oss-pm-db
 
 # Note the database_id from the output and update wrangler.toml
-\`\`\`
+```
 
 Update `wrangler.toml` with your database ID:
 
-\`\`\`toml
+```toml
 [[d1_databases]]
 binding = "DB"
 database_name = "oss-pm-db"
 database_id = "your-database-id-here"
-\`\`\`
+```
 
 ### 4. Initialize Database Schema
 
-\`\`\`bash
+```bash
 wrangler d1 execute oss-pm-db --file=./schema.sql
-\`\`\`
+```
 
 ### 5. Create GitHub OAuth App
 
-1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers) and follow the [OAuth app setup guide](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
 2. Click "New OAuth App"
 3. Fill in the details:
    - **Application name**: OSS Project Management
@@ -119,31 +119,43 @@ wrangler d1 execute oss-pm-db --file=./schema.sql
 
 ### 6. Configure Secrets
 
-\`\`\`bash
+```bash
 # Set GitHub OAuth credentials
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 
-# Set webhook secret (generate a random string)
+# Set this before registering a GitHub webhook
 wrangler secret put GITHUB_WEBHOOK_SECRET
-
-# Optional: Session secret for additional security
-wrangler secret put SESSION_SECRET
-\`\`\`
+```
 
 Update `wrangler.toml` with your worker URL:
 
-\`\`\`toml
+```toml
 [vars]
 GITHUB_REDIRECT_URI = "https://your-worker.workers.dev/auth/callback"
-\`\`\`
+```
+
+### Environment Variables
+
+PMOSS reads these five GitHub settings from the Worker environment. The D1
+database is provided separately as the DB binding in wrangler.toml.
+
+| Name | Needed when | Purpose |
+| --- | --- | --- |
+| GITHUB_CLIENT_ID | Signing in | Client ID for the GitHub OAuth app. |
+| GITHUB_CLIENT_SECRET | Completing sign-in | Client secret used to exchange the OAuth code for an access token. |
+| GITHUB_REDIRECT_URI | Signing in | OAuth callback URL. wrangler.toml sets the production URL; local development uses the localhost URL in .dev.vars. |
+| GITHUB_REDIRECT_URI_DEFAULT | Only as a fallback | Used only when GITHUB_REDIRECT_URI is missing or empty. |
+| GITHUB_WEBHOOK_SECRET | Using GitHub webhooks | Secret used to verify webhook signatures. Set it for any exposed webhook; if it is absent, the current handler logs a warning and accepts requests that include a signature header without checking its value. |
+
+SESSION_SECRET is not read by the PMOSS source and is not required.
 
 ### 7. Deploy
 
-\`\`\`bash
+```bash
 # Deploy to Cloudflare Workers
 wrangler deploy
-\`\`\`
+```
 
 ## Usage
 
@@ -221,22 +233,52 @@ The D1 database includes the following tables:
 
 ### Local Development
 
-\`\`\`bash
+Wrangler loads local variables from .dev.vars beside wrangler.toml. From the
+pmoss directory, copy .dev.vars.example to .dev.vars by running
+cp .dev.vars.example .dev.vars (or Copy-Item .dev.vars.example .dev.vars in
+PowerShell). Edit the copy with credentials from a separate GitHub OAuth app
+for local development.
+Repeat step 5 to create a separate OAuth app for local development. Set its
+homepage URL to http://localhost:8787 and its authorization callback
+URL to exactly http://localhost:8787/auth/callback. The local callback in
+.dev.vars overrides the production callback configured in wrangler.toml. Keep
+the client secret in .dev.vars; that file is ignored by Git. See Cloudflare's
+[local environment variable guide](https://developers.cloudflare.com/workers/local-development/environment-variables/).
+
+Initialize the local D1 database with wrangler d1 execute pmoss --local --file=schema.sql,
+then start the Worker with the command below. Both commands should run from
+the pmoss directory. Local D1 data is separate from production.
+
+```bash
 # Run local development server
 wrangler dev
 
 # Access at http://localhost:8787
-\`\`\`
+```
 
 **Note**: Python Workers are fully supported by Wrangler. No separate Python installation or pip packages are needed.
+
+Open http://localhost:8787/ and choose Connect with GitHub. A successful
+sign-in requires valid credentials from the local OAuth app.
+
+### Testing GitHub Webhooks Locally
+
+GitHub cannot deliver events directly to localhost. Keep wrangler dev running,
+then expose it from a second terminal with cloudflared tunnel --url
+http://localhost:8787. Use the generated HTTPS URL with /webhook as the payload
+URL in the GitHub repository's webhook settings. Set the webhook secret to the
+same value as GITHUB_WEBHOOK_SECRET in .dev.vars, select the Issues event, and
+save. To replay an earlier delivery, open that webhook's Recent Deliveries in
+GitHub and choose Redeliver. See Cloudflare's
+[Quick Tunnels guide](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
 
 ### Testing Locally
 
 Use a tool like [ngrok](https://ngrok.com/) to test webhooks locally:
 
-\`\`\`bash
+```bash
 ngrok http 8787
-\`\`\`
+```
 
 Then use the ngrok URL for your GitHub webhook.
 

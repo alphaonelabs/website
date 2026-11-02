@@ -1,15 +1,11 @@
-# Development Configuration
-# Copy this to .dev.vars for local development
+# Local development only. Use credentials from a separate GitHub OAuth app.
+GITHUB_CLIENT_ID="your-local-oauth-app-client-id"
+GITHUB_CLIENT_SECRET="your-local-oauth-app-client-secret"
+GITHUB_REDIRECT_URI="http://localhost:8787/auth/callback"
 
-# GitHub OAuth Credentials (create a separate OAuth app for development)
-GITHUB_CLIENT_ID=your_dev_client_id
-GITHUB_CLIENT_SECRET=your_dev_client_secret
+# Fallback used only when GITHUB_REDIRECT_URI is missing or empty.
+GITHUB_REDIRECT_URI_DEFAULT="http://localhost:8787/auth/callback"
 
-# Webhook Secret (generate with: openssl rand -hex 32)
-GITHUB_WEBHOOK_SECRET=your_webhook_secret
-
-# Optional Session Secret
-SESSION_SECRET=your_session_secret
-
-# Note: .dev.vars is automatically loaded by Wrangler for local development
-# and is already in .gitignore so it won't be committed
+# Required to verify webhook deliveries when testing webhooks locally.
+# Replace this placeholder with a random value; never use a production secret.
+GITHUB_WEBHOOK_SECRET="replace-with-a-random-local-secret"
