@@ -38,6 +38,7 @@ def _install_cf_stubs() -> None:
 
     class WorkerEntrypoint:
         def __init__(self, ctx, env):
+            """Store the worker context and env the same way the real entrypoint does."""
             self.ctx = ctx
             self.env = env
 
@@ -409,6 +410,7 @@ class TestVisualSceneHandler(unittest.IsolatedAsyncioTestCase):
 
 class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
     async def _fetch(self, method, path, body=None):
+        """Build a worker with the mock env and dispatch one request through fetch."""
         url = "https://voxbridge.example.com" + path
         req = _MockRequest(method=method, url=url, body=body or {})
         env = _MockEnv()
@@ -417,6 +419,7 @@ class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
         return await w.fetch(req)
 
     async def test_options_returns_204(self):
+        """OPTIONS preflight is handled by fetch and returns 204."""
         url = "https://voxbridge.example.com/api/health"
         req = _MockRequest(method="OPTIONS", url=url)
         env = _MockEnv()
@@ -425,6 +428,7 @@ class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resp.status, 204)
 
     async def test_caption_route_reaches_handler(self):
+        """POST /api/caption reaches the caption handler and returns its transcript."""
         audio = base64.b64encode(b"fake-audio").decode()
         resp = await self._fetch("POST", "/api/caption", body={"audio": audio})
         self.assertEqual(resp.status, 200)
