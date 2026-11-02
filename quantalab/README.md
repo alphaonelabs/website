@@ -16,6 +16,7 @@
 - **AI Mentor** chat powered by `@cf/meta/llama-3.3-70b-instruct-fp8-fast` via Cloudflare Workers AI
 - **Interactive controls** — sliders to adjust experiment parameters and instantly see results
 - **Live measurements** panel with calculated metrics for each experiment
+- **Shareable experiment links** that restore the selected domain, experiment, and parameter values
 - Fully serverless — runs as a **Cloudflare Python Worker** with static assets
 
 ---

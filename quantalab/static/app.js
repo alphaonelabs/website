@@ -78,6 +78,7 @@ const mentorPanel = $('#mentorPanel');
 const toggleMentorBtn = $('#toggleMentorBtn');
 const closeMentorBtn = $('#closeMentorBtn');
 const resetBtn = $('#resetBtn');
+const copyLinkBtn = $('#copyLinkBtn');
 
 // ── API ───────────────────────────────────────────────────────────────────
 
@@ -104,22 +105,97 @@ async function askMentor(message) {
 
 // ── Domain & Experiment Loading ───────────────────────────────────────────
 
-async function loadDomain(domain) {
-  state.domain = domain;
+let domainLoadId = 0;
+let urlUpdateTimer = null;
+const SUPPORTED_DOMAINS = ['physics', 'chemistry', 'biology'];
+
+function normalizeParameterValue(param, rawValue, fallback) {
+  if (rawValue === undefined || rawValue === null || rawValue === '') return fallback;
+
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) return fallback;
+
+  const min = Number(param.min);
+  const max = Number(param.max);
+  const defaultValue = Number(param.default);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return fallback;
+
+  let normalized = Math.min(max, Math.max(min, value));
+  const step = Number(param.step);
+  if (Number.isFinite(step) && step > 0) {
+    normalized = min + Math.round((normalized - min) / step) * step;
+    normalized = Math.min(max, Math.max(min, normalized));
+  }
+
+  if (!Number.isFinite(normalized)) return Number.isFinite(defaultValue) ? defaultValue : fallback;
+  const precision = String(step).includes('.') ? String(step).split('.')[1].length : 0;
+  return precision ? Number(normalized.toFixed(precision)) : normalized;
+}
+
+function currentUrl() {
+  const url = new URL(window.location.href);
+  url.search = '';
+
+  url.searchParams.set('domain', state.domain);
+  if (state.experiment) {
+    url.searchParams.set('exp', state.experiment.id);
+    (state.experiment.parameters || []).forEach((param) => {
+      if (Object.prototype.hasOwnProperty.call(state.params, param.id)) {
+        url.searchParams.set(param.id, String(state.params[param.id]));
+      }
+    });
+  }
+  return url;
+}
+
+function replaceUrlWithState() {
+  window.history.replaceState({}, '', currentUrl());
+}
+
+function scheduleUrlUpdate(delay = 180) {
+  if (urlUpdateTimer) window.clearTimeout(urlUpdateTimer);
+  urlUpdateTimer = window.setTimeout(() => {
+    urlUpdateTimer = null;
+    replaceUrlWithState();
+  }, delay);
+}
+
+async function loadDomain(domain, options = {}) {
+  const requestedDomain = SUPPORTED_DOMAINS.includes(domain) ? domain : 'physics';
+  const loadId = ++domainLoadId;
+  state.domain = requestedDomain;
   state.experiment = null;
+  state.params = {};
   cancelAnimation();
 
   domainBtns.forEach((b) => {
-    b.classList.toggle('active', b.dataset.domain === domain);
-    b.setAttribute('aria-pressed', String(b.dataset.domain === domain));
+    b.classList.toggle('active', b.dataset.domain === requestedDomain);
+    b.setAttribute('aria-pressed', String(b.dataset.domain === requestedDomain));
   });
   expList.innerHTML = '<li class="skeleton-item"></li><li class="skeleton-item"></li><li class="skeleton-item"></li>';
   showWelcome();
 
+  if (options.updateUrl !== false) replaceUrlWithState();
+
   try {
-    const data = await fetchExperiments(domain);
+    const data = await fetchExperiments(requestedDomain);
+    if (loadId !== domainLoadId) return;
     renderExperimentList(data.experiments);
+    if (options.desiredExpId) {
+      const exp = data.experiments.find((item) => item.id === options.desiredExpId);
+      if (exp) {
+        selectExperiment(exp, {
+          parameterOverrides: options.parameterOverrides || {},
+          updateUrl: false,
+          greetMentor: options.greetMentor !== false,
+        });
+        replaceUrlWithState();
+        return;
+      }
+    }
+    if (options.updateUrl !== false) replaceUrlWithState();
   } catch (e) {
+    if (loadId !== domainLoadId) return;
     expList.innerHTML = `<li style="padding:16px;color:var(--danger);font-size:.85rem">Failed to load experiments.</li>`;
   }
 }
@@ -142,10 +218,17 @@ function renderExperimentList(experiments) {
   });
 }
 
-function selectExperiment(exp) {
+function selectExperiment(exp, options = {}) {
   state.experiment = exp;
   state.params = {};
-  (exp.parameters || []).forEach((p) => { state.params[p.id] = p.default; });
+  const overrides = options.parameterOverrides || {};
+  (exp.parameters || []).forEach((p) => {
+    const fallback = Number.isFinite(Number(p.default)) ? Number(p.default) : 0;
+    const raw = Object.prototype.hasOwnProperty.call(overrides, p.id)
+      ? overrides[p.id]
+      : undefined;
+    state.params[p.id] = normalizeParameterValue(p, raw, fallback);
+  });
 
   document.querySelectorAll('.exp-item').forEach((li) => {
     li.classList.toggle('active', li.dataset.id === exp.id);
@@ -160,9 +243,13 @@ function selectExperiment(exp) {
   cancelAnimation();
   startSimulation(exp.id);
 
-  // Prompt the mentor with context
-  const greeting = `I just started the "${exp.title}" experiment. Can you give me a quick overview of what I should look for?`;
-  autoMentorGreet(greeting, exp.id);
+  if (options.updateUrl !== false) replaceUrlWithState();
+
+  if (options.greetMentor !== false) {
+    // Prompt the mentor with context
+    const greeting = `I just started the "${exp.title}" experiment. Can you give me a quick overview of what I should look for?`;
+    autoMentorGreet(greeting, exp.id);
+  }
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────
@@ -199,6 +286,7 @@ function renderControls(params) {
     slider.addEventListener('input', () => {
       state.params[p.id] = parseFloat(slider.value);
       valueSpan.textContent = slider.value;
+      scheduleUrlUpdate();
     });
 
     group.append(labelRow, slider);
@@ -1352,6 +1440,63 @@ resetBtn.addEventListener('click', () => {
     if (slider) slider.value = p.default;
     if (valSpan) valSpan.textContent = p.default;
   });
+  replaceUrlWithState();
+});
+
+copyLinkBtn.addEventListener('click', async () => {
+  replaceUrlWithState();
+  const shareUrl = window.location.href;
+  let copied = false;
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(shareUrl);
+      copied = true;
+    } else {
+      const input = document.createElement('textarea');
+      input.value = shareUrl;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      copied = document.execCommand('copy');
+      input.remove();
+    }
+  } catch (_) {
+    copied = false;
+  }
+
+  const originalText = copyLinkBtn.textContent;
+  copyLinkBtn.textContent = copied ? '✓ Link copied' : 'Copy failed';
+  window.setTimeout(() => {
+    copyLinkBtn.textContent = originalText;
+  }, 1600);
+});
+
+async function restoreUrlState() {
+  if (urlUpdateTimer) {
+    window.clearTimeout(urlUpdateTimer);
+    urlUpdateTimer = null;
+  }
+
+  const query = new URLSearchParams(window.location.search);
+  const domainParam = query.get('domain');
+  const domain = SUPPORTED_DOMAINS.includes(domainParam) ? domainParam : 'physics';
+  const expId = query.get('exp');
+  const parameterOverrides = Object.fromEntries(query.entries());
+
+  await loadDomain(domain, {
+    desiredExpId: expId || null,
+    parameterOverrides,
+    updateUrl: false,
+    greetMentor: false,
+  });
+  replaceUrlWithState();
+}
+
+window.addEventListener('popstate', () => {
+  restoreUrlState();
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────
@@ -1359,4 +1504,4 @@ resetBtn.addEventListener('click', () => {
 toggleMentorBtn.setAttribute('aria-expanded', String(state.mentorVisible));
 if (!state.mentorVisible) mentorPanel.classList.add('hidden');
 
-loadDomain('physics');
+restoreUrlState();
