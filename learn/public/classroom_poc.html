@@ -738,10 +738,25 @@
 
     // Authentication utils
     function getAuth() {
-        return {
-            token: localStorage.getItem('edu_token'),
-            user: JSON.parse(localStorage.getItem('edu_user') || 'null')
-        };
+        const urlToken = searchParams.get('token');
+        if (urlToken) {
+            try {
+                localStorage.setItem('edu_token', urlToken);
+                const parts = urlToken.split('.');
+                if (parts.length >= 2) {
+                    const b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+                    const u = JSON.parse(atob(b64));
+                    localStorage.setItem('edu_user', JSON.stringify(u));
+                    return { token: urlToken, user: u };
+                }
+            } catch (_) {}
+        }
+        const token = localStorage.getItem('edu_token');
+        let user = null;
+        try {
+            user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+        } catch (_) {}
+        return { token, user };
     }
 
     function isAuthenticated() {
@@ -898,10 +913,10 @@
     }
 
     function getPreferredDisplayName() {
-        const queryName = sanitizeDisplayName(searchParams.get('name') || '');
+        const queryName = sanitizeDisplayName(searchParams.get('name') || searchParams.get('display_name') || '');
         if (queryName) return queryName;
         try {
-            const user = JSON.parse(localStorage.getItem(STORAGE_AUTH_USER_KEY) || 'null');
+            const user = getAuth().user || JSON.parse(localStorage.getItem(STORAGE_AUTH_USER_KEY) || 'null');
             if (user?.name) return sanitizeDisplayName(user.name);
             if (user?.username) return sanitizeDisplayName(user.username);
         } catch (_) {
@@ -2526,7 +2541,7 @@
         intentionalDisconnect = false;
 
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const token = localStorage.getItem('edu_token') || '';
+        const token = getAuth().token || localStorage.getItem('edu_token') || '';
         const params = new URLSearchParams();
         if (token) params.set('token', token);
         params.set('participant_id', myParticipantId);
@@ -2605,7 +2620,7 @@
     function connectPresenceWS() {
         if (presenceWs && (presenceWs.readyState === WebSocket.OPEN || presenceWs.readyState === WebSocket.CONNECTING)) return;
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const token = localStorage.getItem('edu_token') || '';
+        const token = getAuth().token || localStorage.getItem('edu_token') || '';
         const params = new URLSearchParams();
         if (token) params.set('token', token);
         params.set('user_id', myParticipantId);
@@ -3584,8 +3599,13 @@
     refreshIcons();
     updateLobbyActionCopy();
     if (viewerLoginLink) viewerLoginLink.addEventListener('click', preserveClassroomRedirect);
-    const preferredName = getPreferredDisplayName();
-    if (preferredName && lobbyDisplayName) lobbyDisplayName.value = preferredName;
+    const queryName = sanitizeDisplayName(searchParams.get('name') || searchParams.get('display_name') || '');
+    if (queryName && lobbyDisplayName) {
+        lobbyDisplayName.value = queryName;
+    } else {
+        const preferredName = getPreferredDisplayName();
+        if (preferredName && lobbyDisplayName) lobbyDisplayName.value = preferredName;
+    }
 
     const initialRoom = sanitizeRoomId(searchParams.get('room') || '');
     if (initialRoom && lobbyRoomId) lobbyRoomId.value = initialRoom;
