@@ -118,6 +118,16 @@ def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret
     env = MagicMock()
     env.ENCRYPTION_KEY = enc_key
     env.JWT_SECRET = jwt_secret
+    env.SENDGRID_API_KEY = ""
+    env.sendgrid_api_key = ""
+    env.MAILGUN_SENDING_KEY = ""
+    env.MAILGUN_API_KEY = ""
+    env.MAILGUN_DOMAIN = ""
+    env.MAILGUN_API_BASE = ""
+    env.mailgun_sending_key = ""
+    env.mailgun_api_key = ""
+    env.mailgun_domain = ""
+    env.mailgun_api_base = ""
     env.AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
     env.AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
     env.ADMIN_BASIC_USER = admin_user
@@ -202,4 +212,3 @@ async def make_init_db_stmts(worker_mod):
     """Return a list of dummy statements sized to match worker.init_db()."""
     cnt = await get_init_db_statement_count(worker_mod)
     return [make_stmt() for _ in range(cnt)]
-

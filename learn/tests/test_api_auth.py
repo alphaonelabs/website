@@ -11,6 +11,7 @@ worker = load_worker()
 
 SECRET = "test-encryption-key"
 JWT = "test-jwt-secret"
+STRONG_PASSWORD = "StrongPass1!"
 
 
 @pytest.fixture(autouse=True)
@@ -74,11 +75,59 @@ class TestApiRegister:
         assert r.status == 400
         assert "8 characters" in _parse(r).get("error", "")
 
+    async def test_password_without_uppercase_returns_400(self):
+        env = make_env()
+        r = await worker.api_register(
+            self._req({"username": "alice", "email": "a@b.com", "password": "lowercase1!"}), env
+        )
+        assert r.status == 400
+        assert _parse(r).get("error") == "Password must include an uppercase letter"
+
+    async def test_password_without_lowercase_returns_400(self):
+        env = make_env()
+        r = await worker.api_register(
+            self._req({"username": "alice", "email": "a@b.com", "password": "UPPERCASE1!"}), env
+        )
+        assert r.status == 400
+        assert _parse(r).get("error") == "Password must include a lowercase letter"
+
+    async def test_password_without_digit_returns_400(self):
+        env = make_env()
+        r = await worker.api_register(
+            self._req({"username": "alice", "email": "a@b.com", "password": "StrongPass!"}), env
+        )
+        assert r.status == 400
+        assert _parse(r).get("error") == "Password must include a number"
+
+    async def test_password_without_symbol_returns_400(self):
+        env = make_env()
+        r = await worker.api_register(
+            self._req({"username": "alice", "email": "a@b.com", "password": "StrongPass1"}), env
+        )
+        assert r.status == 400
+        assert _parse(r).get("error") == "Password must include a symbol (for example ! @ # $ %)"
+
+    async def test_common_password_returns_400(self):
+        env = make_env()
+        r = await worker.api_register(
+            self._req({"username": "alice", "email": "a@b.com", "password": "Password123!"}), env
+        )
+        assert r.status == 400
+        assert _parse(r).get("error") == "That password is too common. Please choose something less predictable"
+
+    async def test_password_containing_username_returns_400(self):
+        env = make_env()
+        r = await worker.api_register(
+            self._req({"username": "alice", "email": "a@b.com", "password": "AliceStrong9!"}), env
+        )
+        assert r.status == 400
+        assert _parse(r).get("error") == "Password must not contain your username"
+
     async def test_successful_registration(self):
         # DB: prepare().bind().run() succeeds (default mock)
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "alice@example.com", "password": "password123"}),
+            self._req({"username": "alice", "email": "alice@example.com", "password": STRONG_PASSWORD}),
             env,
         )
         assert r.status == 200
@@ -91,7 +140,7 @@ class TestApiRegister:
     async def test_name_defaults_to_username(self):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "bob", "email": "bob@example.com", "password": "password123"}), env
+            self._req({"username": "bob", "email": "bob@example.com", "password": STRONG_PASSWORD}), env
         )
         data = _parse(r)
         assert data["success"] is True  # name is stored in DB, not returned in response
@@ -99,7 +148,7 @@ class TestApiRegister:
     async def test_custom_name_preserved(self):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "bob", "email": "b@b.com", "password": "password123", "name": "Robert"}),
+            self._req({"username": "bob", "email": "b@b.com", "password": STRONG_PASSWORD, "name": "Robert"}),
             env,
         )
         data = _parse(r)
@@ -111,7 +160,7 @@ class TestApiRegister:
         stmt.bind.return_value.run.side_effect = Exception("UNIQUE constraint failed")
         env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "alice@example.com", "password": "password123"}),
+            self._req({"username": "alice", "email": "alice@example.com", "password": STRONG_PASSWORD}),
             env,
         )
         assert r.status == 409
@@ -122,7 +171,7 @@ class TestApiRegister:
         stmt.bind.return_value.run.side_effect = Exception("some DB error")
         env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "a@b.com", "password": "password123"}), env
+            self._req({"username": "alice", "email": "a@b.com", "password": STRONG_PASSWORD}), env
         )
         assert r.status == 500
 
@@ -130,7 +179,7 @@ class TestApiRegister:
         # Registration no longer issues a token; user must verify email first.
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "a@b.com", "password": "password123"}), env
+            self._req({"username": "alice", "email": "a@b.com", "password": STRONG_PASSWORD}), env
         )
         assert r.status == 200
         data = _parse(r)
@@ -148,11 +197,11 @@ class TestApiRegister:
         env = self._rate_limited_env()
         ip = "203.0.113.10"
 
-        first_req = self._req({"username": "alice1", "email": "alice1@example.com", "password": "password123"})
+        first_req = self._req({"username": "alice1", "email": "alice1@example.com", "password": STRONG_PASSWORD})
         first_req.headers["CF-Connecting-IP"] = ip
-        second_req = self._req({"username": "alice2", "email": "alice2@example.com", "password": "password123"})
+        second_req = self._req({"username": "alice2", "email": "alice2@example.com", "password": STRONG_PASSWORD})
         second_req.headers["CF-Connecting-IP"] = ip
-        third_req = self._req({"username": "alice3", "email": "alice3@example.com", "password": "password123"})
+        third_req = self._req({"username": "alice3", "email": "alice3@example.com", "password": STRONG_PASSWORD})
         third_req.headers["CF-Connecting-IP"] = ip
 
         first = await worker.api_register(first_req, env)
