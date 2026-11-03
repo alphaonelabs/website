@@ -7,6 +7,7 @@ primitives are needed.
 """
 
 import json
+from types import SimpleNamespace
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 
@@ -793,6 +794,7 @@ class TestClassroomDOSignaling:
             for c in ws_bob.send.call_args_list
         )
         assert hand_bob is True
+        assert "alice" in do.hand_raise_queue
 
     @pytest.mark.asyncio
     async def test_default_media_state_muted_and_video_off(self):
@@ -809,7 +811,7 @@ class TestClassroomDOSignaling:
         assert resp.status == 101
 
         # Check session initialization in do.sessions
-        alice_session = next(s for s in do.sessions.values() if s["participant_id"] == "alice")
+        alice_session = next(s for s in do.sessions.values() if s.get("display_name") == "Alice")
         assert alice_session["media_state"] == {
             "audio": False,
             "video": False,
@@ -819,7 +821,7 @@ class TestClassroomDOSignaling:
 
         # Check participant_joined payload broadcast to bob
         calls = [json.loads(c[0][0]) for c in ws_bob.send.call_args_list if c[0]]
-        joined_msg = next((c for c in calls if c.get("type") == "participant_joined" and c.get("participant_id") == "alice"), None)
+        joined_msg = next((c for c in calls if c.get("type") == "participant_joined" and c.get("display_name") == "Alice"), None)
         assert joined_msg is not None
         assert joined_msg["media_state"] == {
             "audio": False,
@@ -855,7 +857,7 @@ class TestClassroomDOSignaling:
         req_guest.url = "ws://localhost/api/classroom/room1?participant_id=guest-user&display_name=GuestUser"
         resp_guest = await do.on_fetch(req_guest)
         assert resp_guest.status == 101
-        guest_sess = next(s for s in do.sessions.values() if s["participant_id"] == "guest-user")
+        guest_sess = next(s for s in do.sessions.values() if s.get("display_name") == "GuestUser")
         assert guest_sess["is_instructor"] is False
         assert guest_sess["role"] == "student"
 
@@ -912,4 +914,118 @@ class TestClassroomDOSignaling:
         await do.on_webSocketMessage(ws_alice, msg)
 
         calls = [json.loads(c[0][0]) for c in ws_bob.send.call_args_list if c[0]]
-        assert any(c.get("type") == "live_caption" and "Hello world" in c.get("text", "") for c in calls)
+        assert any(c.get("type") == "live_caption" and c.get("text") == "Hello world, welcome to class" for c in calls)
+
+    @pytest.mark.asyncio
+    async def test_media_state_merged_across_tabs(self):
+        """Verify media_state broadcasts merged audio/video across multiple tabs for same participant."""
+        do = self._make_classroom_do()
+        ws_alice1 = self._add_session(do, "alice", "Alice")
+        ws_alice2 = MagicMock()
+        ws_alice2.deserializeAttachment.return_value = json.dumps({"session_id": "sid-alice2"})
+        do.sessions["sid-alice2"] = {
+            "ws": ws_alice2,
+            "session_id": "sid-alice2",
+            "participant_id": "alice",
+            "display_name": "Alice",
+            "can_interact": True,
+            "media_state": {"audio": True, "video": False, "mic_enabled": True, "cam_enabled": False},
+        }
+        ws_bob = self._add_session(do, "bob", "Bob")
+
+        # Tab 1 sets audio to False, but Tab 2 still has audio True
+        ws_bob.send.reset_mock()
+        await do.on_webSocketMessage(ws_alice1, json.dumps({
+            "type": "media_state",
+            "audio": False,
+            "video": False,
+        }))
+
+        calls = [json.loads(c[0][0]) for c in ws_bob.send.call_args_list if c[0]]
+        media_msg = next((c for c in calls if c.get("type") == "media_state" and c.get("participant_id") == "alice"), None)
+        assert media_msg is not None
+        assert media_msg["audio"] is True
+        assert media_msg["mic_enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_whiteboard_event_sets_server_participant_id(self):
+        """Verify server sets participant_id ignoring client spoofed value."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        storage_put = AsyncMock()
+        do.ctx = SimpleNamespace(storage=SimpleNamespace(get=AsyncMock(return_value="[]"), put=storage_put))
+
+        event_payload = {
+            "from": {"x": 0.1, "y": 0.1},
+            "to": {"x": 0.2, "y": 0.2},
+            "participant_id": "spoofed_id",
+            "alpha": 0.8,
+        }
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "whiteboard_event",
+            "event": event_payload,
+        }))
+
+        storage_put.assert_called_once()
+        saved = json.loads(storage_put.call_args[0][1])
+        assert saved[-1]["participant_id"] == "alice"
+        assert saved[-1]["alpha"] == 0.8
+
+    @pytest.mark.asyncio
+    async def test_screen_share_instructor_override_and_liveness(self):
+        """Verify instructor can override screen share and stale sharer is cleared."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_teacher = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+
+        # Alice shares
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "start_screen_share",
+            "stream_id": "stream-alice",
+        }))
+        assert do.screen_sharer["participant_id"] == "alice"
+
+        # Teacher overrides
+        await do.on_webSocketMessage(ws_teacher, json.dumps({
+            "type": "start_screen_share",
+            "stream_id": "stream-teacher",
+        }))
+        assert do.screen_sharer["participant_id"] == "teacher"
+
+    @pytest.mark.asyncio
+    async def test_update_seat_range_validation(self):
+        """Verify numeric seat IDs are bounded to 1-15."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+
+        # Invalid seats: 0 and 16
+        await do.on_webSocketMessage(ws_alice, json.dumps({"type": "update_seat", "seat_id": "seat-0"}))
+        assert do.sessions["sid-alice"].get("seat_id", "") != "seat-0"
+
+        await do.on_webSocketMessage(ws_alice, json.dumps({"type": "update_seat", "seat_id": "seat-16"}))
+        assert do.sessions["sid-alice"].get("seat_id", "") != "seat-16"
+
+        # Valid seat: 15
+        await do.on_webSocketMessage(ws_alice, json.dumps({"type": "update_seat", "seat_id": "seat-15"}))
+        assert do.sessions["sid-alice"].get("seat_id") == "seat-15"
+
+    @pytest.mark.asyncio
+    async def test_presence_do_persist_user_attachments_keeps_is_authenticated(self):
+        """Verify PresenceDO._persist_user_attachments preserves is_authenticated flag."""
+        do = worker.PresenceDO.__new__(worker.PresenceDO)
+        do.presence = {"u1": {"x": 0.5, "y": 0.5, "emoji": "👋", "hand_raised": False}}
+        ws = MagicMock()
+        do.sessions = {
+            "s1": {
+                "ws": ws,
+                "user_id": "u1",
+                "display_name": "User 1",
+                "can_interact": True,
+                "is_authenticated": True,
+            }
+        }
+        do._persist_user_attachments("u1")
+        ws.serializeAttachment.assert_called_once()
+        saved = json.loads(ws.serializeAttachment.call_args[0][0])
+        assert saved["is_authenticated"] is True
