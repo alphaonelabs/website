@@ -147,6 +147,25 @@ Frontend Server will start at:
 ```bash
 http://localhost:3000
 ```
+
+### Run the accessibility audit locally
+
+From the repository root, run:
+
+```bash
+cd learn
+bash scripts/run-a11y.sh
+```
+
+The report-only audit starts Wrangler locally, applies `schema.sql` to the local
+D1 database, and scans `/`, `/about`, `/activity`, `/login`, `/teach`, `/gsoc`,
+`/status`, `/privacy`, `/terms`, and `/404` with the WCAG 2.2 AA axe tags. JSON
+reports and a `summary.txt` are written to `learn/a11y-report/`.
+
+Chrome/Chromium and ChromeDriver must be available locally. This audit does not
+fail on violations yet; TODO(#1131): make it blocking after baseline violations
+are fixed.
+
 ## API Endpoints
 
 ### Authentication
