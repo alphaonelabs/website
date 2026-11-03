@@ -9,3 +9,6 @@ LICENSE
 scripts
 .wrangler
 .nojekyll
+package.json
+package-lock.json
+tests
