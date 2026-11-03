@@ -281,8 +281,10 @@ sign-in requires valid credentials from the local OAuth app.
 
 ### Testing GitHub Webhooks Locally
 
-GitHub cannot deliver events directly to localhost. Keep `wrangler dev` running,
-then expose it from a second terminal with:
+GitHub cannot deliver events directly to localhost. Keep `wrangler dev` running
+in one terminal. If `cloudflared` is not already installed, install it using
+Cloudflare's [installation instructions](https://developers.cloudflare.com/tunnel/downloads/).
+Then expose the local Worker from a second terminal:
 
 ```sh
 cloudflared tunnel --url http://localhost:8787
