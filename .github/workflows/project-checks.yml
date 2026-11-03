@@ -17,6 +17,7 @@ jobs:
     outputs:
       workers: ${{ steps.pick.outputs.workers }}
       app: ${{ steps.pick.outputs.app }}
+      learn: ${{ steps.pick.outputs.learn }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,6 +34,7 @@ jobs:
           workers=$(for d in $changed; do if [ -f "$d/wrangler.toml" ]; then echo "$d"; fi; done)
           echo "workers=$(echo "$workers" | jq -R . | jq -sc 'map(select(length > 0))')" >> "$GITHUB_OUTPUT"
           echo "app=$(echo "$changed" | grep -qx app && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "learn=$(echo "$changed" | grep -qx learn && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   worker:
     needs: changes
@@ -83,10 +85,38 @@ jobs:
       - run: flutter pub get
       - run: flutter test
 
+  learn-a11y:
+    name: Learn accessibility (report-only)
+    needs: changes
+    if: needs.changes.outputs.learn == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: learn
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser driver
+        run: |
+          google-chrome --version
+          chromedriver --version
+      - name: Run WCAG 2.2 AA accessibility audit
+        run: bash scripts/run-a11y.sh
+      - name: Upload accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: learn-accessibility-report
+          path: learn/a11y-report/
+          if-no-files-found: warn
+
   # The one required status check: passes only when every check that ran passed.
   result:
     name: Project checks result
-    needs: [changes, worker, app]
+    needs: [changes, worker, app, learn-a11y]
     if: always()
     runs-on: ubuntu-latest
     steps:
