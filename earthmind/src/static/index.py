@@ -415,7 +415,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     btn.disabled = true;
     btn.textContent = '…';
     try {
-      await fetch(`/api/alerts/${id}/resolve`, { method: 'PUT' });
+      await fetch(`/api/alerts/${id}/resolve`, { method: 'POST' });
       loadAlerts();
       loadMetrics();
     } catch (e) { btn.textContent = 'Resolve'; btn.disabled = false; }

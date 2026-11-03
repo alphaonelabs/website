@@ -5,6 +5,7 @@ Handles all HTTP routing for the environmental monitoring platform.
 """
 
 import json
+import math
 from urllib.parse import urlparse, parse_qs
 
 from workers import WorkerEntrypoint, Response
@@ -91,6 +92,8 @@ class EarthMind(WorkerEntrypoint):
             return await _list_alerts(self.env, parsed)
 
         if path.startswith("/api/alerts/") and path.endswith("/resolve"):
+            if method not in ("POST", "PUT"):
+                return _error("Method not allowed", 405)
             alert_id = path.split("/")[3]
             return await _resolve_alert(self.env, alert_id)
 
@@ -165,7 +168,9 @@ async def _query_readings(request, env, parsed) -> Response:
     parameter = _first(params, "parameter")
     source = _first(params, "source")
     location = _first(params, "location")
-    limit = min(int(_first(params, "limit") or 100), 1000)
+    limit = _parse_limit(params, 100, env)
+    if limit is None:
+        return _error("'limit' must be an integer")
     since = _first(params, "since")
 
     conditions = []
@@ -201,18 +206,18 @@ async def _query_readings(request, env, parsed) -> Response:
 async def _get_anomalies(request, env, parsed) -> Response:
     params = parse_qs(parsed.query)
     parameter = _first(params, "parameter")
-    limit = min(int(_first(params, "limit") or 200), 1000)
-    zscore_threshold = float(_first(params, "zscore_threshold") or 2.5)
+    limit = _parse_limit(params, 200, env)
+    if limit is None:
+        return _error("'limit' must be an integer")
+    zscore_threshold = float(
+        _first(params, "zscore_threshold")
+        or _env_positive_float(env, "ANOMALY_ZSCORE_THRESHOLD", 2.5)
+    )
 
     if not parameter:
         return _error("'parameter' query param is required")
 
-    stmt = env.DB.prepare(
-        "SELECT value, timestamp FROM readings WHERE parameter = ? "
-        "ORDER BY timestamp ASC LIMIT ?"
-    ).bind(parameter, limit)
-    result = await stmt.all()
-    rows = _rows_to_list(result)
+    rows = await _read_recent_readings(env, parameter, limit)
 
     if len(rows) < 3:
         return _json_response({"anomalies": {}, "message": "Insufficient data"})
@@ -233,17 +238,14 @@ async def _get_anomalies(request, env, parsed) -> Response:
 async def _get_trends(request, env, parsed) -> Response:
     params = parse_qs(parsed.query)
     parameter = _first(params, "parameter")
-    limit = min(int(_first(params, "limit") or 200), 1000)
+    limit = _parse_limit(params, 200, env)
+    if limit is None:
+        return _error("'limit' must be an integer")
 
     if not parameter:
         return _error("'parameter' query param is required")
 
-    stmt = env.DB.prepare(
-        "SELECT value, timestamp FROM readings WHERE parameter = ? "
-        "ORDER BY timestamp ASC LIMIT ?"
-    ).bind(parameter, limit)
-    result = await stmt.all()
-    rows = _rows_to_list(result)
+    rows = await _read_recent_readings(env, parameter, limit)
 
     if not rows:
         return _json_response({"trend": {}, "message": "No data"})
@@ -341,12 +343,8 @@ async def _analytics_trends(request, env, parsed) -> Response:
     if not parameter:
         return _error("'parameter' query param is required")
 
-    stmt = env.DB.prepare(
-        "SELECT value, timestamp FROM readings WHERE parameter = ? "
-        "ORDER BY timestamp ASC LIMIT 200"
-    ).bind(parameter)
-    result = await stmt.all()
-    rows = _rows_to_list(result)
+    limit = min(200, _max_readings(env))
+    rows = await _read_recent_readings(env, parameter, limit)
 
     if not rows:
         return _json_response({"analysis": "No data available for this parameter."})
@@ -375,19 +373,21 @@ async def _analytics_explain_anomaly(request, env, parsed) -> Response:
     if not parameter:
         return _error("'parameter' query param is required")
 
-    stmt = env.DB.prepare(
-        "SELECT value, timestamp FROM readings WHERE parameter = ? "
-        "ORDER BY timestamp ASC LIMIT 100"
-    ).bind(parameter)
-    result = await stmt.all()
-    rows = _rows_to_list(result)
+    limit = min(100, _max_readings(env))
+    rows = await _read_recent_readings(env, parameter, limit)
 
     if len(rows) < 3:
         return _json_response({"explanation": "Insufficient data for anomaly detection."})
 
     values = [float(r["value"]) for r in rows]
     timestamps = [r["timestamp"] for r in rows]
-    anomaly_report = detect_anomalies(values, timestamps)
+    anomaly_report = detect_anomalies(
+        values,
+        timestamps,
+        zscore_threshold=_env_positive_float(
+            env, "ANOMALY_ZSCORE_THRESHOLD", 2.5
+        ),
+    )
 
     top_anomaly = None
     if anomaly_report["summary"]:
@@ -415,12 +415,9 @@ async def _analytics_summary(request, env, parsed) -> Response:
 
     stats_by_param = {}
     for param in parameters[:8]:  # limit to avoid slow responses
-        stmt2 = env.DB.prepare(
-            "SELECT value FROM readings WHERE parameter = ? "
-            "ORDER BY timestamp ASC LIMIT 100"
-        ).bind(param)
-        res2 = await stmt2.all()
-        vals = [float(r["value"]) for r in _rows_to_list(res2)]
+        limit = min(100, _max_readings(env))
+        rows = await _read_recent_readings(env, param, limit, columns="value")
+        vals = [float(r["value"]) for r in rows]
         if vals:
             stats_by_param[param] = analyze_trends(vals)
 
@@ -544,6 +541,40 @@ def _serve_dashboard() -> Response:
 def _first(params: dict, key: str):
     vals = params.get(key, [])
     return vals[0] if vals else None
+
+
+def _max_readings(env) -> int:
+    try:
+        value = int(getattr(env, "MAX_READINGS_PER_QUERY", 1000))
+    except (TypeError, ValueError, OverflowError):
+        return 1000
+    return value if value > 0 else 1000
+
+
+def _parse_limit(params: dict, default: int, env) -> int | None:
+    try:
+        value = int(_first(params, "limit") or default)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return min(max(value, 1), _max_readings(env))
+
+
+def _env_positive_float(env, name: str, default: float) -> float:
+    try:
+        value = float(getattr(env, name, default))
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return value if math.isfinite(value) and value > 0 else default
+
+
+async def _read_recent_readings(env, parameter, limit, columns="value, timestamp"):
+    result = await env.DB.prepare(
+        f"SELECT {columns} FROM ("
+        "SELECT value, timestamp FROM readings WHERE parameter = ? "
+        "ORDER BY timestamp DESC LIMIT ?"
+        ") ORDER BY timestamp ASC"
+    ).bind(parameter, limit).all()
+    return _rows_to_list(result)
 
 
 def _rows_to_list(result) -> list[dict]:
