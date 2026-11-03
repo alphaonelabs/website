@@ -7,9 +7,9 @@ VoxBridge reduces communication barriers through four AI-driven features:
 | Feature | Endpoint | AI Models |
 |---------|----------|-----------|
 | 🎤 **Real-time Captioning** | `POST /api/caption` | Whisper (`@cf/openai/whisper`) |
-| 🗣️ **Speech → Sign Language** | `POST /api/speech-to-sign` | Whisper + LLaMA 3.1 |
-| 🤟 **Sign → Speech** | `POST /api/sign-to-speech` | UForm Vision + LLaMA 3.1 |
-| 🖼️ **Visual Scene Description** | `POST /api/visual-scene` | UForm Vision (`@cf/unum/uform-gen2-qwen-500m`) |
+| 🗣️ **Speech → Sign Language** | `POST /api/speech-to-sign` | Whisper + LLaMA 3.3 |
+| 🤟 **Sign → Speech** | `POST /api/sign-to-speech` | LLaVA + LLaMA 3.3 |
+| 🖼️ **Visual Scene Description** | `POST /api/visual-scene` | LLaVA (`@cf/llava-hf/llava-1.5-7b-hf`) |
 
 ---
 
@@ -132,7 +132,7 @@ Analyse a sign-language gesture image and return the spoken equivalent.
 {
   "gesture_description": "Hand raised, open palm facing viewer...",
   "speech_text":         "Hello",
-  "models": ["@cf/unum/uform-gen2-qwen-500m", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
+  "models": ["@cf/llava-hf/llava-1.5-7b-hf", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
 }
 ```
 
@@ -154,7 +154,7 @@ Describe an image accessibly for visually impaired users.
 {
   "description":  "A sunny park with children playing...",
   "detail_level": "standard",
-  "model":        "@cf/unum/uform-gen2-qwen-500m"
+  "model":        "@cf/llava-hf/llava-1.5-7b-hf"
 }
 ```
 
