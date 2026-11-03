@@ -17,14 +17,18 @@ A browser-based virtual robotics simulation environment for building, configurin
 
 ## 🛠️ Getting Started
 
-No build tools or server required — just open the files directly in your browser.
+BotLab uses JavaScript modules, so serve the folder over HTTP instead of opening `home.html` through `file://`.
 
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground.git
    ```
-2. Open `index.html` in any modern web browser to view the landing page.
-3. Click **Enter System** to launch the interactive playground (`home.html`).
+2. From the repository root, start a local server:
+   ```bash
+   python -m http.server 8080 --directory botlab
+   ```
+3. Open `http://localhost:8080/` for the landing page.
+4. Click **Enter System** or open `http://localhost:8080/home.html` to launch the simulator.
 
 ---
 
