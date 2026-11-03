@@ -328,7 +328,7 @@
     loadActiveThreads();
     initChatModal();
 
-    // Auto-update chat history, threads, and requests every 4 seconds when tab is active
+    // Auto-update chat history, threads, and requests every 10 seconds when tab is active
     setInterval(function () {
       if (document.hidden) return;
       loadActiveThreads();
@@ -336,7 +336,7 @@
       if (activeThreadId) {
         refreshChatHistory();
       }
-    }, 4000);
+    }, 10000);
   });
 })();
 
