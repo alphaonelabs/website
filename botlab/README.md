@@ -1,148 +1,82 @@
-# Alpha One Labs — Virtual Robotics Playground
+# BotLab
 
-A browser-based virtual robotics simulation environment for building, configuring, and testing autonomous mobile robots with real-time physics and sensor telemetry — no installation required.
+BotLab is a browser-based robotics playground for building and testing virtual robots. The 2D simulator provides real-time movement, LiDAR, a camera view, and a robotic arm. The 3D assembler adds a gesture-controlled robot-building experience.
 
----
+## Live site
 
-## 🚀 Features
+Open the deployed playground at [botlab.alphaonelabs.com](https://botlab.alphaonelabs.com/). The 2D simulator is available at [/home.html](https://botlab.alphaonelabs.com/home.html), and the 3D assembler is at [/3D/](https://botlab.alphaonelabs.com/3D/).
 
-- **Modular Robot Builder** — Start from a blank chassis and attach sensors, wheels, and a manipulator arm.
-- **Omni-Directional Movement** — Drive your robot with WASD or Arrow keys; adjust motor power and turning speed in real-time.
-- **LiDAR Scanning** — A rotating 360° LiDAR sensor casts a detection beam. When it passes over an object, the **Detection Panel** reports the object's **shape** and **color**.
-- **First-Person Camera** — Live FPV camera feed rendered from the robot's perspective directly in the browser.
-- **Robotic Arm** — Pick up and drop coloured blocks using the SPACE key.
-- **Telemetry HUD** — Real-time position, heading, and speed readout overlaid on the simulation canvas.
+## Features
 
----
+- **Robot builder:** Add a chassis, wheels, LiDAR, camera, and robotic arm.
+- **Movement:** Drive with WASD or the arrow keys; adjust motor power and turning speed.
+- **LiDAR:** Scan for nearby blocks and see their shape and color in the detection panel.
+- **Camera view:** See a first-person view from the robot.
+- **Robotic arm:** Pick up and drop blocks with the Space key.
+- **Telemetry:** View the robot's position, heading, and speed.
 
-## 🛠️ Getting Started
+## Getting started
 
-No build tools or server required — just open the files directly in your browser.
+Clone the monorepo and change to the BotLab directory:
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground.git
-   ```
-2. Open `index.html` in any modern web browser to view the landing page.
-3. Click **Enter System** to launch the interactive playground (`home.html`).
+```bash
+git clone https://github.com/alphaonelabs/website.git
+cd website/botlab
+```
 
----
+Run BotLab locally using either option:
 
-## 🎮 Controls
+```bash
+npx wrangler dev
+```
 
-| Key / Action | Function |
+Or, if you have Python 3 installed:
+
+```bash
+python3 -m http.server 8000
+```
+
+Open the local URL printed by Wrangler, or visit [http://localhost:8000](http://localhost:8000) when using Python. The landing page links to the 2D simulator and 3D assembler.
+
+## 2D simulator controls
+
+| Key or action | Function |
 |---|---|
 | `W` / `↑` | Move forward |
 | `S` / `↓` | Move backward |
 | `A` / `←` | Turn left |
 | `D` / `→` | Turn right |
-| `SPACE` | Pick up / Drop block (requires Arm) |
+| `Space` | Pick up or drop a block when the robot has an arm |
 
----
+Add or remove components from the Toolbox. Add a chassis before other components.
 
-## 🧩 Robot Components
+## 3D assembler
 
-Add or remove components from the **Toolbox** panel on the left:
+Open the 3D assembler from the landing page or go to `/3D/`. It supports hand-gesture controls and keyboard controls:
 
-| Component | Description |
-|---|---|
-| **Chassis** | Core robot body — must be added before any other part |
-| **Wheels (WASD)** | Enables keyboard-driven movement |
-| **LiDAR** | Rotating laser scanner; detects nearby objects and reports shape & color |
-| **Camera (View)** | First-person camera feed shown in the top-left overlay |
-| **Arm (SPACE)** | Allows picking up and dropping blocks with the SPACE key |
+- In gesture mode, the right hand aims and moves the robot; the left hand freezes the robot and picks up objects.
+- In manual mode, use `W`, `A`, `S`, and `D` to move, `1`–`5` to cycle through component categories, and `Space` to pick up or drop an object.
+- Press `Q` or `Escape` to stop the 3D experience.
 
----
+Gesture control requires camera access. Use HTTPS or `localhost`, and allow camera permission when the browser prompts. If camera access or hand tracking is unavailable, the assembler falls back to manual keyboard controls.
 
-## 📡 LiDAR Detection
+## LiDAR detection
 
-When the LiDAR sensor is active, its beam sweeps 360° around the robot. When the beam intersects an object within range, the **Detection Panel** (bottom of the right sidebar) instantly displays:
+When LiDAR is installed, its beam sweeps around the robot. When it intersects a block within range, the detection panel reports the shape (`Square`, `Circle`, or `Triangle`) and color.
 
-- The **shape** of the detected object — `Square`, `Circle`, or `Triangle`
-- The **color** of the detected object — e.g. `Red`, `Orange`, `Green`, `Blue`
+## Project structure
 
----
-
-## ⚙️ Settings (Right Sidebar)
-
-| Setting | Description |
-|---|---|
-| **Power** | Motor power level (10 % – 100 %) |
-| **Turn** | Turning speed (1° – 15°) |
-| **Color** | Chassis colour picker |
-
-The **Parts** section shows all currently attached components, and **Blocks** displays the number of interactive objects in the simulation.
-
----
-
-## 🎨 Tech Stack
-
-- **Pure HTML5/CSS3/JavaScript** — No frameworks required for the simulator
-- **React 18** — Landing page animations (CDN)
-- **Tailwind CSS** — Utility-first styling (CDN)
-- **GSAP 3.12** — Smooth scroll animations (CDN)
-- **Canvas API** — Real-time 2D graphics rendering
-
----
-
-## 🌐 Browser Support
-
-| Browser | Version | Status |
-|---------|---------|--------|
-| Chrome | 90+ | ✅ Fully Supported |
-| Firefox | 88+ | ✅ Fully Supported |
-| Safari | 14+ | ✅ Fully Supported |
-| Edge | 90+ | ✅ Fully Supported |
-
----
-
-## 🗂️ Project Structure
-
-```
-alphaonelabs-virtual-robotics-playground/
-├── index.html              # Landing page with animations
-├── home.html               # Main robotics simulator
-├── README.md               # This file
-├── CONTRIBUTING.md         # Contribution guidelines
-├── LICENSE                 # MIT License
-└── .github/
-    └── workflows/
-        ├── deploy.yml      # GitHub Pages deployment
-        └── pr-check.yml    # PR validation
+```text
+botlab/
+├── 3D/              # 3D gesture-controlled robot assembler
+├── assets/          # Shared visual assets
+├── home.html        # 2D simulator
+├── index.html       # Landing page
+├── README.md        # Project overview and setup
+├── CONTRIBUTING.md  # BotLab contribution guide
+└── wrangler.toml    # Cloudflare static asset settings
 ```
 
----
+## Contributing
 
-## 🤝 Contributing
-
-Contributions, bug reports, and feature requests are welcome!
-
-1. Fork this repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m 'Add your feature'`
-4. Push to your fork: `git push origin feature/your-feature-name`
-5. Open a **Pull Request** against `main`
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines and open an [issue](https://github.com/alphaonelabs/alphaonelabs-virtual-robotics-playground/issues) first to discuss major changes before starting work.
-
----
-
-## 🗺️ Roadmap
-
-- [ ] Save/Load robot configurations
-- [ ] Obstacle course challenges with scoring
-- [ ] Autonomous robot programming interface
-- [ ] Multiplayer support (WebRTC)
-- [ ] 3D rendering with Three.js
-- [ ] Mobile touch controls
-- [ ] Export simulation data (CSV/JSON)
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-*Built by [Alpha One Labs](https://github.com/alphaonelabs) — Advancing open science through education and robotics.*
+Contributions, bug reports, and feature requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for BotLab setup and contribution steps. Browse [open BotLab issues](https://github.com/alphaonelabs/website/issues?q=is%3Aissue+is%3Aopen+label%3A%22project%3A+botlab%22) or open an issue with the `project: botlab` label.
