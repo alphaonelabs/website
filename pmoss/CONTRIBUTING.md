@@ -13,9 +13,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ### Prerequisites
 
-- Node.js 16+ and npm
 - Wrangler CLI
-- Cloudflare account (for testing)
 - GitHub account
 
 ### Development Setup
@@ -23,39 +21,36 @@ Thank you for your interest in contributing! This document provides guidelines a
 1. **Fork and clone the repository**
 
 ```bash
-git clone https://github.com/your-username/alphaonelabs-oss-project-management.git
-cd alphaonelabs-oss-project-management
+git clone https://github.com/YOUR_GITHUB_USERNAME/website.git
+cd website/pmoss
 ```
 
-2. **Install dependencies**
+2. **Check Wrangler is installed**
 
 ```bash
-npm install
+wrangler --version
 ```
 
 3. **Set up local D1 database**
 
 ```bash
-# Create local database for testing
-wrangler d1 create oss-pm-db-dev
-
-# Initialize schema
-wrangler d1 execute oss-pm-db-dev --local --file=./schema.sql
+# Initialize the local database schema
+wrangler d1 execute pmoss --local --file=./schema.sql
 ```
 
 4. **Configure environment**
 
-Copy `.env.example` to `.dev.vars` and fill in your development credentials:
+Copy `.dev.vars.example` to `.dev.vars` and fill in credentials from a separate local GitHub OAuth app:
 
 ```bash
-cp .env.example .dev.vars
-# Edit .dev.vars with your GitHub OAuth app credentials
+cp .dev.vars.example .dev.vars
+# In PowerShell, use: Copy-Item .dev.vars.example .dev.vars
 ```
 
 5. **Run development server**
 
 ```bash
-npm run dev
+wrangler dev
 ```
 
 The local server will be available at `http://localhost:8787`

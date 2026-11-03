@@ -15,7 +15,6 @@ database_id = "75906b5f-de52-42e6-9e45-183bc047788b"
 # GITHUB_CLIENT_ID
 # GITHUB_CLIENT_SECRET
 # GITHUB_WEBHOOK_SECRET
-# SESSION_SECRET
 
 [vars]
 GITHUB_REDIRECT_URI = "https://pmoss.alphaonelabs.com/auth/callback"
