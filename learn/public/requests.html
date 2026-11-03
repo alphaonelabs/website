@@ -49,7 +49,9 @@
             <button id="submit-intent" class="w-full rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold px-5 py-3 shadow-lg" type="submit">
               Post request
             </button>
-            <p id="form-message" class="hidden rounded-xl p-3 text-sm"></p>
+            <div role="status" aria-live="polite">
+              <p id="form-message" class="hidden rounded-xl p-3 text-sm"></p>
+            </div>
           </form>
 
           <div class="mt-6 rounded-2xl bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 text-sm text-teal-900 dark:text-teal-100">
@@ -114,16 +116,11 @@ document.getElementById('intent-list').addEventListener('click', async e => {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
 
-  try {
-    const res = await fetch(
-      '/api/intents/' + encodeURIComponent(id),
-      {
-        method: 'DELETE',
-        headers: {
-          Authorization: 'Bearer ' + token
-        }
-      }
-    );
+    try {
+    const res = await fetch('/api/intents/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token }
+    });
 
     if (res.status === 401) {
       localStorage.removeItem('edu_token');
@@ -134,17 +131,21 @@ document.getElementById('intent-list').addEventListener('click', async e => {
     }
 
     const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Could not delete request');
-    }
-
+    if (!res.ok) throw new Error(data.error || 'Could not delete request');
     setMessage(data.message || 'Request deleted successfully', false);
-    await loadIntents();
   } catch (err) {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-trash text-xs"></i> Delete';
     setMessage(err.message || 'Could not delete request', true);
+    return;
+  }
+
+  try {
+    await loadIntents();
+  } catch (err) {
+    const card = btn.closest('article');
+    if (card) card.remove();
+    setMessage('Request deleted, but the list could not refresh. Reload the page to update it.', true);
   }
 });
 

@@ -3128,8 +3128,9 @@ async def api_delete_activity(activity_ref: str, req, env):
 
     try:
         act = await env.DB.prepare(
-            "SELECT id,title,host_id,price_cents FROM activities WHERE id=? OR slug=? LIMIT 1"
-        ).bind(activity_ref, activity_ref).first()
+            "SELECT id,title,host_id,price_cents FROM activities"
+            " WHERE id=? OR slug=? ORDER BY (id=?) DESC LIMIT 1"
+        ).bind(activity_ref, activity_ref, activity_ref).first()
     except Exception as exc:
         await capture_exception(exc, req, env, "api_delete_activity.lookup")
         return err("Could not delete activity — please try again", 500)
