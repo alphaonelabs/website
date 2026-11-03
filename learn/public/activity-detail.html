@@ -131,7 +131,7 @@
               </p>
             </div>
             <div class="flex flex-wrap gap-3 shrink-0">
-              <a id="act-classroom-link" href="/classroom_poc?autojoin=1&amp;room=lobby" class="a1-btn a1-btn--dark">
+              <a id="act-classroom-link" href="/classroom_poc" class="a1-btn a1-btn--dark">
                 <i class="fas fa-door-open" aria-hidden="true"></i>Enter virtual classroom
               </a>
               <a id="act-whiteboard-link" href="/whiteboard" class="a1-btn">
@@ -332,7 +332,7 @@
       img.onerror = function () { this.onerror = null; this.src = '/images/logo.png'; };
     });
 
-    const courseRoomId = 'course-' + (a.slug || a.id || 'general');
+    const courseRoomId = a.slug || a.id || 'general';
     const courseTitle = a.title || 'Course Classroom';
     const classroomLink = document.getElementById('act-classroom-link');
     if (classroomLink) {
@@ -768,15 +768,6 @@
     if (!ref) {
       window.location.replace('/activity');
       return;
-    }
-    const initialRoomId = 'course-' + ref;
-    const initialClassroomLink = document.getElementById('act-classroom-link');
-    if (initialClassroomLink) {
-      initialClassroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(initialRoomId);
-    }
-    const initialWhiteboardLink = document.getElementById('act-whiteboard-link');
-    if (initialWhiteboardLink) {
-      initialWhiteboardLink.href = '/whiteboard?room=' + encodeURIComponent(initialRoomId);
     }
     try {
       const embedded = readServerActivityDetail(ref);

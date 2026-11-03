@@ -253,7 +253,7 @@
               View the classroom for this activity. Sign in when you want to interact, save progress, or join live collaboration.
             </p>
             <div class="flex flex-wrap gap-3">
-              <a id="act-classroom-link" href="/classroom_poc?autojoin=1&amp;room=lobby" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center">
+              <a id="act-classroom-link" href="/classroom_poc" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center">
                 <i class="fas fa-door-open mr-2"></i>
                 Enter Virtual Classroom
               </a>
@@ -846,7 +846,7 @@
           this.src = '/images/logo.png';
         };
       }
-      const courseRoomId = 'course-' + (a.slug || a.id || 'general');
+      const courseRoomId = a.slug || a.id || 'general';
       const courseTitle = a.title || 'Course Classroom';
       const classroomLink = document.getElementById('act-classroom-link');
       if (classroomLink) {

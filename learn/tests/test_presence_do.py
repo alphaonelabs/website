@@ -7,6 +7,7 @@ primitives are needed.
 """
 
 import base64
+import datetime
 import json
 from types import SimpleNamespace
 import pytest
@@ -986,6 +987,10 @@ class TestClassroomDOSignaling:
 
         await do.on_webSocketMessage(ws_instructor, json.dumps({"type": "lower_all_hands"}))
         assert do.hand_raise_queue == []
+        assert do.sessions["sid-student1"]["hand_raised"] is False
+        assert do.sessions["sid-student2"]["hand_raised"] is False
+        restored = json.loads(ws_student1.serializeAttachment.call_args[0][0])
+        assert restored["hand_raised"] is False
         calls = [json.loads(c[0][0]) for c in ws_student1.send.call_args_list if c[0]]
         assert any(c.get("type") == "all_hands_lowered" for c in calls)
 
@@ -1159,6 +1164,41 @@ class TestClassroomDOSignaling:
         ann_msg = next((c for c in calls if c.get("type") == "breakout_announcement"), None)
         assert ann_msg is not None
         assert ann_msg["message"] == "Class resuming in 2 minutes!"
+
+    @pytest.mark.asyncio
+    async def test_broadcast_to_breakouts_restores_from_storage(self):
+        """Verify broadcast_to_breakouts lazily restores breakout_rooms from storage if in-memory list is empty."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_teacher = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+
+        do.breakout_rooms = []
+        stored_rooms = [
+            {"id": f"{do.room_id}:breakout:1", "breakout_room_id": f"{do.room_id}:breakout:1", "title": "Room 1", "participants": []}
+        ]
+        storage_get = AsyncMock(return_value=json.dumps(stored_rooms))
+        do.ctx.storage = SimpleNamespace(get=storage_get)
+
+        mock_sub_do = MagicMock()
+        mock_sub_do.fetch = AsyncMock(return_value=SimpleNamespace(status=200))
+        do.env.CLASSROOM_DO = MagicMock()
+        do.env.CLASSROOM_DO.idFromName.return_value = "do-id-1"
+        do.env.CLASSROOM_DO.get.return_value = mock_sub_do
+
+        ws_alice.send.reset_mock()
+        await do.on_webSocketMessage(ws_teacher, json.dumps({
+            "type": "broadcast_to_breakouts",
+            "message": "Instructor alert across rooms",
+        }))
+
+        storage_get.assert_awaited_once_with("breakout_rooms")
+        assert len(do.breakout_rooms) == 1
+        assert do.breakout_rooms[0]["breakout_room_id"] == f"{do.room_id}:breakout:1"
+        mock_sub_do.fetch.assert_awaited_once()
+        sent_body = json.loads(mock_sub_do.fetch.call_args[0][1]["body"])
+        assert sent_body["type"] == "breakout_announcement"
+        assert sent_body["message"] == "Instructor alert across rooms"
 
     @pytest.mark.asyncio
     async def test_connection_mode_changed_broadcast(self):
@@ -1476,47 +1516,105 @@ async def test_presence_owner_join_revokes_anonymous_session():
 
 @pytest.mark.asyncio
 async def test_persist_transcript_deduplicates_consecutive_identical_messages():
-    """Verify ClassroomDO._persist_transcript drops consecutive duplicate transcripts."""
-    do = worker.ClassroomDO(_make_ctx(), make_env())
-    info = {"participant_id": "alice", "display_name": "Alice"}
-    await do._persist_transcript("sid-1", info, "hello")
-    assert len(do.transcripts) == 1
-
-    # Second identical transcript call is dropped
-    await do._persist_transcript("sid-1", info, "hello")
-    assert len(do.transcripts) == 1
-
-    # Different text succeeds
-    await do._persist_transcript("sid-1", info, "world")
-    assert len(do.transcripts) == 2
-
-
-@pytest.mark.asyncio
-async def test_resolve_activity_creator_strips_course_and_activity_prefix():
-    """Verify _resolve_activity_creator correctly strips 'course-' and 'activity-' prefixes."""
+    """Verify ClassroomDO._persist_transcript drops consecutive duplicate transcripts within time window."""
     env = make_env()
     mock_db = MagicMock()
     mock_stmt = MagicMock()
     mock_stmt.bind.return_value = mock_stmt
-    mock_row = SimpleNamespace(
-        id="act-123",
-        host_id="user-bob",
-        username="bob",
-        name_enc=None,
-    )
-    mock_stmt.first = AsyncMock(return_value=mock_row)
+    mock_stmt.run = AsyncMock()
+    mock_db.prepare.return_value = mock_stmt
+    env.DB = mock_db
+
+    do = worker.ClassroomDO(_make_ctx(), env)
+    info = {"participant_id": "alice", "display_name": "Alice"}
+    await do._persist_transcript("sid-1", info, "hello")
+    assert len(do.transcripts) == 1
+    assert mock_stmt.run.await_count == 1
+
+    # Second identical transcript call within 5s window is dropped
+    await do._persist_transcript("sid-1", info, "hello")
+    assert len(do.transcripts) == 1
+    assert mock_stmt.run.await_count == 1
+
+    # Repeated identical text outside 5s window is preserved
+    do.transcripts[-1]["timestamp"] = (
+        datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=10)
+    ).isoformat()
+    await do._persist_transcript("sid-1", info, "hello")
+    assert len(do.transcripts) == 2
+    assert mock_stmt.run.await_count == 2
+
+    # Different text succeeds
+    await do._persist_transcript("sid-1", info, "world")
+    assert len(do.transcripts) == 3
+    assert mock_stmt.run.await_count == 3
+
+    # source == "voxbridge" persists in memory but skips database insert
+    mock_stmt.run.reset_mock()
+    await do._persist_transcript("internal", info, "voxbridge caption", source="voxbridge")
+    assert len(do.transcripts) == 4
+    assert do.transcripts[-1]["source"] == "voxbridge"
+    assert mock_stmt.run.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_resolve_activity_creator_strips_course_and_activity_prefix():
+    """Verify _resolve_activity_creator prioritizes exact lookup_id over clean_id and strips prefixes on fallback."""
+    env = make_env()
+    mock_db = MagicMock()
+    mock_stmt = MagicMock()
+
+    db_rows = {
+        "course-demo-alpha": SimpleNamespace(
+            id="act-course",
+            host_id="user-prefixed-host",
+            username="prefixed_bob",
+            name_enc=None,
+        ),
+        "demo-alpha": SimpleNamespace(
+            id="act-demo",
+            host_id="user-stripped-host",
+            username="stripped_bob",
+            name_enc=None,
+        ),
+        "ai-101": SimpleNamespace(
+            id="act-ai",
+            host_id="user-ai-host",
+            username="ai_instructor",
+            name_enc=None,
+        ),
+    }
+
+    bound_id = None
+    def fake_bind(val1, val2):
+        nonlocal bound_id
+        bound_id = val1
+        return mock_stmt
+
+    async def fake_first():
+        return db_rows.get(bound_id)
+
+    mock_stmt.bind = MagicMock(side_effect=fake_bind)
+    mock_stmt.first = AsyncMock(side_effect=fake_first)
     mock_db.prepare.return_value = mock_stmt
     env.DB = mock_db
 
     do = worker.ClassroomDO(_make_ctx(), env)
 
-    # 1. course- prefix
+    # 1. Precedence: when BOTH prefixed and stripped activities exist, exact match lookup_id takes precedence
     host_id, name = await do._resolve_activity_creator("course-demo-alpha")
-    assert host_id == "user-bob"
-    assert name == "bob"
-    mock_stmt.bind.assert_called_with("course-demo-alpha", "course-demo-alpha", "demo-alpha", "demo-alpha")
+    assert host_id == "user-prefixed-host"
+    assert name == "prefixed_bob"
+    assert mock_stmt.bind.call_args[0] == ("course-demo-alpha", "course-demo-alpha")
 
-    # 2. activity- prefix
+    # 2. Fallback: when full lookup_id ("activity-ai-101") does not exist, it falls back to stripped clean_id ("ai-101")
     host_id2, name2 = await do._resolve_activity_creator("activity-ai-101")
-    assert host_id2 == "user-bob"
-    mock_stmt.bind.assert_called_with("activity-ai-101", "activity-ai-101", "ai-101", "ai-101")
+    assert host_id2 == "user-ai-host"
+    assert name2 == "ai_instructor"
+    assert mock_stmt.bind.call_args[0] == ("ai-101", "ai-101")
+
+    # 3. Direct clean ID lookup matches stripped row directly
+    host_id3, name3 = await do._resolve_activity_creator("demo-alpha")
+    assert host_id3 == "user-stripped-host"
+    assert name3 == "stripped_bob"
+    assert mock_stmt.bind.call_args[0] == ("demo-alpha", "demo-alpha")

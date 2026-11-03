@@ -34,7 +34,7 @@ import {
   const roomInput = document.getElementById('room');
   const urlRoom = new URLSearchParams(window.location.search).get('room');
   if (roomInput && urlRoom && urlRoom.trim()) {
-    roomInput.value = urlRoom.trim();
+    roomInput.value = urlRoom.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
   }
   const statusEl = document.getElementById('status');
   const loginLink = document.getElementById('whiteboard-login');

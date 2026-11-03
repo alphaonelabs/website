@@ -7605,12 +7605,15 @@ class ClassroomDO(DurableObject):
                     clean_id = clean_id[len(prefix):]
                     break
             enc = getattr(self.env, "ENCRYPTION_KEY", "")
-            act = await self.env.DB.prepare(
+            stmt = self.env.DB.prepare(
                 "SELECT a.id, a.host_id, u.username, u.name AS name_enc "
                 "FROM activities a "
                 "LEFT JOIN users u ON a.host_id = u.id "
-                "WHERE a.slug=? OR a.id=? OR a.slug=? OR a.id=?"
-            ).bind(lookup_id, lookup_id, clean_id, clean_id).first()
+                "WHERE a.slug=? OR a.id=?"
+            )
+            act = await stmt.bind(lookup_id, lookup_id).first()
+            if not act and clean_id != lookup_id:
+                act = await stmt.bind(clean_id, clean_id).first()
             if act:
                 dec_name = await decrypt_aes(getattr(act, "name_enc", "") or "", enc) if enc else ""
                 dec_uname = await decrypt_aes(getattr(act, "username", "") or "", enc) if enc else ""
@@ -8391,108 +8394,13 @@ class ClassroomDO(DurableObject):
 
         elif msg_type == "broadcast_to_breakouts":
             if await self._is_authorized_instructor(info):
-                announcement = str(data.get("message", "")).strip()[:500]
-                if announcement:
-                    payload = json.dumps({
-                        "type": "breakout_announcement",
-                        "message": announcement,
-                        "from": info["display_name"],
-                    })
-                    self._broadcast(payload)
-                    if hasattr(self.env, "CLASSROOM_DO") and self.env.CLASSROOM_DO and getattr(self, "breakout_rooms", None):
-                        for b_room in self.breakout_rooms:
-                            try:
-                                b_id = b_room.get("breakout_room_id")
-                                if b_id:
-                                    stub = self.env.CLASSROOM_DO.get(self.env.CLASSROOM_DO.idFromName(b_id))
-                                    await stub.fetch(f"http://internal/api/classroom/{b_id}/broadcast_internal", {
-                                        "method": "POST",
-                                        "headers": {"Content-Type": "application/json"},
-                                        "body": payload,
-                                    })
-                            except Exception as exc:
-                                await capture_exception(exc, None, self.env, "classroom.broadcast_to_breakouts")
-
-        elif msg_type == "connection_mode":
-            mode = str(data.get("mode", "full")).strip().lower()
-            if mode not in ("full", "audio_only", "captions_only"):
-                mode = "full"
-            info["connection_mode"] = mode
-            self._persist_attachment(sid, info)
-            self._broadcast(json.dumps({
-                "type": "connection_mode_changed",
-                "participant_id": info["participant_id"],
-                "mode": mode,
-            }))
-            self._broadcast_room_state()
-
-        elif msg_type == "create_breakouts":
-            if await self._is_authorized_instructor(info):
-                rooms_data = data.get("rooms")
-                count = data.get("count")
-                created = []
-                if isinstance(rooms_data, list) and rooms_data:
-                    for i, r in enumerate(rooms_data[:10]):
-                        if not isinstance(r, dict):
-                            continue
-                        r_title = str(r.get("title") or f"Breakout Room {i+1}").strip()[:64]
-                        sub_id = f"{self.room_id}:breakout:{i+1}"
-                        assigned = [str(p)[:64] for p in r.get("participants", []) if isinstance(p, str)]
-                        created.append({
-                            "id": sub_id,
-                            "breakout_room_id": sub_id,
-                            "title": r_title,
-                            "participants": assigned,
-                        })
-                elif isinstance(count, int) and 1 <= count <= 10:
-                    for i in range(count):
-                        sub_id = f"{self.room_id}:breakout:{i+1}"
-                        created.append({
-                            "id": sub_id,
-                            "breakout_room_id": sub_id,
-                            "title": f"Breakout Room {i+1}",
-                            "participants": [],
-                        })
-                if created:
-                    self.breakout_rooms = created
+                if not getattr(self, "breakout_rooms", None):
                     try:
-                        await self.ctx.storage.put("breakout_rooms", json.dumps(created))
+                        stored = await self.ctx.storage.get("breakout_rooms")
+                        if stored:
+                            self.breakout_rooms = json.loads(stored) if isinstance(stored, str) else stored
                     except Exception as exc:
-                        await capture_exception(exc, None, self.env, "classroom.create_breakouts.persist")
-                    if hasattr(self.env, "DB") and self.env.DB:
-                        for r in created:
-                            try:
-                                bid = str(uuid.uuid4())
-                                await self.env.DB.prepare(
-                                    "INSERT INTO classroom_breakouts (id, parent_room_id, breakout_room_id, title) "
-                                    "VALUES (?, ?, ?, ?)"
-                                ).bind(bid, self.room_id, r["breakout_room_id"], r["title"]).run()
-                            except Exception as exc:
-                                await capture_exception(exc, None, self.env, "classroom.create_breakouts.db")
-                    self._broadcast(json.dumps({
-                        "type": "breakout_rooms_created",
-                        "parent_room_id": self.room_id,
-                        "rooms": created,
-                        "by": info["participant_id"],
-                    }))
-                    self._broadcast_room_state()
-
-        elif msg_type == "close_breakouts":
-            if await self._is_authorized_instructor(info):
-                self.breakout_rooms = []
-                try:
-                    await self.ctx.storage.delete("breakout_rooms")
-                except Exception as exc:
-                    await capture_exception(exc, None, self.env, "classroom.close_breakouts.storage")
-                self._broadcast(json.dumps({
-                    "type": "breakout_rooms_closed",
-                    "parent_room_id": self.room_id,
-                    "by": info["participant_id"],
-                }))
-                self._broadcast_room_state()
-
-        elif msg_type == "broadcast_to_breakouts":
-            if await self._is_authorized_instructor(info):
+                        await capture_exception(exc, None, self.env, "classroom.broadcast_to_breakouts.storage")
                 announcement = str(data.get("message", "")).strip()[:500]
                 if announcement:
                     payload = json.dumps({
@@ -8724,12 +8632,20 @@ class ClassroomDO(DurableObject):
         clean_text = str(text).strip()[:500]
         if not clean_text:
             return
-        # Deduplicate consecutive identical transcript from same participant
+        now = datetime.datetime.now(datetime.timezone.utc)
+        # Deduplicate consecutive identical transcript from same participant within a short window (5s)
         if hasattr(self, "transcripts") and self.transcripts:
             last = self.transcripts[-1]
             if (last.get("participant_id") == info.get("participant_id")
                     and last.get("text") == clean_text):
-                return
+                last_ts_str = last.get("timestamp")
+                if last_ts_str:
+                    try:
+                        last_ts = datetime.datetime.fromisoformat(last_ts_str)
+                        if (now - last_ts).total_seconds() < 5:
+                            return
+                    except Exception:
+                        pass
         entry = {
             "id": str(uuid.uuid4()),
             "room_id": getattr(self, "room_id", "default"),
@@ -8737,7 +8653,7 @@ class ClassroomDO(DurableObject):
             "participant_id": info.get("participant_id", "unknown"),
             "display_name": info.get("display_name", "Anonymous"),
             "text": clean_text,
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "timestamp": now.isoformat(),
             "source": source,
         }
         if not hasattr(self, "transcripts"):
@@ -8748,7 +8664,7 @@ class ClassroomDO(DurableObject):
             await self.ctx.storage.put("classroom_transcripts", json.dumps(self.transcripts))
         except Exception as exc:
             await capture_exception(exc, None, self.env, "classroom.persist_transcript.storage")
-        if hasattr(self.env, "DB") and self.env.DB:
+        if source != "voxbridge" and hasattr(self.env, "DB") and self.env.DB:
             try:
                 await self.env.DB.prepare(
                     "INSERT INTO classroom_transcripts (id, room_id, session_id, participant_id, display_name, text, timestamp, source) "
@@ -8759,7 +8675,7 @@ class ClassroomDO(DurableObject):
                     sid,
                     entry["participant_id"],
                     entry["display_name"],
-                    text,
+                    clean_text,
                     source,
                 ).run()
             except Exception as exc:
