@@ -288,11 +288,16 @@ var unreadPollTimer = null;
 
 function startUnreadPolling() {
     if (unreadPollTimer) return;
+    // Poll gently and only while the tab is visible; catch up when it becomes visible again.
     unreadPollTimer = setInterval(() => {
-        refreshUnreadBadge();
-    }, 5000);
+        if (!document.hidden) refreshUnreadBadge();
+    }, 60000);
     refreshUnreadBadge();
 }
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && unreadPollTimer) refreshUnreadBadge();
+});
 
 function stopUnreadPolling() {
     if (!unreadPollTimer) return;
