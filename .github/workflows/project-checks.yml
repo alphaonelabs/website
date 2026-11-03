@@ -58,7 +58,10 @@ jobs:
           files=$(git ls-files '*.py')
           [ -z "$files" ] || python -m py_compile $files
       - name: Python tests
-        if: hashFiles(format('{0}/tests/**/*.py', matrix.project)) != ''
+        if: >-
+          hashFiles(format('{0}/tests/**/*.py', matrix.project)) != '' ||
+          hashFiles(format('{0}/test_*.py', matrix.project)) != '' ||
+          hashFiles(format('{0}/*_test.py', matrix.project)) != ''
         env:
           PROJECT: ${{ matrix.project }}
         run: |
