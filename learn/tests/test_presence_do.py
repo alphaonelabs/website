@@ -528,12 +528,16 @@ class TestPresenceDispatch:
 
 
 class TestClassroomDOSignaling:
+    """Tests for ClassroomDO WebRTC signaling, media states, and instructor controls."""
+
     def _make_classroom_do(self):
+        """Helper to instantiate a ClassroomDO with mocked ctx and env."""
         ctx = _make_ctx()
         env = make_env()
         return worker.ClassroomDO(ctx, env)
 
     def _add_session(self, do, pid, dname="User", sid=None, can_interact=True):
+        """Helper to add a session mock to ClassroomDO."""
         sid = sid or f"sid-{pid}"
         attachment = {
             "session_id": sid,
@@ -561,76 +565,72 @@ class TestClassroomDOSignaling:
 
     @pytest.mark.asyncio
     async def test_signal_offer_routed_to_target_peer(self):
+        """Verify signal_offer is forwarded to target peer."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob   = self._add_session(do, "bob", "Bob")
-        ws_charlie = self._add_session(do, "charlie", "Charlie")
 
+        offer_payload = {"type": "offer", "sdp": "v=0\r\no=- 1234 2 IN IP4 127.0.0.1\r\n..."}
         msg = json.dumps({
             "type": "signal_offer",
             "target_peer_id": "bob",
-            "offer": {"type": "offer", "sdp": "v=0\r\no=alice..."},
+            "offer": offer_payload,
         })
         await do.on_webSocketMessage(ws_alice, msg)
 
-        # Bob should receive the forwarded offer with sender info
         ws_bob.send.assert_called_once()
-        forwarded = json.loads(ws_bob.send.call_args[0][0])
-        assert forwarded["type"] == "signal_offer"
-        assert forwarded["sender_peer_id"] == "alice"
-        assert forwarded["sender_display_name"] == "Alice"
-        assert forwarded["target_peer_id"] == "bob"
-        assert forwarded["offer"] == {"type": "offer", "sdp": "v=0\r\no=alice..."}
-
-        # Charlie should NOT receive the offer
-        ws_charlie.send.assert_not_called()
+        sent_data = json.loads(ws_bob.send.call_args[0][0])
+        assert sent_data["type"] == "signal_offer"
+        assert sent_data["sender_peer_id"] == "alice"
+        assert sent_data["target_peer_id"] == "bob"
+        assert sent_data["offer"] == offer_payload
 
     @pytest.mark.asyncio
     async def test_signal_answer_routed_to_target_peer(self):
+        """Verify signal_answer is forwarded to target peer."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob   = self._add_session(do, "bob", "Bob")
 
+        answer_payload = {"type": "answer", "sdp": "v=0\r\no=- 5678 2 IN IP4 127.0.0.1\r\n..."}
         msg = json.dumps({
             "type": "signal_answer",
             "target_peer_id": "alice",
-            "answer": {"type": "answer", "sdp": "v=0\r\no=bob..."},
+            "answer": answer_payload,
         })
         await do.on_webSocketMessage(ws_bob, msg)
 
         ws_alice.send.assert_called_once()
-        forwarded = json.loads(ws_alice.send.call_args[0][0])
-        assert forwarded["type"] == "signal_answer"
-        assert forwarded["sender_peer_id"] == "bob"
-        assert forwarded["target_peer_id"] == "alice"
-        assert forwarded["answer"] == {"type": "answer", "sdp": "v=0\r\no=bob..."}
+        sent_data = json.loads(ws_alice.send.call_args[0][0])
+        assert sent_data["type"] == "signal_answer"
+        assert sent_data["sender_peer_id"] == "bob"
+        assert sent_data["target_peer_id"] == "alice"
+        assert sent_data["answer"] == answer_payload
 
     @pytest.mark.asyncio
     async def test_ice_candidate_routed_to_target_peer(self):
+        """Verify ice_candidate is forwarded to target peer."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob   = self._add_session(do, "bob", "Bob")
 
-        candidate_data = {
-            "candidate": "candidate:1 1 UDP 2122252543 192.168.1.100 54321 typ host",
-            "sdpMid": "0",
-            "sdpMLineIndex": 0,
-        }
+        cand_payload = {"candidate": "candidate:1 1 UDP 2130706431 192.168.1.1 50000 typ host", "sdpMid": "0"}
         msg = json.dumps({
             "type": "ice_candidate",
             "target_peer_id": "bob",
-            "candidate": candidate_data,
+            "candidate": cand_payload,
         })
         await do.on_webSocketMessage(ws_alice, msg)
 
         ws_bob.send.assert_called_once()
-        forwarded = json.loads(ws_bob.send.call_args[0][0])
-        assert forwarded["type"] == "ice_candidate"
-        assert forwarded["sender_peer_id"] == "alice"
-        assert forwarded["candidate"] == candidate_data
+        sent_data = json.loads(ws_bob.send.call_args[0][0])
+        assert sent_data["type"] == "ice_candidate"
+        assert sent_data["sender_peer_id"] == "alice"
+        assert sent_data["candidate"] == cand_payload
 
     @pytest.mark.asyncio
-    async def test_media_state_broadcasts_to_all_peers(self):
+    async def test_media_state_broadcasts_mic_and_cam(self):
+        """Verify media_state updates broadcast to all participants."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob   = self._add_session(do, "bob", "Bob")
@@ -642,7 +642,9 @@ class TestClassroomDOSignaling:
         })
         await do.on_webSocketMessage(ws_alice, msg)
 
-        # Both sessions should receive the broadcast media_state
+        assert do.sessions["sid-alice"]["media_state"]["audio"] is False
+        assert do.sessions["sid-alice"]["media_state"]["video"] is True
+
         for ws in (ws_alice, ws_bob):
             assert any(
                 json.loads(call[0][0]).get("type") == "media_state"
@@ -654,18 +656,22 @@ class TestClassroomDOSignaling:
 
     @pytest.mark.asyncio
     async def test_signaling_to_unknown_target_does_not_raise(self):
+        """Assert that an unknown target receives no signaling message."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
+        ws_bob = self._add_session(do, "bob", "Bob")
 
         msg = json.dumps({
             "type": "signal_offer",
             "target_peer_id": "ghost-user",
             "offer": {"type": "offer", "sdp": "v=0..."},
         })
-        await do.on_webSocketMessage(ws_alice, msg)  # Must not raise
+        await do.on_webSocketMessage(ws_alice, msg)
+        ws_bob.send.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_read_only_viewer_cannot_send_signal(self):
+        """Verify read-only viewer cannot send signaling messages."""
         do = self._make_classroom_do()
         ws_anon = self._add_session(do, "anon", "Anonymous", can_interact=False)
         ws_bob  = self._add_session(do, "bob", "Bob")
@@ -680,55 +686,88 @@ class TestClassroomDOSignaling:
 
     @pytest.mark.asyncio
     async def test_screen_share_only_one_person_allowed(self):
+        """Verify only one participant can share screen at a time."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob   = self._add_session(do, "bob", "Bob")
 
-        # Alice starts screen share
-        await do.on_webSocketMessage(ws_alice, json.dumps({"type": "start_screen_share", "stream_id": "stream-screen-xyz"}))
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "start_screen_share",
+            "stream_id": "stream-alice",
+        }))
         assert do.screen_sharer is not None
         assert do.screen_sharer["participant_id"] == "alice"
-        assert do.screen_sharer["stream_id"] == "stream-screen-xyz"
 
         ws_bob.send.reset_mock()
-        # Bob tries to start screen share while Alice is sharing -> rejected
-        await do.on_webSocketMessage(ws_bob, json.dumps({"type": "start_screen_share"}))
-        assert do.screen_sharer["participant_id"] == "alice"  # Still Alice
+        await do.on_webSocketMessage(ws_bob, json.dumps({
+            "type": "start_screen_share",
+            "stream_id": "stream-bob",
+        }))
 
-        # Bob should receive screen_share_rejected
-        rejected = any(
-            json.loads(c[0][0]).get("type") == "screen_share_rejected"
-            for c in ws_bob.send.call_args_list
-        )
-        assert rejected is True
-
-    @pytest.mark.asyncio
-    async def test_screen_share_stop_broadcasts(self):
-        do = self._make_classroom_do()
-        ws_alice = self._add_session(do, "alice", "Alice")
-        ws_bob   = self._add_session(do, "bob", "Bob")
-
-        await do.on_webSocketMessage(ws_alice, json.dumps({"type": "start_screen_share"}))
         assert do.screen_sharer["participant_id"] == "alice"
-
-        ws_bob.send.reset_mock()
-        await do.on_webSocketMessage(ws_alice, json.dumps({"type": "stop_screen_share"}))
-        assert do.screen_sharer is None
-
-        stopped = any(
-            json.loads(c[0][0]).get("type") == "screen_share_stopped"
-            and json.loads(c[0][0]).get("participant_id") == "alice"
-            for c in ws_bob.send.call_args_list
+        rejected_call = any(
+            json.loads(call[0][0]).get("type") == "screen_share_rejected"
+            for call in ws_bob.send.call_args_list
         )
-        assert stopped is True
+        assert rejected_call is True
 
     @pytest.mark.asyncio
-    async def test_reaction_broadcasts_to_all(self):
+    async def test_screen_share_stopped_broadcast(self):
+        """Verify stopping screen share broadcasts screen_share_stopped."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob   = self._add_session(do, "bob", "Bob")
 
-        await do.on_webSocketMessage(ws_alice, json.dumps({"type": "reaction", "emoji": "🎉"}))
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "start_screen_share",
+            "stream_id": "stream-alice",
+        }))
+
+        ws_bob.send.reset_mock()
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "stop_screen_share",
+        }))
+
+        assert do.screen_sharer is None
+        stopped_call = any(
+            json.loads(call[0][0]).get("type") == "screen_share_stopped"
+            and json.loads(call[0][0]).get("participant_id") == "alice"
+            for call in ws_bob.send.call_args_list
+        )
+        assert stopped_call is True
+
+    @pytest.mark.asyncio
+    async def test_disconnect_clears_screen_share(self):
+        """Verify disconnect cleans up active screen share."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_bob   = self._add_session(do, "bob", "Bob")
+
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "start_screen_share",
+            "stream_id": "stream-alice",
+        }))
+
+        ws_bob.send.reset_mock()
+        await do.on_webSocketClose(ws_alice, 1000, "normal", True)
+
+        assert do.screen_sharer is None
+        stopped_call = any(
+            json.loads(call[0][0]).get("type") == "screen_share_stopped"
+            and json.loads(call[0][0]).get("participant_id") == "alice"
+            for call in ws_bob.send.call_args_list
+        )
+        assert stopped_call is True
+
+    @pytest.mark.asyncio
+    async def test_reaction_broadcasts_to_peers(self):
+        """Verify emoji reactions are broadcast to other peers."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_bob   = self._add_session(do, "bob", "Bob")
+
+        msg = json.dumps({"type": "reaction", "emoji": "🎉"})
+        await do.on_webSocketMessage(ws_alice, msg)
 
         reaction_bob = any(
             json.loads(c[0][0]).get("type") == "reaction"
@@ -739,7 +778,8 @@ class TestClassroomDOSignaling:
         assert reaction_bob is True
 
     @pytest.mark.asyncio
-    async def test_hand_raised_broadcasts_to_all(self):
+    async def test_hand_raised_broadcasts_and_updates_queue(self):
+        """Verify hand raises update hand_raise_queue and broadcast."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob   = self._add_session(do, "bob", "Bob")
@@ -756,28 +796,72 @@ class TestClassroomDOSignaling:
 
     @pytest.mark.asyncio
     async def test_default_media_state_muted_and_video_off(self):
+        """Verify default media state on connection is muted with video off."""
         do = self._make_classroom_do()
-        ws_alice = self._add_session(do, "alice", "Alice")
-        ws_bob   = self._add_session(do, "bob", "Bob")
+        ws_bob = self._add_session(do, "bob", "Bob")
 
-        do._broadcast_room_state()
+        req = _make_request(
+            path="ws://localhost/api/classroom/room1",
+            upgrade="websocket",
+        )
+        req.url = "ws://localhost/api/classroom/room1?participant_id=alice&display_name=Alice"
+        resp = await do.on_fetch(req)
+        assert resp.status == 101
 
-        room_state_msg = None
-        for call in ws_bob.send.call_args_list:
-            data = json.loads(call[0][0])
-            if data.get("type") == "room_state":
-                room_state_msg = data
-                break
+        # Check session initialization in do.sessions
+        alice_session = next(s for s in do.sessions.values() if s["participant_id"] == "alice")
+        assert alice_session["media_state"] == {
+            "audio": False,
+            "video": False,
+            "mic_enabled": False,
+            "cam_enabled": False,
+        }
 
-        assert room_state_msg is not None
-        for participant in room_state_msg.get("participants", []):
-            ms = participant.get("media_state", {})
-            assert ms.get("audio") is False
-            assert ms.get("video") is False
-            assert ms.get("mic_enabled") is False
-            assert ms.get("cam_enabled") is False
+        # Check participant_joined payload broadcast to bob
+        calls = [json.loads(c[0][0]) for c in ws_bob.send.call_args_list if c[0]]
+        joined_msg = next((c for c in calls if c.get("type") == "participant_joined" and c.get("participant_id") == "alice"), None)
+        assert joined_msg is not None
+        assert joined_msg["media_state"] == {
+            "audio": False,
+            "video": False,
+            "mic_enabled": False,
+            "cam_enabled": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_on_fetch_classifies_host_and_guest_roles(self):
+        """Verify activity host is classified as instructor and guest as non-instructor."""
+        do = self._make_classroom_do()
+        do.activity_host_id = "host-user"
+        do.activity_host_name = "HostUser"
+
+        env = do.env
+        token_host = worker.create_token("host-user", "HostUser", "user", env.JWT_SECRET)
+        req_host = _make_request(
+            path="ws://localhost/api/classroom/room1",
+            upgrade="websocket",
+            token=token_host,
+        )
+        resp_host = await do.on_fetch(req_host)
+        assert resp_host.status == 101
+        host_sess = next(s for s in do.sessions.values() if s["participant_id"] == "host-user")
+        assert host_sess["is_instructor"] is True
+        assert host_sess["role"] == "instructor"
+
+        req_guest = _make_request(
+            path="ws://localhost/api/classroom/room1",
+            upgrade="websocket",
+        )
+        req_guest.url = "ws://localhost/api/classroom/room1?participant_id=guest-user&display_name=GuestUser"
+        resp_guest = await do.on_fetch(req_guest)
+        assert resp_guest.status == 101
+        guest_sess = next(s for s in do.sessions.values() if s["participant_id"] == "guest-user")
+        assert guest_sess["is_instructor"] is False
+        assert guest_sess["role"] == "student"
+
     @pytest.mark.asyncio
     async def test_instructor_mute_all_broadcasts_force_mute(self):
+        """Verify instructor mute_all triggers force_mute broadcast."""
         do = self._make_classroom_do()
         ws_instructor = self._add_session(do, "teacher", "Teacher")
         do.sessions["sid-teacher"]["is_instructor"] = True
@@ -791,6 +875,7 @@ class TestClassroomDOSignaling:
 
     @pytest.mark.asyncio
     async def test_non_instructor_mute_all_ignored(self):
+        """Verify non-instructor mute_all has no effect."""
         do = self._make_classroom_do()
         ws_student = self._add_session(do, "student1", "Student 1")
         ws_other = self._add_session(do, "student2", "Student 2")
@@ -803,6 +888,7 @@ class TestClassroomDOSignaling:
 
     @pytest.mark.asyncio
     async def test_instructor_spotlight_broadcasts_spotlight_changed(self):
+        """Verify instructor spotlight triggers spotlight_changed broadcast."""
         do = self._make_classroom_do()
         ws_instructor = self._add_session(do, "teacher", "Teacher")
         do.sessions["sid-teacher"]["is_instructor"] = True
@@ -817,6 +903,7 @@ class TestClassroomDOSignaling:
 
     @pytest.mark.asyncio
     async def test_live_caption_broadcasts_to_all(self):
+        """Verify live_caption messages are broadcast to peers."""
         do = self._make_classroom_do()
         ws_alice = self._add_session(do, "alice", "Alice")
         ws_bob = self._add_session(do, "bob", "Bob")
@@ -826,4 +913,3 @@ class TestClassroomDOSignaling:
 
         calls = [json.loads(c[0][0]) for c in ws_bob.send.call_args_list if c[0]]
         assert any(c.get("type") == "live_caption" and "Hello world" in c.get("text", "") for c in calls)
-

@@ -2979,19 +2979,8 @@
             }
 
             case 'screen_share_rejected': {
+                stopScreenShare();
                 showToast(data.message || 'Screen share rejected', 'warning');
-                if (isScreenSharing) {
-                    if (localScreenStream) {
-                        try { localScreenStream.getTracks().forEach(t => t.stop()); } catch (_) {}
-                        localScreenStream = null;
-                    }
-                    isScreenSharing = false;
-                    if (btnToggleScreenShare) {
-                        btnToggleScreenShare.classList.remove('bg-blue-600');
-                        btnToggleScreenShare.classList.add('bg-[#2b2c2f]');
-                    }
-                    hidePresentationStream();
-                }
                 break;
             }
 
