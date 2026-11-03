@@ -3120,6 +3120,116 @@ async def api_complete_activity(activity_ref: str, req, env):
     }, "Activity marked " + kind)
 
 
+async def api_delete_activity(activity_ref: str, req, env):
+    """DELETE /api/activities/:id — permanently delete an activity the caller hosts."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    try:
+        act = await env.DB.prepare(
+            "SELECT id,title,host_id,price_cents FROM activities"
+            " WHERE id=? OR slug=? ORDER BY (id=?) DESC LIMIT 1"
+        ).bind(activity_ref, activity_ref, activity_ref).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_activity.lookup")
+        return err("Could not delete activity — please try again", 500)
+
+    if not act:
+        return err("Activity not found", 404)
+    if act.host_id != user["id"]:
+        return err("Only the host can delete this activity", 403)
+
+    act_id = act.id
+
+    try:
+        # 1. Checkout in progress: payment could complete after deletion.
+        open_checkout = await env.DB.prepare(
+            "SELECT 1 FROM activity_checkout_sessions cs"
+            " JOIN activity_cart_items ci ON ci.cart_id=cs.cart_id"
+            " WHERE ci.activity_id=? AND cs.status<>'paid'"
+            " AND cs.created_at > datetime('now','-24 hours') LIMIT 1"
+        ).bind(act_id).first()
+        if open_checkout:
+            return err("Someone is checking out this activity right now. Try again in a few minutes.", 409)
+
+        # 2. Payment history shows a purchase of this activity.
+        paid = await env.DB.prepare(
+            "SELECT 1 FROM activity_checkout_sessions cs"
+            " JOIN activity_cart_items ci ON ci.cart_id=cs.cart_id"
+            " WHERE ci.activity_id=? AND cs.status='paid'"
+            " AND cs.amount_total>0 AND ci.unit_price_cents>0 LIMIT 1"
+        ).bind(act_id).first()
+
+        # 3. Conservative fallback: enrollments have no payment link, so a priced
+        #    activity with other participants can't be proven free to delete.
+        priced_with_participants = None
+        if int(getattr(act, "price_cents", 0) or 0) > 0:
+            priced_with_participants = await env.DB.prepare(
+                "SELECT 1 FROM enrollments WHERE activity_id=? AND user_id<>? LIMIT 1"
+            ).bind(act_id, user["id"]).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_activity.guards")
+        return err("Could not delete activity — please try again", 500)
+
+    if paid or priced_with_participants:
+        return err(
+            "This activity has paid purchases or participants and can't be deleted. "
+            "Contact support if it needs to be removed.",
+            409,
+        )
+
+    title = act.title or "An activity"
+    # Collect enrollees before their rows are deleted so they can be notified.
+    rows = await env.DB.prepare(
+        "SELECT DISTINCT user_id FROM enrollments"
+        " WHERE activity_id=? AND status IN ('active','completed') AND user_id<>?"
+    ).bind(act_id, user["id"]).all()
+    recipient_ids = [r.user_id for r in (rows.results or [])]
+
+    # Children first: D1 enforces foreign keys, and several of these tables have no ON DELETE CASCADE.
+    cleanup = [
+        "DELETE FROM session_attendance WHERE session_id IN (SELECT id FROM sessions WHERE activity_id=?)",
+        "DELETE FROM certificates WHERE enrollment_id IN (SELECT id FROM enrollments WHERE activity_id=?)",
+        "DELETE FROM enrollments WHERE activity_id=?",
+        "DELETE FROM activity_materials WHERE activity_id=?",
+        "DELETE FROM sessions WHERE activity_id=?",
+        "DELETE FROM activity_tags WHERE activity_id=?",
+        "DELETE FROM activity_cart_items WHERE activity_id=?",
+        "DELETE FROM activity_completions WHERE activity_id=?",
+        "DELETE FROM activity_interest WHERE activity_id=?",
+        "UPDATE message_requests SET activity_id=NULL WHERE activity_id=?",
+    ]
+    stmts = [env.DB.prepare(sql).bind(act_id) for sql in cleanup]
+    stmts.append(
+        env.DB.prepare("DELETE FROM activities WHERE id=? AND host_id=?").bind(act_id, user["id"])
+    )
+
+    async def run():
+        await env.DB.batch(stmts)  # one transaction: all of it is deleted, or none of it
+
+    try:
+        try:
+            await run()
+        except Exception as exc:
+            if not _is_no_such_table_error(exc):
+                raise
+            await init_db(env)
+            await run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_activity")
+        return err("Could not delete activity — please try again", 500)
+
+    for uid in recipient_ids:
+        await _create_notification(
+            env, uid, "info", "Activity Deleted",
+            f"'{title}' was deleted by its host.",
+            category="enrollment",
+        )
+
+    return ok({"id": act_id}, "Activity deleted")
+
+
 async def api_express_activity_interest(activity_ref: str, req, env):
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
@@ -6447,6 +6557,20 @@ async def api_create_checkout(req, env):
                 int(session.get("amount_total") or cart.get("subtotal_cents") or 0),
                 (session.get("currency") or "usd").upper(),
             ).run()
+        ids = list({i["activity_id"] for i in paid_items})
+        marks = ",".join("?" * len(ids))
+        found = await env.DB.prepare(
+            f"SELECT id FROM activities WHERE id IN ({marks})"
+        ).bind(*ids).all()
+        if len(found.results or []) != len(ids):
+            try:
+                await _stripe_form_request(
+                        env, 
+                        "/checkout/sessions/" + quote(session.get("id", ""), safe="") + "/expire", {}
+                )
+            except Exception as exc:
+                    await capture_exception(exc, req, env, "api_create_checkout.expire")
+            return err("An activity in your cart is no longer available", 409)
         return ok({"checkout_url": session.get("url"), "session_id": session.get("id")}, "Checkout created")
     except Exception as exc:
         await capture_exception(exc, req, env, "api_create_checkout")
@@ -6534,6 +6658,10 @@ async def api_complete_checkout(req, env):
 
 
 async def api_list_learning_intents(req, env):
+    user = verify_token(
+        req.headers.get("Authorization") or "",
+        env.JWT_SECRET
+    )
     parsed = urlparse(req.url)
     params = parse_qs(parsed.query)
     kind = (params.get("kind") or [""])[0]
@@ -6542,13 +6670,13 @@ async def api_list_learning_intents(req, env):
         return err("kind must be learn or teach", 400)
     if kind:
         res = await env.DB.prepare(
-            "SELECT li.id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
+            "SELECT li.id,li.user_id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
             " FROM learning_intents li JOIN users u ON u.id=li.user_id"
             " WHERE li.kind=? AND li.status='open' ORDER BY li.created_at DESC LIMIT 100"
         ).bind(kind).all()
     else:
         res = await env.DB.prepare(
-            "SELECT li.id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
+            "SELECT li.id,li.user_id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
             " FROM learning_intents li JOIN users u ON u.id=li.user_id"
             " WHERE li.status='open' ORDER BY li.created_at DESC LIMIT 100"
         ).all()
@@ -6563,6 +6691,7 @@ async def api_list_learning_intents(req, env):
             "status": row.status,
             "created_at": row.created_at,
             "user_name": await decrypt_aes(row.name_enc or "", enc),
+            "is_own": bool(user and row.user_id == user["id"]),
         })
     return json_resp({"intents": intents})
 
@@ -6596,6 +6725,36 @@ async def api_create_learning_intent(req, env):
         "open",
     ).run()
     return ok({"id": intent_id}, "Request posted")
+
+async def api_delete_learning_intent(req, env, intent_id):
+    """DELETE /api/intents/:id — delete a request owned by the caller."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    try:
+        intent = await env.DB.prepare(
+            "SELECT id, user_id FROM learning_intents WHERE id=? LIMIT 1"
+        ).bind(intent_id).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_learning_intent.lookup")
+        return err("Could not delete request — please try again", 500)
+
+    if not intent:
+        return err("Request not found", 404)
+
+    if intent.user_id != user["id"]:
+        return err("You can only delete your own requests", 403)
+
+    try:
+        await env.DB.prepare(
+            "DELETE FROM learning_intents WHERE id=? AND user_id=?"
+        ).bind(intent_id, user["id"]).run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_learning_intent")
+        return err("Could not delete request — please try again", 500)
+
+    return ok({"id": intent_id}, "Request deleted successfully")
 
 
 async def api_admin_table_counts(req, env):
@@ -9095,6 +9254,9 @@ async def _dispatch(request, env):
 
         if m and method == "PATCH":
             return await api_update_activity(m.group(1), request, env)
+        if m and method == "DELETE":
+            return await api_delete_activity(m.group(1), request, env)
+
 
         if path == "/api/join" and method == "POST":
             return await api_join(request, env)
@@ -9191,6 +9353,12 @@ async def _dispatch(request, env):
             return await api_list_learning_intents(request, env)
         if path == "/api/intents" and method == "POST":
             return await api_create_learning_intent(request, env)
+
+        m_intent = re.fullmatch(r"/api/intents/([A-Za-z0-9_-]+)", path)
+        if m_intent and method == "DELETE":
+            return await api_delete_learning_intent(
+                request, env, m_intent.group(1)
+            )
 
         if path in ("/api/features", "/api/legacy-features") and method == "GET":
             return await api_features(request, env)

@@ -49,7 +49,9 @@
             <button id="submit-intent" class="w-full rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold px-5 py-3 shadow-lg" type="submit">
               Post request
             </button>
-            <p id="form-message" class="hidden rounded-xl p-3 text-sm"></p>
+            <div role="status" aria-live="polite">
+              <p id="form-message" class="hidden rounded-xl p-3 text-sm"></p>
+            </div>
           </form>
 
           <div class="mt-6 rounded-2xl bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 p-4 text-sm text-teal-900 dark:text-teal-100">
@@ -87,6 +89,66 @@
     </section>
   </main>
 <script>
+document.getElementById('intent-list').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-delete-intent]');
+  if (!btn) return;
+
+  const id = btn.dataset.deleteIntent;
+  const title = btn.dataset.title || 'this request';
+
+  if (!window.confirm(
+    `Permanently delete "${title}"?\n\nThis action cannot be undone.`
+  )) {
+    return;
+  }
+
+  const token = localStorage.getItem('edu_token');
+
+  if (!token) {
+    sessionStorage.setItem(
+      'post_login_redirect',
+      location.pathname + location.search
+    );
+    window.location.href = '/login';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+    try {
+    const res = await fetch('/api/intents/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token }
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem('edu_token');
+      localStorage.removeItem('edu_user');
+      sessionStorage.setItem('post_login_redirect', location.pathname + location.search);
+      window.location.href = '/login';
+      return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not delete request');
+    setMessage(data.message || 'Request deleted successfully', false);
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-trash text-xs"></i> Delete';
+    setMessage(err.message || 'Could not delete request', true);
+    return;
+  }
+
+  try {
+    await loadIntents();
+  } catch (err) {
+    const card = btn.closest('article');
+    if (card) card.remove();
+    setMessage('Request deleted, but the list could not refresh. Reload the page to update it.', true);
+  }
+});
+
     const state = { kind: 'learn', filter: '' };
     const params = new URLSearchParams(location.search);
 
@@ -99,6 +161,7 @@
       el.textContent = message;
       el.className = 'rounded-xl p-3 text-sm ' + (isError ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300');
       el.classList.remove('hidden');
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function syncButtons() {
@@ -153,6 +216,19 @@
               <span class="rounded-full bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 px-3 py-1">Posted by ${esc(item.user_name || 'Alpha One Labs member')}</span>
             </div>
             <p class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">${esc(item.description || 'No extra details yet.')}</p>
+            ${item.is_own ? `
+            <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              data-delete-intent="${esc(item.id)}"
+              data-title="${esc(item.title)}"
+              aria-label="Delete request: ${esc(item.title)}"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium transition"
+            >
+            <i class="fas fa-trash text-xs" aria-hidden="true"></i>
+            Delete
+            </button>
+            </div>` : ''}
           </article>
         `;
       }).join('');
@@ -160,7 +236,8 @@
 
     async function loadIntents() {
       const query = state.filter ? '?kind=' + encodeURIComponent(state.filter) : '';
-      const res = await fetch('/api/intents' + query);
+      const token = localStorage.getItem('edu_token');
+      const res = await fetch('/api/intents' + query, token ? { headers: { Authorization: 'Bearer ' + token } } : undefined);
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || 'Could not load requests');
       renderIntents(body.intents || []);
