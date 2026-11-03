@@ -38,10 +38,8 @@ def _make_ws(attachment=None):
     return ws
 
 
-def _make_presence_env(*, allow_anon="true", jwt_secret="test-jwt-secret"):
-    env = make_env(jwt_secret=jwt_secret)
-    env.ALLOW_ANON_PRESENCE = allow_anon
-    return env
+def _make_presence_env(*, jwt_secret="test-jwt-secret"):
+    return make_env(jwt_secret=jwt_secret)
 
 
 def _make_request(path="ws://localhost/api/presence/room1",
@@ -65,11 +63,25 @@ def _make_request(path="ws://localhost/api/presence/room1",
     return req
 
 
-def _make_presence_do(allow_anon="true"):
+def _make_presence_do():
     """Return a fresh PresenceDO with no prior sessions."""
     ctx = _make_ctx()
-    env = _make_presence_env(allow_anon=allow_anon)
+    env = _make_presence_env()
     return worker.PresenceDO(ctx, env)
+
+
+def _make_interactive_request(user_id="alice", display_name=None):
+    """Build a WebSocket request carrying a signed, matching user identity."""
+    token = worker.create_token(
+        user_id,
+        display_name or user_id.capitalize(),
+        "student",
+        "test-jwt-secret",
+    )
+    return _make_request(
+        upgrade="websocket",
+        token=token,
+    )
 
 
 # ===========================================================================
@@ -129,28 +141,34 @@ class TestPresenceDOOnFetch:
         resp = await do.on_fetch(req)
         assert resp.status == 426
 
-    async def test_rejects_unauthenticated_when_anon_disabled(self):
-        do  = _make_presence_do(allow_anon="false")
+    async def test_rejects_missing_credentials(self):
+        do  = _make_presence_do()
         req = _make_request(upgrade="websocket")  # no token, no user_id
         resp = await do.on_fetch(req)
         assert resp.status == 401
 
-    async def test_rejects_when_anon_disabled_even_with_user_id(self):
-        do  = _make_presence_do(allow_anon="false")
-        req = _make_request(upgrade="websocket", user_id="bob")
+    async def test_rejects_invalid_token(self):
+        do  = _make_presence_do()
+        req = _make_request(upgrade="websocket", token="invalid.token.value")
         resp = await do.on_fetch(req)
         assert resp.status == 401
 
-    async def test_accepts_anon_join(self):
-        do  = _make_presence_do(allow_anon="true")
+    async def test_accepts_spectator_but_not_in_presence(self):
+        do  = _make_presence_do()
         req = _make_request(upgrade="websocket", user_id="bob", display_name="Bob")
         resp = await do.on_fetch(req)
         assert resp.status == 101
         assert len(do.sessions) == 1
-        assert "bob" in do.presence
+        assert do.sessions[next(iter(do.sessions))]["can_interact"] is False
+        assert "bob" not in do.presence
+
+        sid = next(iter(do.sessions))
+        server_ws = do.sessions[sid]["ws"]
+        welcome = json.loads(server_ws.send.call_args_list[0][0][0])
+        assert welcome["type"] == "welcome"
 
     async def test_authenticated_join_uses_token_identity(self):
-        env = _make_presence_env(allow_anon="false")
+        env = _make_presence_env()
         ctx = _make_ctx()
         do = worker.PresenceDO(ctx, env)
         token = worker.create_token("token-user", "TokenName", "student", env.JWT_SECRET)
@@ -167,7 +185,7 @@ class TestPresenceDOOnFetch:
         assert do.presence["token-user"]["display_name"] == "TokenName"
 
     async def test_rejects_empty_user_from_token(self):
-        env = _make_presence_env(allow_anon="false")
+        env = _make_presence_env()
         ctx = _make_ctx()
         do = worker.PresenceDO(ctx, env)
         token = worker.create_token("", "NoId", "student", env.JWT_SECRET)
@@ -183,7 +201,7 @@ class TestPresenceDOOnFetch:
             "display_name": "Old",
         }
 
-        req = _make_request(upgrade="websocket", user_id="newbie", display_name="Newbie")
+        req = _make_interactive_request("newbie", "Newbie")
         await do.on_fetch(req)
 
         sid = next(iter(do.sessions))
@@ -191,17 +209,17 @@ class TestPresenceDOOnFetch:
         welcome = json.loads(server_ws.send.call_args_list[0][0][0])
         assert welcome["type"] == "welcome"
         assert "old-user" in welcome["state"]
-        assert "newbie"   in welcome["state"]
+        assert "newbie" in welcome["state"]
 
     async def test_second_join_broadcasts_delta_to_first(self):
         do = _make_presence_do()
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name="Alice"))
+        await do.on_fetch(_make_interactive_request("alice", "Alice"))
         alice_sid = next(iter(do.sessions))
         alice_ws  = do.sessions[alice_sid]["ws"]
         alice_ws.send.reset_mock()
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="bob", display_name="Bob"))
+        await do.on_fetch(_make_interactive_request("bob", "Bob"))
 
         calls = [json.loads(c[0][0]) for c in alice_ws.send.call_args_list]
         assert any(c.get("type") == "delta" and c.get("user_id") == "bob"
@@ -210,14 +228,14 @@ class TestPresenceDOOnFetch:
     async def test_user_id_sanitised_to_64_chars(self):
         do  = _make_presence_do()
         uid = "a" * 100
-        await do.on_fetch(_make_request(upgrade="websocket", user_id=uid))
+        await do.on_fetch(_make_interactive_request(uid))
         assert uid[:64] in do.presence
         assert uid not in do.presence  # raw 100-char uid must not exist
 
     async def test_display_name_sanitised_to_64_chars(self):
         do = _make_presence_do()
         dname = "b" * 100
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name=dname))
+        await do.on_fetch(_make_interactive_request("alice", dname))
         assert do.presence["alice"]["display_name"] == dname[:64]
 
     async def test_same_user_can_have_multiple_sessions(self):
@@ -225,7 +243,7 @@ class TestPresenceDOOnFetch:
         do = _make_presence_do()
         for _ in range(2):
             await do.on_fetch(
-                _make_request(upgrade="websocket", user_id="alice", display_name="Alice")
+                _make_interactive_request("alice", "Alice")
             )
         alice_sessions = [s for s in do.sessions.values() if s["user_id"] == "alice"]
         assert len(alice_sessions) == 2
@@ -241,7 +259,7 @@ class TestPresenceDOMessage:
     async def _setup_user(self, user_id="alice", display_name="Alice"):
         """Helper: create DO, join one user, and return (do, session_id, ws)."""
         do  = _make_presence_do()
-        req = _make_request(upgrade="websocket", user_id=user_id, display_name=display_name)
+        req = _make_interactive_request(user_id, display_name)
         await do.on_fetch(req)
         sid = next(s for s, info in do.sessions.items() if info["user_id"] == user_id)
         ws  = do.sessions[sid]["ws"]
@@ -251,6 +269,29 @@ class TestPresenceDOMessage:
             "x": 0.5, "y": 0.5, "emoji": "", "hand_raised": False,
         })
         return do, sid, ws
+
+    async def test_spectator_messages_are_ignored(self):
+        do = _make_presence_do()
+        req = _make_request(
+            upgrade="websocket",
+            user_id="spectator",
+            display_name="Spectator",
+        )
+        await do.on_fetch(req)
+
+        sid = next(iter(do.sessions))
+        ws = do.sessions[sid]["ws"]
+        ws.send.reset_mock()
+
+        for payload in (
+            {"type": "presence", "x": 0.9, "y": 0.1},
+            {"type": "presence", "emoji": "ignored"},
+            {"type": "presence", "hand_raised": True},
+        ):
+            await do.on_webSocketMessage(ws, json.dumps(payload))
+
+        assert "spectator" not in do.presence
+        ws.send.assert_not_called()
 
     async def test_position_update_changes_presence(self):
         do, sid, ws = await self._setup_user()
@@ -347,7 +388,7 @@ class TestPresenceDOMessage:
         """Delta for alice's move must reach bob but NOT be echoed back to alice."""
         do = _make_presence_do()
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name="Alice"))
+        await do.on_fetch(_make_interactive_request("alice", "Alice"))
         alice_sid = next(s for s, i in do.sessions.items() if i["user_id"] == "alice")
         alice_ws  = do.sessions[alice_sid]["ws"]
         alice_ws.deserializeAttachment.return_value = json.dumps({
@@ -355,7 +396,7 @@ class TestPresenceDOMessage:
             "x": 0.5, "y": 0.5, "emoji": "", "hand_raised": False,
         })
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="bob", display_name="Bob"))
+        await do.on_fetch(_make_interactive_request("bob", "Bob"))
         bob_sid = next(s for s, i in do.sessions.items() if i["user_id"] == "bob")
         bob_ws  = do.sessions[bob_sid]["ws"]
 
@@ -376,7 +417,7 @@ class TestPresenceDOMessage:
         """Only the changed field (x) should appear in the broadcast delta."""
         do = _make_presence_do()
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name="Alice"))
+        await do.on_fetch(_make_interactive_request("alice", "Alice"))
         alice_sid = next(s for s, i in do.sessions.items() if i["user_id"] == "alice")
         alice_ws  = do.sessions[alice_sid]["ws"]
         alice_ws.deserializeAttachment.return_value = json.dumps({
@@ -384,7 +425,7 @@ class TestPresenceDOMessage:
             "x": 0.5, "y": 0.5, "emoji": "", "hand_raised": False,
         })
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="bob", display_name="Bob"))
+        await do.on_fetch(_make_interactive_request("bob", "Bob"))
         bob_sid = next(s for s, i in do.sessions.items() if i["user_id"] == "bob")
         bob_ws  = do.sessions[bob_sid]["ws"]
         bob_ws.send.reset_mock()
@@ -409,7 +450,7 @@ class TestPresenceDOMessage:
 class TestPresenceDODisconnect:
     async def test_single_user_disconnect_clears_presence(self):
         do  = _make_presence_do()
-        req = _make_request(upgrade="websocket", user_id="alice", display_name="Alice")
+        req = _make_interactive_request("alice", "Alice")
         await do.on_fetch(req)
 
         sid = next(iter(do.sessions))
@@ -427,7 +468,7 @@ class TestPresenceDODisconnect:
     async def test_disconnect_broadcasts_leave_to_others(self):
         do = _make_presence_do()
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name="Alice"))
+        await do.on_fetch(_make_interactive_request("alice", "Alice"))
         alice_sid = next(s for s, i in do.sessions.items() if i["user_id"] == "alice")
         alice_ws  = do.sessions[alice_sid]["ws"]
         alice_ws.deserializeAttachment.return_value = json.dumps({
@@ -435,7 +476,7 @@ class TestPresenceDODisconnect:
             "x": 0.5, "y": 0.5, "emoji": "", "hand_raised": False,
         })
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="bob", display_name="Bob"))
+        await do.on_fetch(_make_interactive_request("bob", "Bob"))
         bob_sid = next(s for s, i in do.sessions.items() if i["user_id"] == "bob")
         bob_ws  = do.sessions[bob_sid]["ws"]
         bob_ws.send.reset_mock()
@@ -450,8 +491,8 @@ class TestPresenceDODisconnect:
         """Presence stays alive until the very last socket for that user closes."""
         do = _make_presence_do()
 
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name="Alice"))
-        await do.on_fetch(_make_request(upgrade="websocket", user_id="alice", display_name="Alice"))
+        await do.on_fetch(_make_interactive_request("alice", "Alice"))
+        await do.on_fetch(_make_interactive_request("alice", "Alice"))
 
         sids = [s for s, i in do.sessions.items() if i["user_id"] == "alice"]
         assert len(sids) == 2
