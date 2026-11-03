@@ -174,7 +174,6 @@ export class StateManager {
         const element = page.elements.find(el => el.id === id);
         if (element) {
             Object.assign(element, updates);
-            this.saveHistory();
             this.notify();
         }
     }

@@ -70,6 +70,7 @@ test('updates an element and records the update in history', () => {
     const id = state.getCurrentPage().elements[0].id;
 
     state.updateElement(id, { text: 'Save' });
+    state.saveHistory();
     assert.equal(state.getCurrentPage().elements[0].text, 'Save');
     state.undo();
     assert.equal(state.getCurrentPage().elements[0].text, 'Button');
