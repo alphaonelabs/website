@@ -3120,6 +3120,73 @@ async def api_complete_activity(activity_ref: str, req, env):
     }, "Activity marked " + kind)
 
 
+async def api_delete_activity(activity_ref: str, req, env):
+    """DELETE /api/activities/:id — permanently delete an activity the caller hosts."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    try:
+        act = await env.DB.prepare(
+            "SELECT id,title,host_id FROM activities WHERE id=? OR slug=? LIMIT 1"
+        ).bind(activity_ref, activity_ref).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_activity.lookup")
+        return err("Could not delete activity — please try again", 500)
+
+    if not act:
+        return err("Activity not found", 404)
+    if act.host_id != user["id"]:
+        return err("Only the host can delete this activity", 403)
+
+    act_id = act.id
+    title = act.title or "An activity"
+    # Collect enrollees before their rows are deleted so they can be notified.
+    recipient_ids = await _activity_enrollee_ids(env, act_id, exclude_user_id=user["id"])
+
+    # Children first: D1 enforces foreign keys, and several of these tables have no ON DELETE CASCADE.
+    cleanup = [
+        "DELETE FROM session_attendance WHERE session_id IN (SELECT id FROM sessions WHERE activity_id=?)",
+        "DELETE FROM certificates WHERE enrollment_id IN (SELECT id FROM enrollments WHERE activity_id=?)",
+        "DELETE FROM enrollments WHERE activity_id=?",
+        "DELETE FROM activity_materials WHERE activity_id=?",
+        "DELETE FROM sessions WHERE activity_id=?",
+        "DELETE FROM activity_tags WHERE activity_id=?",
+        "DELETE FROM activity_cart_items WHERE activity_id=?",
+        "DELETE FROM activity_completions WHERE activity_id=?",
+        "DELETE FROM activity_interest WHERE activity_id=?",
+        "UPDATE message_requests SET activity_id=NULL WHERE activity_id=?",
+    ]
+    stmts = [env.DB.prepare(sql).bind(act_id) for sql in cleanup]
+    stmts.append(
+        env.DB.prepare("DELETE FROM activities WHERE id=? AND host_id=?").bind(act_id, user["id"])
+    )
+
+    async def run():
+        await env.DB.batch(stmts)  # one transaction: all of it is deleted, or none of it
+
+    try:
+        try:
+            await run()
+        except Exception as exc:
+            if not _is_no_such_table_error(exc):
+                raise
+            await init_db(env)
+            await run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_activity")
+        return err("Could not delete activity — please try again", 500)
+
+    for uid in recipient_ids:
+        await _create_notification(
+            env, uid, "info", "Activity Deleted",
+            f"'{title}' was deleted by its host.",
+            category="enrollment",
+        )
+
+    return ok({"id": act_id}, "Activity deleted")
+
+
 async def api_express_activity_interest(activity_ref: str, req, env):
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
@@ -6597,6 +6664,36 @@ async def api_create_learning_intent(req, env):
     ).run()
     return ok({"id": intent_id}, "Request posted")
 
+async def api_delete_learning_intent(req, env, intent_id):
+    """DELETE /api/intents/:id — delete a request owned by the caller."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    try:
+        intent = await env.DB.prepare(
+            "SELECT id, user_id FROM learning_intents WHERE id=? LIMIT 1"
+        ).bind(intent_id).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_learning_intent.lookup")
+        return err("Could not delete request — please try again", 500)
+
+    if not intent:
+        return err("Request not found", 404)
+
+    if intent.user_id != user["id"]:
+        return err("You can only delete your own requests", 403)
+
+    try:
+        await env.DB.prepare(
+            "DELETE FROM learning_intents WHERE id=? AND user_id=?"
+        ).bind(intent_id, user["id"]).run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_learning_intent")
+        return err("Could not delete request — please try again", 500)
+
+    return ok({"id": intent_id}, "Request deleted successfully")
+
 
 async def api_admin_table_counts(req, env):
     if not _is_basic_auth_valid(req, env):
@@ -9095,6 +9192,9 @@ async def _dispatch(request, env):
 
         if m and method == "PATCH":
             return await api_update_activity(m.group(1), request, env)
+        if m and method == "DELETE":
+            return await api_delete_activity(m.group(1), request, env)
+
 
         if path == "/api/join" and method == "POST":
             return await api_join(request, env)
@@ -9191,6 +9291,12 @@ async def _dispatch(request, env):
             return await api_list_learning_intents(request, env)
         if path == "/api/intents" and method == "POST":
             return await api_create_learning_intent(request, env)
+
+        m_intent = re.fullmatch(r"/api/intents/([A-Za-z0-9_-]+)", path)
+        if m_intent and method == "DELETE":
+            return await api_delete_learning_intent(
+                request, env, m_intent.group(1)
+            )
 
         if path in ("/api/features", "/api/legacy-features") and method == "GET":
             return await api_features(request, env)

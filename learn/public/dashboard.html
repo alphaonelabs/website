@@ -52,6 +52,35 @@
 
     initializeDarkMode();
     document.addEventListener('DOMContentLoaded', initializeDarkMode);
+
+    document.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-delete-activity]');
+  if (!btn) return;
+
+  const id = btn.dataset.deleteActivity;
+  const title = btn.dataset.title || 'this activity';
+  const participants = parseInt(btn.dataset.participants || '0', 10);
+
+  let message = `Permanently delete "${title}"?\n\nThis removes its sessions, tags and enrollments and cannot be undone.`;
+  if (participants > 0) {
+    message += `\n\n${participants} enrolled participant(s) will lose access and be notified.`;
+  }
+  if (!window.confirm(message)) return;
+
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/activities/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + localStorage.getItem('edu_token') }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not delete activity');
+    window.location.reload();
+  } catch (err) {
+    btn.disabled = false;
+    alert(err.message);
+  }
+});
   </script>
 
   <style>
@@ -338,10 +367,8 @@ function renderDashboard(data) {
                             <i class="fas fa-clock mr-1"></i>${a.session_count || 0} sessions
                         </span>
                     </div>
-                    
                     ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
-                    
-                    <div class="flex gap-2 mt-auto">
+                    <div class="flex flex-wrap gap-2 mt-auto">
                         <a href="${activityUrl(a)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
                             <i class="fas fa-eye mr-1"></i>View
                         </a>
@@ -351,6 +378,13 @@ function renderDashboard(data) {
                         <a href="/edit-activity?id=${esc(a.id)}" class="flex-1 text-center py-2 px-4 rounded-lg font-semibold text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-colors">
                             <i class="fas fa-pen mr-1"></i>Edit
                         </a>
+                        <button type="button"
+                           data-delete-activity="${esc(a.id)}"
+                           data-title="${esc(a.title)}"
+                           data-participants="${Number(a.participant_count) || 0}"
+                           class="flex-1 text-center py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition">
+                           <i class="fas fa-trash mr-1"></i>Delete
+                        </button>
                     </div>
                 </article>
             `;

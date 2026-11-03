@@ -87,6 +87,59 @@
     </section>
   </main>
 <script>
+document.getElementById('intent-list').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-delete-intent]');
+  if (!btn) return;
+
+  const id = btn.dataset.deleteIntent;
+  const title = btn.dataset.title || 'this request';
+
+  if (!window.confirm(
+    `Permanently delete "${title}"?\n\nThis action cannot be undone.`
+  )) {
+    return;
+  }
+
+  const token = localStorage.getItem('edu_token');
+
+  if (!token) {
+    sessionStorage.setItem(
+      'post_login_redirect',
+      location.pathname + location.search
+    );
+    window.location.href = '/login';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+
+  try {
+    const res = await fetch(
+      '/api/intents/' + encodeURIComponent(id),
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: 'Bearer ' + token
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Could not delete request');
+    }
+
+    setMessage(data.message || 'Request deleted successfully', false);
+    await loadIntents();
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-trash text-xs"></i> Delete';
+    setMessage(err.message || 'Could not delete request', true);
+  }
+});
+
     const state = { kind: 'learn', filter: '' };
     const params = new URLSearchParams(location.search);
 
@@ -153,6 +206,17 @@
               <span class="rounded-full bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300 px-3 py-1">Posted by ${esc(item.user_name || 'Alpha One Labs member')}</span>
             </div>
             <p class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">${esc(item.description || 'No extra details yet.')}</p>
+            <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                data-delete-intent="${esc(item.id)}"
+                data-title="${esc(item.title)}"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium transition"
+              >
+                <i class="fas fa-trash text-xs"></i>
+                Delete
+              </button>
+            </div>
           </article>
         `;
       }).join('');
