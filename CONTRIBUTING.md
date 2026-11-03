@@ -7,7 +7,7 @@ Thank you for helping! Everything lives in this one repository, so the steps are
 1. **Find or open an issue.** Look for [`good first issue`](https://github.com/alphaonelabs/website/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) to start. Pull requests should link the issue they solve.
 2. **Fork and branch.** Fork this repo, then create a branch from `main`.
 3. **Work in one project folder.** Keep each PR focused on a single project (`learn/`, `botlab/`, ...). Checks run only for the folders you touch.
-4. **Test locally.** Follow the README in the project's folder. For Cloudflare Worker projects, `npx wrangler dev` runs the site locally.
+4. **Test locally.** Follow the README in the project's folder. For Cloudflare Worker projects, `npx wrangler dev` runs the site locally. For Python Worker projects with tests in a `tests/` directory or named `test_*.py` / `*_test.py` at the project root, run `python -m pytest -q` from that project folder. The `Project checks` workflow runs the suite automatically when a changed Worker project has tests; projects temporarily listed in its pytest opt-out are excluded until their known failures are fixed.
 5. **Open a PR** with a clear title and a short description of what changed and how you tested it. Screenshots help for UI changes.
 
 ## Where should my change go?
