@@ -4137,7 +4137,7 @@ async def api_submit_survey(req, env, survey_id: str):
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
-    answers_in = body.get("answers") or {}
+    answers_in = body.get("answers", {})
     if not isinstance(answers_in, dict):
         return err("answers must be an object")
 
@@ -4254,6 +4254,8 @@ async def api_survey_results(req, env, survey_id: str):
         ).bind(survey_id).first()
         if not survey:
             return None
+        if user["id"] != survey.user_id:
+            return "forbidden"
         is_creator = user["id"] == survey.user_id
 
         q_res = await env.DB.prepare(
@@ -4370,6 +4372,8 @@ async def api_survey_results(req, env, survey_id: str):
         }
 
     payload = await _survey_db(env, run)
+    if payload == "forbidden":
+        return err("Only the survey creator can view results", 403)
     if payload is None:
         return err("Survey not found", 404)
     return json_resp(payload)
