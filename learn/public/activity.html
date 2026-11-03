@@ -253,11 +253,11 @@
               View the classroom for this activity. Sign in when you want to interact, save progress, or join live collaboration.
             </p>
             <div class="flex flex-wrap gap-3">
-              <a id="act-classroom-link" href="/classroom_poc" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center">
+              <a id="act-classroom-link" href="/classroom_poc?autojoin=1&amp;room=lobby" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center">
                 <i class="fas fa-door-open mr-2"></i>
                 Enter Virtual Classroom
               </a>
-              <a href="/whiteboard" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center">
+              <a id="act-whiteboard-link" href="/whiteboard" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 inline-flex items-center">
                 <i class="fas fa-chalkboard mr-2"></i>
                 Whiteboard
               </a>
@@ -846,9 +846,15 @@
           this.src = '/images/logo.png';
         };
       }
+      const courseRoomId = 'course-' + (a.slug || a.id || 'general');
+      const courseTitle = a.title || 'Course Classroom';
       const classroomLink = document.getElementById('act-classroom-link');
       if (classroomLink) {
-        classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(a.slug || a.id || 'lobby') + (data.is_host ? '&role=instructor' : '');
+        classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(courseRoomId) + '&title=' + encodeURIComponent(courseTitle) + (data.is_host ? '&role=instructor' : '');
+      }
+      const whiteboardLink = document.getElementById('act-whiteboard-link');
+      if (whiteboardLink) {
+        whiteboardLink.href = '/whiteboard?room=' + encodeURIComponent(courseRoomId);
       }
       const objectivesCard = document.getElementById('act-objectives-card');
       const objectives = document.getElementById('act-objectives');

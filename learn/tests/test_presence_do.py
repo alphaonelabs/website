@@ -910,6 +910,86 @@ class TestClassroomDOSignaling:
         assert any(c.get("type") == "spotlight_changed" and c.get("spotlight_peer_id") == "student1" for c in calls)
 
     @pytest.mark.asyncio
+    async def test_instructor_spotlight_toggle_off(self):
+        """Verify instructor spotlight toggles off when spotlighting same participant."""
+        do = self._make_classroom_do()
+        ws_instructor = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+        ws_student = self._add_session(do, "student1", "Student 1")
+
+        await do.on_webSocketMessage(ws_instructor, json.dumps({"type": "spotlight", "target_peer_id": "student1"}))
+        assert do.spotlight_peer_id == "student1"
+
+        await do.on_webSocketMessage(ws_instructor, json.dumps({"type": "spotlight", "target_peer_id": "student1"}))
+        assert do.spotlight_peer_id is None
+
+    @pytest.mark.asyncio
+    async def test_instructor_mute_individual_participant(self):
+        """Verify instructor can mute an individual participant."""
+        do = self._make_classroom_do()
+        ws_instructor = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+        ws_student = self._add_session(do, "student1", "Student 1")
+        do.sessions["sid-student1"]["media_state"] = {"audio": True, "video": True, "mic_enabled": True, "cam_enabled": True}
+
+        msg = json.dumps({"type": "mute_participant", "target_participant_id": "student1"})
+        await do.on_webSocketMessage(ws_instructor, msg)
+
+        assert do.sessions["sid-student1"]["media_state"]["audio"] is False
+        assert do.sessions["sid-student1"]["media_state"]["mic_enabled"] is False
+        calls = [json.loads(c[0][0]) for c in ws_student.send.call_args_list if c[0]]
+        assert any(c.get("type") == "force_mute" and c.get("target_participant_id") == "student1" for c in calls)
+
+    @pytest.mark.asyncio
+    async def test_non_instructor_mute_individual_ignored(self):
+        """Verify non-instructor cannot mute an individual participant."""
+        do = self._make_classroom_do()
+        ws_student1 = self._add_session(do, "student1", "Student 1")
+        ws_student2 = self._add_session(do, "student2", "Student 2")
+        do.sessions["sid-student2"]["media_state"] = {"audio": True, "video": True, "mic_enabled": True, "cam_enabled": True}
+
+        msg = json.dumps({"type": "mute_participant", "target_participant_id": "student2"})
+        await do.on_webSocketMessage(ws_student1, msg)
+
+        assert do.sessions["sid-student2"]["media_state"]["mic_enabled"] is True
+        calls = [json.loads(c[0][0]) for c in ws_student2.send.call_args_list if c[0]]
+        assert not any(c.get("type") == "force_mute" for c in calls)
+
+    @pytest.mark.asyncio
+    async def test_instructor_lower_hand(self):
+        """Verify instructor can lower a participant's hand."""
+        do = self._make_classroom_do()
+        ws_instructor = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+        ws_student = self._add_session(do, "student1", "Student 1")
+
+        await do.on_webSocketMessage(ws_student, json.dumps({"type": "hand_raised", "hand_raised": True}))
+        assert "student1" in do.hand_raise_queue
+
+        await do.on_webSocketMessage(ws_instructor, json.dumps({"type": "lower_hand", "target_participant_id": "student1"}))
+        assert "student1" not in do.hand_raise_queue
+        calls = [json.loads(c[0][0]) for c in ws_student.send.call_args_list if c[0]]
+        assert any(c.get("type") == "hand_raised" and c.get("participant_id") == "student1" and c.get("hand_raised") is False for c in calls)
+
+    @pytest.mark.asyncio
+    async def test_instructor_lower_all_hands(self):
+        """Verify instructor can lower all hands at once."""
+        do = self._make_classroom_do()
+        ws_instructor = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+        ws_student1 = self._add_session(do, "student1", "Student 1")
+        ws_student2 = self._add_session(do, "student2", "Student 2")
+
+        await do.on_webSocketMessage(ws_student1, json.dumps({"type": "hand_raised", "hand_raised": True}))
+        await do.on_webSocketMessage(ws_student2, json.dumps({"type": "hand_raised", "hand_raised": True}))
+        assert do.hand_raise_queue == ["student1", "student2"]
+
+        await do.on_webSocketMessage(ws_instructor, json.dumps({"type": "lower_all_hands"}))
+        assert do.hand_raise_queue == []
+        calls = [json.loads(c[0][0]) for c in ws_student1.send.call_args_list if c[0]]
+        assert any(c.get("type") == "all_hands_lowered" for c in calls)
+
+    @pytest.mark.asyncio
     async def test_live_caption_broadcasts_to_all(self):
         """Verify live_caption messages are broadcast to peers."""
         do = self._make_classroom_do()
@@ -1392,3 +1472,51 @@ async def test_presence_owner_join_revokes_anonymous_session():
 
     # Check anonymous session had can_interact set to False
     assert do.sessions[anon_sid]["can_interact"] is False
+
+
+@pytest.mark.asyncio
+async def test_persist_transcript_deduplicates_consecutive_identical_messages():
+    """Verify ClassroomDO._persist_transcript drops consecutive duplicate transcripts."""
+    do = worker.ClassroomDO(_make_ctx(), make_env())
+    info = {"participant_id": "alice", "display_name": "Alice"}
+    await do._persist_transcript("sid-1", info, "hello")
+    assert len(do.transcripts) == 1
+
+    # Second identical transcript call is dropped
+    await do._persist_transcript("sid-1", info, "hello")
+    assert len(do.transcripts) == 1
+
+    # Different text succeeds
+    await do._persist_transcript("sid-1", info, "world")
+    assert len(do.transcripts) == 2
+
+
+@pytest.mark.asyncio
+async def test_resolve_activity_creator_strips_course_and_activity_prefix():
+    """Verify _resolve_activity_creator correctly strips 'course-' and 'activity-' prefixes."""
+    env = make_env()
+    mock_db = MagicMock()
+    mock_stmt = MagicMock()
+    mock_stmt.bind.return_value = mock_stmt
+    mock_row = SimpleNamespace(
+        id="act-123",
+        host_id="user-bob",
+        username="bob",
+        name_enc=None,
+    )
+    mock_stmt.first = AsyncMock(return_value=mock_row)
+    mock_db.prepare.return_value = mock_stmt
+    env.DB = mock_db
+
+    do = worker.ClassroomDO(_make_ctx(), env)
+
+    # 1. course- prefix
+    host_id, name = await do._resolve_activity_creator("course-demo-alpha")
+    assert host_id == "user-bob"
+    assert name == "bob"
+    mock_stmt.bind.assert_called_with("course-demo-alpha", "course-demo-alpha", "demo-alpha", "demo-alpha")
+
+    # 2. activity- prefix
+    host_id2, name2 = await do._resolve_activity_creator("activity-ai-101")
+    assert host_id2 == "user-bob"
+    mock_stmt.bind.assert_called_with("activity-ai-101", "activity-ai-101", "ai-101", "ai-101")

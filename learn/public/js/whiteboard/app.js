@@ -32,6 +32,10 @@ import {
   const canvas = document.getElementById('whiteboard');
   const viewportEl = document.getElementById('canvas-viewport');
   const roomInput = document.getElementById('room');
+  const urlRoom = new URLSearchParams(window.location.search).get('room');
+  if (roomInput && urlRoom && urlRoom.trim()) {
+    roomInput.value = urlRoom.trim();
+  }
   const statusEl = document.getElementById('status');
   const loginLink = document.getElementById('whiteboard-login');
   const toolSelect = document.getElementById('toolSelect');

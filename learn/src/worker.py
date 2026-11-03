@@ -7599,13 +7599,18 @@ class ClassroomDO(DurableObject):
             return None, None
         try:
             lookup_id = room_id.split(":breakout:")[0] if ":breakout:" in room_id else room_id
+            clean_id = lookup_id
+            for prefix in ("course-", "activity-"):
+                if clean_id.startswith(prefix):
+                    clean_id = clean_id[len(prefix):]
+                    break
             enc = getattr(self.env, "ENCRYPTION_KEY", "")
             act = await self.env.DB.prepare(
                 "SELECT a.id, a.host_id, u.username, u.name AS name_enc "
                 "FROM activities a "
                 "LEFT JOIN users u ON a.host_id = u.id "
-                "WHERE a.slug=? OR a.id=?"
-            ).bind(lookup_id, lookup_id).first()
+                "WHERE a.slug=? OR a.id=? OR a.slug=? OR a.id=?"
+            ).bind(lookup_id, lookup_id, clean_id, clean_id).first()
             if act:
                 dec_name = await decrypt_aes(getattr(act, "name_enc", "") or "", enc) if enc else ""
                 dec_uname = await decrypt_aes(getattr(act, "username", "") or "", enc) if enc else ""
@@ -7637,6 +7642,10 @@ class ClassroomDO(DurableObject):
                 info["is_instructor"] = False
                 return False
             stored_role = getattr(row, "role", None) or ""
+            if stored_role.startswith("v1:"):
+                enc = getattr(self.env, "ENCRYPTION_KEY", "")
+                if enc:
+                    stored_role = await decrypt_aes(stored_role, enc)
             if stored_role == "deleted":
                 info["is_instructor"] = False
                 return False
@@ -7665,6 +7674,14 @@ class ClassroomDO(DurableObject):
                     body = json.loads(raw_text) if raw_text else {}
                     msg = json.dumps(body) if isinstance(body, dict) else str(body)
                     self._broadcast(msg)
+                    if isinstance(body, dict) and body.get("type") == "live_caption":
+                        text = str(body.get("text", "")).strip()[:500]
+                        if text:
+                            internal_info = {
+                                "participant_id": body.get("participant_id") or "voxbridge",
+                                "display_name": body.get("display_name") or "Anonymous",
+                            }
+                            await self._persist_transcript("internal", internal_info, text, "voxbridge")
                     return Response(json.dumps({"ok": True}), status=200, headers={"Content-Type": "application/json"})
                 except Exception as exc:
                     return Response(json.dumps({"error": str(exc)}), status=400, headers={"Content-Type": "application/json"})
@@ -8211,20 +8228,84 @@ class ClassroomDO(DurableObject):
                 "emoji":          emoji,
             }))
 
+        elif msg_type == "mute_participant":
+            if await self._is_authorized_instructor(info):
+                target_id = str(data.get("target_participant_id") or data.get("target_peer_id") or "")
+                if target_id:
+                    for other_sid, other_info in self.sessions.items():
+                        if str(other_info.get("participant_id")) == target_id:
+                            if "media_state" in other_info:
+                                other_info["media_state"]["audio"] = False
+                                other_info["media_state"]["mic_enabled"] = False
+                            self._persist_attachment(other_sid, other_info)
+                    self._broadcast(json.dumps({
+                        "type": "force_mute",
+                        "target_participant_id": target_id,
+                        "target_peer_id": target_id,
+                        "by": info["participant_id"],
+                    }))
+                    self._broadcast_room_state()
+
         elif msg_type == "mute_all":
             if await self._is_authorized_instructor(info):
+                for other_sid, other_info in self.sessions.items():
+                    if not other_info.get("is_instructor") and other_info.get("participant_id") != info["participant_id"]:
+                        if "media_state" in other_info:
+                            other_info["media_state"]["audio"] = False
+                            other_info["media_state"]["mic_enabled"] = False
+                        self._persist_attachment(other_sid, other_info)
                 self._broadcast(json.dumps({
                     "type": "force_mute",
                     "by":   info["participant_id"],
                 }))
+                self._broadcast_room_state()
 
         elif msg_type == "spotlight":
             if await self._is_authorized_instructor(info):
-                target_id = str(data.get("target_peer_id", ""))
-                self.spotlight_peer_id = target_id if target_id else None
+                target_id = str(data.get("target_peer_id") or data.get("target_participant_id") or "")
+                if getattr(self, "spotlight_peer_id", None) == target_id and target_id:
+                    self.spotlight_peer_id = None
+                else:
+                    self.spotlight_peer_id = target_id if target_id else None
                 self._broadcast(json.dumps({
                     "type":              "spotlight_changed",
                     "spotlight_peer_id": self.spotlight_peer_id,
+                    "by":                info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "lower_hand":
+            target_id = str(data.get("target_participant_id") or data.get("target_peer_id") or "")
+            is_inst = await self._is_authorized_instructor(info)
+            if is_inst or target_id == info["participant_id"]:
+                pid = target_id or info["participant_id"]
+                if not hasattr(self, "hand_raise_queue"):
+                    self.hand_raise_queue = []
+                if pid in self.hand_raise_queue:
+                    self.hand_raise_queue.remove(pid)
+                for other_sid, other_info in self.sessions.items():
+                    if other_info.get("participant_id") == pid:
+                        other_info["hand_raised"] = False
+                        self._persist_attachment(other_sid, other_info)
+                self._broadcast(json.dumps({
+                    "type":              "hand_raised",
+                    "participant_id":    pid,
+                    "display_name":      "",
+                    "hand_raised":       False,
+                    "hand_raise_queue":  list(self.hand_raise_queue),
+                    "by":                info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "lower_all_hands":
+            if await self._is_authorized_instructor(info):
+                self.hand_raise_queue = []
+                for other_sid, other_info in self.sessions.items():
+                    other_info["hand_raised"] = False
+                    self._persist_attachment(other_sid, other_info)
+                self._broadcast(json.dumps({
+                    "type":              "all_hands_lowered",
+                    "hand_raise_queue":  [],
                     "by":                info["participant_id"],
                 }))
                 self._broadcast_room_state()
@@ -8242,6 +8323,108 @@ class ClassroomDO(DurableObject):
                 }))
                 if is_final:
                     await self._persist_transcript(sid, info, text, "live")
+
+        elif msg_type == "create_breakouts":
+            if await self._is_authorized_instructor(info):
+                rooms_data = data.get("rooms")
+                count = data.get("count")
+                created = []
+                if isinstance(rooms_data, list) and rooms_data:
+                    for i, r in enumerate(rooms_data[:10]):
+                        if not isinstance(r, dict):
+                            continue
+                        r_title = str(r.get("title") or f"Breakout Room {i+1}").strip()[:64]
+                        sub_id = f"{self.room_id}:breakout:{i+1}"
+                        assigned = [str(p)[:64] for p in r.get("participants", []) if isinstance(p, str)]
+                        created.append({
+                            "id": sub_id,
+                            "breakout_room_id": sub_id,
+                            "title": r_title,
+                            "participants": assigned,
+                        })
+                elif isinstance(count, int) and 1 <= count <= 10:
+                    for i in range(count):
+                        sub_id = f"{self.room_id}:breakout:{i+1}"
+                        created.append({
+                            "id": sub_id,
+                            "breakout_room_id": sub_id,
+                            "title": f"Breakout Room {i+1}",
+                            "participants": [],
+                        })
+                if created:
+                    self.breakout_rooms = created
+                    try:
+                        await self.ctx.storage.put("breakout_rooms", json.dumps(created))
+                    except Exception as exc:
+                        await capture_exception(exc, None, self.env, "classroom.create_breakouts.persist")
+                    if hasattr(self.env, "DB") and self.env.DB:
+                        for r in created:
+                            try:
+                                bid = str(uuid.uuid4())
+                                await self.env.DB.prepare(
+                                    "INSERT INTO classroom_breakouts (id, parent_room_id, breakout_room_id, title) "
+                                    "VALUES (?, ?, ?, ?)"
+                                ).bind(bid, self.room_id, r["breakout_room_id"], r["title"]).run()
+                            except Exception as exc:
+                                await capture_exception(exc, None, self.env, "classroom.create_breakouts.db")
+                    self._broadcast(json.dumps({
+                        "type": "breakout_rooms_created",
+                        "parent_room_id": self.room_id,
+                        "rooms": created,
+                        "by": info["participant_id"],
+                    }))
+                    self._broadcast_room_state()
+
+        elif msg_type == "close_breakouts":
+            if await self._is_authorized_instructor(info):
+                self.breakout_rooms = []
+                try:
+                    await self.ctx.storage.delete("breakout_rooms")
+                except Exception as exc:
+                    await capture_exception(exc, None, self.env, "classroom.close_breakouts.storage")
+                self._broadcast(json.dumps({
+                    "type": "breakout_rooms_closed",
+                    "parent_room_id": self.room_id,
+                    "by": info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "broadcast_to_breakouts":
+            if await self._is_authorized_instructor(info):
+                announcement = str(data.get("message", "")).strip()[:500]
+                if announcement:
+                    payload = json.dumps({
+                        "type": "breakout_announcement",
+                        "message": announcement,
+                        "from": info["display_name"],
+                    })
+                    self._broadcast(payload)
+                    if hasattr(self.env, "CLASSROOM_DO") and self.env.CLASSROOM_DO and getattr(self, "breakout_rooms", None):
+                        for b_room in self.breakout_rooms:
+                            try:
+                                b_id = b_room.get("breakout_room_id")
+                                if b_id:
+                                    stub = self.env.CLASSROOM_DO.get(self.env.CLASSROOM_DO.idFromName(b_id))
+                                    await stub.fetch(f"http://internal/api/classroom/{b_id}/broadcast_internal", {
+                                        "method": "POST",
+                                        "headers": {"Content-Type": "application/json"},
+                                        "body": payload,
+                                    })
+                            except Exception as exc:
+                                await capture_exception(exc, None, self.env, "classroom.broadcast_to_breakouts")
+
+        elif msg_type == "connection_mode":
+            mode = str(data.get("mode", "full")).strip().lower()
+            if mode not in ("full", "audio_only", "captions_only"):
+                mode = "full"
+            info["connection_mode"] = mode
+            self._persist_attachment(sid, info)
+            self._broadcast(json.dumps({
+                "type": "connection_mode_changed",
+                "participant_id": info["participant_id"],
+                "mode": mode,
+            }))
+            self._broadcast_room_state()
 
         elif msg_type == "create_breakouts":
             if await self._is_authorized_instructor(info):
@@ -8538,13 +8721,22 @@ class ClassroomDO(DurableObject):
 
     async def _persist_transcript(self, sid: str, info: dict, text: str, source: str = "live") -> None:
         """Persist final transcript entry in memory, storage, and database."""
+        clean_text = str(text).strip()[:500]
+        if not clean_text:
+            return
+        # Deduplicate consecutive identical transcript from same participant
+        if hasattr(self, "transcripts") and self.transcripts:
+            last = self.transcripts[-1]
+            if (last.get("participant_id") == info.get("participant_id")
+                    and last.get("text") == clean_text):
+                return
         entry = {
             "id": str(uuid.uuid4()),
             "room_id": getattr(self, "room_id", "default"),
             "session_id": sid,
             "participant_id": info.get("participant_id", "unknown"),
             "display_name": info.get("display_name", "Anonymous"),
-            "text": text,
+            "text": clean_text,
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "source": source,
         }

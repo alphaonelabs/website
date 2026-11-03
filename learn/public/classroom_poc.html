@@ -9,7 +9,7 @@
         if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@0.263.1"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -257,6 +257,14 @@
             pointer-events: none;
             user-select: none;
         }
+        #stageMainCard:fullscreen,
+        #stageMainCard:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            border: none;
+            background-color: #0e0f12;
+        }
     </style>
 </head>
 
@@ -277,15 +285,15 @@
                 <div>
                     <label for="lobbyRoomId" class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Room ID</label>
                     <div class="relative">
-                        <i data-lucide="hash" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
-                        <input id="lobbyRoomId" type="text" value="demo-room" placeholder="e.g. demo-room"
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                        <input id="lobbyRoomId" type="text" value="lobby" placeholder="e.g. lobby"
                                class="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition" />
                     </div>
                 </div>
                 <div>
                     <label for="lobbyDisplayName" class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Display Name</label>
                     <div class="relative">
-                        <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <input id="lobbyDisplayName" type="text" placeholder="Your name"
                                class="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition" />
                     </div>
@@ -298,7 +306,7 @@
                 </div>
                 <button id="btnJoin" type="button"
                         class="w-full py-3 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-lg shadow-lg shadow-teal-600/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-[.98]">
-                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                     <span id="btnJoinLabel">Join Classroom</span>
                 </button>
             </div>
@@ -317,13 +325,8 @@
                 <span id="connText" class="text-gray-400">Connecting…</span>
             </div>
             <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-gray-800 rounded-full text-xs font-medium text-gray-300">
-                <i data-lucide="hash" class="w-3 h-3 text-teal-400"></i>
+                <svg class="w-3.5 h-3.5 text-teal-500 dark:text-teal-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
                 <span id="topRoomId">—</span>
-            </div>
-            <!-- Connection Mode Badge (Graceful Degradation) -->
-            <div id="btnNetworkMode" class="flex items-center gap-1.5 px-3 py-1 bg-gray-800 hover:bg-gray-700 cursor-pointer rounded-full text-xs font-medium text-gray-300 transition" title="Connection Mode (Click to cycle Full / Audio / Captions)">
-                <span id="networkModeDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span id="networkModeText">Full HD</span>
             </div>
         </div>
         <div class="flex items-center gap-2">
@@ -333,12 +336,12 @@
                     aria-controls="participantsSidebar"
                     aria-expanded="false"
                     class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs font-medium text-gray-300 transition">
-                <i data-lucide="users" class="w-3.5 h-3.5 text-teal-400"></i>
+                <svg class="w-3.5 h-3.5 text-teal-500 dark:text-teal-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span id="participantCount">0</span>
             </button>
             <button id="btnLeave" type="button"
                     class="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-medium transition">
-                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 Leave
             </button>
         </div>
@@ -380,7 +383,7 @@
                     <div id="classroomBlackboard" class="absolute left-1/2 -translate-x-1/2 rounded-lg shadow-lg flex items-center justify-center overflow-hidden transition-all duration-300"
                          style="top:3%; width:44%; height:15%; background:#005C53; border:4px solid #3a3a3a; z-index:30;">
                         <div id="blackboardDefault" class="flex flex-col items-center justify-center">
-                            <span class="text-white/60 text-xs font-medium tracking-wider uppercase select-none">Blackboard</span>
+                            <span id="blackboardTitle" class="text-white/60 text-xs font-medium tracking-wider uppercase select-none text-center px-2">Blackboard</span>
                         </div>
                         <div id="blackboardPresentation" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center">
                             <video id="presentationVideo" autoplay playsinline muted class="w-full h-full object-contain"></video>
@@ -456,15 +459,22 @@
                                     <svg class="w-3.5 h-3.5 text-teal-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                                     <span>Classroom Floor</span>
                                 </button>
-                                <button id="btnStageFullscreen" type="button" class="px-3 py-1.5 bg-gray-900/90 hover:bg-gray-800 backdrop-blur-md border border-gray-700/60 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 shadow-lg" title="Toggle Fullscreen">
-                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                                    <span>Fullscreen</span>
+                                <button id="btnStageFullscreen" type="button" class="px-3 py-1.5 bg-gray-900/90 hover:bg-gray-800 backdrop-blur-md border border-gray-700/60 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 shadow-lg" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+                                    <svg id="stageFullscreenIcon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                                    <span id="stageFullscreenText">Fullscreen</span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- Screen Share Video Element -->
                         <video id="stagePresentationVideo" autoplay playsinline class="w-full h-full object-contain"></video>
+
+                        <!-- Spotlight Avatar Container (When camera is off or stream unavailable) -->
+                        <div id="stageSpotlightAvatar" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 pointer-events-none">
+                            <div id="stageSpotlightAvatarCircle" class="w-24 h-24 sm:w-32 sm:h-32 rounded-full flex items-center justify-center text-white text-3xl sm:text-4xl font-bold shadow-2xl border-4 border-amber-400 ring-8 ring-amber-400/20"></div>
+                            <p id="stageSpotlightAvatarName" class="mt-4 text-base sm:text-lg font-bold text-white tracking-wide px-3 py-1 rounded-full bg-black/60 backdrop-blur border border-white/10"></p>
+                            <p class="mt-1 text-xs text-amber-300 font-semibold">⭐ Spotlighted Participant</p>
+                        </div>
 
                         <!-- Presenter Self Banner (When local user is sharing screen) -->
                         <div id="stageSelfPresentingBanner" class="hidden absolute inset-0 bg-[#0e0f12]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
@@ -493,7 +503,7 @@
             <!-- Meet Controls & Popups Area -->
             <div class="relative flex flex-col items-center shrink-0 w-full">
                 <!-- Device Selection Menu (Screenshot 2) -->
-                <div id="deviceMenuTray" class="hidden mb-2 px-3 py-2 bg-[#1c1d1f] border border-[#3c4043] rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-2.5 text-xs text-white z-50 backdrop-blur-md">
+                <div id="deviceMenuTray" class="hidden mb-2 px-3 py-2 bg-[#1c1d1f] border border-[#3c4043] rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-2.5 text-xs text-white z-50 backdrop-blur-md md:translate-x-10 lg:translate-x-14 transition-transform">
                     <div data-device-pill class="flex items-center gap-1.5 bg-[#2b2c2f] px-2.5 py-1.5 rounded-xl border border-[#3c4043] text-white">
                         <svg class="w-4 h-4 text-gray-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="9" y="3" width="6" height="11" rx="3" fill="none"/>
@@ -523,7 +533,7 @@
                 </div>
 
                 <!-- Reactions Menu (Screenshot 3) -->
-                <div id="reactionsTray" class="hidden mb-2 px-3 py-1.5 bg-[#1c1d1f] border border-gray-700/80 rounded-full shadow-2xl flex items-center gap-1.5 text-sm z-50 backdrop-blur-md">
+                <div id="reactionsTray" class="hidden mb-2 px-3 py-1.5 bg-[#1c1d1f] border border-gray-700/80 rounded-full shadow-2xl flex items-center gap-1.5 text-sm z-50 backdrop-blur-md md:translate-x-10 lg:translate-x-14 transition-transform">
                     <button type="button" class="btn-emoji-reaction w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition hover:scale-125" data-emoji="💖" title="Love">💖</button>
                     <button type="button" class="btn-emoji-reaction w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition hover:scale-125" data-emoji="👍" title="Thumbs Up">👍</button>
                     <button type="button" class="btn-emoji-reaction w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition hover:scale-125" data-emoji="🎉" title="Celebrate">🎉</button>
@@ -538,7 +548,7 @@
                 <!-- Controls Row (Instructions on Left, Controls centered) -->
                 <div class="relative w-full flex items-center justify-center">
                     <!-- Bottom Keyboard Controls & Desk Interaction Hint (Positioned to the left of controls bar) -->
-                    <div id="classroomControlsHint" class="hidden md:flex absolute left-2 lg:left-6 items-center gap-2 sm:gap-3 text-xs text-white py-2 px-3.5 bg-[#1c1d1f] border border-[#3c4043] rounded-full shadow-xl backdrop-blur-md select-none z-20" style="color: #ffffff !important; background-color: #1c1d1f !important;">
+                    <div id="classroomControlsHint" class="hidden md:flex absolute left-1 md:left-2 lg:left-3 items-center gap-1.5 sm:gap-2 text-xs text-white py-1.5 px-3 bg-[#1c1d1f] border border-[#3c4043] rounded-full shadow-xl backdrop-blur-md select-none z-20" style="color: #ffffff !important; background-color: #1c1d1f !important;">
                         <div class="flex items-center gap-1.5">
                             <span class="text-white font-semibold" style="color: #ffffff !important;">Move:</span>
                             <kbd class="px-1.5 py-0.5 bg-[#2b2c2f] rounded text-[10px] font-mono border border-gray-600 text-white font-bold" style="color: #ffffff !important; background-color: #2b2c2f !important; border-color: #525357 !important;">↑</kbd>
@@ -554,7 +564,7 @@
                     </div>
 
                     <!-- Google Meet Control Bar (Screenshot 1) -->
-                    <div id="meetControlBar" class="flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 bg-[#1c1d1f] border border-gray-800 rounded-2xl sm:rounded-full shadow-2xl mx-auto w-fit z-10">
+                    <div id="meetControlBar" class="flex items-center justify-center gap-2 sm:gap-3 px-4 py-2 bg-[#1c1d1f] border border-gray-800 rounded-2xl sm:rounded-full shadow-2xl mx-auto w-fit z-10 md:translate-x-10 lg:translate-x-14 transition-transform">
                         <!-- Audio Split Pill -->
                         <div class="flex items-center bg-[#2b2c2f] rounded-full border border-gray-700/60 overflow-hidden">
                             <button id="btnMicOptions" type="button" class="px-2.5 py-2 hover:bg-white/10 text-gray-300 hover:text-white transition flex items-center justify-center border-r border-gray-700/40 text-xs font-bold" title="Microphone options">
@@ -563,12 +573,12 @@
                             <button id="btnToggleMic" type="button" class="px-3.5 py-2 bg-[#ea4335] text-white transition flex items-center justify-center" title="Turn on microphone">
                                 <span id="micIcon" class="flex items-center justify-center">
                                     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <line x1="2" y1="2" x2="22" y2="22"/>
-                                        <path d="M9 9v2a3 3 0 0 0 5.12 2.12"/>
-                                        <path d="M15 9.34V6a3 3 0 0 0-5.94-.6"/>
-                                        <path d="M5 10a7 7 0 0 0 10.95 5.84"/>
-                                        <path d="M19 10a7 7 0 0 1-.36 2.22"/>
-                                        <line x1="12" y1="17" x2="12" y2="21"/>
+                                        <path d="m2 2 20 20"/>
+                                        <path d="M12 19v3"/>
+                                        <path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/>
+                                        <path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/>
+                                        <path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/>
+                                        <path d="M9 9v3a3 3 0 0 0 5.12 2.12"/>
                                     </svg>
                                 </span>
                             </button>
@@ -581,11 +591,10 @@
                             </button>
                             <button id="btnToggleCam" type="button" class="px-3.5 py-2 bg-[#ea4335] text-white transition flex items-center justify-center" title="Turn on camera">
                                 <span id="camIcon" class="flex items-center justify-center">
-                                    <svg class="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <line x1="2" y1="2" x2="22" y2="22"/>
-                                        <path d="M8.5 5.5H12.5a3 3 0 0 1 3 3v4" fill="none"/>
-                                        <path d="M15.5 15.5v0a3 3 0 0 1-3 3H5.5a3 3 0 0 1-3-3V8.5a3 3 0 0 1 2-2.83" fill="none"/>
-                                        <polygon points="15.5,10 21.5,6.5 21.5,17.5 15.5,14" fill="currentColor" stroke="none"/>
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="m2 2 20 20"/>
+                                        <path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/>
+                                        <path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
                                     </svg>
                                 </span>
                             </button>
@@ -602,7 +611,7 @@
                         </button>
 
                         <!-- Closed Captions Button (GSoC 2027) -->
-                        <button id="btnToggleCaptions" type="button" class="w-10 h-10 rounded-full bg-[#2b2c2f] hover:bg-white/10 text-white flex items-center justify-center border border-gray-700/60 transition text-xs font-bold font-mono tracking-wider" title="Turn on captions (CC)">
+                        <button id="btnToggleCaptions" type="button" class="w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center border border-teal-500/60 transition text-xs font-bold font-mono tracking-wider shadow" title="Turn off captions (CC)">
                             CC
                         </button>
 
@@ -638,7 +647,7 @@
         <!-- Chat Sidebar -->
         <div id="chatPanel" class="w-full lg:w-80 h-64 lg:h-auto shrink-0 bg-gray-900/70 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
             <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
-                <i data-lucide="message-circle" class="w-4 h-4 text-teal-400"></i>
+                <svg class="w-4 h-4 text-teal-500 dark:text-teal-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>
                 <h2 class="text-sm font-semibold text-gray-200">Room Chat</h2>
             </div>
             <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
@@ -665,7 +674,7 @@
     <div class="flex items-center justify-between px-4 py-3.5 border-b border-gray-700 shrink-0 bg-[#25272c]">
         <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center font-bold">
-                <i data-lucide="users" class="w-4 h-4"></i>
+                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <div>
                 <h2 class="text-sm font-bold text-white tracking-wide" style="color:#ffffff !important;">Participants</h2>
@@ -685,6 +694,152 @@
 
 <!-- NOTIFICATION TOAST -->
 <div id="toastContainer" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end pointer-events-none"></div>
+
+<!-- THEATER / EXPANDED PRESENTATION MODAL -->
+<div id="presentationModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] hidden flex flex-col p-4">
+    <div class="flex items-center justify-between pb-3 border-b border-gray-800 text-white">
+        <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="modalPresenterName" class="font-semibold text-sm">Screen Presentation</span>
+        </div>
+        <button id="btnClosePresentationModal" type="button" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-medium transition border border-gray-700">
+            ✕ Close
+        </button>
+    </div>
+    <div class="flex-1 flex items-center justify-center p-2 min-h-0">
+        <video id="modalPresentationVideo" autoplay playsinline muted class="max-w-full max-h-full rounded-lg shadow-2xl object-contain"></video>
+    </div>
+</div>
+
+<!-- BREAKOUT ROOMS MANAGEMENT MODAL (Instructor) -->
+<div id="breakoutModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col text-white">
+        <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-teal-400"></span>
+                <h3 class="font-bold text-sm text-gray-100">Breakout Rooms</h3>
+            </div>
+            <button id="btnCloseBreakoutModal" type="button" class="text-gray-400 hover:text-white transition">✕</button>
+        </div>
+        <div class="p-5 space-y-4 text-xs">
+            <div>
+                <label for="breakoutCountInput" class="block font-medium text-gray-300 mb-1">Number of Rooms</label>
+                <div class="flex gap-2">
+                    <input id="breakoutCountInput" type="number" min="2" max="6" value="2" class="w-20 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-center focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                    <button id="btnCreateBreakoutsSubmit" type="button" class="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition shadow">
+                        Create & Split
+                    </button>
+                </div>
+            </div>
+            <div class="pt-3 border-t border-gray-800">
+                <label for="breakoutBroadcastInput" class="block font-medium text-gray-300 mb-1">Broadcast to All Breakouts</label>
+                <div class="flex gap-2">
+                    <input id="breakoutBroadcastInput" type="text" placeholder="e.g. 2 minutes remaining!" class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                    <button id="btnBroadcastBreakoutsSubmit" type="button" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-lg transition">
+                        Send
+                    </button>
+                </div>
+            </div>
+            <div class="pt-2">
+                <button id="btnCloseBreakoutsSubmit" type="button" class="w-full py-2 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-lg transition shadow">
+                    Close All Breakouts & Return
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BREAKOUT INVITATION MODAL (Student) -->
+<div id="breakoutInviteModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-teal-500/50 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 text-center text-white">
+        <div class="w-12 h-12 mx-auto rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm0 9h7v7H4v-7zm9-9h7v7h-7V4zm0 9h7v7h-7v-7z"/></svg>
+        </div>
+        <h3 class="font-bold text-base text-gray-100 mb-1">Breakout Room Ready</h3>
+        <p id="breakoutInviteText" class="text-xs text-gray-400 mb-4">You have been assigned to Breakout Room 1.</p>
+        <div class="flex gap-2">
+            <button id="btnDismissBreakoutInvite" type="button" class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold transition">
+                Later
+            </button>
+            <button id="btnJoinBreakoutSubmit" type="button" class="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold transition shadow">
+                Join Now
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- SEARCHABLE TRANSCRIPTS & LIVE CAPTIONS MODAL -->
+<div id="transcriptModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-xl h-[520px] overflow-hidden shadow-2xl flex flex-col text-white">
+        <div class="px-5 py-3.5 border-b border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-teal-400 fill-current" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                <h3 class="font-bold text-sm text-gray-100">Classroom Transcripts & Captions</h3>
+            </div>
+            <button id="btnCloseTranscriptModal" type="button" class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-800 transition text-base font-bold" aria-label="Close transcripts">✕</button>
+        </div>
+        <div class="p-3 border-b border-gray-800">
+            <div class="relative">
+                <input id="transcriptSearchInput" type="text" placeholder="Search transcript by speaker or keywords…" class="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                <svg class="w-4 h-4 text-gray-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+        </div>
+        <div class="px-3 py-2 border-b border-gray-800 bg-gray-800/40 flex gap-2">
+            <input id="testCaptionInput" type="text" placeholder="Broadcast a test caption live..." class="flex-1 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500" />
+            <button id="btnSendTestCaption" type="button" class="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold transition shrink-0 shadow">
+                Send Caption
+            </button>
+        </div>
+        <div id="transcriptLogList" class="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-0 bg-gray-950/40">
+            <div class="text-center text-xs text-gray-500 py-10">No captions recorded yet.</div>
+        </div>
+        <div class="px-5 py-3 border-t border-gray-800 flex items-center justify-between bg-gray-900/90">
+            <button id="btnExportTranscriptTxt" type="button" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-teal-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                <span>↓</span> Download Transcript (.txt)
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- CONNECTION QUALITY & DEGRADATION MODAL -->
+<div id="networkModeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 text-white">
+        <h3 class="font-bold text-sm text-gray-100 mb-3 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            Connection & Bandwidth Mode
+        </h3>
+        <p class="text-xs text-gray-400 mb-4">Choose quality mode or allow automatic degradation for slow networks.</p>
+        <div class="space-y-2 text-xs">
+            <button id="btnModeFull" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
+                <div>
+                    <div class="font-bold text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Full HD
+                    </div>
+                    <div class="text-[11px] text-gray-400">Video + Audio (standard high quality)</div>
+                </div>
+            </button>
+            <button id="btnModeAudio" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
+                <div>
+                    <div class="font-bold text-amber-300 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-400"></span> Audio Only
+                    </div>
+                    <div class="text-[11px] text-gray-400">Disables camera & video to save bandwidth</div>
+                </div>
+            </button>
+            <button id="btnModeCaptions" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
+                <div>
+                    <div class="font-bold text-cyan-300 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Captions Only
+                    </div>
+                    <div class="text-[11px] text-gray-400">Ultra-low bandwidth (whiteboard + subtitles)</div>
+                </div>
+            </button>
+        </div>
+        <button id="btnCloseNetworkModal" type="button" class="w-full mt-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold transition">
+            Close
+        </button>
+    </div>
+</div>
 
 <script>
 (function() {
@@ -757,6 +912,9 @@
     const floorplanPresentationBanner = document.getElementById('floorplanPresentationBanner');
     const floorplanPresenterText    = document.getElementById('floorplanPresenterText');
     const btnReturnToStage          = document.getElementById('btnReturnToStage');
+    const stageSpotlightAvatar      = document.getElementById('stageSpotlightAvatar');
+    const stageSpotlightAvatarCircle = document.getElementById('stageSpotlightAvatarCircle');
+    const stageSpotlightAvatarName  = document.getElementById('stageSpotlightAvatarName');
 
     let localScreenStream     = null;
     let isScreenSharing       = false;
@@ -1225,8 +1383,20 @@
         return localStream;
     }
 
-    function toggleMicrophone() {
+    async function toggleMicrophone() {
         if (!canInteract) { loginForInteraction(); return; }
+        if (!localStream || localStream.getAudioTracks().length === 0) {
+            try {
+                const aStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                if (!localStream) {
+                    localStream = aStream;
+                } else {
+                    aStream.getAudioTracks().forEach(t => localStream.addTrack(t));
+                }
+            } catch (err) {
+                console.warn('[Microphone] getUserMedia error:', err);
+            }
+        }
         localMediaState.mic_enabled = !localMediaState.mic_enabled;
         if (localStream) {
             localStream.getAudioTracks().forEach(track => {
@@ -1237,6 +1407,16 @@
         broadcastMediaState();
         updateAllSeatsMediaUI();
         if (typeof renderMeetFilmstrip === 'function') renderMeetFilmstrip();
+
+        if (localMediaState.mic_enabled) {
+            startVoiceActivityDetection(localStream);
+            startMicTranscription();
+            showToast('Microphone on — speech transcription active', 'info');
+        } else {
+            stopVoiceActivityDetection();
+            stopMicTranscription();
+            showToast('Microphone muted — transcription paused', 'info');
+        }
     }
 
     function toggleCamera() {
@@ -1263,36 +1443,35 @@
 
     const MIC_ON_SVG = `
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="3" width="6" height="11" rx="3" fill="none"/>
-            <path d="M5 10a7 7 0 0 0 14 0" fill="none"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
+            <path d="M12 19v3"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <rect x="9" y="2" width="6" height="13" rx="3"/>
         </svg>
     `;
 
     const MIC_OFF_SVG = `
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="2" y1="2" x2="22" y2="22"/>
-            <path d="M9 9v2a3 3 0 0 0 5.12 2.12"/>
-            <path d="M15 9.34V6a3 3 0 0 0-5.94-.6"/>
-            <path d="M5 10a7 7 0 0 0 10.95 5.84"/>
-            <path d="M19 10a7 7 0 0 1-.36 2.22"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
+            <path d="m2 2 20 20"/>
+            <path d="M12 19v3"/>
+            <path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/>
+            <path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/>
+            <path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/>
+            <path d="M9 9v3a3 3 0 0 0 5.12 2.12"/>
         </svg>
     `;
 
     const CAM_ON_SVG = `
-        <svg class="w-5 h-5" viewBox="0 0 24 24">
-            <rect x="2.5" y="5.5" width="13" height="13" rx="3" ry="3" fill="none" stroke="currentColor" stroke-width="2"/>
-            <polygon points="15.5,10 21.5,6.5 21.5,17.5 15.5,14" fill="currentColor"/>
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/>
+            <rect x="2" y="6" width="14" height="12" rx="2"/>
         </svg>
     `;
 
     const CAM_OFF_SVG = `
-        <svg class="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="2" y1="2" x2="22" y2="22"/>
-            <path d="M8.5 5.5H12.5a3 3 0 0 1 3 3v4" fill="none"/>
-            <path d="M15.5 15.5v0a3 3 0 0 1-3 3H5.5a3 3 0 0 1-3-3V8.5a3 3 0 0 1 2-2.83" fill="none"/>
-            <polygon points="15.5,10 21.5,6.5 21.5,17.5 15.5,14" fill="currentColor" stroke="none"/>
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m2 2 20 20"/>
+            <path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/>
+            <path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
         </svg>
     `;
 
@@ -1595,6 +1774,8 @@
             cam_enabled: cam_enabled === true
         };
         updateAllSeatsMediaUI();
+        renderParticipantsList();
+        renderStageFilmstrip();
         if (typeof renderMeetFilmstrip === 'function') renderMeetFilmstrip();
     }
 
@@ -1640,13 +1821,13 @@
 
         if (micEl) {
             micEl.innerHTML = (mediaState.mic_enabled === true)
-                ? '<svg class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
-                : '<svg class="w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+                ? '<svg class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>'
+                : '<svg class="w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></svg>';
         }
         if (camEl) {
             camEl.innerHTML = (mediaState.cam_enabled === true)
-                ? '<svg class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="13" height="13" rx="3" ry="3" fill="none" stroke="currentColor" stroke-width="2.5"/><polygon points="15.5,10 21.5,6.5 21.5,17.5 15.5,14" fill="currentColor"/></svg>'
-                : '<svg class="w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><rect x="2.5" y="5.5" width="13" height="13" rx="3" ry="3" fill="none"/></svg>';
+                ? '<svg class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>'
+                : '<svg class="w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/></svg>';
         }
 
         const videoTracks = stream && stream.getVideoTracks ? stream.getVideoTracks() : [];
@@ -1692,10 +1873,12 @@
         const deskBox = document.querySelector(`[data-desk-box="${seatId}"]`);
         const occPresence = occupant ? getPresence(occupant.pid) : null;
         const isHandRaised = Boolean(occPresence && occPresence.hand_raised === true);
+        const isSpotlighted = Boolean(activeSpotlightPeerId && occupant && occupant.pid === activeSpotlightPeerId);
         if (handEl) handEl.classList.toggle('hidden', !isHandRaised);
         if (deskBox) {
-            deskBox.classList.toggle('ring-2', isHandRaised);
-            deskBox.classList.toggle('ring-amber-400', isHandRaised);
+            deskBox.classList.toggle('ring-2', isHandRaised || isSpotlighted);
+            deskBox.classList.toggle('ring-amber-400', isHandRaised || isSpotlighted);
+            deskBox.classList.toggle('shadow-amber-400/30', isSpotlighted);
         }
     }
 
@@ -1828,16 +2011,92 @@
         showToast('Speaker device updated', 'info');
     }
 
-    let isCaptionsActive = false;
+    let isCaptionsActive = true;
     let captionRecognizer = null;
     let captionTimeout = null;
+    let speechRestartTimer = null;
+    let micSpeechActive = false;
     let activeSpotlightPeerId = null;
+    let handRaiseQueue = [];
     const sessionTranscripts = [];
     let audioRecorder = null;
     let pendingBreakoutRoomId = '';
     let currentConnectionMode = 'full';
     let highLossCount = 0;
     let connectionMonitorTimer = null;
+
+    // Web Audio API VAD (Voice Activity Detection)
+    let audioContext = null;
+    let analyserNode = null;
+    let vadInterval = null;
+    let isSpeakingNow = false;
+
+    function startVoiceActivityDetection(stream) {
+        if (!stream) return;
+        try {
+            const audioTracks = stream.getAudioTracks();
+            if (!audioTracks || audioTracks.length === 0) return;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            if (!audioContext || audioContext.state === 'closed') {
+                audioContext = new AudioContextClass();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            const source = audioContext.createMediaStreamSource(stream);
+            analyserNode = audioContext.createAnalyser();
+            analyserNode.fftSize = 256;
+            source.connect(analyserNode);
+
+            const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
+            if (vadInterval) clearInterval(vadInterval);
+            vadInterval = setInterval(() => {
+                if (!localMediaState.mic_enabled || !micSpeechActive) {
+                    if (isSpeakingNow) setSpeakingState(false);
+                    return;
+                }
+                analyserNode.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const avg = sum / dataArray.length;
+                const speaking = avg > 15;
+                if (speaking !== isSpeakingNow) {
+                    setSpeakingState(speaking);
+                }
+            }, 100);
+        } catch (err) {
+            console.warn('[VAD] Voice activity init error:', err);
+        }
+    }
+
+    function stopVoiceActivityDetection() {
+        if (vadInterval) {
+            clearInterval(vadInterval);
+            vadInterval = null;
+        }
+        if (isSpeakingNow) setSpeakingState(false);
+        if (audioContext && audioContext.state !== 'closed') {
+            try { audioContext.close(); } catch (_) {}
+            audioContext = null;
+        }
+        analyserNode = null;
+    }
+
+    function setSpeakingState(speaking) {
+        isSpeakingNow = speaking;
+        const micBtn = document.getElementById('btnToggleMic');
+        if (micBtn && localMediaState.mic_enabled) {
+            micBtn.classList.toggle('ring-4', speaking);
+            micBtn.classList.toggle('ring-emerald-400', speaking);
+        }
+        if (myPresenceBadge) {
+            myPresenceBadge.classList.toggle('ring-2', speaking);
+            myPresenceBadge.classList.toggle('ring-emerald-400', speaking);
+        }
+    }
 
     function appendTranscriptToUI(timeStr, speaker, text) {
         const container = document.getElementById('transcriptLogList');
@@ -1858,15 +2117,32 @@
         container.scrollTop = container.scrollHeight;
     }
 
+    let lastCaptionText = '';
+    let lastCaptionSpeaker = '';
+    let lastCaptionTime = 0;
+
     function showLiveCaption(speaker, text) {
         if (!text) return;
+        const normText = String(text).trim();
+        if (!normText) return;
+        const normSpeaker = (speaker || 'Participant').trim();
+        const now = Date.now();
+
+        // Deduplicate identical caption from same speaker within 1.5s
+        if (normSpeaker === lastCaptionSpeaker && normText === lastCaptionText && (now - lastCaptionTime) < 1500) {
+            return;
+        }
+        lastCaptionSpeaker = normSpeaker;
+        lastCaptionText = normText;
+        lastCaptionTime = now;
+
         const banner = document.getElementById('liveCaptionBanner');
         const spk = document.getElementById('captionSpeaker');
         const txt = document.getElementById('captionText');
         if (txt) {
-            if (spk) spk.textContent = speaker ? speaker + ':' : '';
-            txt.textContent = text;
-            if (banner) {
+            if (spk) spk.textContent = normSpeaker ? normSpeaker + ':' : '';
+            txt.textContent = normText;
+            if (banner && isCaptionsActive) {
                 banner.classList.remove('hidden');
                 if (captionTimeout) clearTimeout(captionTimeout);
                 captionTimeout = setTimeout(() => {
@@ -1874,14 +2150,120 @@
                 }, 4000);
             }
         }
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        sessionTranscripts.push({ speaker: speaker || 'Participant', text, time: timeStr });
-        appendTranscriptToUI(timeStr, speaker || 'Participant', text);
+        const nowDate = new Date(now);
+        const timeStr = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        sessionTranscripts.push({ speaker: normSpeaker, text: normText, time: timeStr });
+        appendTranscriptToUI(timeStr, normSpeaker, normText);
+    }
+
+    let lastSentFinal = '';
+    let lastSentInterim = '';
+
+    function startMicTranscription() {
+        if (!localMediaState.mic_enabled) return;
+        micSpeechActive = true;
+        lastSentFinal = '';
+        lastSentInterim = '';
+
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRec) {
+            if (captionRecognizer) {
+                try {
+                    captionRecognizer.onend = null;
+                    captionRecognizer.onerror = null;
+                    captionRecognizer.onresult = null;
+                    captionRecognizer.abort();
+                } catch (_) {}
+                captionRecognizer = null;
+            }
+            try {
+                const rec = new SpeechRec();
+                rec.continuous = true;
+                rec.interimResults = true;
+                rec.lang = navigator.language || 'en-US';
+                rec.maxAlternatives = 1;
+
+                rec.onresult = (evt) => {
+                    if (!localMediaState.mic_enabled || !micSpeechActive) return;
+                    let fullFinal = '';
+                    let fullInterim = '';
+                    for (let i = 0; i < evt.results.length; ++i) {
+                        const item = evt.results[i];
+                        if (!item || !item[0]) continue;
+                        const t = item[0].transcript || '';
+                        if (item.isFinal) {
+                            fullFinal += t + ' ';
+                        } else {
+                            fullInterim += t;
+                        }
+                    }
+                    const cleanFinal = fullFinal.trim();
+                    const cleanInterim = fullInterim.trim();
+
+                    if (cleanFinal && cleanFinal !== lastSentFinal) {
+                        lastSentFinal = cleanFinal;
+                        wsSend({ type: 'live_caption', text: cleanFinal, is_final: true });
+                        showLiveCaption(myDisplayName, cleanFinal);
+                    } else if (cleanInterim && cleanInterim !== lastSentInterim) {
+                        lastSentInterim = cleanInterim;
+                        wsSend({ type: 'live_caption', text: cleanInterim, is_final: false });
+                        showLiveCaption(myDisplayName, cleanInterim);
+                    }
+                };
+
+                rec.onerror = (e) => {
+                    const errType = e?.error;
+                    console.warn('[SpeechRec] error:', errType);
+                    if (errType === 'no-speech') return;
+                    if (errType === 'audio-capture' || errType === 'not-allowed') {
+                        showToast('Microphone access blocked for speech recognition', 'warning');
+                    } else if (errType === 'network') {
+                        console.warn('[SpeechRec] Browser speech service error, using audio VAD fallback.');
+                    }
+                };
+
+                rec.onend = () => {
+                    if (speechRestartTimer) clearTimeout(speechRestartTimer);
+                    if (localMediaState.mic_enabled && micSpeechActive) {
+                        speechRestartTimer = setTimeout(() => {
+                            if (localMediaState.mic_enabled && micSpeechActive && captionRecognizer) {
+                                try { captionRecognizer.start(); } catch (_) {}
+                            }
+                        }, 150);
+                    }
+                };
+
+                rec.start();
+                captionRecognizer = rec;
+            } catch (err) {
+                console.warn('[SpeechRec] initialization failed, trying VoxBridge fallback:', err);
+                startVoxBridgeSTT();
+            }
+        } else {
+            startVoxBridgeSTT();
+        }
+    }
+
+    function stopMicTranscription() {
+        micSpeechActive = false;
+        if (speechRestartTimer) {
+            clearTimeout(speechRestartTimer);
+            speechRestartTimer = null;
+        }
+        if (captionRecognizer) {
+            try {
+                captionRecognizer.onend = null;
+                captionRecognizer.onerror = null;
+                captionRecognizer.onresult = null;
+                captionRecognizer.stop();
+            } catch (_) {}
+            captionRecognizer = null;
+        }
+        stopVoxBridgeSTT();
     }
 
     function startVoxBridgeSTT() {
-        if (!localStream || audioRecorder) return;
+        if (!localStream || audioRecorder || !localMediaState.mic_enabled) return;
         try {
             const audioTracks = localStream.getAudioTracks();
             if (!audioTracks || audioTracks.length === 0) return;
@@ -1891,7 +2273,7 @@
                 : ((typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/ogg')) ? 'audio/ogg' : '');
             audioRecorder = mimeType ? new MediaRecorder(audioOnlyStream, { mimeType }) : new MediaRecorder(audioOnlyStream);
             audioRecorder.ondataavailable = async (e) => {
-                if (!isCaptionsActive || !localMediaState.mic_enabled || e.data.size < 500) return;
+                if (!localMediaState.mic_enabled || !micSpeechActive || e.data.size < 500) return;
                 try {
                     const reader = new FileReader();
                     reader.onloadend = async () => {
@@ -1940,55 +2322,99 @@
             btn.classList.toggle('bg-teal-600', isCaptionsActive);
             btn.classList.toggle('text-white', isCaptionsActive);
             btn.classList.toggle('bg-[#2b2c2f]', !isCaptionsActive);
-            btn.title = isCaptionsActive ? 'Turn off captions' : 'Turn on captions (CC)';
+            btn.title = isCaptionsActive ? 'Turn off captions (CC)' : 'Turn on captions (CC)';
         }
-        if (isCaptionsActive) {
-            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRec) {
+        const banner = document.getElementById('liveCaptionBanner');
+        if (!isCaptionsActive && banner) {
+            banner.classList.add('hidden');
+        }
+        showToast(isCaptionsActive ? 'Live captions visible' : 'Live captions hidden', 'info');
+    }
+
+    window.sendTestCaption = function(text) {
+        const clean = String(text || 'Hello classroom! Testing live captions and transcription.').trim();
+        const sent = wsSend({ type: 'live_caption', text: clean, is_final: true });
+        if (!sent) showLiveCaption(myDisplayName, clean);
+        return clean;
+    };
+
+    function startVoxBridgeSTT() {
+        if (!localStream || audioRecorder || !localMediaState.mic_enabled) return;
+        try {
+            const audioTracks = localStream.getAudioTracks();
+            if (!audioTracks || audioTracks.length === 0) return;
+            const audioOnlyStream = new MediaStream(audioTracks);
+            const mimeType = (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+                ? 'audio/webm;codecs=opus'
+                : ((typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/ogg')) ? 'audio/ogg' : '');
+            audioRecorder = mimeType ? new MediaRecorder(audioOnlyStream, { mimeType }) : new MediaRecorder(audioOnlyStream);
+            audioRecorder.ondataavailable = async (e) => {
+                if (!localMediaState.mic_enabled || !micSpeechActive || e.data.size < 500) return;
                 try {
-                    captionRecognizer = new SpeechRec();
-                    captionRecognizer.continuous = true;
-                    captionRecognizer.interimResults = true;
-                    captionRecognizer.lang = 'en-US';
-                    captionRecognizer.onresult = (evt) => {
-                        let finalStr = '';
-                        for (let i = evt.resultIndex; i < evt.results.length; ++i) {
-                            if (evt.results[i].isFinal) {
-                                finalStr += evt.results[i][0].transcript;
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const base64Audio = (reader.result || '').split(',')[1];
+                        if (!base64Audio) return;
+                        const res = await fetch(`/api/classroom/${encodeURIComponent(roomId)}/caption`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                audio: base64Audio,
+                                participant_id: myParticipantId,
+                                display_name: myDisplayName,
+                                session_id: mySessionId
+                            })
+                        });
+                        if (res.ok) {
+                            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                                const json = await res.json();
+                                const transcribed = json?.data?.text || json?.text;
+                                if (transcribed && transcribed.trim()) {
+                                    showLiveCaption(myDisplayName, transcribed.trim());
+                                }
                             }
                         }
-                        if (finalStr.trim()) {
-                            wsSend({ type: 'live_caption', text: finalStr.trim(), is_final: true });
-                            showLiveCaption(myDisplayName, finalStr.trim());
-                        }
                     };
-                    captionRecognizer.onerror = () => {};
-                    captionRecognizer.onend = () => {
-                        if (isCaptionsActive && captionRecognizer) {
-                            try { captionRecognizer.start(); } catch (_) {}
-                        }
-                    };
-                    captionRecognizer.start();
-                    showToast('Live captions enabled (listening)', 'info');
-                } catch (e) {
-                    startVoxBridgeSTT();
-                    showToast('Live captions enabled via VoxBridge STT', 'info');
+                    reader.readAsDataURL(e.data);
+                } catch (err) {
+                    console.warn('[VoxBridge STT] slice send failed:', err);
                 }
-            } else {
-                startVoxBridgeSTT();
-                showToast('Live captions enabled via VoxBridge AI speech recognition.', 'info');
-            }
-        } else {
-            if (captionRecognizer) {
-                try { captionRecognizer.stop(); } catch (_) {}
-                captionRecognizer = null;
-            }
-            stopVoxBridgeSTT();
-            const banner = document.getElementById('liveCaptionBanner');
-            if (banner) banner.classList.add('hidden');
-            showToast('Live captions disabled', 'info');
+            };
+            audioRecorder.start(3000);
+        } catch (err) {
+            console.warn('[VoxBridge STT] MediaRecorder init error:', err);
         }
     }
+
+    function stopVoxBridgeSTT() {
+        if (audioRecorder) {
+            try { audioRecorder.stop(); } catch (_) {}
+            audioRecorder = null;
+        }
+    }
+
+    function toggleCaptions() {
+        isCaptionsActive = !isCaptionsActive;
+        const btn = document.getElementById('btnToggleCaptions');
+        if (btn) {
+            btn.classList.toggle('bg-teal-600', isCaptionsActive);
+            btn.classList.toggle('text-white', isCaptionsActive);
+            btn.classList.toggle('bg-[#2b2c2f]', !isCaptionsActive);
+            btn.title = isCaptionsActive ? 'Turn off captions (CC)' : 'Turn on captions (CC)';
+        }
+        const banner = document.getElementById('liveCaptionBanner');
+        if (!isCaptionsActive && banner) {
+            banner.classList.add('hidden');
+        }
+        showToast(isCaptionsActive ? 'Captions enabled' : 'Captions disabled', 'info');
+    }
+
+    window.sendTestCaption = function(text) {
+        const clean = String(text || 'Hello classroom! Testing live captions and transcription.').trim();
+        const sent = wsSend({ type: 'live_caption', text: clean, is_final: true });
+        if (!sent) showLiveCaption(myDisplayName, clean);
+        return clean;
+    };
 
     function setConnectionMode(mode, notifyServer = true) {
         if (mode !== 'full' && mode !== 'audio_only' && mode !== 'captions_only') mode = 'full';
@@ -2289,6 +2715,95 @@
 
     let stageTransitionTimer = null;
 
+    function getFullscreenElement() {
+        return document.fullscreenElement ||
+               document.webkitFullscreenElement ||
+               document.mozFullScreenElement ||
+               document.msFullscreenElement ||
+               null;
+    }
+
+    function isStageInFullscreen() {
+        if (getFullscreenElement()) return true;
+        if (stageMainCard && stageMainCard.classList.contains('is-fullscreen-fallback')) return true;
+        return false;
+    }
+
+    function updateStageFullscreenButton() {
+        if (!btnStageFullscreen) return;
+        const icon = document.getElementById('stageFullscreenIcon');
+        const text = document.getElementById('stageFullscreenText');
+        const inFs = isStageInFullscreen();
+
+        if (inFs) {
+            btnStageFullscreen.title = 'Switch to Window Mode';
+            btnStageFullscreen.setAttribute('aria-label', 'Switch to Window Mode');
+            if (text) text.textContent = 'Window Mode';
+            if (icon) {
+                icon.setAttribute('class', 'w-3.5 h-3.5 text-teal-300');
+                icon.innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>';
+            }
+        } else {
+            btnStageFullscreen.title = 'Toggle Fullscreen';
+            btnStageFullscreen.setAttribute('aria-label', 'Toggle Fullscreen');
+            if (text) text.textContent = 'Fullscreen';
+            if (icon) {
+                icon.setAttribute('class', 'w-3.5 h-3.5');
+                icon.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
+            }
+        }
+    }
+
+    async function toggleStageFullscreen() {
+        const inFs = isStageInFullscreen();
+        if (inFs) {
+            if (getFullscreenElement()) {
+                try {
+                    if (document.exitFullscreen) {
+                        await document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        await document.webkitExitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        await document.mozCancelFullScreen();
+                    } else if (document.msExitFullscreen) {
+                        await document.msExitFullscreen();
+                    }
+                } catch (e) {
+                    console.warn('exitFullscreen failed:', e);
+                }
+            }
+            if (stageMainCard) {
+                stageMainCard.classList.remove('fixed', 'inset-0', 'z-50', 'w-screen', 'h-screen', 'rounded-none', 'is-fullscreen-fallback');
+            }
+        } else {
+            const targetEl = stageMainCard || meetStageContainer || document.documentElement;
+            let entered = false;
+            if (targetEl) {
+                try {
+                    if (targetEl.requestFullscreen) {
+                        await targetEl.requestFullscreen();
+                        entered = true;
+                    } else if (targetEl.webkitRequestFullscreen) {
+                        await targetEl.webkitRequestFullscreen();
+                        entered = true;
+                    } else if (targetEl.mozRequestFullScreen) {
+                        await targetEl.mozRequestFullScreen();
+                        entered = true;
+                    } else if (targetEl.msRequestFullscreen) {
+                        await targetEl.msRequestFullscreen();
+                        entered = true;
+                    }
+                } catch (e) {
+                    console.warn('requestFullscreen failed, fallback to CSS:', e);
+                }
+            }
+            if (!entered && stageMainCard) {
+                stageMainCard.classList.add('fixed', 'inset-0', 'z-50', 'w-screen', 'h-screen', 'rounded-none', 'is-fullscreen-fallback');
+            }
+        }
+        updateStageFullscreenButton();
+    }
+
     function transitionToMeetStage() {
         if (!meetStageContainer || !classroomCanvas) return;
         if (stageTransitionTimer) {
@@ -2311,6 +2826,7 @@
         classroomCanvas.classList.add('opacity-0', 'scale-[0.98]', 'pointer-events-none');
 
         renderStageFilmstrip();
+        updateStageFullscreenButton();
 
         stageTransitionTimer = setTimeout(() => {
             if (meetStageContainer && !meetStageContainer.classList.contains('opacity-0')) {
@@ -2320,6 +2836,9 @@
     }
 
     function transitionToFloorplan(isPresenterActive = false) {
+        if (isStageInFullscreen()) {
+            toggleStageFullscreen();
+        }
         if (!meetStageContainer || !classroomCanvas) return;
         if (stageTransitionTimer) {
             clearTimeout(stageTransitionTimer);
@@ -2433,6 +2952,62 @@
         if (presentationModal) presentationModal.classList.add('hidden');
     }
 
+    function updateSpotlightUI() {
+        if (activeSpotlightPeerId) {
+            const isMe = (activeSpotlightPeerId === myParticipantId);
+            const name = isMe ? `${myDisplayName} (You)` : (participants[activeSpotlightPeerId]?.display_name || activeSpotlightPeerId);
+            if (floorplanPresenterText) {
+                floorplanPresenterText.textContent = `⭐ Spotlight: ${name}`;
+            }
+            if (floorplanPresentationBanner && !currentScreenSharer) {
+                floorplanPresentationBanner.classList.remove('hidden');
+            }
+            if (!currentScreenSharer) {
+                if (stagePresenterBadge) stagePresenterBadge.textContent = `⭐ Spotlight: ${name}`;
+                const stream = isMe ? localStream : (remoteStreams[activeSpotlightPeerId] || null);
+                const hasCam = isMe
+                    ? Boolean(localMediaState.cam_enabled && stream && stream.getVideoTracks().length > 0)
+                    : Boolean(participantMediaState[activeSpotlightPeerId]?.cam_enabled && stream && stream.getVideoTracks().length > 0);
+
+                if (stagePresentationVideo) {
+                    if (hasCam && stream) {
+                        if (stagePresentationVideo.srcObject !== stream) {
+                            stagePresentationVideo.srcObject = stream;
+                        }
+                        stagePresentationVideo.classList.remove('hidden');
+                        stagePresentationVideo.defaultMuted = true;
+                        stagePresentationVideo.muted = true;
+                        stagePresentationVideo.playsInline = true;
+                        stagePresentationVideo.play().catch(() => {});
+                        if (stageSpotlightAvatar) stageSpotlightAvatar.classList.add('hidden');
+                    } else {
+                        stagePresentationVideo.classList.add('hidden');
+                        stagePresentationVideo.srcObject = null;
+                        if (stageSpotlightAvatar) {
+                            stageSpotlightAvatar.classList.remove('hidden');
+                            if (stageSpotlightAvatarCircle) {
+                                const [sc1, sc2] = isMe ? ['#0D9488', '#14b8a6'] : colorForId(activeSpotlightPeerId);
+                                stageSpotlightAvatarCircle.style.background = `linear-gradient(135deg, ${sc1}, ${sc2})`;
+                                stageSpotlightAvatarCircle.textContent = (name || '?').charAt(0).toUpperCase();
+                            }
+                            if (stageSpotlightAvatarName) stageSpotlightAvatarName.textContent = name;
+                        }
+                    }
+                }
+                if (stageSelfPresentingBanner) stageSelfPresentingBanner.classList.add('hidden');
+            }
+        } else {
+            if (!currentScreenSharer) {
+                if (floorplanPresentationBanner) floorplanPresentationBanner.classList.add('hidden');
+                if (stagePresentationVideo) {
+                    stagePresentationVideo.srcObject = null;
+                    stagePresentationVideo.classList.remove('hidden');
+                }
+                if (stageSpotlightAvatar) stageSpotlightAvatar.classList.add('hidden');
+            }
+        }
+    }
+
     function renderStageFilmstrip() {
         if (!stageFilmstrip || !meetStageContainer || meetStageContainer.classList.contains('hidden')) return;
 
@@ -2500,8 +3075,8 @@
             const micBadge = document.createElement('span');
             micBadge.className = 'p-0.5 bg-black/70 backdrop-blur rounded text-[9px] flex items-center justify-center';
             micBadge.innerHTML = (item.mediaState.mic_enabled === true)
-                ? '<svg class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
-                : '<svg class="w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="2" y1="2" x2="22" y2="22"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+                ? '<svg class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>'
+                : '<svg class="w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></svg>';
             overlay.appendChild(micBadge);
 
             card.appendChild(overlay);
@@ -2514,9 +3089,19 @@
             }
 
             const isHandRaised = Boolean(presenceByUser[item.pid]?.hand_raised);
+            const isSpotlighted = Boolean(activeSpotlightPeerId && item.pid === activeSpotlightPeerId);
+
+            if (isSpotlighted) {
+                card.classList.add('ring-2', 'ring-amber-400', 'border-amber-400');
+                const spotBadge = document.createElement('span');
+                spotBadge.className = 'absolute top-1.5 right-2 px-1.5 py-0.5 bg-amber-400 text-stone-950 font-black rounded text-[9px] shadow-md flex items-center justify-center';
+                spotBadge.innerHTML = '⭐ Spotlight';
+                card.appendChild(spotBadge);
+            }
+
             if (isHandRaised) {
                 const handBadge = document.createElement('span');
-                handBadge.className = 'absolute top-1.5 right-2 px-1.5 py-0.5 bg-blue-600/90 border border-blue-400 rounded text-[11px] text-white font-bold shadow-md flex items-center justify-center animate-pulse';
+                handBadge.className = `absolute top-1.5 ${isSpotlighted ? 'right-20' : 'right-2'} px-1.5 py-0.5 bg-blue-600/90 border border-blue-400 rounded text-[11px] text-white font-bold shadow-md flex items-center justify-center animate-pulse`;
                 handBadge.innerHTML = '✋';
                 card.appendChild(handBadge);
             }
@@ -2587,19 +3172,53 @@
     // Transcripts
     const btnTranscripts = document.getElementById('btnTranscripts');
     const btnCloseTranscriptModal = document.getElementById('btnCloseTranscriptModal');
-    const btnCloseTranscriptModalBottom = document.getElementById('btnCloseTranscriptModalBottom');
     const transcriptSearchInput = document.getElementById('transcriptSearchInput');
     const btnExportTranscriptTxt = document.getElementById('btnExportTranscriptTxt');
+    const transcriptModalEl = document.getElementById('transcriptModal');
 
     if (btnTranscripts) btnTranscripts.addEventListener('click', openTranscriptModal);
     if (btnCloseTranscriptModal) btnCloseTranscriptModal.addEventListener('click', closeTranscriptModal);
-    if (btnCloseTranscriptModalBottom) btnCloseTranscriptModalBottom.addEventListener('click', closeTranscriptModal);
+    if (transcriptModalEl) {
+        transcriptModalEl.addEventListener('click', (e) => {
+            if (e.target === transcriptModalEl) closeTranscriptModal();
+        });
+    }
+    document.addEventListener('click', (e) => {
+        if (e.target && (e.target.id === 'btnCloseTranscriptModal' || e.target.closest('#btnCloseTranscriptModal'))) {
+            closeTranscriptModal();
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeTranscriptModal();
+        }
+    });
     if (transcriptSearchInput) {
         transcriptSearchInput.addEventListener('input', (e) => {
             renderTranscriptLog(e.target.value);
         });
     }
     if (btnExportTranscriptTxt) btnExportTranscriptTxt.addEventListener('click', exportTranscriptTxt);
+
+    const testCaptionInput = document.getElementById('testCaptionInput');
+    const btnSendTestCaption = document.getElementById('btnSendTestCaption');
+    function sendManualCaption() {
+        if (!testCaptionInput) return;
+        const text = testCaptionInput.value.trim();
+        if (!text) return;
+        wsSend({ type: 'live_caption', text, is_final: true });
+        showLiveCaption(myDisplayName, text);
+        testCaptionInput.value = '';
+    }
+    if (btnSendTestCaption) btnSendTestCaption.addEventListener('click', sendManualCaption);
+    if (testCaptionInput) {
+        testCaptionInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendManualCaption();
+            }
+        });
+    }
 
     // Network Mode Selector
     const btnNetworkMode = document.getElementById('btnNetworkMode');
@@ -2723,6 +3342,9 @@
         if (reactionsTray && !reactionsTray.contains(e.target) && e.target !== btnReactions) {
             reactionsTray.classList.add('hidden');
         }
+        if (!e.target.closest('[data-peer-menu]') && !e.target.closest('[data-action="peer-menu-btn"]')) {
+            document.querySelectorAll('[data-peer-menu]').forEach(m => m.classList.add('hidden'));
+        }
     });
 
     if (btnMoreOptions) {
@@ -2772,19 +3394,29 @@
     }
 
     if (btnStageFullscreen) {
-        btnStageFullscreen.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                const targetEl = stageMainCard || meetStageContainer;
-                if (targetEl && targetEl.requestFullscreen) {
-                    targetEl.requestFullscreen().catch(() => {});
-                }
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen().catch(() => {});
-                }
-            }
+        btnStageFullscreen.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleStageFullscreen();
         });
     }
+
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+        document.addEventListener(evt, () => {
+            if (!getFullscreenElement() && stageMainCard) {
+                stageMainCard.classList.remove('fixed', 'inset-0', 'z-50', 'w-screen', 'h-screen', 'rounded-none', 'is-fullscreen-fallback');
+            }
+            updateStageFullscreenButton();
+        });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && stageMainCard && stageMainCard.classList.contains('is-fullscreen-fallback')) {
+            stageMainCard.classList.remove('fixed', 'inset-0', 'z-50', 'w-screen', 'h-screen', 'rounded-none', 'is-fullscreen-fallback');
+            updateStageFullscreenButton();
+        }
+    });
+
+    updateStageFullscreenButton();
 
     if (btnStageStopSharing) {
         btnStageStopSharing.addEventListener('click', () => {
@@ -2806,7 +3438,11 @@
         }, 3500);
     }
 
-    function refreshIcons() { try { lucide.createIcons(); } catch(_) {} }
+    function refreshIcons() {
+        if (typeof lucide !== 'undefined' && lucide && typeof lucide.createIcons === 'function') {
+            try { lucide.createIcons(); } catch(_) {}
+        }
+    }
 
     function preserveClassroomRedirect() {
         const returnTo = window.location.pathname + window.location.search;
@@ -2875,7 +3511,7 @@
         reconnectAttempts = 0;
         isSeated = false;
         currentSeat = null;
-        roomId = sanitizeRoomId(lobbyRoomId.value) || 'demo-room';
+        roomId = sanitizeRoomId(lobbyRoomId.value) || 'lobby';
         const rawName = sanitizeDisplayName(lobbyDisplayName.value);
         myDisplayName = rawName || (authenticated ? (getAuth().user?.username || 'User') : `Student-${Math.random().toString(36).slice(2,6)}`);
         lobbyRoomId.value = roomId;
@@ -2883,7 +3519,26 @@
         myParticipantId = resolveParticipantId();
         populateDeviceLists();
 
-        topRoomId.textContent = roomId;
+        const roomTitle = sanitizeDisplayName(searchParams.get('title') || '');
+        if (roomTitle) {
+            topRoomId.textContent = roomTitle;
+            topRoomId.title = roomId;
+        } else {
+            topRoomId.textContent = roomId;
+        }
+        const blackboardTitle = document.getElementById('blackboardTitle');
+        if (blackboardTitle) {
+            if (roomTitle) {
+                blackboardTitle.textContent = `Blackboard — ${roomTitle}`;
+            } else if (roomId.startsWith('course-')) {
+                const courseClean = roomId.replace(/^course-/, '').replace(/[-_]/g, ' ').toUpperCase();
+                blackboardTitle.textContent = `Blackboard — ${courseClean}`;
+            } else if (roomId === 'lobby') {
+                blackboardTitle.textContent = 'Blackboard — Campus Lobby';
+            } else {
+                blackboardTitle.textContent = `Blackboard — ${roomId}`;
+            }
+        }
         myInitial.textContent = myDisplayName.charAt(0).toUpperCase();
         myNameLabel.textContent = myDisplayName;
 
@@ -2922,6 +3577,7 @@
 
     if (btnLeave) {
         btnLeave.addEventListener('click', () => {
+            stopMicTranscription();
             cleanupWebRTC();
             disconnectWS();
             stopGameLoop();
@@ -3021,9 +3677,13 @@
     function wsSend(obj) {
         if (!canInteract) {
             loginForInteraction();
-            return;
+            return false;
         }
-        if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(obj));
+            return true;
+        }
+        return false;
     }
 
     function connectPresenceWS() {
@@ -3314,23 +3974,60 @@
             }
 
             case 'force_mute': {
-                if (myRole !== 'instructor' && localMediaState.mic_enabled) {
-                    toggleMicrophone();
-                    showToast('Instructor muted all participants', 'warning');
+                const targetPid = data.target_participant_id || data.target_peer_id;
+                if (targetPid) {
+                    if (participantMediaState[targetPid]) {
+                        participantMediaState[targetPid].mic_enabled = false;
+                    }
+                } else {
+                    Object.keys(participantMediaState).forEach(pid => {
+                        if (participantMediaState[pid]) participantMediaState[pid].mic_enabled = false;
+                    });
                 }
+
+                const isTargetMe = (!targetPid || String(targetPid) === String(myParticipantId));
+                if (isTargetMe) {
+                    if (!isInstructorRole() || String(targetPid) === String(myParticipantId)) {
+                        if (localStream) {
+                            localStream.getAudioTracks().forEach(track => { track.enabled = false; });
+                        }
+                        const wasMicOn = localMediaState.mic_enabled;
+                        localMediaState.mic_enabled = false;
+                        localMediaState.audio = false;
+                        if (participantMediaState[myParticipantId]) {
+                            participantMediaState[myParticipantId].mic_enabled = false;
+                        }
+                        updateMediaControlUI();
+                        stopMicTranscription();
+                        if (wasMicOn) {
+                            wsSend({ type: 'media_state', audio: false, mic_enabled: false });
+                        }
+                        showToast(targetPid ? 'You were muted by the instructor' : 'Instructor muted all participants', 'warning');
+                    }
+                }
+
+                renderParticipantsList();
+                updateAllSeatsMediaUI();
+                renderStageFilmstrip();
+                if (typeof renderMeetFilmstrip === 'function') renderMeetFilmstrip();
                 break;
             }
 
             case 'spotlight_changed': {
-                activeSpotlightPeerId = data.spotlight_peer_id;
+                activeSpotlightPeerId = data.spotlight_peer_id || null;
                 if (activeSpotlightPeerId) {
-                    showToast('Spotlight on ' + (participants[activeSpotlightPeerId]?.display_name || activeSpotlightPeerId), 'info');
-                    if (typeof enterStageMode === 'function') {
-                        enterStageMode('spotlight', activeSpotlightPeerId);
-                    }
-                } else if (!isScreenSharingActive && typeof exitStageMode === 'function') {
-                    exitStageMode();
+                    const spotlightName = (activeSpotlightPeerId === myParticipantId)
+                        ? `${myDisplayName} (You)`
+                        : (participants[activeSpotlightPeerId]?.display_name || activeSpotlightPeerId);
+                    showToast('⭐ Spotlight on ' + spotlightName, 'info');
+                } else {
+                    showToast('Spotlight cleared', 'info');
                 }
+                updateSpotlightUI();
+                renderParticipantsList();
+                renderOtherAvatars();
+                renderStageFilmstrip();
+                renderSeatLabels();
                 break;
             }
 
@@ -3389,6 +4086,12 @@
                     isSeated = true;
                     currentSeat = data.seat_id;
                     myCharacter.style.display = 'none';
+                    keysPressed.ArrowUp = false;
+                    keysPressed.ArrowDown = false;
+                    keysPressed.ArrowLeft = false;
+                    keysPressed.ArrowRight = false;
+                    myVel.x = 0;
+                    myVel.y = 0;
                 }
                 updateSeatLabel(data.seat_id, data.display_name, data.participant_id);
                 showToast(`${data.display_name} took ${data.seat_id}`, 'info');
@@ -3475,6 +4178,13 @@
             case 'hand_raised': {
                 const pid = String(data.participant_id);
                 const isRaised = data.hand_raised === true;
+                if (Array.isArray(data.hand_raise_queue)) {
+                    handRaiseQueue = data.hand_raise_queue;
+                } else if (isRaised) {
+                    if (!handRaiseQueue.includes(pid)) handRaiseQueue.push(pid);
+                } else {
+                    handRaiseQueue = handRaiseQueue.filter(id => id !== pid);
+                }
                 const existing = getPresence(pid) || { x: 0.5, y: 0.5, emoji: '' };
                 setPresence(pid, {
                     ...existing,
@@ -3488,6 +4198,27 @@
                     } else {
                         showToast(`${data.display_name || 'Participant'} lowered their hand`, 'info');
                     }
+                } else {
+                    if (!isRaised && data.by && data.by !== myParticipantId) {
+                        showToast('Instructor lowered your hand', 'warning');
+                    }
+                }
+                updatePresenceControls();
+                renderOtherAvatars();
+                renderParticipantsList();
+                renderSeatLabels();
+                updateAllSeatsMediaUI();
+                renderStageFilmstrip();
+                break;
+            }
+
+            case 'all_hands_lowered': {
+                handRaiseQueue = [];
+                Object.keys(presenceByUser).forEach(uid => {
+                    if (presenceByUser[uid]) presenceByUser[uid].hand_raised = false;
+                });
+                if (data.by !== myParticipantId) {
+                    showToast('Instructor lowered all hands', 'info');
                 }
                 updatePresenceControls();
                 renderOtherAvatars();
@@ -3554,6 +4285,21 @@
 
         // Restore own seat if server knows about it
         const selfP = (data.participants || []).find(p => String(p.participant_id) === String(myParticipantId));
+        if (selfP && selfP.media_state) {
+            const serverMicOn = Boolean(selfP.media_state.mic_enabled !== undefined ? selfP.media_state.mic_enabled : selfP.media_state.audio);
+            if (!serverMicOn && localMediaState.mic_enabled) {
+                if (localStream) {
+                    localStream.getAudioTracks().forEach(track => { track.enabled = false; });
+                }
+                localMediaState.mic_enabled = false;
+                localMediaState.audio = false;
+                if (participantMediaState[myParticipantId]) {
+                    participantMediaState[myParticipantId].mic_enabled = false;
+                }
+                updateMediaControlUI();
+                stopMicTranscription();
+            }
+        }
         if (selfP && selfP.seat_id) {
             updateSeatLabel(selfP.seat_id, myDisplayName, myParticipantId);
             isSeated = true;
@@ -3580,6 +4326,14 @@
             hidePresentationStream();
         }
 
+        if (Array.isArray(data.hand_raise_queue)) {
+            handRaiseQueue = data.hand_raise_queue;
+        }
+        if (data.spotlight_peer_id !== undefined) {
+            activeSpotlightPeerId = data.spotlight_peer_id || null;
+            updateSpotlightUI();
+        }
+
         const serverCount = Number(data.count);
         participantCount.textContent = Number.isFinite(serverCount)
             ? serverCount
@@ -3598,9 +4352,18 @@
         avatarLayer.innerHTML = '';
         const canvasRect = classroomCanvas.getBoundingClientRect();
 
+        if (myCharacter) {
+            const isMeSpot = Boolean(activeSpotlightPeerId && myParticipantId === activeSpotlightPeerId);
+            myCharacter.classList.toggle('ring-4', isMeSpot);
+            myCharacter.classList.toggle('ring-amber-400', isMeSpot);
+            myCharacter.classList.toggle('ring-offset-2', isMeSpot);
+            myCharacter.classList.toggle('ring-offset-stone-900', isMeSpot);
+        }
+
         Object.entries(participants).forEach(([pid, p]) => {
             if (p.seat_id) return;
             const [c1, c2] = colorForId(pid);
+            const isSpot = Boolean(activeSpotlightPeerId && pid === activeSpotlightPeerId);
 
             // Convert stored normalized position to local pixels
             const px = p.normPos.x * canvasRect.width;
@@ -3614,16 +4377,20 @@
             el.className = 'absolute transition-all duration-75 ease-linear flex flex-col items-center';
             el.style.left      = x + 'px';
             el.style.top       = y + 'px';
-            el.style.zIndex    = '41';
+            el.style.zIndex    = isSpot ? '45' : '41';
             el.style.transform = 'translate(-50%, -50%)';
             el.innerHTML = `
-                <div class="relative w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white/20"
+                <div class="relative w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg ${
+                    isSpot
+                        ? 'border-2 border-amber-300 ring-4 ring-amber-400 ring-offset-2 ring-offset-stone-900 shadow-amber-400/50'
+                        : 'border-2 border-white/20'
+                }"
                      style="background: linear-gradient(135deg, ${c1}, ${c2});">
                     ${(p.display_name || '?').charAt(0).toUpperCase()}
-                    <span class="absolute -top-1 -right-1 text-[12px] leading-none">${presenceBadge(pid)}</span>
+                    <span class="absolute -top-1 -right-1 text-[12px] leading-none">${isSpot ? '⭐' : presenceBadge(pid)}</span>
                 </div>
-                <div class="mt-0.5 px-1.5 py-0.5 bg-gray-900/90 rounded text-[9px] text-white font-medium whitespace-nowrap shadow">
-                    ${escapeHtml(p.display_name || pid)}
+                <div class="mt-0.5 px-1.5 py-0.5 ${isSpot ? 'bg-amber-400 text-stone-950 font-bold' : 'bg-gray-900/90 text-white font-medium'} rounded text-[9px] whitespace-nowrap shadow">
+                    ${isSpot ? '⭐ ' : ''}${escapeHtml(p.display_name || pid)}
                 </div>
             `;
             avatarLayer.appendChild(el);
@@ -3634,7 +4401,121 @@
     function renderParticipantsList() {
         if (!participantsList) return;
         participantsList.innerHTML = '';
+        const isInstructor = isInstructorRole();
 
+        // 1. INSTRUCTOR CONTROLS HEADER (Mute All & Clear Spotlight)
+        if (isInstructor) {
+            const instControlsBox = document.createElement('div');
+            instControlsBox.className = 'p-3 bg-[#26282d] border border-teal-500/40 rounded-xl space-y-2 shadow-md mb-3';
+            instControlsBox.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-teal-300 uppercase tracking-wider flex items-center gap-1.5" style="color: #5eead4 !important;">
+                        <svg class="w-3.5 h-3.5 text-teal-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        Instructor Controls
+                    </span>
+                    ${activeSpotlightPeerId ? `
+                        <button id="btnInstClearSpotlight" type="button" class="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-semibold transition flex items-center gap-1" title="Clear active spotlight">
+                            <span>✕ Clear Spotlight</span>
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                    <button id="btnInstMuteAll" type="button" class="flex-1 py-1.5 px-3 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 hover:border-red-400 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm" title="Mute all non-instructor participants">
+                        <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></svg>
+                        <span>Mute All</span>
+                    </button>
+                </div>
+            `;
+            const btnMuteAll = instControlsBox.querySelector('#btnInstMuteAll');
+            if (btnMuteAll) {
+                btnMuteAll.addEventListener('click', () => {
+                    wsSend({ type: 'mute_all' });
+                    showToast('Muted all participants', 'info');
+                });
+            }
+            const btnClearSpotlight = instControlsBox.querySelector('#btnInstClearSpotlight');
+            if (btnClearSpotlight) {
+                btnClearSpotlight.addEventListener('click', () => {
+                    wsSend({ type: 'spotlight', target_peer_id: '' });
+                    showToast('Spotlight cleared', 'info');
+                });
+            }
+            participantsList.appendChild(instControlsBox);
+        }
+
+        // 2. HAND-RAISE QUEUE SECTION (Only visible when hands are raised)
+        if (handRaiseQueue.length > 0) {
+            const queueSection = document.createElement('div');
+            queueSection.className = 'p-3 bg-[#2a2218] border border-amber-500/40 rounded-xl space-y-2 shadow-md mb-3';
+            queueSection.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5" style="color: #fcd34d !important;">
+                        <span>✋ Hand-Raise Queue</span>
+                        <span class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-200 text-[10px] font-bold border border-amber-500/40">${handRaiseQueue.length}</span>
+                    </span>
+                    ${(isInstructor && handRaiseQueue.length > 0) ? `
+                        <button id="btnLowerAllHandsQueue" type="button" class="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded text-[10px] font-semibold transition" title="Lower all hands">
+                            Lower All
+                        </button>
+                    ` : ''}
+                </div>
+                <div id="handRaiseQueueList" class="space-y-1.5"></div>
+            `;
+            const queueListContainer = queueSection.querySelector('#handRaiseQueueList');
+            handRaiseQueue.forEach((pid, idx) => {
+                const isMe = (String(pid) === String(myParticipantId));
+                const pData = isMe
+                    ? { display_name: myDisplayName, seat_id: currentSeat }
+                    : (participants[pid] || { display_name: pid, seat_id: '' });
+                const dName = pData.display_name || pid;
+                let loc = 'Floor';
+                if (pData.seat_id === 'seat-teacher') loc = "Teacher's Desk";
+                else if (pData.seat_id) loc = pData.seat_id.replace('seat-', 'Desk ');
+
+                const qRow = document.createElement('div');
+                qRow.className = 'flex items-center justify-between gap-2 p-2 rounded-lg bg-[#1f1a14] border border-amber-500/30';
+                qRow.innerHTML = `
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <span class="w-5 h-5 rounded-full bg-amber-400 text-stone-950 font-black text-[10px] flex items-center justify-center shrink-0 shadow">#${idx + 1}</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-bold text-white truncate" style="color:#ffffff !important;">
+                                ${escapeHtml(dName)}${isMe ? ' <span class="text-teal-300 font-normal">(You)</span>' : ''}
+                            </p>
+                            <p class="text-[10px] text-amber-200/80 truncate">${escapeHtml(loc)}</p>
+                        </div>
+                    </div>
+                    ${(isInstructor || isMe) ? `
+                        <button type="button" data-lower-pid="${escapeHtml(pid)}" class="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded text-[11px] font-semibold transition shrink-0 flex items-center gap-1" title="Lower hand">
+                            <span>Lower</span>
+                        </button>
+                    ` : ''}
+                `;
+                const lowerBtn = qRow.querySelector(`[data-lower-pid]`);
+                if (lowerBtn) {
+                    lowerBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        wsSend({ type: 'lower_hand', target_participant_id: pid });
+                        if (isMe) {
+                            setPresence(String(myParticipantId), { ...getPresence(String(myParticipantId)), hand_raised: false });
+                            updatePresenceControls();
+                        }
+                        showToast(isMe ? 'Lowered your hand' : `Lowered ${dName}’s hand`, 'info');
+                    });
+                }
+                queueListContainer.appendChild(qRow);
+            });
+
+            const btnLowerAll = queueSection.querySelector('#btnLowerAllHandsQueue');
+            if (btnLowerAll) {
+                btnLowerAll.addEventListener('click', () => {
+                    wsSend({ type: 'lower_all_hands' });
+                    showToast('Lowered all hands', 'info');
+                });
+            }
+            participantsList.appendChild(queueSection);
+        }
+
+        // 3. ALL PARTICIPANTS
         // Gather all participant entries
         const allList = [];
         if (canInteract) {
@@ -3668,10 +4549,14 @@
             });
         });
 
-        // Sort: instructor first, then participants who raised their hand, then self, then alphabetical
+        // Sort: instructor first, then spotlighted, then participants who raised their hand, then self, then alphabetical
         allList.sort((a, b) => {
             if (a.isInstructor && !b.isInstructor) return -1;
             if (!a.isInstructor && b.isInstructor) return 1;
+            const aSpot = Boolean(activeSpotlightPeerId && a.pid === activeSpotlightPeerId);
+            const bSpot = Boolean(activeSpotlightPeerId && b.pid === activeSpotlightPeerId);
+            if (aSpot && !bSpot) return -1;
+            if (!aSpot && bSpot) return 1;
             if (a.handRaised && !b.handRaised) return -1;
             if (!a.handRaised && b.handRaised) return 1;
             if (a.isSelf) return -1;
@@ -3701,16 +4586,20 @@
 
     function makeParticipantRow(item) {
         const [c1, c2] = item.isSelf ? ['#0D9488', '#14b8a6'] : colorForId(item.pid);
+        const isInstructor = isInstructorRole();
+        const isSpotlighted = Boolean(activeSpotlightPeerId && item.pid === activeSpotlightPeerId);
         const card = document.createElement('div');
         card.className = `flex items-center gap-2.5 p-2 rounded-lg border transition-all ${
-            item.handRaised
-                ? 'bg-[#35281a] border-amber-500/60 hover:border-amber-400 shadow-sm'
-                : 'bg-[#26282d] border-gray-700/80 hover:border-gray-500 shadow-sm'
+            isSpotlighted
+                ? 'bg-[#2a2415] border-amber-400 shadow-md ring-1 ring-amber-400/50'
+                : item.handRaised
+                    ? 'bg-[#35281a] border-amber-500/60 hover:border-amber-400 shadow-sm'
+                    : 'bg-[#26282d] border-gray-700/80 hover:border-gray-500 shadow-sm'
         }`;
 
         const micActive = item.mediaState?.mic_enabled === true;
         const camActive = item.mediaState?.cam_enabled === true;
-        const isInstructor = item.isInstructor || item.role === 'instructor' || item.seatId === 'seat-teacher';
+        const isTargetInstructor = item.isInstructor || item.role === 'instructor' || item.seatId === 'seat-teacher';
         let locationLabel = 'Walking on floor';
         if (item.seatId === 'seat-teacher') {
             locationLabel = "Teacher's Desk";
@@ -3724,14 +4613,17 @@
                      style="background: linear-gradient(135deg, ${c1}, ${c2}); color: #ffffff !important;">
                     ${(item.name || '?').charAt(0).toUpperCase()}
                 </div>
-                ${item.handRaised ? '<span class="absolute -top-1 -right-1 text-[11px] leading-none animate-bounce">✋</span>' : ''}
+                ${isSpotlighted
+                    ? '<span class="absolute -top-1 -right-1 text-[11px] leading-none" title="Spotlighted">⭐</span>'
+                    : (item.handRaised ? '<span class="absolute -top-1 -right-1 text-[11px] leading-none animate-bounce" title="Hand Raised">✋</span>' : '')}
             </div>
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-1.5 flex-wrap">
                     <p class="text-xs font-bold text-white truncate" style="color: #ffffff !important;">
                         ${escapeHtml(item.name)}${item.isSelf ? ' <span class="text-teal-300 font-normal" style="color: #5eead4 !important;">(You)</span>' : ''}
                     </p>
-                    ${isInstructor ? '<span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[9px] font-semibold rounded-full whitespace-nowrap shadow-sm">Host</span>' : ''}
+                    ${isTargetInstructor ? '<span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[9px] font-semibold rounded-full whitespace-nowrap shadow-sm">Host</span>' : ''}
+                    ${isSpotlighted ? '<span class="px-1.5 py-0.5 bg-amber-400 text-stone-950 text-[9px] font-black rounded-full whitespace-nowrap shadow-sm" style="color: #0c0a09 !important; background-color: #fbbf24 !important;">⭐ Spotlight</span>' : ''}
                     ${item.handRaised ? '<span class="px-1.5 py-0.5 bg-amber-400 text-stone-950 text-[9px] font-black rounded-full whitespace-nowrap shadow-sm" style="color: #0c0a09 !important; background-color: #fbbf24 !important;">✋ Raised</span>' : ''}
                 </div>
                 <p class="text-[10px] text-gray-200 flex items-center gap-1 mt-0.5 font-medium" style="color: #e5e7eb !important;">
@@ -3739,19 +4631,83 @@
                     <span style="color: #e5e7eb !important;">${escapeHtml(locationLabel)}</span>
                 </p>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
+            <div class="flex items-center gap-1.5 shrink-0">
                 <span class="p-1 rounded border ${micActive ? 'text-emerald-300 bg-emerald-500/20 border-emerald-500/40' : 'text-red-300 bg-red-500/20 border-red-500/40'}" title="${micActive ? 'Microphone on' : 'Microphone muted'}">
                     ${micActive
-                        ? '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
-                        : '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><line x1="2" y1="2" x2="22" y2="22"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'}
+                        ? '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>'
+                        : '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></svg>'}
                 </span>
                 <span class="p-1 rounded border ${camActive ? 'text-emerald-300 bg-emerald-500/20 border-emerald-500/40' : 'text-red-300 bg-red-500/20 border-red-500/40'}" title="${camActive ? 'Camera on' : 'Camera off'}">
                     ${camActive
-                        ? '<svg class="w-3.5 h-3.5 fill-currentColor" viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="13" height="13" rx="3" ry="3" fill="none" stroke="currentColor" stroke-width="2"/><polygon points="15.5,10 21.5,6.5 21.5,17.5 15.5,14" fill="currentColor"/></svg>'
-                        : '<svg class="w-3.5 h-3.5 stroke-current stroke-2" viewBox="0 0 24 24"><line x1="2" y1="2" x2="22" y2="22"/><rect x="2.5" y="5.5" width="13" height="13" rx="3" ry="3" fill="none"/></svg>'}
+                        ? '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>'
+                        : '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/></svg>'}
                 </span>
+
+                ${(isInstructor && !item.isSelf) ? `
+                    <!-- 3-Dots Action Menu -->
+                    <div class="relative">
+                        <button type="button" data-action="peer-menu-btn" data-pid="${escapeHtml(item.pid)}" class="p-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition border border-transparent hover:border-gray-600" title="Options for ${escapeHtml(item.name)}">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                        </button>
+                        <!-- Dropdown Menu -->
+                        <div data-peer-menu="${escapeHtml(item.pid)}" class="hidden absolute right-0 top-full mt-1.5 w-36 bg-[#1f2126] border border-gray-700 rounded-xl shadow-2xl z-[70] p-1 flex flex-col gap-0.5 backdrop-blur-md">
+                            <!-- Mute Action -->
+                            <button type="button" data-action="mute-peer" class="w-full px-2.5 py-1.5 text-left text-red-300 hover:bg-red-500/20 rounded-lg flex items-center gap-2 transition text-xs font-semibold">
+                                <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2 shrink-0" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></svg>
+                                <span>Mute</span>
+                            </button>
+                            <!-- Spotlight Action -->
+                            <button type="button" data-action="spotlight-peer" class="w-full px-2.5 py-1.5 text-left text-amber-300 hover:bg-amber-500/20 rounded-lg flex items-center gap-2 transition text-xs font-semibold">
+                                <svg class="w-3.5 h-3.5 ${isSpotlighted ? 'fill-current' : 'fill-none stroke-current stroke-2'} shrink-0" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <span>${isSpotlighted ? 'Remove Spotlight' : 'Spotlight'}</span>
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         `;
+
+        const menuBtn = card.querySelector('[data-action="peer-menu-btn"]');
+        const menuDropdown = card.querySelector('[data-peer-menu]');
+        if (menuBtn && menuDropdown) {
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('[data-peer-menu]').forEach(m => {
+                    if (m !== menuDropdown) m.classList.add('hidden');
+                });
+                menuDropdown.classList.toggle('hidden');
+            });
+        }
+
+        const mutePeerBtn = card.querySelector('[data-action="mute-peer"]');
+        if (mutePeerBtn) {
+            mutePeerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (menuDropdown) menuDropdown.classList.add('hidden');
+                wsSend({
+                    type: 'mute_participant',
+                    target_participant_id: item.pid,
+                    target_peer_id: item.pid
+                });
+                if (participantMediaState[item.pid]) {
+                    participantMediaState[item.pid].mic_enabled = false;
+                }
+                renderParticipantsList();
+                updateAllSeatsMediaUI();
+                renderStageFilmstrip();
+                showToast(`Muted ${item.name}`, 'info');
+            });
+        }
+
+        const spotPeerBtn = card.querySelector('[data-action="spotlight-peer"]');
+        if (spotPeerBtn) {
+            spotPeerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (menuDropdown) menuDropdown.classList.add('hidden');
+                wsSend({ type: 'spotlight', target_peer_id: item.pid });
+            });
+        }
+
         return card;
     }
 
@@ -3826,8 +4782,10 @@
             if (nextHandRaised) {
                 spawnFloatingEmoji('✋');
                 showToast('You raised your hand ✋', 'info');
+                if (!handRaiseQueue.includes(strMyId)) handRaiseQueue.push(strMyId);
             } else {
                 showToast('You lowered your hand', 'info');
+                handRaiseQueue = handRaiseQueue.filter(id => id !== strMyId);
             }
             updatePresenceControls();
             renderOtherAvatars();
@@ -3917,13 +4875,13 @@
 
         if (isUp || isDown || isLeft || isRight) {
             if (isSeated) {
-                // Auto stand-up when movement key is pressed
-                const seatToLeave = currentSeat;
-                isSeated = false;
-                currentSeat = null;
-                myCharacter.style.display = '';
-                wsSend({ type: 'leave_seat', seat_id: seatToLeave });
-                showToast('You stood up', 'info');
+                e.preventDefault();
+                const now = Date.now();
+                if (!window._lastSeatMoveWarn || now - window._lastSeatMoveWarn > 2000) {
+                    window._lastSeatMoveWarn = now;
+                    showToast("Press 'E' to stand up before moving", "info");
+                }
+                return;
             }
             if (isUp)    keysPressed.ArrowUp    = true;
             if (isDown)  keysPressed.ArrowDown  = true;
@@ -3983,6 +4941,12 @@
             if (dist < nearestDist) { nearestDist = dist; nearest = seatId; }
         });
         if (nearest && nearestDist < 140) {
+            keysPressed.ArrowUp = false;
+            keysPressed.ArrowDown = false;
+            keysPressed.ArrowLeft = false;
+            keysPressed.ArrowRight = false;
+            myVel.x = 0;
+            myVel.y = 0;
             wsSend({ type: 'update_seat', seat_id: nearest });
             showToast(`Taking ${nearest.replace('seat-', 'Desk ')}…`, 'info');
         } else {
@@ -4003,6 +4967,9 @@
                 if (keysPressed.ArrowDown)  { myVel.y += accel; myDirection = 'down';  }
                 if (keysPressed.ArrowLeft)  { myVel.x -= accel; myDirection = 'left';  }
                 if (keysPressed.ArrowRight) { myVel.x += accel; myDirection = 'right'; }
+            } else {
+                myVel.x = 0;
+                myVel.y = 0;
             }
 
             myVel.x *= friction;
@@ -4093,149 +5060,6 @@
     }
 })();
 </script>
-
-<!-- THEATER / EXPANDED PRESENTATION MODAL -->
-<div id="presentationModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] hidden flex flex-col p-4">
-    <div class="flex items-center justify-between pb-3 border-b border-gray-800 text-white">
-        <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span id="modalPresenterName" class="font-semibold text-sm">Screen Presentation</span>
-        </div>
-        <button id="btnClosePresentationModal" type="button" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-medium transition border border-gray-700">
-            ✕ Close
-        </button>
-    </div>
-    <div class="flex-1 flex items-center justify-center p-2 min-h-0">
-        <video id="modalPresentationVideo" autoplay playsinline muted class="max-w-full max-h-full rounded-lg shadow-2xl object-contain"></video>
-    </div>
-</div>
-
-<!-- BREAKOUT ROOMS MANAGEMENT MODAL (Instructor) -->
-<div id="breakoutModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col text-white">
-        <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full bg-teal-400"></span>
-                <h3 class="font-bold text-sm text-gray-100">Breakout Rooms</h3>
-            </div>
-            <button id="btnCloseBreakoutModal" type="button" class="text-gray-400 hover:text-white transition">✕</button>
-        </div>
-        <div class="p-5 space-y-4 text-xs">
-            <div>
-                <label for="breakoutCountInput" class="block font-medium text-gray-300 mb-1">Number of Rooms</label>
-                <div class="flex gap-2">
-                    <input id="breakoutCountInput" type="number" min="2" max="6" value="2" class="w-20 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-center focus:outline-none focus:ring-1 focus:ring-teal-500" />
-                    <button id="btnCreateBreakoutsSubmit" type="button" class="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition shadow">
-                        Create & Split
-                    </button>
-                </div>
-            </div>
-            <div class="pt-3 border-t border-gray-800">
-                <label for="breakoutBroadcastInput" class="block font-medium text-gray-300 mb-1">Broadcast to All Breakouts</label>
-                <div class="flex gap-2">
-                    <input id="breakoutBroadcastInput" type="text" placeholder="e.g. 2 minutes remaining!" class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500" />
-                    <button id="btnBroadcastBreakoutsSubmit" type="button" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-lg transition">
-                        Send
-                    </button>
-                </div>
-            </div>
-            <div class="pt-2">
-                <button id="btnCloseBreakoutsSubmit" type="button" class="w-full py-2 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-lg transition shadow">
-                    Close All Breakouts & Return
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- BREAKOUT INVITATION MODAL (Student) -->
-<div id="breakoutInviteModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-teal-500/50 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 text-center text-white">
-        <div class="w-12 h-12 mx-auto rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center mb-3">
-            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm0 9h7v7H4v-7zm9-9h7v7h-7V4zm0 9h7v7h-7v-7z"/></svg>
-        </div>
-        <h3 class="font-bold text-base text-gray-100 mb-1">Breakout Room Ready</h3>
-        <p id="breakoutInviteText" class="text-xs text-gray-400 mb-4">You have been assigned to Breakout Room 1.</p>
-        <div class="flex gap-2">
-            <button id="btnDismissBreakoutInvite" type="button" class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold transition">
-                Later
-            </button>
-            <button id="btnJoinBreakoutSubmit" type="button" class="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold transition shadow">
-                Join Now
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- SEARCHABLE TRANSCRIPTS & LIVE CAPTIONS MODAL -->
-<div id="transcriptModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-xl h-[520px] overflow-hidden shadow-2xl flex flex-col text-white">
-        <div class="px-5 py-3.5 border-b border-gray-800 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <svg class="w-5 h-5 text-teal-400 fill-current" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-                <h3 class="font-bold text-sm text-gray-100">Classroom Transcripts & Captions</h3>
-            </div>
-            <button id="btnCloseTranscriptModal" type="button" class="text-gray-400 hover:text-white transition">✕</button>
-        </div>
-        <div class="p-3 border-b border-gray-800">
-            <div class="relative">
-                <input id="transcriptSearchInput" type="text" placeholder="Search transcript by speaker or keywords…" class="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500" />
-                <svg class="w-4 h-4 text-gray-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            </div>
-        </div>
-        <div id="transcriptLogList" class="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-0 bg-gray-950/40">
-            <div class="text-center text-xs text-gray-500 py-10">No captions recorded yet.</div>
-        </div>
-        <div class="px-5 py-3 border-t border-gray-800 flex items-center justify-between bg-gray-900/90">
-            <button id="btnExportTranscriptTxt" type="button" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-teal-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow">
-                <span>↓</span> Download Transcript (.txt)
-            </button>
-            <button id="btnCloseTranscriptModalBottom" type="button" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition">
-                Close
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- CONNECTION QUALITY & DEGRADATION MODAL -->
-<div id="networkModeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 text-white">
-        <h3 class="font-bold text-sm text-gray-100 mb-3 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            Connection & Bandwidth Mode
-        </h3>
-        <p class="text-xs text-gray-400 mb-4">Choose quality mode or allow automatic degradation for slow networks.</p>
-        <div class="space-y-2 text-xs">
-            <button id="btnModeFull" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
-                <div>
-                    <div class="font-bold text-white flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Full HD
-                    </div>
-                    <div class="text-[11px] text-gray-400">Video + Audio (standard high quality)</div>
-                </div>
-            </button>
-            <button id="btnModeAudio" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
-                <div>
-                    <div class="font-bold text-amber-300 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-amber-400"></span> Audio Only
-                    </div>
-                    <div class="text-[11px] text-gray-400">Disables camera & video to save bandwidth</div>
-                </div>
-            </button>
-            <button id="btnModeCaptions" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
-                <div>
-                    <div class="font-bold text-cyan-300 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Captions Only
-                    </div>
-                    <div class="text-[11px] text-gray-400">Ultra-low bandwidth (whiteboard + subtitles)</div>
-                </div>
-            </button>
-        </div>
-        <button id="btnCloseNetworkModal" type="button" class="w-full mt-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold transition">
-            Close
-        </button>
-    </div>
-</div>
 
 </body>
 </html>
