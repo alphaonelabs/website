@@ -109,7 +109,7 @@
     <div class="max-w-[90rem] mx-auto px-4 md:px-6 py-12">
 
       <!-- STAT CARDS -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
         <div id="stat-cards" class="contents"></div>
       </div>
 
@@ -274,13 +274,19 @@ function renderDashboard(data) {
     // Calculate stats
     const totalParticipants = hosted.reduce((sum, a) => sum + (a.participant_count || 0), 0);
     const totalSessions = hosted.reduce((sum, a) => sum + (a.session_count || 0), 0);
+    const attRateDisplay = (data.attendance_percentage !== null && data.attendance_percentage !== undefined)
+        ? `${data.attendance_percentage}%`
+        : (data.attendance_summary && data.attendance_summary.total_sessions > 0
+            ? `${data.attendance_summary.attendance_percentage || 0}%`
+            : (joined.length ? '100%' : 'N/A'));
 
     // Render stat cards
     document.getElementById('stat-cards').innerHTML =
         statCard(hosted.length, 'Hosted Activities', 'fa-broadcast-tower', 'text-teal-600 dark:text-teal-400') +
         statCard(totalParticipants, 'Total Participants', 'fa-users', 'text-gray-600 dark:text-gray-400') +
         statCard(joined.length, 'Joined Activities', 'fa-heart', 'text-gray-600 dark:text-gray-400') +
-        statCard(totalSessions, 'Total Sessions', 'fa-calendar', 'text-cyan-600 dark:text-cyan-400');
+        statCard(totalSessions, 'Total Sessions', 'fa-calendar', 'text-cyan-600 dark:text-cyan-400') +
+        statCard(attRateDisplay, 'Attendance Rate', 'fa-clipboard-check', 'text-emerald-600 dark:text-emerald-400');
 
     // Quick actions
     document.getElementById('quick-actions').innerHTML = `
@@ -423,7 +429,22 @@ function renderDashboard(data) {
                                 <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
                                     <i class="fas fa-signal mr-1"></i>${fmtLabel[a.format] || a.format}
                                 </span>
+                                ${a.attendance_percentage !== null && a.attendance_percentage !== undefined ? `
+                                <span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                                    <i class="fas fa-clipboard-check mr-1"></i>${a.attendance_percentage}% Attendance (${a.attended_sessions || 0}/${a.session_count || 0})
+                                </span>
+                                ` : (a.session_count > 0 ? `
+                                <span class="inline-block px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">
+                                    <i class="fas fa-calendar mr-1"></i>${a.session_count} sessions
+                                </span>
+                                ` : '')}
                             </div>
+
+                            ${a.attendance_percentage !== null && a.attendance_percentage !== undefined ? `
+                            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden" title="Attendance: ${a.attendance_percentage}%">
+                                <div class="bg-gradient-to-r from-teal-500 to-emerald-500 h-1.5 rounded-full" style="width: ${Math.min(100, Math.max(0, a.attendance_percentage))}%"></div>
+                            </div>
+                            ` : ''}
                             
                             ${tagsList ? `<div class="flex flex-wrap gap-1.5">${tagsList}</div>` : ''}
                             

@@ -183,7 +183,67 @@
         </section>
       </div>
     </div>
-  </section>
+  <!-- ===== SESSION ATTENDANCE MODAL (Host / Instructor) ===== -->
+  <div id="attendance-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="att-modal-title">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+
+      <!-- Modal Header -->
+      <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-transparent flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-teal-500 text-white flex items-center justify-center shadow-md">
+            <i class="fas fa-clipboard-user text-lg"></i>
+          </div>
+          <div>
+            <h2 id="att-modal-title" class="text-lg font-bold text-gray-900 dark:text-white leading-tight">Session Attendance Register</h2>
+            <p id="att-modal-subtitle" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mark and track student participation</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeAttendanceModal()" class="w-9 h-9 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition" aria-label="Close modal">
+          <i class="fas fa-times text-base"></i>
+        </button>
+      </div>
+
+      <!-- Quick Action / Stats Bar -->
+      <div class="px-6 py-3 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div id="att-summary-counts" class="flex flex-wrap items-center gap-3 font-medium text-gray-600 dark:text-gray-300">
+          <span>Loading student register...</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="bulkSetAttendance('attended')" class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 font-semibold border border-emerald-200 dark:border-emerald-800 transition">
+            <i class="fas fa-check mr-1"></i>All Attended
+          </button>
+          <button type="button" onclick="bulkSetAttendance('missed')" class="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 font-semibold border border-rose-200 dark:border-rose-800 transition">
+            <i class="fas fa-times mr-1"></i>All Missed
+          </button>
+          <button type="button" onclick="bulkSetAttendance('registered')" class="px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 font-semibold border border-gray-300 dark:border-gray-600 transition" title="Reset all attendance marks">
+            <i class="fas fa-rotate-left mr-1"></i>Reset All
+          </button>
+        </div>
+      </div>
+
+      <!-- Student Register Body -->
+      <div id="att-students-list" class="flex-1 overflow-y-auto px-6 py-4 divide-y divide-gray-100 dark:divide-gray-700/60 space-y-2">
+        <div class="py-8 text-center text-sm text-gray-500 dark:text-gray-400 flex flex-col items-center gap-2">
+          <i class="fas fa-spinner fa-spin text-2xl text-teal-500"></i>
+          <span>Loading participant records...</span>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 flex items-center justify-between gap-4">
+        <div id="att-status-msg" class="text-xs font-medium"></div>
+        <div class="flex items-center gap-3">
+          <button type="button" onclick="closeAttendanceModal()" class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            Close
+          </button>
+          <button id="btn-save-attendance" type="button" onclick="saveAttendance()" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition flex items-center gap-2">
+            <i class="fas fa-save"></i>Save Attendance
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
 </main>
 <script>
   const API = '';
@@ -421,7 +481,12 @@
     }
     sessCard.classList.remove('hidden');
 
-    const icsUrl = `/api/activities/${encodeURIComponent(data.slug || data.id)}/calendar.ics` + (token ? `?token=${encodeURIComponent(token)}` : '');
+    const act = data.activity || {};
+    const actRef = act.slug || act.id || data.slug || data.id || '';
+    const actTitle = act.title || data.title || 'Activity';
+    const actDesc = act.description || data.description || '';
+
+    const icsUrl = `/api/activities/${encodeURIComponent(actRef)}/calendar.ics` + (token ? `?token=${encodeURIComponent(token)}` : '');
     const icsBtn = document.getElementById('btn-export-ics');
     if (icsBtn) {
       icsBtn.href = icsUrl;
@@ -430,8 +495,8 @@
     const firstSession = data.sessions[0];
     const gcalBtn = document.getElementById('btn-google-calendar');
     if (gcalBtn && firstSession) {
-      const gcalTitle = `${data.title || 'Activity'} - ${firstSession.title || 'Session'}`;
-      const gcalDetails = `${data.description ? data.description.slice(0, 300) : ''}\n\nView on Alpha One Labs: ${window.location.origin}/activity/${encodeURIComponent(data.slug || data.id)}`;
+      const gcalTitle = `${actTitle} - ${firstSession.title || 'Session'}`;
+      const gcalDetails = `${actDesc ? actDesc.slice(0, 300) : ''}\n\nView on Alpha One Labs: ${window.location.origin}/activity/${encodeURIComponent(actRef)}`;
       const gcalLoc = firstSession.location || 'Alpha One Labs';
       gcalBtn.href = formatGoogleCalendarUrl(gcalTitle, firstSession.start_time, firstSession.end_time, gcalDetails, gcalLoc);
     }
@@ -439,23 +504,47 @@
     ul.innerHTML = data.sessions.map(s => {
       const locked = !data.is_enrolled && !data.is_host;
       const sessionGcalUrl = s.start_time ? formatGoogleCalendarUrl(
-        `${data.title || 'Activity'} - ${s.title || 'Session'}`,
+        `${actTitle} - ${s.title || 'Session'}`,
         s.start_time,
         s.end_time,
-        `${s.description || (data.description ? data.description.slice(0, 200) : '')}\n\n${window.location.origin}/activity/${encodeURIComponent(data.slug || data.id)}`,
+        `${s.description || (actDesc ? actDesc.slice(0, 200) : '')}\n\n${window.location.origin}/activity/${encodeURIComponent(actRef)}`,
         locked ? '' : (s.location || '')
       ) : '';
+
+      let attendanceBadge = '';
+      if (data.is_enrolled) {
+        if (s.my_attendance === 'attended') {
+          attendanceBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"><i class="fas fa-check-circle text-emerald-600 dark:text-emerald-400"></i>Attended</span>';
+        } else if (s.my_attendance === 'missed') {
+          attendanceBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300"><i class="fas fa-times-circle text-rose-600 dark:text-rose-400"></i>Missed</span>';
+        } else {
+          attendanceBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded"><i class="fas fa-clock"></i>Registered</span>';
+        }
+      }
+
+      let hostActionBtn = '';
+      if (data.is_host) {
+        hostActionBtn = '<button type="button" onclick="openAttendanceModal(\'' + esc(s.id) + '\', \'' + esc(s.title || 'Session') + '\')" class="a1-btn a1-btn--sm shrink-0" style="min-height:32px" title="Mark student attendance"><i class="fas fa-clipboard-user" aria-hidden="true"></i><span>Attendance</span></button>';
+      }
 
       return '<li class="px-5 py-4">' +
         '<div class="flex items-start justify-between gap-3">' +
           '<div class="min-w-0 flex-1">' +
-            '<p class="font-extrabold text-sm m-0">' + esc(s.title || 'Session') + '</p>' +
+            '<div class="flex items-center gap-2 flex-wrap">' +
+              '<p class="font-extrabold text-sm m-0">' + esc(s.title || 'Session') + '</p>' +
+              attendanceBadge +
+            '</div>' +
             (s.start_time ? '<p class="ad-session-meta"><i class="far fa-clock" aria-hidden="true"></i>' + esc(s.start_time) + (s.end_time ? ' - ' + esc(s.end_time) : '') + '</p>' : '') +
             (locked ? '<p class="ad-session-meta"><i class="fas fa-lock" aria-hidden="true"></i>Join to see location and details</p>' :
               (s.location ? '<p class="ad-session-meta"><i class="fas fa-location-dot" aria-hidden="true"></i>' + esc(s.location) + '</p>' : '') +
               (s.description ? '<p class="ad-session-meta">' + esc(s.description) + '</p>' : '')) +
           '</div>' +
-          (sessionGcalUrl ? '<a href="' + esc(sessionGcalUrl) + '" target="_blank" rel="noopener noreferrer" class="a1-btn a1-btn--sm shrink-0" style="min-height:32px" title="Add this session to Google Calendar"><i class="fab fa-google" aria-hidden="true"></i><span>Add</span></a>' : '') +
+          '<div class="flex items-center gap-1.5 shrink-0">' +
+            hostActionBtn +
+            (sessionGcalUrl ? '<a href="' + esc(sessionGcalUrl) + '" target="_blank" rel="noopener noreferrer" class="a1-btn a1-btn--sm shrink-0" style="min-height:32px" title="Add this session to Google Calendar"><i class="fab fa-google" aria-hidden="true"></i><span>Add</span></a>' : '') +
+          '</div>' +
+        '</div>' +
+        '</li>';
         '</div>' +
         '</li>';
     }).join('');
@@ -570,11 +659,24 @@
       return;
     }
     if (data.is_enrolled) {
-      currentEnrollment = data.enrollment || null;
+      const enr = data.enrollment || {};
+      currentEnrollment = enr;
       renderCertificateSection(data);
       document.getElementById('member-card').classList.remove('hidden');
-      const enr = data.enrollment || {};
-      document.getElementById('enr-details').innerHTML = '<span class="a1-tag">' + esc(enr.status || 'active') + '</span><span>You have full access to session details.</span>';
+      let attHtml = '';
+      if (data.attendance && data.attendance.total_sessions > 0) {
+        const pct = data.attendance.percentage !== null ? data.attendance.percentage : 0;
+        attHtml = '<div class="w-full mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">' +
+          '<div class="flex items-center justify-between text-xs mb-1">' +
+            '<span class="font-semibold flex items-center"><i class="fas fa-clipboard-check mr-1.5 text-teal-600 dark:text-teal-400"></i>Attendance Rate:</span>' +
+            '<span class="font-bold">' + pct + '% (' + data.attendance.attended + '/' + data.attendance.total_sessions + ' sessions attended)</span>' +
+          '</div>' +
+          '<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">' +
+            '<div class="bg-gradient-to-r from-teal-500 to-emerald-500 h-2 rounded-full transition-all duration-500" style="width: ' + Math.min(100, Math.max(0, pct)) + '%"></div>' +
+          '</div>' +
+        '</div>';
+      }
+      document.getElementById('enr-details').innerHTML = '<span class="a1-tag">' + esc(enr.status || 'active') + '</span><span>You have full access to session details.</span>' + attHtml;
       action.innerHTML = '<div class="ad-actions"><span class="a1-tag a1-tag--gold"><i class="fas fa-check" aria-hidden="true"></i>Joined</span>' + (data.is_completed ? '<span class="a1-tag">Completed</span>' : '<button onclick="markComplete()" class="a1-btn"><i class="fas fa-check" aria-hidden="true"></i>Mark complete</button>') + '</div>';
       welcome.textContent = 'You are participating in this activity. Session locations and details are visible above.';
       return;
@@ -754,6 +856,201 @@
       });
     } catch (err) {
       card.classList.add('hidden');
+    }
+  }
+
+  // --- Session Attendance Register (Host) & Viewer (Student) ---
+  let activeAttendanceSessionId = null;
+  let attendanceRegisterState = []; // [{ user_id, name, username, status }]
+
+  async function openAttendanceModal(sessionId, sessionTitle) {
+    activeAttendanceSessionId = sessionId;
+    const modal = document.getElementById('attendance-modal');
+    const title = document.getElementById('att-modal-title');
+    const subtitle = document.getElementById('att-modal-subtitle');
+    const list = document.getElementById('att-students-list');
+    const statusMsg = document.getElementById('att-status-msg');
+    const saveBtn = document.getElementById('btn-save-attendance');
+
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    if (title) title.textContent = 'Attendance: ' + (sessionTitle || 'Session');
+    if (subtitle) subtitle.textContent = (currentActivity && currentActivity.title ? currentActivity.title : 'Activity') + ' · Mark Student Participation';
+    if (statusMsg) {
+      statusMsg.className = 'text-xs font-medium';
+      statusMsg.textContent = '';
+    }
+    if (saveBtn) saveBtn.disabled = false;
+
+    if (list) {
+      list.innerHTML = `
+        <div class="py-8 text-center text-sm text-gray-500 dark:text-gray-400 flex flex-col items-center gap-2">
+          <i class="fas fa-spinner fa-spin text-2xl text-teal-500"></i>
+          <span>Loading participant records...</span>
+        </div>
+      `;
+    }
+
+    try {
+      const res = await fetch('/api/sessions/' + encodeURIComponent(sessionId) + '/attendance', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load attendance');
+
+      attendanceRegisterState = (data.attendance || []).map(r => ({
+        user_id: r.user_id,
+        name: r.name || r.username || 'Student',
+        username: r.username || '',
+        status: (r.status === 'attended' || r.status === 'missed') ? r.status : 'registered'
+      }));
+
+      renderAttendanceRegister();
+    } catch (err) {
+      if (list) {
+        list.innerHTML = `
+          <div class="py-8 text-center text-red-500 text-sm">
+            <i class="fas fa-exclamation-circle text-2xl mb-2"></i>
+            <p>${esc(err.message || 'Error loading attendance')}</p>
+          </div>
+        `;
+      }
+    }
+  }
+
+  function closeAttendanceModal() {
+    const modal = document.getElementById('attendance-modal');
+    if (modal) modal.classList.add('hidden');
+    activeAttendanceSessionId = null;
+    attendanceRegisterState = [];
+  }
+
+  function renderAttendanceRegister() {
+    const list = document.getElementById('att-students-list');
+    if (!list) return;
+
+    if (!attendanceRegisterState.length) {
+      list.innerHTML = `
+        <div class="py-12 text-center text-gray-500 dark:text-gray-400">
+          <i class="fas fa-user-graduate text-3xl mb-3 text-gray-400 block"></i>
+          <p class="font-semibold text-base">No active students enrolled yet.</p>
+          <p class="text-xs mt-1 text-gray-400">Students who join this activity will automatically appear in this register.</p>
+        </div>
+      `;
+      updateAttendanceSummary();
+      return;
+    }
+
+    list.innerHTML = attendanceRegisterState.map(st => {
+      const isAttended = st.status === 'attended';
+      const isMissed = st.status === 'missed';
+
+      return `
+        <div class="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-900/40 border border-teal-300 dark:border-teal-700 flex items-center justify-center text-teal-800 dark:text-teal-200 font-bold text-xs shrink-0">
+              ${esc((st.name || 'S').trim().slice(0, 1).toUpperCase())}
+            </div>
+            <div class="min-w-0">
+              <p class="font-bold text-sm text-gray-900 dark:text-gray-100 truncate">${esc(st.name)}</p>
+              ${st.username ? `<p class="text-xs text-gray-500 dark:text-gray-400 truncate">@${esc(st.username)}</p>` : ''}
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto" role="radiogroup" aria-label="Attendance status for ${esc(st.name)}">
+            <button type="button" onclick="setStudentStatus('${esc(st.user_id)}', 'attended')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 ${isAttended ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}">
+              <i class="fas fa-check text-[10px]"></i><span>Attended</span>
+            </button>
+            <button type="button" onclick="setStudentStatus('${esc(st.user_id)}', 'missed')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 ${isMissed ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-rose-50 dark:hover:bg-rose-950/30'}">
+              <i class="fas fa-times text-[10px]"></i><span>Missed</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    updateAttendanceSummary();
+  }
+
+  function setStudentStatus(userId, status) {
+    const item = attendanceRegisterState.find(s => s.user_id === userId);
+    if (!item) return;
+    item.status = (item.status === status) ? 'registered' : status;
+    renderAttendanceRegister();
+  }
+
+  function bulkSetAttendance(status) {
+    attendanceRegisterState.forEach(s => {
+      s.status = status;
+    });
+    renderAttendanceRegister();
+  }
+
+  function updateAttendanceSummary() {
+    const container = document.getElementById('att-summary-counts');
+    if (!container) return;
+    const total = attendanceRegisterState.length;
+    const attended = attendanceRegisterState.filter(s => s.status === 'attended').length;
+    const missed = attendanceRegisterState.filter(s => s.status === 'missed').length;
+    const rate = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+    container.innerHTML = `
+      <span class="inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 font-semibold"><i class="fas fa-users text-teal-500"></i>Total: ${total}</span>
+      <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold"><i class="fas fa-check-circle"></i>${attended} Attended</span>
+      <span class="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold"><i class="fas fa-times-circle"></i>${missed} Missed</span>
+      <span class="inline-flex items-center gap-1 bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200 px-2 py-0.5 rounded-full font-bold ml-auto">${rate}% Rate</span>
+    `;
+  }
+
+  async function saveAttendance() {
+    if (!activeAttendanceSessionId || !token) return;
+    const statusMsg = document.getElementById('att-status-msg');
+    const saveBtn = document.getElementById('btn-save-attendance');
+
+    const payload = attendanceRegisterState.map(s => ({
+      user_id: s.user_id,
+      status: (s.status === 'attended' || s.status === 'missed') ? s.status : 'registered'
+    }));
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Saving...';
+    }
+    if (statusMsg) {
+      statusMsg.className = 'text-xs text-gray-500 dark:text-gray-400';
+      statusMsg.textContent = 'Saving attendance...';
+    }
+
+    try {
+      const res = await fetch('/api/sessions/' + encodeURIComponent(activeAttendanceSessionId) + '/attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to record attendance');
+
+      if (statusMsg) {
+        statusMsg.className = 'text-xs text-emerald-600 dark:text-emerald-400 font-semibold';
+        statusMsg.textContent = '✅ ' + (data.message || 'Attendance saved successfully!');
+      }
+
+      setTimeout(async () => {
+        closeAttendanceModal();
+        await loadActivityDetail();
+      }, 700);
+    } catch (err) {
+      if (statusMsg) {
+        statusMsg.className = 'text-xs text-rose-600 dark:text-rose-400 font-semibold';
+        statusMsg.textContent = '❌ ' + (err.message || 'Error saving attendance');
+      }
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i>Save Attendance';
+      }
     }
   }
 

@@ -14,6 +14,8 @@ API Routes
   POST /api/join              – join an activity
   GET  /api/dashboard         – personal dashboard
   POST /api/sessions          – add a session to activity    [host]
+  GET  /api/sessions/:id/attendance – get session attendance register [host]
+  POST /api/sessions/:id/attendance – mark session attendance         [host]
   GET  /api/tags              – list all tags
   POST /api/activity-tags     – add tags to an activity      [host]
 
@@ -1069,6 +1071,7 @@ _DDL = [
         user_id    TEXT NOT NULL,
         status     TEXT NOT NULL DEFAULT 'registered',
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
         UNIQUE (session_id, user_id),
         FOREIGN KEY (session_id) REFERENCES sessions(id),
         FOREIGN KEY (user_id)    REFERENCES users(id)
@@ -2522,6 +2525,23 @@ async def api_get_activity(activity_ref: str, req, env):
 
     is_host = bool(user and act.host_uid == user["id"])
 
+    user_attendance = {}
+    if user and user.get("id"):
+        try:
+            att_res = await env.DB.prepare(
+                "SELECT sa.session_id, sa.status, sa.created_at, sa.updated_at"
+                " FROM session_attendance sa"
+                " JOIN sessions s ON s.id = sa.session_id"
+                " WHERE s.activity_id = ? AND sa.user_id = ?"
+            ).bind(act_id, user["id"]).all()
+            for ar in (att_res.results or []):
+                user_attendance[ar.session_id] = {
+                    "status": ar.status,
+                    "marked_at": getattr(ar, "updated_at", None) or getattr(ar, "created_at", None),
+                }
+        except Exception:
+            user_attendance = {}
+
     ses_res = await env.DB.prepare(
         "SELECT id,title,description,start_time,end_time,location,created_at"
         " FROM sessions WHERE activity_id=? ORDER BY start_time"
@@ -2529,13 +2549,15 @@ async def api_get_activity(activity_ref: str, req, env):
 
     sessions = []
     for s in ses_res.results or []:
+        att_info = user_attendance.get(s.id)
         sessions.append({
-            "id":          s.id,
-            "title":       s.title,
-            "description": await decrypt_aes(s.description or "", enc) if (is_enrolled or is_host) else None,
-            "start_time":  s.start_time,
-            "end_time":    s.end_time,
-            "location":    await decrypt_aes(s.location or "", enc) if (is_enrolled or is_host) else None,
+            "id":            s.id,
+            "title":         s.title,
+            "description":   await decrypt_aes(s.description or "", enc) if (is_enrolled or is_host) else None,
+            "start_time":    s.start_time,
+            "end_time":      s.end_time,
+            "location":      await decrypt_aes(s.location or "", enc) if (is_enrolled or is_host) else None,
+            "my_attendance": att_info.get("status") if att_info else None,
         })
 
     t_res = await env.DB.prepare(
@@ -2607,6 +2629,16 @@ async def api_get_activity(activity_ref: str, req, env):
             "status": enrollment.status,
             "id":     enrollment.id,
         } if enrollment else None,
+        "attendance": {
+            "total_sessions": len(sessions),
+            "attended": sum(1 for s in sessions if s.get("my_attendance") == "attended"),
+            "missed": sum(1 for s in sessions if s.get("my_attendance") == "missed"),
+            "percentage": (
+                round((sum(1 for s in sessions if s.get("my_attendance") == "attended") / len(sessions)) * 100, 1)
+                if len(sessions) > 0
+                else None
+            ),
+        } if is_enrolled else None,
     })
 
 _ACTIVITY_TYPES = ("course", "meetup", "workshop", "seminar", "club", "event", "video", "study_group", "other")
@@ -3386,7 +3418,7 @@ async def api_dashboard(req, env):
 
     hosted = []
     for r in res.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -3399,16 +3431,19 @@ async def api_dashboard(req, env):
             "type":              r.type,
             "format":            r.format,
             "schedule_type":     r.schedule_type,
-            "participant_count": r.participant_count,
-            "session_count":     r.session_count,
+            "participant_count": getattr(r, "participant_count", 0) or 0,
+            "session_count":     getattr(r, "session_count", 0) or 0,
             "tags":              [t.name for t in (t_res.results or [])],
-            "created_at":        r.created_at,
+            "created_at":        getattr(r, "created_at", "") or "",
         })
 
     res2 = await env.DB.prepare(
         "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,"
         "e.role AS enr_role,e.status AS enr_status,e.created_at AS joined_at,"
-        "u.name AS host_name_enc"
+        "u.name AS host_name_enc,"
+        "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count,"
+        "(SELECT COUNT(*) FROM session_attendance sa JOIN sessions s ON s.id=sa.session_id"
+        " WHERE s.activity_id=a.id AND sa.user_id=e.user_id AND sa.status='attended') AS attended_count"
         " FROM enrollments e"
         " JOIN activities a ON e.activity_id=a.id"
         " JOIN users u ON a.host_id=u.id"
@@ -3417,27 +3452,56 @@ async def api_dashboard(req, env):
 
     joined = []
     for r in res2.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
         ).bind(r.id).all()
+        session_count = int(getattr(r, "session_count", 0) or 0)
+        attended_count = int(getattr(r, "attended_count", 0) or 0)
+        act_attendance_pct = (
+            round((attended_count / session_count) * 100, 1)
+            if session_count > 0
+            else None
+        )
         joined.append({
-            "id":            r.id,
-            "slug":          getattr(r, "slug", "") or "",
-            "title":         r.title,
-            "description":   desc,
-            "type":          r.type,
-            "format":        r.format,
-            "schedule_type": r.schedule_type,
-            "enr_role":      r.enr_role,
-            "enr_status":    r.enr_status,
-            "host_name":     await decrypt_aes(r.host_name_enc or "", enc),
-            "tags":          [t.name for t in (t_res.results or [])],
-            "joined_at":     r.joined_at,
+            "id":                    r.id,
+            "slug":                  getattr(r, "slug", "") or "",
+            "title":                 r.title,
+            "description":           desc,
+            "type":                  r.type,
+            "format":                r.format,
+            "schedule_type":         r.schedule_type,
+            "enr_role":              getattr(r, "enr_role", "participant") or "participant",
+            "enr_status":            getattr(r, "enr_status", "active") or "active",
+            "host_name":             await decrypt_aes(getattr(r, "host_name_enc", "") or "", enc),
+            "tags":                  [t.name for t in (t_res.results or [])],
+            "joined_at":             getattr(r, "joined_at", "") or "",
+            "session_count":         session_count,
+            "total_sessions":        session_count,
+            "attended_sessions":     attended_count,
+            "attendance_percentage": act_attendance_pct,
         })
 
-    return json_resp({"user": user, "hosted_activities": hosted, "joined_activities": joined})
+    total_joined_sessions = sum(a["session_count"] for a in joined)
+    total_attended_sessions = sum(a["attended_sessions"] for a in joined)
+    overall_attendance_pct = (
+        round((total_attended_sessions / total_joined_sessions) * 100, 1)
+        if total_joined_sessions > 0
+        else None
+    )
+
+    return json_resp({
+        "user": user,
+        "hosted_activities": hosted,
+        "joined_activities": joined,
+        "attendance_percentage": overall_attendance_pct,
+        "attendance_summary": {
+            "total_sessions": total_joined_sessions,
+            "attended_sessions": total_attended_sessions,
+            "attendance_percentage": overall_attendance_pct,
+        }
+    })
 
 
 async def api_profile(req, env):
@@ -3894,6 +3958,186 @@ async def api_create_session(req, env):
     })
 
     return ok({"id": sid}, "Session created")
+
+
+async def api_get_session_attendance(req, env, session_id: str):
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    session = await env.DB.prepare(
+        "SELECT s.id, s.activity_id, s.title, a.host_id, a.title AS activity_title"
+        " FROM sessions s"
+        " JOIN activities a ON a.id = s.activity_id"
+        " WHERE s.id = ?"
+    ).bind(session_id).first()
+
+    if not session:
+        return err("Session not found", 404)
+
+    if session.host_id != user["id"] and user.get("role") != "admin":
+        return err("Host access required", 403)
+
+    enc = env.ENCRYPTION_KEY
+
+    # 1. Fetch active enrollments for this activity with attendance status for this session
+    enr_res = await env.DB.prepare(
+        "SELECT e.user_id, e.role AS enr_role, e.status AS enr_status,"
+        " u.name, u.username, u.email,"
+        " sa.id AS attendance_id, sa.status AS attendance_status, sa.created_at AS marked_at, sa.updated_at"
+        " FROM enrollments e"
+        " JOIN users u ON e.user_id = u.id"
+        " LEFT JOIN session_attendance sa ON sa.session_id = ? AND sa.user_id = e.user_id"
+        " WHERE e.activity_id = ? AND e.status = 'active'"
+        " ORDER BY e.created_at ASC"
+    ).bind(session_id, session.activity_id).all()
+
+    records = []
+    seen_user_ids = set()
+    attended_cnt = 0
+    missed_cnt = 0
+
+    for r in (enr_res.results or []):
+        seen_user_ids.add(r.user_id)
+        name = await decrypt_aes(getattr(r, "name", "") or "", enc)
+        username = await decrypt_aes(getattr(r, "username", "") or "", enc)
+        st = getattr(r, "attendance_status", None) or "registered"
+        if st == "attended":
+            attended_cnt += 1
+        elif st == "missed":
+            missed_cnt += 1
+
+        records.append({
+            "user_id": r.user_id,
+            "name": name or username or "Participant",
+            "username": username or "",
+            "status": st,
+            "marked_at": getattr(r, "updated_at", None) or getattr(r, "marked_at", None),
+        })
+
+    # 2. Check any additional attendance rows for this session not covered by active enrollments
+    extra_att = await env.DB.prepare(
+        "SELECT sa.user_id, sa.status, sa.created_at, sa.updated_at, u.name, u.username"
+        " FROM session_attendance sa"
+        " JOIN users u ON u.id = sa.user_id"
+        " WHERE sa.session_id = ?"
+    ).bind(session_id).all()
+
+    for r in (extra_att.results or []):
+        if r.user_id not in seen_user_ids:
+            seen_user_ids.add(r.user_id)
+            name = await decrypt_aes(getattr(r, "name", "") or "", enc)
+            username = await decrypt_aes(getattr(r, "username", "") or "", enc)
+            st = getattr(r, "status", None) or "registered"
+            if st == "attended":
+                attended_cnt += 1
+            elif st == "missed":
+                missed_cnt += 1
+            records.append({
+                "user_id": r.user_id,
+                "name": name or username or "Participant",
+                "username": username or "",
+                "status": st,
+                "marked_at": getattr(r, "updated_at", None) or getattr(r, "created_at", None),
+            })
+
+    total = len(records)
+    registered_cnt = total - (attended_cnt + missed_cnt)
+    attendance_rate = round((attended_cnt / total) * 100, 1) if total > 0 else 0.0
+
+    return json_resp({
+        "success": True,
+        "session_id": session_id,
+        "session_title": getattr(session, "title", "") or "",
+        "activity_id": session.activity_id,
+        "activity_title": getattr(session, "activity_title", "") or "",
+        "attendance": records,
+        "summary": {
+            "total": total,
+            "attended": attended_cnt,
+            "missed": missed_cnt,
+            "registered": registered_cnt,
+            "attendance_rate": attendance_rate,
+        }
+    })
+
+
+async def api_record_session_attendance(req, env, session_id: str):
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    session = await env.DB.prepare(
+        "SELECT s.id, s.activity_id, s.title, a.host_id"
+        " FROM sessions s"
+        " JOIN activities a ON a.id = s.activity_id"
+        " WHERE s.id = ?"
+    ).bind(session_id).first()
+
+    if not session:
+        return err("Session not found", 404)
+
+    if session.host_id != user["id"] and user.get("role") != "admin":
+        return err("Host access required", 403)
+
+    try:
+        text = await req.text()
+        body = json.loads(text) if text else None
+    except Exception:
+        return err("Invalid JSON body", 400)
+
+    if isinstance(body, list):
+        records = body
+    elif isinstance(body, dict):
+        records = body.get("attendance")
+        if records is None:
+            records = body.get("records")
+        if records is None:
+            return err("Payload must be a list of attendance records or an object with 'attendance' list", 400)
+    else:
+        return err("Payload must be a list or an object containing an 'attendance' array", 400)
+
+    if not isinstance(records, list):
+        return err("Attendance records must be a list", 400)
+
+    valid_statuses = {"attended", "missed", "registered", "unmarked"}
+    records_to_save = []
+    for item in records:
+        if not isinstance(item, dict):
+            return err("Each attendance record must be an object", 400)
+        uid = str(item.get("user_id") or "").strip()
+        raw_status = str(item.get("status") or "").strip().lower()
+        if not uid:
+            return err("user_id is required for each attendance record", 400)
+        if raw_status not in valid_statuses:
+            return err(f"Invalid status '{item.get('status')}'. Must be one of: attended, missed, registered", 400)
+        records_to_save.append((uid, raw_status))
+
+    saved_count = 0
+    for uid, status in records_to_save:
+        if status in ("registered", "unmarked"):
+            # Undo / reset attendance mark
+            await env.DB.prepare(
+                "DELETE FROM session_attendance WHERE session_id = ? AND user_id = ?"
+            ).bind(session_id, uid).run()
+        else:
+            att_id = new_id()
+            await env.DB.prepare(
+                "INSERT INTO session_attendance (id, session_id, user_id, status, created_at, updated_at)"
+                " VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))"
+                " ON CONFLICT(session_id, user_id) DO UPDATE SET"
+                "   status = excluded.status,"
+                "   updated_at = datetime('now')"
+            ).bind(att_id, session_id, uid, status).run()
+        saved_count += 1
+
+    return json_resp({
+        "success": True,
+        "message": "Attendance recorded successfully",
+        "session_id": session_id,
+        "updated": saved_count,
+        "records": [{"user_id": u, "status": s} for u, s in records_to_save],
+    })
 
 
 async def api_list_tags(_req, env):
@@ -9135,6 +9379,12 @@ async def _dispatch(request, env):
 
         if path == "/api/sessions" and method == "POST":
             return await api_create_session(request, env)
+
+        m_session_attendance = re.fullmatch(r"/api/sessions/([A-Za-z0-9_-]+)/attendance", path)
+        if m_session_attendance and method == "GET":
+            return await api_get_session_attendance(request, env, m_session_attendance.group(1))
+        if m_session_attendance and method == "POST":
+            return await api_record_session_attendance(request, env, m_session_attendance.group(1))
 
         if path == "/api/subjects" and method == "GET":
             return await api_list_subjects(request, env)
