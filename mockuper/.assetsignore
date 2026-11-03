@@ -1,6 +1,9 @@
 wrangler.toml
 .assetsignore
+package.json
+package-lock.json
 .gitignore
+tests
 .github
 README.md
 CONTRIBUTING.md
