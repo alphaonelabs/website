@@ -36,7 +36,7 @@ def _py(value):
 # ---------------------------------------------------------------------------
 MODEL_WHISPER = "@cf/openai/whisper"
 MODEL_LLAMA = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
-MODEL_VISION = "@cf/unum/uform-gen2-qwen-500m"
+MODEL_VISION = "@cf/llava-hf/llava-1.5-7b-hf"
 
 # ---------------------------------------------------------------------------
 # Response helpers
@@ -64,6 +64,13 @@ def _server_error(exc: Exception) -> Response:
     """Log exception details server-side and return a generic 500 response."""
     traceback.print_exc()
     return _json({"error": "An internal error occurred. Please try again."}, status=500)
+
+
+def _vision_description(result: object) -> str:
+    """Extract text from image-to-text model responses."""
+    if isinstance(result, dict):
+        return result.get("description", result.get("response", result.get("text", "")))
+    return getattr(result, "description", getattr(result, "response", str(result)))
 
 
 # ---------------------------------------------------------------------------
@@ -204,9 +211,7 @@ async def _sign_to_speech(request: object, env: object) -> Response:
                 ),
             }),
         )
-        gesture_description = (
-            vision_result.get("description", "") if isinstance(vision_result, dict) else getattr(vision_result, "description", str(vision_result))
-        )
+        gesture_description = _vision_description(vision_result)
 
         # Step 2 – refine with LLaMA for a clean speech output
         llm_result = await env.AI.run(
@@ -290,9 +295,7 @@ async def _visual_scene(request: object, env: object) -> Response:
             MODEL_VISION,
             _js({"image": list(image_bytes), "prompt": prompt}),
         )
-        description = (
-            vision_result.get("description", "") if isinstance(vision_result, dict) else getattr(vision_result, "description", str(vision_result))
-        )
+        description = _vision_description(vision_result)
 
         return _json(
             {
@@ -326,8 +329,12 @@ _ROUTES: dict[tuple[str, str], object] = {
 class VoxBridgeWorker(WorkerEntrypoint):
     """Cloudflare Python Worker entry point."""
 
-    async def fetch(self, request: object) -> Response:
-        env = self.env
+    async def fetch(self, request: object, env: object | None = None, ctx: object | None = None) -> Response:
+        if env is not None:
+            self.env = env
+        if ctx is not None:
+            self.ctx = ctx
+        env = getattr(self, "env", env)
         method: str = request.method
         url: str = request.url
         # Extract path (everything between host and query string)

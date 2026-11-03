@@ -99,6 +99,7 @@ class TestModelConstants(unittest.TestCase):
     def test_vision_model_identifier(self):
         # model name should be a Cloudflare-style path
         self.assertTrue(worker.MODEL_VISION.startswith("@cf/"))
+        self.assertEqual(worker.MODEL_VISION, "@cf/llava-hf/llava-1.5-7b-hf")
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +327,15 @@ class TestSignToSpeechHandler(unittest.IsolatedAsyncioTestCase):
         await worker._sign_to_speech(req, env)
         _, payload = env.AI.run.call_args_list[0][0]
         self.assertEqual(payload["image"], list(raw))
+        self.assertIsInstance(payload["prompt"], str)
+
+    async def test_vision_response_field_is_supported(self):
+        env = _MockEnv()
+        env.AI.run.side_effect = [{"response": "Hand raised, open palm"}, {"response": "Hello"}]
+        req = _MockRequest(method="POST", body={"image": self._img_b64()})
+        resp = await worker._sign_to_speech(req, env)
+        data = json.loads(resp.body)
+        self.assertEqual(data["gesture_description"], "Hand raised, open palm")
 
     async def test_calls_vision_then_llama(self):
         env = _MockEnv()
