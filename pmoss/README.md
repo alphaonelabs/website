@@ -146,7 +146,7 @@ database is provided separately as the DB binding in wrangler.toml.
 | GITHUB_CLIENT_SECRET | Completing sign-in | Client secret used to exchange the OAuth code for an access token. |
 | GITHUB_REDIRECT_URI | Signing in | OAuth callback URL. wrangler.toml sets the production URL; local development uses the localhost URL in .dev.vars. |
 | GITHUB_REDIRECT_URI_DEFAULT | Only as a fallback | Used only when GITHUB_REDIRECT_URI is missing or empty. |
-| GITHUB_WEBHOOK_SECRET | Using GitHub webhooks | Secret used to verify webhook signatures. Set it for any exposed webhook; if it is absent, the current handler logs a warning and accepts requests that include a signature header without checking its value. |
+| GITHUB_WEBHOOK_SECRET | Required for webhooks; always set it. | Secret used to verify webhook signatures. |
 
 SESSION_SECRET is not read by the PMOSS source and is not required.
 
@@ -233,11 +233,21 @@ The D1 database includes the following tables:
 
 ### Local Development
 
-Wrangler loads local variables from .dev.vars beside wrangler.toml. From the
-pmoss directory, copy .dev.vars.example to .dev.vars by running
-cp .dev.vars.example .dev.vars (or Copy-Item .dev.vars.example .dev.vars in
-PowerShell). Edit the copy with credentials from a separate GitHub OAuth app
-for local development.
+Wrangler loads local variables from `.dev.vars` beside `wrangler.toml`. From the
+`pmoss` directory, copy `.dev.vars.example` to `.dev.vars`:
+
+```bash
+cp .dev.vars.example .dev.vars
+```
+
+In PowerShell, use:
+
+```powershell
+Copy-Item .dev.vars.example .dev.vars
+```
+
+Edit the copy with credentials from a separate GitHub OAuth app for local
+development.
 Repeat step 5 to create a separate OAuth app for local development. Set its
 homepage URL to http://localhost:8787 and its authorization callback
 URL to exactly http://localhost:8787/auth/callback. The local callback in
@@ -271,24 +281,19 @@ sign-in requires valid credentials from the local OAuth app.
 
 ### Testing GitHub Webhooks Locally
 
-GitHub cannot deliver events directly to localhost. Keep wrangler dev running,
-then expose it from a second terminal with cloudflared tunnel --url
-http://localhost:8787. Use the generated HTTPS URL with /webhook as the payload
-URL in the GitHub repository's webhook settings. Set the webhook secret to the
-same value as GITHUB_WEBHOOK_SECRET in .dev.vars, select the Issues event, and
-save. To replay an earlier delivery, open that webhook's Recent Deliveries in
-GitHub and choose Redeliver. See Cloudflare's
-[Quick Tunnels guide](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+GitHub cannot deliver events directly to localhost. Keep `wrangler dev` running,
+then expose it from a second terminal with:
 
-### Testing Locally
-
-Use a tool like [ngrok](https://ngrok.com/) to test webhooks locally:
-
-```bash
-ngrok http 8787
+```sh
+cloudflared tunnel --url http://localhost:8787
 ```
 
-Then use the ngrok URL for your GitHub webhook.
+Use the generated HTTPS URL with `/webhook` as the payload URL in the GitHub
+repository's webhook settings. Set the webhook secret to the same value as
+`GITHUB_WEBHOOK_SECRET` in `.dev.vars`, select the Issues event, and save. To
+replay an earlier delivery, open that webhook's Recent Deliveries in GitHub and
+choose Redeliver. See Cloudflare's
+[Quick Tunnels guide](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
 
 ## Security Considerations
 
