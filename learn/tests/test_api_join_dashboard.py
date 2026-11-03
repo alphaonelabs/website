@@ -192,6 +192,8 @@ class TestApiDashboard:
             format="self_paced", schedule_type="ongoing",
             participant_count=3, session_count=1,
             created_at="2024-01-01",
+            description=_enc("Learn Python fundamentals"),
+            slug="my-course",
         )
         env = make_env(db=MockDB([
             make_stmt(all_results=[hosted_row]),  # hosted query
@@ -202,6 +204,8 @@ class TestApiDashboard:
         data = _parse(r)
         assert len(data["hosted_activities"]) == 1
         assert data["hosted_activities"][0]["title"] == "My Course"
+        assert data["hosted_activities"][0]["description"] == "Learn Python fundamentals"
+        assert data["hosted_activities"][0]["slug"] == "my-course"
 
     async def test_joined_activities_returned(self):
         tok = _token(uid="member-1")
@@ -211,6 +215,8 @@ class TestApiDashboard:
             enr_role="participant", enr_status="active",
             host_name_enc=_enc("Alice"),
             joined_at="2024-01-01",
+            description=_enc("Introduction to Python programming"),
+            slug="python-101",
         )
         env = make_env(db=MockDB([
             make_stmt(all_results=[]),              # hosted query (empty)
@@ -224,3 +230,5 @@ class TestApiDashboard:
         assert act["title"] == "Python 101"
         assert act["enr_role"] == "participant"
         assert act["host_name"] == "Alice"
+        assert act["description"] == "Introduction to Python programming"
+        assert act["slug"] == "python-101"
