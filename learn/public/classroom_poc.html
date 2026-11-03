@@ -845,11 +845,15 @@
     let reconnectTimer = null;
     let presenceReconnectTimer = null;
 
+    function isSafeId(id) {
+        return typeof id === 'string' && id.length > 0 && id.length <= 128 && id !== '__proto__' && id !== 'constructor' && id !== 'prototype';
+    }
+
     // participants: participant_id → { display_name, normPos:{x,y}, direction, is_moving, seat_id }
     // normPos is always in normalized (0–1) space.
-    const participants = {};
+    const participants = Object.create(null);
     // user_id -> { x, y, emoji, hand_raised, display_name }
-    const presenceByUser = {};
+    const presenceByUser = Object.create(null);
     function getPresence(id) {
         if (!id) return null;
         const s = String(id);
@@ -1069,11 +1073,11 @@
     let localStream = null;
     let localMediaPromise = null;
     const localMediaState = { mic_enabled: false, cam_enabled: false };
-    const peerConnections = {};
-    const pendingCandidates = {};
-    const remoteStreams = {};
-    const remoteAudioElements = {};
-    const participantMediaState = {};
+    const peerConnections = Object.create(null);
+    const pendingCandidates = Object.create(null);
+    const remoteStreams = Object.create(null);
+    const remoteAudioElements = Object.create(null);
+    const participantMediaState = Object.create(null);
 
     const RTC_CONFIG = {
         iceServers: [
@@ -1379,6 +1383,7 @@
                 if (!stream.getAudioTracks().some(t => t.id === track.id)) {
                     stream.addTrack(track);
                 }
+                if (!isSafeId(peerId)) return;
                 let audioEl = remoteAudioElements[peerId];
                 if (!audioEl) {
                     audioEl = document.createElement('audio');
@@ -3204,7 +3209,7 @@
                 break;
 
             case 'participant_joined':
-                if (data.participant_id !== myParticipantId) {
+                if (isSafeId(data.participant_id) && data.participant_id !== myParticipantId) {
                     showToast(`${data.display_name} joined the classroom`, 'success');
                     if (!participants[data.participant_id]) {
                         participants[data.participant_id] = {
@@ -3301,7 +3306,7 @@
                 const mode = data.mode || 'full';
                 if (pid === myParticipantId) {
                     setConnectionMode(mode, false);
-                } else if (participants[pid]) {
+                } else if (isSafeId(pid) && participants[pid]) {
                     participants[pid].connection_mode = mode;
                     renderParticipantsList();
                 }
@@ -3340,7 +3345,7 @@
             }
 
             case 'position_update':
-                if (data.participant_id !== myParticipantId) {
+                if (isSafeId(data.participant_id) && data.participant_id !== myParticipantId) {
                     // data.position is already normalized (0–1).
                     if (!participants[data.participant_id]) {
                         participants[data.participant_id] = {
@@ -3365,18 +3370,20 @@
                 break;
 
             case 'seat_updated':
-                if (!participants[data.participant_id] && data.participant_id !== myParticipantId) {
-                    participants[data.participant_id] = {
-                        display_name: data.display_name || data.participant_id,
-                        normPos: { x: 0.5, y: 0.5 },
-                        direction: 'down',
-                        is_moving: false,
-                        seat_id: '',
-                    };
-                }
-                if (participants[data.participant_id]) {
-                    participants[data.participant_id].seat_id = data.seat_id || '';
-                    if (data.display_name) participants[data.participant_id].display_name = data.display_name;
+                if (isSafeId(data.participant_id)) {
+                    if (!participants[data.participant_id] && data.participant_id !== myParticipantId) {
+                        participants[data.participant_id] = {
+                            display_name: data.display_name || data.participant_id,
+                            normPos: { x: 0.5, y: 0.5 },
+                            direction: 'down',
+                            is_moving: false,
+                            seat_id: '',
+                        };
+                    }
+                    if (participants[data.participant_id]) {
+                        participants[data.participant_id].seat_id = data.seat_id || '';
+                        if (data.display_name) participants[data.participant_id].display_name = data.display_name;
+                    }
                 }
                 if (data.participant_id === myParticipantId) {
                     isSeated = true;
@@ -3392,7 +3399,7 @@
                 break;
 
             case 'seat_left':
-                if (participants[data.participant_id]) {
+                if (isSafeId(data.participant_id) && participants[data.participant_id]) {
                     participants[data.participant_id].seat_id = '';
                     if (data.display_name) participants[data.participant_id].display_name = data.display_name;
                 }

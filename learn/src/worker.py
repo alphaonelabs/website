@@ -2214,7 +2214,7 @@ async def api_list_activities_cached(req, env):
                 },
             }, dict_converter=js.Object.fromEntries)))
         except Exception as exc:
-            await capture_exception(exc, req, env, "api_list_activities_cached.cache_put")
+            print(json.dumps({"level": "warn", "where": "api_list_activities_cached.cache_put", "error": str(exc)}))
     return Response(body, headers={"Content-Type": "application/json", "X-Cache": "MISS", **_CORS})
 
 
@@ -7573,6 +7573,7 @@ class ClassroomDO(DurableObject):
                     "media_state":    media_state,
                     "hand_raised":    hand_raised,
                     "connection_mode": connection_mode,
+                    "client_ip":      data.get("client_ip", ""),
                 }
 
                 if is_sharing:
@@ -7618,6 +7619,39 @@ class ClassroomDO(DurableObject):
             print(f"[ClassroomDO._resolve_activity_creator] error={e!r}")
             raise
         return None, None
+
+    async def _is_authorized_instructor(self, info: dict) -> bool:
+        if not info.get("is_instructor", False):
+            return False
+        pid = info.get("participant_id")
+        if not pid or pid.startswith("anon-"):
+            return False
+        if not (hasattr(self.env, "DB") and self.env.DB):
+            return True
+        try:
+            stmt = self.env.DB.prepare("SELECT role FROM users WHERE id=?")
+            if hasattr(stmt, "bind"):
+                stmt = stmt.bind(pid)
+            row = await stmt.first()
+            if not row:
+                info["is_instructor"] = False
+                return False
+            stored_role = getattr(row, "role", None) or ""
+            if stored_role == "deleted":
+                info["is_instructor"] = False
+                return False
+            if getattr(self, "activity_host_id", None):
+                if pid == self.activity_host_id or stored_role == "admin":
+                    return True
+                info["is_instructor"] = False
+                return False
+            if stored_role in ("instructor", "teacher", "host", "admin"):
+                return True
+            info["is_instructor"] = False
+            return False
+        except Exception as exc:
+            print(f"[ClassroomDO._is_authorized_instructor] pid={pid} error={exc!r}")
+            return False
 
     async def on_fetch(self, request):
         """Handle WebSocket upgrade requests for classroom real-time sessions."""
@@ -7683,15 +7717,36 @@ class ClassroomDO(DurableObject):
         participant_id = participant_id[:64]
         display_name   = display_name[:64]
 
-        # Cap sockets per participant to prevent resource exhaustion
+        # Cap sockets per participant/client to prevent resource exhaustion
         MAX_SOCKETS_PER_PARTICIPANT = 5
-        existing_count = sum(1 for s in self.sessions.values() if s.get("participant_id") == participant_id)
-        if existing_count >= MAX_SOCKETS_PER_PARTICIPANT:
-            return Response(
-                json.dumps({"error": "Too many connections for participant"}),
-                status=429,
-                headers={"Content-Type": "application/json"},
-            )
+        MAX_ROOM_ANON_SOCKETS = 50
+        client_ip = (request.headers.get("CF-Connecting-IP") or "").strip()
+
+        if authenticated_user:
+            existing_count = sum(1 for s in self.sessions.values() if s.get("participant_id") == participant_id)
+            if existing_count >= MAX_SOCKETS_PER_PARTICIPANT:
+                return Response(
+                    json.dumps({"error": "Too many connections for participant"}),
+                    status=429,
+                    headers={"Content-Type": "application/json"},
+                )
+        else:
+            if client_ip:
+                existing_count = sum(1 for s in self.sessions.values() if s.get("client_ip") == client_ip)
+                if existing_count >= MAX_SOCKETS_PER_PARTICIPANT:
+                    return Response(
+                        json.dumps({"error": "Too many connections for participant"}),
+                        status=429,
+                        headers={"Content-Type": "application/json"},
+                    )
+            else:
+                anon_count = sum(1 for s in self.sessions.values() if s.get("participant_id", "").startswith("anon-"))
+                if anon_count >= MAX_ROOM_ANON_SOCKETS:
+                    return Response(
+                        json.dumps({"error": "Classroom anonymous capacity reached"}),
+                        status=429,
+                        headers={"Content-Type": "application/json"},
+                    )
 
         client, server = WebSocketPair.new().object_values()
         self.ctx.acceptWebSocket(server)
@@ -7735,6 +7790,7 @@ class ClassroomDO(DurableObject):
             "hand_raised":       False,
             "is_screen_sharing": False,
             "connection_mode":   "full",
+            "client_ip":         client_ip,
         })
         server.serializeAttachment(attachment)
 
@@ -7752,6 +7808,7 @@ class ClassroomDO(DurableObject):
             "media_state":    initial_media_state,
             "hand_raised":    False,
             "connection_mode": "full",
+            "client_ip":      client_ip,
         }
 
         try:
@@ -7932,7 +7989,7 @@ class ClassroomDO(DurableObject):
                             f"classroom.seat_occupied_send pid={info['participant_id']} seat={seat_id}")
                     return
             else:
-                if not re.fullmatch(r"seat-\d+", seat_id):
+                if not re.fullmatch(r"seat-\d{1,2}", seat_id):
                     return
                 seat_num = int(seat_id.split("-", 1)[1])
                 if not (1 <= seat_num <= 15):
@@ -8087,12 +8144,15 @@ class ClassroomDO(DurableObject):
                         await capture_exception(exc, None, self.env, f"classroom.screen_share_rejected pid={info['participant_id']}")
                     return
 
+            old_sharer_sid = getattr(self, "screen_sharer_session_id", None)
             self.screen_sharer = {
                 "participant_id": info["participant_id"],
                 "display_name":   info["display_name"],
                 "stream_id":      stream_id,
             }
             self.screen_sharer_session_id = sid
+            if old_sharer_sid and old_sharer_sid != sid and old_sharer_sid in self.sessions:
+                self._persist_attachment(old_sharer_sid, self.sessions[old_sharer_sid])
             self._persist_attachment(sid, info)
             self._broadcast(json.dumps({
                 "type":           "screen_share_started",
@@ -8104,7 +8164,8 @@ class ClassroomDO(DurableObject):
 
         elif msg_type == "stop_screen_share":
             current_sharer = getattr(self, "screen_sharer", None)
-            if current_sharer and current_sharer.get("participant_id") == info["participant_id"]:
+            sharer_sid = getattr(self, "screen_sharer_session_id", None)
+            if current_sharer and current_sharer.get("participant_id") == info["participant_id"] and sharer_sid == sid:
                 self.screen_sharer = None
                 self.screen_sharer_session_id = None
                 for s_id, s_info in self.sessions.items():
@@ -8151,14 +8212,14 @@ class ClassroomDO(DurableObject):
             }))
 
         elif msg_type == "mute_all":
-            if info.get("is_instructor", False) and info.get("role") != "deleted":
+            if await self._is_authorized_instructor(info):
                 self._broadcast(json.dumps({
                     "type": "force_mute",
                     "by":   info["participant_id"],
                 }))
 
         elif msg_type == "spotlight":
-            if info.get("is_instructor", False) and info.get("role") != "deleted":
+            if await self._is_authorized_instructor(info):
                 target_id = str(data.get("target_peer_id", ""))
                 self.spotlight_peer_id = target_id if target_id else None
                 self._broadcast(json.dumps({
@@ -8183,7 +8244,7 @@ class ClassroomDO(DurableObject):
                     await self._persist_transcript(sid, info, text, "live")
 
         elif msg_type == "create_breakouts":
-            if info.get("is_instructor", False) and info.get("role") != "deleted":
+            if await self._is_authorized_instructor(info):
                 rooms_data = data.get("rooms")
                 count = data.get("count")
                 created = []
@@ -8234,7 +8295,7 @@ class ClassroomDO(DurableObject):
                     self._broadcast_room_state()
 
         elif msg_type == "close_breakouts":
-            if info.get("is_instructor", False) and info.get("role") != "deleted":
+            if await self._is_authorized_instructor(info):
                 self.breakout_rooms = []
                 try:
                     await self.ctx.storage.delete("breakout_rooms")
@@ -8248,7 +8309,7 @@ class ClassroomDO(DurableObject):
                 self._broadcast_room_state()
 
         elif msg_type == "broadcast_to_breakouts":
-            if info.get("is_instructor", False) and info.get("role") != "deleted":
+            if await self._is_authorized_instructor(info):
                 announcement = str(data.get("message", "")).strip()[:500]
                 if announcement:
                     payload = json.dumps({
@@ -8593,6 +8654,7 @@ class ClassroomDO(DurableObject):
                 "is_screen_sharing": is_sharing,
                 "screen_stream_id":  stream_id,
                 "connection_mode":   info.get("connection_mode", "full"),
+                "client_ip":         info.get("client_ip", ""),
             }))
         except Exception as exc:
             print(f"[ClassroomDO._persist_attachment] sid={session_id} pid={info.get('participant_id')} error={exc!r}")
@@ -8723,6 +8785,12 @@ class PresenceDO(DurableObject):
         else:
             if is_authenticated or not existing.get("is_authenticated", False):
                 existing["display_name"] = display_name
+            if is_authenticated:
+                existing["is_authenticated"] = True
+                for s_info in self.sessions.values():
+                    if s_info.get("user_id") == user_id and not s_info.get("is_authenticated", False):
+                        s_info["can_interact"] = False
+                self._persist_user_attachments(user_id)
             self.presence[user_id] = existing
 
         attachment = json.dumps({

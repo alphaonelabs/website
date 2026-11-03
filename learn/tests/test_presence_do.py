@@ -532,10 +532,13 @@ class TestPresenceDispatch:
 class TestClassroomDOSignaling:
     """Tests for ClassroomDO WebRTC signaling, media states, and instructor controls."""
 
-    def _make_classroom_do(self):
+    def _make_classroom_do(self, db=None):
         """Helper to instantiate a ClassroomDO with mocked ctx and env."""
         ctx = _make_ctx()
-        env = make_env()
+        if db is None:
+            db = MagicMock()
+            db.prepare = MagicMock(side_effect=lambda sql: make_stmt(first=MockRow(role="instructor")))
+        env = make_env(db=db)
         do = worker.ClassroomDO(ctx, env)
         do.room_id = "lobby"
         return do
@@ -1202,3 +1205,190 @@ async def test_api_classroom_caption_transcribe():
     assert body["success"] is True
     assert body["data"]["text"] == "Transcribed speech from audio snippet"
     assert body["data"]["room_id"] == "lobby"
+
+
+@pytest.mark.asyncio
+async def test_deleted_instructor_cannot_mute_all():
+    """Verify deleted user cannot mute_all even if session has is_instructor=True."""
+    db = MagicMock()
+    db.prepare = MagicMock(side_effect=lambda sql: make_stmt(first=MockRow(role="deleted")))
+    ctx = _make_ctx()
+    env = make_env(db=db)
+    do = worker.ClassroomDO(ctx, env)
+    do.room_id = "lobby"
+
+    ws_instructor = MagicMock()
+    ws_student = MagicMock()
+    attachment = {
+        "session_id": "sid-teacher",
+        "participant_id": "teacher",
+        "display_name": "Teacher",
+        "position": {"x": 0.5, "y": 0.5},
+        "direction": "down",
+        "seat_id": "",
+        "can_interact": True,
+        "is_instructor": True,
+        "media_state": {},
+    }
+    ws_instructor.deserializeAttachment.return_value = json.dumps(attachment)
+    ws_student.deserializeAttachment.return_value = json.dumps({
+        "session_id": "sid-student",
+        "participant_id": "student",
+        "display_name": "Student",
+        "position": {"x": 0.5, "y": 0.5},
+        "direction": "down",
+        "seat_id": "",
+        "can_interact": True,
+        "is_instructor": False,
+        "media_state": {},
+    })
+    do.sessions["sid-teacher"] = {
+        "ws": ws_instructor,
+        "participant_id": "teacher",
+        "display_name": "Teacher",
+        "is_instructor": True,
+        "can_interact": True,
+        "role": "instructor",
+    }
+    do.sessions["sid-student"] = {
+        "ws": ws_student,
+        "participant_id": "student",
+        "display_name": "Student",
+        "is_instructor": False,
+        "can_interact": True,
+        "role": "student",
+    }
+
+    msg = json.dumps({"type": "mute_all"})
+    await do.on_webSocketMessage(ws_instructor, msg)
+    assert not any(json.loads(c[0][0]).get("type") == "force_mute" for c in ws_student.send.call_args_list if c[0])
+
+
+@pytest.mark.asyncio
+async def test_screen_share_instructor_override_persists_cleared_previous_sharer():
+    """Verify instructor override clears previous sharer's persisted attachment."""
+    do = worker.ClassroomDO(_make_ctx(), make_env())
+    do.room_id = "lobby"
+    ws_alice = MagicMock()
+    ws_teacher = MagicMock()
+    do.sessions["sid-alice"] = {
+        "ws": ws_alice,
+        "participant_id": "alice",
+        "display_name": "Alice",
+        "is_instructor": False,
+        "can_interact": True,
+        "position": {"x": 0.5, "y": 0.5},
+        "direction": "down",
+    }
+    do.sessions["sid-teacher"] = {
+        "ws": ws_teacher,
+        "participant_id": "teacher",
+        "display_name": "Teacher",
+        "is_instructor": True,
+        "can_interact": True,
+        "position": {"x": 0.5, "y": 0.5},
+        "direction": "down",
+    }
+
+    # Alice shares
+    await do.on_webSocketMessage(ws_alice, json.dumps({"type": "start_screen_share", "stream_id": "stream-1"}))
+    assert do.screen_sharer_session_id == "sid-alice"
+
+    # Teacher overrides
+    await do.on_webSocketMessage(ws_teacher, json.dumps({"type": "start_screen_share", "stream_id": "stream-2"}))
+    assert do.screen_sharer_session_id == "sid-teacher"
+
+    # Alice's serialized attachment was updated and is_screen_sharing is False
+    calls = [json.loads(c[0][0]) for c in ws_alice.serializeAttachment.call_args_list if c[0]]
+    assert len(calls) > 0
+    last_call = calls[-1]
+    assert last_call.get("is_screen_sharing") is False
+
+
+@pytest.mark.asyncio
+async def test_screen_share_stop_from_different_tab_ignored():
+    """Verify stop_screen_share from another tab does not stop active share."""
+    do = worker.ClassroomDO(_make_ctx(), make_env())
+    do.room_id = "lobby"
+    ws_tab1 = MagicMock()
+    ws_tab2 = MagicMock()
+    do.sessions["sid-tab1"] = {
+        "ws": ws_tab1,
+        "participant_id": "alice",
+        "display_name": "Alice",
+        "is_instructor": False,
+        "can_interact": True,
+        "position": {"x": 0.5, "y": 0.5},
+        "direction": "down",
+    }
+    do.sessions["sid-tab2"] = {
+        "ws": ws_tab2,
+        "participant_id": "alice",
+        "display_name": "Alice",
+        "is_instructor": False,
+        "can_interact": True,
+        "position": {"x": 0.5, "y": 0.5},
+        "direction": "down",
+    }
+
+    # Tab 1 starts share
+    await do.on_webSocketMessage(ws_tab1, json.dumps({"type": "start_screen_share", "stream_id": "stream-tab1"}))
+    assert do.screen_sharer_session_id == "sid-tab1"
+
+    # Tab 2 attempts stop share -> ignored because sharer_sid != sid-tab2
+    await do.on_webSocketMessage(ws_tab2, json.dumps({"type": "stop_screen_share"}))
+    assert do.screen_sharer_session_id == "sid-tab1"
+    assert do.screen_sharer is not None
+
+
+@pytest.mark.asyncio
+async def test_seat_id_length_bounded():
+    """Verify seat_id with oversized digits is rejected without error."""
+    do = worker.ClassroomDO(_make_ctx(), make_env())
+    ws_alice = MagicMock()
+    do.sessions["sid-alice"] = {
+        "ws": ws_alice,
+        "participant_id": "alice",
+        "display_name": "Alice",
+        "is_instructor": False,
+        "can_interact": True,
+        "position": {"x": 0.5, "y": 0.5},
+        "direction": "down",
+        "seat_id": "",
+    }
+    await do.on_webSocketMessage(ws_alice, json.dumps({
+        "type": "update_seat",
+        "seat_id": "seat-999999999999999999999999999999999999999999",
+    }))
+    assert do.sessions["sid-alice"]["seat_id"] == ""
+
+
+@pytest.mark.asyncio
+async def test_presence_owner_join_revokes_anonymous_session():
+    """Verify authenticated user join revokes anonymous session for same user_id."""
+    ctx = _make_ctx()
+    env = _make_presence_env(allow_anon="true")
+    do = worker.PresenceDO(ctx, env)
+
+    req_anon = MockRequest(
+        method="GET",
+        url="http://localhost/presence/lobby?user_id=target_user&display_name=AnonTarget",
+        headers={"Upgrade": "websocket"},
+    )
+    res_anon = await do.on_fetch(req_anon)
+    assert res_anon.status == 101
+    anon_sid = list(do.sessions.keys())[0]
+    assert do.sessions[anon_sid]["can_interact"] is True
+
+    # Authenticated owner joins with token
+    token = worker.create_token("target_user", "real_owner", "student", env.JWT_SECRET)
+    req_auth = MockRequest(
+        method="GET",
+        url=f"http://localhost/presence/lobby?token={token}",
+        headers={"Upgrade": "websocket"},
+    )
+    res_auth = await do.on_fetch(req_auth)
+    assert res_auth.status == 101
+
+    # Check anonymous session had can_interact set to False
+    assert do.sessions[anon_sid]["can_interact"] is False
