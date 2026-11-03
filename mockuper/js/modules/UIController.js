@@ -8,6 +8,19 @@ class UIController {
         this.state = state;
         this.initElements();
         this.bindEvents();
+        this.state.onStorageError(() => this.showStorageWarning());
+    }
+
+    showStorageWarning() {
+        if (document.querySelector('.storage-warning')) return;
+
+        const warning = document.createElement('div');
+        warning.className = 'storage-warning';
+        warning.setAttribute('role', 'status');
+        warning.setAttribute('aria-live', 'polite');
+        warning.textContent = 'Changes could not be saved locally. They will remain available in this session.';
+        document.body.appendChild(warning);
+        window.setTimeout(() => warning.remove(), 8000);
     }
 
     initElements() {

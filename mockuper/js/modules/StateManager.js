@@ -3,43 +3,59 @@
  * Manages application state with history for undo/redo
  */
 
-class StateManager {
+export const MAX_HISTORY = 100;
+
+export class StateManager {
     constructor() {
         this.pages = [];
         this.currentPageId = null;
         this.selectedElementId = null;
         this.history = [];
         this.historyIndex = -1;
+        this.MAX_HISTORY = MAX_HISTORY;
         this.zoom = 1;
         this.showGrid = true;
         this.nextElementId = 1;
         this.listeners = [];
+        this.storageErrorListeners = [];
+        this.storageWarningShown = false;
         
         this.loadFromStorage();
+        this.saveHistory();
     }
 
     // Save state to localStorage
     saveToStorage() {
-        const state = {
-            pages: this.pages,
-            currentPageId: this.currentPageId,
-            nextElementId: this.nextElementId
-        };
-        localStorage.setItem('wireframe-project', JSON.stringify(state));
+        try {
+            const state = {
+                pages: this.pages,
+                currentPageId: this.currentPageId,
+                nextElementId: this.nextElementId
+            };
+            if (typeof localStorage === 'undefined') return;
+            localStorage.setItem('wireframe-project', JSON.stringify(state));
+        } catch (error) {
+            console.error('Failed to save project to local storage:', error);
+            if (!this.storageWarningShown) {
+                this.storageWarningShown = true;
+                this.storageErrorListeners.forEach(callback => callback(error));
+            }
+        }
     }
 
     // Load state from localStorage
     loadFromStorage() {
-        const saved = localStorage.getItem('wireframe-project');
-        if (saved) {
-            try {
+        try {
+            if (typeof localStorage === 'undefined') return;
+            const saved = localStorage.getItem('wireframe-project');
+            if (saved) {
                 const state = JSON.parse(saved);
                 this.pages = state.pages || [];
                 this.currentPageId = state.currentPageId;
                 this.nextElementId = state.nextElementId || 1;
-            } catch (e) {
-                console.error('Failed to load project:', e);
             }
+        } catch (error) {
+            console.error('Failed to load project:', error);
         }
         
         // Initialize with one page if empty
@@ -56,6 +72,11 @@ class StateManager {
     // Add state change listener
     onChange(callback) {
         this.listeners.push(callback);
+    }
+
+    // Register a non-blocking warning handler for storage failures
+    onStorageError(callback) {
+        this.storageErrorListeners.push(callback);
     }
 
     // Notify all listeners
@@ -301,6 +322,11 @@ class StateManager {
         this.history = this.history.slice(0, this.historyIndex + 1);
         this.history.push(snapshot);
         this.historyIndex = this.history.length - 1;
+        if (this.history.length > MAX_HISTORY) {
+            const overflow = this.history.length - MAX_HISTORY;
+            this.history.splice(0, overflow);
+            this.historyIndex = this.history.length - 1;
+        }
     }
 
     undo() {
