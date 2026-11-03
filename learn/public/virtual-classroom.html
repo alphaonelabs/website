@@ -98,5 +98,81 @@
       </article>
     </div>
   </section>
+
+  <section class="max-w-[90rem] mx-auto px-4 md:px-6 pb-16">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="a1s-display text-2xl md:text-3xl">Course Virtual Classrooms</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Each course has its own dedicated, isolated virtual classroom and whiteboard.</p>
+      </div>
+      <a href="/explore" class="a1s-link text-sm hidden sm:inline-flex items-center gap-1.5">
+        Explore all activities <i class="fas fa-arrow-right text-xs"></i>
+      </a>
+    </div>
+
+    <div id="course-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div id="course-rooms-loading" class="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
+        <i class="fas fa-spinner fa-spin mr-2"></i>Loading course classrooms...
+      </div>
+    </div>
+  </section>
 </main>
+
+<script>
+(function() {
+  const grid = document.getElementById('course-rooms-grid');
+  const loading = document.getElementById('course-rooms-loading');
+  if (!grid) return;
+
+  function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  fetch('/api/activities')
+    .then(res => res.json())
+    .then(data => {
+      const items = (data && (data.activities || data.items || (Array.isArray(data) ? data : []))) || [];
+      if (!items.length) {
+        if (loading) loading.textContent = 'No course classrooms found.';
+        return;
+      }
+      if (loading) loading.remove();
+      grid.innerHTML = items.map(a => {
+        const roomId = 'course-' + (a.slug || a.id || 'general');
+        const title = a.title || 'Course Classroom';
+        const roomUrl = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(roomId) + '&title=' + encodeURIComponent(title);
+        const wbUrl = '/whiteboard?room=' + encodeURIComponent(roomId);
+        const detailUrl = a.slug ? ('/activity/' + encodeURIComponent(a.slug)) : ('/activity.html?id=' + encodeURIComponent(a.id));
+        return `
+          <div class="a1s-panel p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-3">
+                <span class="a1-tag text-xs font-semibold uppercase tracking-wider">${esc(a.type || 'Course')}</span>
+                <span class="text-xs text-gray-400 font-mono">room: ${esc(roomId)}</span>
+              </div>
+              <h3 class="font-bold text-lg mb-1 leading-snug line-clamp-1">${esc(title)}</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-4">${esc(a.description || 'Dedicated course classroom and collaborative session.')}</p>
+            </div>
+            <div class="pt-3 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2">
+              <a href="${roomUrl}" class="a1-btn a1-btn--dark flex-1 text-xs py-2 text-center justify-center">
+                <i class="fas fa-door-open mr-1"></i>Enter Classroom
+              </a>
+              <a href="${wbUrl}" class="a1-btn text-xs py-2 px-3 text-center justify-center" title="Open course whiteboard">
+                <i class="fas fa-chalkboard"></i>
+              </a>
+              <a href="${detailUrl}" class="a1-btn text-xs py-2 px-3 text-center justify-center" title="Course details">
+                <i class="fas fa-info-circle"></i>
+              </a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    })
+    .catch(() => {
+      if (loading) loading.textContent = 'Unable to load course classrooms.';
+    });
+})();
+</script>
 {% endblock %}

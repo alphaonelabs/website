@@ -40,6 +40,7 @@ import datetime
 import hashlib
 import hmac as _hmac
 import json
+import math
 import os
 import re
 import time
@@ -819,22 +820,32 @@ async def _send_email_via_mailgun(to_email: str, subject: str, html: str, env) -
     Endpoint: https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages
     Body: application/x-www-form-urlencoded
     """
-    api_key   = (
+    raw_key = (
         getattr(env, "MAILGUN_SENDING_KEY", "")
         or getattr(env, "mailgun_sending_key", "")
         or getattr(env, "MAILGUN_API_KEY", "")
         or getattr(env, "mailgun_api_key", "")
         or ""
-    ).strip()
-    domain    = (getattr(env, "MAILGUN_DOMAIN", "") or getattr(env, "mailgun_domain", "") or "").strip()
-    api_base  = (getattr(env, "MAILGUN_API_BASE", "") or getattr(env, "mailgun_api_base", "") or "https://api.mailgun.net/v3").strip().rstrip("/")
+    )
+    if not isinstance(raw_key, str) or not raw_key.strip():
+        return False
+    api_key = raw_key.strip()
+
+    raw_domain = getattr(env, "MAILGUN_DOMAIN", "") or getattr(env, "mailgun_domain", "") or ""
+    if not isinstance(raw_domain, str) or not raw_domain.strip():
+        return False
+    domain = raw_domain.strip()
+
+    raw_api_base = getattr(env, "MAILGUN_API_BASE", "") or getattr(env, "mailgun_api_base", "") or "https://api.mailgun.net/v3"
+    api_base = raw_api_base.strip().rstrip("/") if isinstance(raw_api_base, str) and raw_api_base.strip() else "https://api.mailgun.net/v3"
     if not re.search(r"/v\d+$", api_base):
         api_base += "/v3"
-    from_addr = (
+    raw_from = (
         getattr(env, "EMAIL_FROM", "")
         or getattr(env, "DEFAULT_FROM_EMAIL", "")
         or "info@alphaonelabs.com"
-    ).strip()
+    )
+    from_addr = raw_from.strip() if isinstance(raw_from, str) else "info@alphaonelabs.com"
 
     if not api_key or not domain:
         print(json.dumps({"level": "warn", "where": "_send_email_via_mailgun",
@@ -1179,6 +1190,28 @@ _DDL = [
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
+    # Classroom transcripts (persisted, searchable live captions)
+    """CREATE TABLE IF NOT EXISTS classroom_transcripts (
+        id             TEXT PRIMARY KEY,
+        room_id        TEXT NOT NULL,
+        session_id     TEXT,
+        participant_id TEXT NOT NULL,
+        display_name   TEXT NOT NULL,
+        text           TEXT NOT NULL,
+        timestamp      TEXT NOT NULL DEFAULT (datetime('now')),
+        source         TEXT NOT NULL DEFAULT 'live'
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_transcripts_room ON classroom_transcripts(room_id)",
+    "CREATE INDEX IF NOT EXISTS idx_transcripts_time ON classroom_transcripts(timestamp)",
+    # Classroom breakouts (breakout room tracking)
+    """CREATE TABLE IF NOT EXISTS classroom_breakouts (
+        id               TEXT PRIMARY KEY,
+        parent_room_id   TEXT NOT NULL,
+        breakout_room_id TEXT NOT NULL,
+        title            TEXT NOT NULL,
+        created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_breakouts_parent ON classroom_breakouts(parent_room_id)",
 ]
 
 
@@ -2151,7 +2184,7 @@ async def api_reset_password(req, env):
     return ok(None, "Password reset successfully. You can now sign in with your new password.")
 
 
-_ACTIVITY_LIST_CACHE_SECONDS = 120
+_ACTIVITY_LIST_CACHE_SECONDS = 15
 
 
 async def api_list_activities_cached(req, env):
@@ -2180,8 +2213,8 @@ async def api_list_activities_cached(req, env):
                     "Cache-Control": f"public, max-age={_ACTIVITY_LIST_CACHE_SECONDS}",
                 },
             }, dict_converter=js.Object.fromEntries)))
-        except Exception:
-            pass
+        except Exception as exc:
+            print(json.dumps({"level": "warn", "where": "api_list_activities_cached.cache_put", "error": str(exc)}))
     return Response(body, headers={"Content-Type": "application/json", "X-Cache": "MISS", **_CORS})
 
 
@@ -3386,7 +3419,7 @@ async def api_dashboard(req, env):
 
     hosted = []
     for r in res.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -3417,7 +3450,7 @@ async def api_dashboard(req, env):
 
     joined = []
     for r in res2.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -6787,9 +6820,12 @@ _MIME = {
 }
 
 
-def _static_cache_control(ext: str) -> str:
+def _static_cache_control(ext: str, key: str = "") -> str:
+    """Return Cache-Control header based on file extension and key."""
+    if ext == "html" and key in {"index.html", "activity.html"}:
+        return "public, max-age=60"
     if ext in {"html", "json"}:
-        return "public, max-age=60, s-maxage=300"
+        return "no-cache, no-store, must-revalidate"
     return "public, max-age=31536000, s-maxage=31536000, immutable"
 
 
@@ -6799,7 +6835,7 @@ _SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Permissions-Policy": "camera=(self), microphone=(), geolocation=(self), payment=(self)",
+    "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(self), payment=(self)",
 }
 
 
@@ -7485,27 +7521,28 @@ async def serve_static(path: str, env, req=None):
         content,
         headers={
             "Content-Type": mime,
-            "Cache-Control": _static_cache_control(ext),
+            "Cache-Control": _static_cache_control(ext, key),
             **_SECURITY_HEADERS,
             **_CORS,
         },
     )
 
 class ClassroomDO(DurableObject):
-    """WebSocket based virtual classroom Durable Object.
-
-    Each room_id maps to one DO instance.  Connected clients share:
-      - room_state   (participant list, broadcast on join/leave)
-      - position_update (x/y movement relay)
-      - chat_message  (basic text relay)
-      - seat mgmt     (update_seat / leave_seat)
-      - whiteboard_event / whiteboard_clear with persisted room replay
-    """
+    """Room-scoped virtual classroom Durable Object managing WebRTC signaling, presence,
+    seat allocations, screen sharing, whiteboard sync, and instructor controls."""
 
     def __init__(self, ctx, env):
+        """Initialize ClassroomDO instance and restore hibernated WebSockets."""
         super().__init__(ctx, env)
-        # sessions: session_id -> {ws, participant_id, display_name, position, direction, is_moving, seat_id}
+        # sessions: session_id -> {ws, participant_id, display_name, position, direction, is_moving, seat_id, ...}
         self.sessions = {}
+        self.screen_sharer = None
+        self.screen_sharer_session_id = None
+        self.spotlight_peer_id = None
+        self.hand_raise_queue = []
+        self.breakout_rooms = []
+        self.transcripts = []
+        self.room_id = "default"
 
         # Restore hibernated WebSocket connections
         for ws in self.ctx.getWebSockets():
@@ -7515,16 +7552,40 @@ class ClassroomDO(DurableObject):
                     continue
                 data = json.loads(attachment) if isinstance(attachment, str) else attachment
                 sid = data.get("session_id", str(uuid.uuid4()))
+                pid = data.get("participant_id", "unknown")
+                media_state = data.get("media_state", {"audio": False, "video": False, "mic_enabled": False, "cam_enabled": False})
+                hand_raised = bool(data.get("hand_raised", False))
+                is_sharing = bool(data.get("is_screen_sharing", False))
+                stream_id = data.get("screen_stream_id")
+                connection_mode = data.get("connection_mode", "full")
+
                 self.sessions[sid] = {
                     "ws":             ws,
-                    "participant_id": data.get("participant_id", "unknown"),
+                    "participant_id": pid,
                     "display_name":   data.get("display_name", "Unknown"),
                     "position":       data.get("position", {"x": 0.5, "y": 0.5}),
                     "direction":      data.get("direction", "down"),
                     "is_moving":      False,
                     "seat_id":        data.get("seat_id", ""),
+                    "role":           data.get("role", "student"),
+                    "is_instructor":  bool(data.get("is_instructor", False)),
                     "can_interact":   bool(data.get("can_interact", True)),
+                    "media_state":    media_state,
+                    "hand_raised":    hand_raised,
+                    "connection_mode": connection_mode,
+                    "client_ip":      data.get("client_ip", ""),
                 }
+
+                if is_sharing:
+                    self.screen_sharer = {
+                        "participant_id": pid,
+                        "display_name":   data.get("display_name", "Unknown"),
+                        "stream_id":      stream_id,
+                    }
+                    self.screen_sharer_session_id = sid
+
+                if hand_raised and pid not in self.hand_raise_queue:
+                    self.hand_raise_queue.append(pid)
             except Exception as exc:
                 print(f"[ClassroomDO.__init__.restore] error={exc!r}")
 
@@ -7532,9 +7593,101 @@ class ClassroomDO(DurableObject):
             WebSocketRequestResponsePair.new("ping", "pong")
         )
 
+    async def _resolve_activity_creator(self, room_id: str):
+        """Lookup activity creator host_id and name for the given room_id."""
+        if not room_id or not hasattr(self.env, "DB") or not self.env.DB:
+            return None, None
+        try:
+            lookup_id = room_id.split(":breakout:")[0] if ":breakout:" in room_id else room_id
+            clean_id = lookup_id
+            for prefix in ("course-", "activity-"):
+                if clean_id.startswith(prefix):
+                    clean_id = clean_id[len(prefix):]
+                    break
+            enc = getattr(self.env, "ENCRYPTION_KEY", "")
+            stmt = self.env.DB.prepare(
+                "SELECT a.id, a.host_id, u.username, u.name AS name_enc "
+                "FROM activities a "
+                "LEFT JOIN users u ON a.host_id = u.id "
+                "WHERE a.slug=? OR a.id=?"
+            )
+            act = await stmt.bind(lookup_id, lookup_id).first()
+            if not act and clean_id != lookup_id:
+                act = await stmt.bind(clean_id, clean_id).first()
+            if act:
+                dec_name = await decrypt_aes(getattr(act, "name_enc", "") or "", enc) if enc else ""
+                dec_uname = await decrypt_aes(getattr(act, "username", "") or "", enc) if enc else ""
+                host_name = dec_name if (dec_name and dec_name != "[decryption error]") else (
+                    dec_uname if (dec_uname and dec_uname != "[decryption error]") else (
+                        getattr(act, "username", "") or ""
+                    )
+                )
+                return act.host_id, host_name
+        except Exception as e:
+            print(f"[ClassroomDO._resolve_activity_creator] error={e!r}")
+            raise
+        return None, None
+
+    async def _is_authorized_instructor(self, info: dict) -> bool:
+        if not info.get("is_instructor", False):
+            return False
+        pid = info.get("participant_id")
+        if not pid or pid.startswith("anon-"):
+            return False
+        if not (hasattr(self.env, "DB") and self.env.DB):
+            return True
+        try:
+            stmt = self.env.DB.prepare("SELECT role FROM users WHERE id=?")
+            if hasattr(stmt, "bind"):
+                stmt = stmt.bind(pid)
+            row = await stmt.first()
+            if not row:
+                info["is_instructor"] = False
+                return False
+            stored_role = getattr(row, "role", None) or ""
+            if stored_role.startswith("v1:"):
+                enc = getattr(self.env, "ENCRYPTION_KEY", "")
+                if enc:
+                    stored_role = await decrypt_aes(stored_role, enc)
+            if stored_role == "deleted":
+                info["is_instructor"] = False
+                return False
+            if getattr(self, "activity_host_id", None):
+                if pid == self.activity_host_id or stored_role == "admin":
+                    return True
+                info["is_instructor"] = False
+                return False
+            if stored_role in ("instructor", "teacher", "host", "admin"):
+                return True
+            info["is_instructor"] = False
+            return False
+        except Exception as exc:
+            print(f"[ClassroomDO._is_authorized_instructor] pid={pid} error={exc!r}")
+            return False
+
     async def on_fetch(self, request):
+        """Handle WebSocket upgrade requests for classroom real-time sessions."""
         upgrade = request.headers.get("Upgrade") or ""
         if upgrade.lower() != "websocket":
+            path = urlparse(request.url).path
+            method = request.method.upper()
+            if method == "POST" and path.endswith("/broadcast_internal"):
+                try:
+                    raw_text = await request.text()
+                    body = json.loads(raw_text) if raw_text else {}
+                    msg = json.dumps(body) if isinstance(body, dict) else str(body)
+                    self._broadcast(msg)
+                    if isinstance(body, dict) and body.get("type") == "live_caption":
+                        text = str(body.get("text", "")).strip()[:500]
+                        if text:
+                            internal_info = {
+                                "participant_id": body.get("participant_id") or "voxbridge",
+                                "display_name": body.get("display_name") or "Anonymous",
+                            }
+                            await self._persist_transcript("internal", internal_info, text, "voxbridge")
+                    return Response(json.dumps({"ok": True}), status=200, headers={"Content-Type": "application/json"})
+                except Exception as exc:
+                    return Response(json.dumps({"error": str(exc)}), status=400, headers={"Content-Type": "application/json"})
             return Response(
                 json.dumps({"error": "Expected WebSocket upgrade"}),
                 status=426,
@@ -7549,53 +7702,115 @@ class ClassroomDO(DurableObject):
         display_name_param = (qs.get("display_name") or [None])[0]
 
         authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
-        can_interact = authenticated_user is not None
+        is_explicit_viewer = (qs.get("viewer") or ["0"])[0] == "1" or (qs.get("read_only") or ["0"])[0] == "1"
+        can_interact = (authenticated_user is not None) or not is_explicit_viewer
 
+        room_id = parsed.path.strip("/").split("/")[-1]
+        if not getattr(self, "room_id", None):
+            self.room_id = room_id
+
+        # Resolve activity creator from database
+        host_lookup_ok = True
+        if not hasattr(self, "activity_host_id"):
+            try:
+                self.activity_host_id, self.activity_host_name = await self._resolve_activity_creator(room_id)
+            except Exception:
+                host_lookup_ok = False
+
+        is_instructor = False
         if authenticated_user:
-            # Derive identity from the verified token, not from untrusted query params.
             participant_id = authenticated_user["id"]
             display_name = authenticated_user.get("username") or participant_id
+            user_role = (authenticated_user.get("role") or "").lower()
+            if not host_lookup_ok:
+                is_instructor = False
+            elif self.activity_host_id:
+                if participant_id == self.activity_host_id or user_role == "admin":
+                    is_instructor = True
+            elif user_role in ("instructor", "teacher", "host", "admin"):
+                is_instructor = True
         else:
-            # Anonymous clients may view the classroom, but they are read-only.
-            if token_param or not participant_param:
-                return Response(
-                    json.dumps({"error": "Authentication required"}),
-                    status=401,
-                    headers={"Content-Type": "application/json"},
-                )
-            participant_id = participant_param
-            display_name = display_name_param or participant_id
+            participant_id = f"anon-{uuid.uuid4().hex}"
+            display_name = display_name_param or participant_param or participant_id
+            is_instructor = False
 
-        # Sanitise inputs
         participant_id = participant_id[:64]
         display_name   = display_name[:64]
 
-        # Create WebSocket pair
+        # Cap sockets per participant/client to prevent resource exhaustion
+        MAX_SOCKETS_PER_PARTICIPANT = 5
+        MAX_ROOM_ANON_SOCKETS = 50
+        client_ip = (request.headers.get("CF-Connecting-IP") or "").strip()
+
+        if authenticated_user:
+            existing_count = sum(1 for s in self.sessions.values() if s.get("participant_id") == participant_id)
+            if existing_count >= MAX_SOCKETS_PER_PARTICIPANT:
+                return Response(
+                    json.dumps({"error": "Too many connections for participant"}),
+                    status=429,
+                    headers={"Content-Type": "application/json"},
+                )
+        else:
+            if client_ip:
+                existing_count = sum(1 for s in self.sessions.values() if s.get("client_ip") == client_ip)
+                if existing_count >= MAX_SOCKETS_PER_PARTICIPANT:
+                    return Response(
+                        json.dumps({"error": "Too many connections for participant"}),
+                        status=429,
+                        headers={"Content-Type": "application/json"},
+                    )
+            else:
+                anon_count = sum(1 for s in self.sessions.values() if s.get("participant_id", "").startswith("anon-"))
+                if anon_count >= MAX_ROOM_ANON_SOCKETS:
+                    return Response(
+                        json.dumps({"error": "Classroom anonymous capacity reached"}),
+                        status=429,
+                        headers={"Content-Type": "application/json"},
+                    )
+
         client, server = WebSocketPair.new().object_values()
         self.ctx.acceptWebSocket(server)
 
         session_id = str(uuid.uuid4())
 
-        # Re-use the last known position/seat if the same participant reconnects
-        # (e.g. page refresh or network blip).
         existing = next(
             (s for s in self.sessions.values()
              if s.get("can_interact", True) and s["participant_id"] == participant_id),
             None,
         )
         already_connected = can_interact and existing is not None
-        initial_position  = dict(existing["position"])       if existing else {"x": 0.5, "y": 0.5}
+        default_pos = {"x": 0.5, "y": 0.25} if is_instructor else {"x": 0.5, "y": 0.5}
+        initial_position  = dict(existing["position"])       if existing else default_pos
         initial_direction = existing["direction"]             if existing else "down"
-        initial_seat_id   = existing.get("seat_id", "")      if existing else ""
+
+        if is_instructor:
+            initial_seat_id = existing.get("seat_id", "") if existing else "seat-teacher"
+            if not initial_seat_id:
+                initial_seat_id = "seat-teacher"
+        else:
+            ex_seat = existing.get("seat_id", "") if existing else ""
+            initial_seat_id = "" if ex_seat == "seat-teacher" else ex_seat
+
+        initial_media_state = {"audio": False, "video": False, "mic_enabled": False, "cam_enabled": False}
+
+        is_breakout = ":breakout:" in room_id
+        parent_room_id = room_id.split(":breakout:")[0] if is_breakout else None
 
         attachment = json.dumps({
-            "session_id":     session_id,
-            "participant_id": participant_id,
-            "display_name":   display_name,
-            "position":       initial_position,
-            "direction":      initial_direction,
-            "seat_id":        initial_seat_id,
-            "can_interact":   can_interact,
+            "session_id":        session_id,
+            "participant_id":    participant_id,
+            "display_name":      display_name,
+            "position":          initial_position,
+            "direction":         initial_direction,
+            "seat_id":           initial_seat_id,
+            "role":              "instructor" if is_instructor else "student",
+            "is_instructor":     is_instructor,
+            "can_interact":      can_interact,
+            "media_state":       initial_media_state,
+            "hand_raised":       False,
+            "is_screen_sharing": False,
+            "connection_mode":   "full",
+            "client_ip":         client_ip,
         })
         server.serializeAttachment(attachment)
 
@@ -7607,7 +7822,13 @@ class ClassroomDO(DurableObject):
             "direction":      initial_direction,
             "is_moving":      False,
             "seat_id":        initial_seat_id,
+            "role":           "instructor" if is_instructor else "student",
+            "is_instructor":  is_instructor,
             "can_interact":   can_interact,
+            "media_state":    initial_media_state,
+            "hand_raised":    False,
+            "connection_mode": "full",
+            "client_ip":      client_ip,
         }
 
         try:
@@ -7616,7 +7837,13 @@ class ClassroomDO(DurableObject):
                 "session_id":     session_id,
                 "participant_id": participant_id,
                 "display_name":   display_name,
+                "role":           "instructor" if is_instructor else "student",
+                "is_instructor":  is_instructor,
+                "seat_id":        initial_seat_id,
                 "can_interact":   can_interact,
+                "connection_mode": "full",
+                "is_breakout":    is_breakout,
+                "parent_room_id": parent_room_id,
             }))
             whiteboard_events = await self._load_whiteboard_events()
             server.send(json.dumps({
@@ -7633,120 +7860,119 @@ class ClassroomDO(DurableObject):
                 "type":           "participant_joined",
                 "participant_id": participant_id,
                 "display_name":   display_name,
+                "position":       initial_position,
+                "direction":      initial_direction,
+                "seat_id":        initial_seat_id,
+                "role":           "instructor" if is_instructor else "student",
+                "is_instructor":  is_instructor,
+                "media_state":    initial_media_state,
             }), exclude_session_id=session_id)
 
         return Response(None, status=101, web_socket=client)
 
     async def on_webSocketMessage(self, ws, message):
-        try:
-            raw_message = message if isinstance(message, str) else message.decode("utf-8")
-            if len(raw_message) > 8192:
-                return
-            data = json.loads(raw_message)
-        except Exception as exc:
-            await capture_exception(exc, None, self.env, "classroom_on_webSocketMessage.parse")
-            return
-        if not isinstance(data, dict):
-            return
-
-        msg_type = data.get("type", "")
-        session  = self._session_for_ws(ws)
+        """Handle incoming WebSocket messages for classroom coordination."""
+        session = self._session_for_ws(ws)
         if not session:
             return
 
         sid, info = session
         if not info.get("can_interact", True):
-            if msg_type == "join":
-                self._broadcast_room_state()
             return
 
-        def _valid_norm_position(value):
-            """Accept normalized (0-1) position dicts; reject anything else."""
-            if not isinstance(value, dict):
+        if len(message) > 65536:
+            return
+
+        try:
+            data = json.loads(message)
+        except Exception:
+            return
+
+        if not isinstance(data, dict):
+            return
+
+        msg_type = data.get("type")
+
+        def _valid_norm_position(raw_pos):
+            if not isinstance(raw_pos, dict):
                 return None
             try:
-                x = float(value.get("x", 0.5))
-                y = float(value.get("y", 0.5))
+                x = float(raw_pos.get("x", 0.0))
+                y = float(raw_pos.get("y", 0.0))
+                if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
+                    return None
+                return {"x": round(x, 4), "y": round(y, 4)}
             except (TypeError, ValueError):
                 return None
-            # Clamp to [0, 1] — normalized coordinate space
-            return {"x": max(0.0, min(1.0, x)), "y": max(0.0, min(1.0, y))}
 
-        if msg_type == "position_update":
-            position = _valid_norm_position(data.get("position"))
-            if position is None:
-                return
-            direction = data.get("direction", info["direction"])
-            if not isinstance(direction, str) or direction not in {"up", "down", "left", "right"}:
-                direction = info["direction"]
-            is_moving = data.get("isMoving", False)
-            if not isinstance(is_moving, bool):
-                is_moving = False
-            info["position"]  = position
+        if msg_type == "join":
+            self._broadcast_room_state()
+
+        elif msg_type == "position_update":
+            raw_pos = data.get("position")
+            pos = _valid_norm_position(raw_pos) if isinstance(raw_pos, dict) else None
+            direction = str(data.get("direction", info["direction"]))[:10]
+            is_moving = bool(data.get("is_moving", False))
+
+            if pos is not None:
+                info["position"] = pos
             info["direction"] = direction
             info["is_moving"] = is_moving
-            for s_id, s_info in self.sessions.items():
-                if s_info["participant_id"] == info["participant_id"]:
-                    s_info["position"]  = position
-                    s_info["direction"] = direction
-                    s_info["is_moving"] = info["is_moving"]
-                    self._persist_attachment(s_id, s_info)
+            self._persist_attachment(sid, info)
 
+            out_pos = pos if pos is not None else info["position"]
             self._broadcast(json.dumps({
-                "type":           "position_update",
+                "type":           "participant_moved",
                 "participant_id": info["participant_id"],
                 "display_name":   info["display_name"],
-                "position":       info["position"],
-                "direction":      info["direction"],
-                "isMoving":       info["is_moving"],
+                "position":       out_pos,
+                "direction":      direction,
+                "is_moving":      is_moving,
+                "seat_id":        info.get("seat_id", ""),
             }), exclude_session_id=sid)
 
         elif msg_type == "chat_message":
-            raw_text = data.get("text", "")
-            if not isinstance(raw_text, str):
-                return
-            text = raw_text.strip()[:500]
+            text = str(data.get("text", "")).strip()[:1000]
             if not text:
                 return
-            raw_timestamp = data.get("timestamp", "")
-            timestamp = raw_timestamp[:64] if isinstance(raw_timestamp, str) else ""
+            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self._broadcast(json.dumps({
                 "type":           "chat_message",
-                "participant_id": info["participant_id"],
+                "sender_id":      info["participant_id"],
                 "display_name":   info["display_name"],
                 "text":           text,
-                "timestamp":      timestamp,
+                "timestamp":      now_iso,
             }))
 
         elif msg_type == "whiteboard_event":
-            event = self._sanitize_whiteboard_event(data.get("event") if isinstance(data.get("event"), dict) else data)
+            event = self._sanitize_whiteboard_event(data.get("event"))
             if not event:
                 return
             event["participant_id"] = info["participant_id"]
-            event["display_name"] = info["display_name"]
-            event["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             try:
                 events = await self._load_whiteboard_events()
                 events.append(event)
                 events = events[-1000:]
-                await self._save_whiteboard_events(events)
+                serialized = json.dumps(events)
+                while len(serialized.encode("utf-8")) > 120 * 1024 and len(events) > 10:
+                    events = events[len(events)//4:]
+                    serialized = json.dumps(events)
+                await self.ctx.storage.put("whiteboard_events", serialized)
+                self._broadcast(json.dumps({
+                    "type":  "whiteboard_event",
+                    "event": event,
+                }), exclude_session_id=sid)
             except Exception as exc:
                 await capture_exception(exc, None, self.env, "classroom.whiteboard_event.persist")
-            self._broadcast(json.dumps({
-                "type": "whiteboard_event",
-                "event": event,
-            }))
 
         elif msg_type == "whiteboard_clear":
             try:
                 await self._save_whiteboard_events([])
+                self._broadcast(json.dumps({
+                    "type": "whiteboard_clear",
+                }))
             except Exception as exc:
                 await capture_exception(exc, None, self.env, "classroom.whiteboard_clear.persist")
-            self._broadcast(json.dumps({
-                "type": "whiteboard_clear",
-                "participant_id": info["participant_id"],
-                "display_name": info["display_name"],
-            }))
 
         elif msg_type == "whiteboard_undo":
             try:
@@ -7766,55 +7992,76 @@ class ClassroomDO(DurableObject):
             except Exception as exc:
                 await capture_exception(exc, None, self.env, "classroom.whiteboard_undo")
 
-
         elif msg_type == "update_seat":
-            # Classroom layout, keep in sync with DESK_ROWS/DESK_COLS in classroom_poc.html
-            DESK_ROWS = 3
-            DESK_COLS = 5
-            MAX_SEATS = DESK_ROWS * DESK_COLS
-
             seat_id = data.get("seat_id", "")
-            # Validate seat_id: must be "seat-N" where N is 1..DESK_ROWS*DESK_COLS
-            if not isinstance(seat_id, str) or not re.fullmatch(r"seat-\d+", seat_id):
+            if not isinstance(seat_id, str):
                 return
-            seat_num = int(seat_id.split("-", 1)[1])
-            if not (1 <= seat_num <= MAX_SEATS):
-                return
-
-            for other_info in self.sessions.values():
-                if (other_info.get("can_interact", True)
-                        and other_info["seat_id"] == seat_id
-                        and other_info["participant_id"] != info["participant_id"]):
+            if seat_id == "seat-teacher":
+                if not info.get("is_instructor", False):
                     try:
                         ws.send(json.dumps({
                             "type":    "seat_occupied",
-                            "message": "This seat is already taken by another student.",
+                            "message": "Only the activity creator can sit at the Teacher's Desk.",
                             "seat_id": seat_id,
                         }))
                     except Exception as exc:
                         await capture_exception(exc, None, self.env,
                             f"classroom.seat_occupied_send pid={info['participant_id']} seat={seat_id}")
                     return
+            else:
+                if not re.fullmatch(r"seat-\d{1,2}", seat_id):
+                    return
+                seat_num = int(seat_id.split("-", 1)[1])
+                if not (1 <= seat_num <= 15):
+                    return
+
+            occupied = False
+            for s_id, s_info in self.sessions.items():
+                if (s_info.get("can_interact", True)
+                        and s_info.get("seat_id") == seat_id
+                        and s_info["participant_id"] != info["participant_id"]):
+                    occupied = True
+                    break
+
+            if occupied:
+                try:
+                    ws.send(json.dumps({
+                        "type":    "seat_occupied",
+                        "message": "This desk is already taken.",
+                        "seat_id": seat_id,
+                    }))
+                except Exception as exc:
+                    await capture_exception(exc, None, self.env,
+                        f"classroom.seat_occupied_send pid={info['participant_id']} seat={seat_id}")
+                return
+
+            old_seat = info.get("seat_id", "")
+            info["seat_id"] = seat_id
+            self._persist_attachment(sid, info)
 
             for s_id, s_info in self.sessions.items():
-                if s_info["participant_id"] == info["participant_id"]:
+                if s_info.get("can_interact", True) and s_info["participant_id"] == info["participant_id"]:
                     s_info["seat_id"] = seat_id
                     self._persist_attachment(s_id, s_info)
 
             self._broadcast(json.dumps({
-                "type":           "seat_updated",
+                "type":           "seat_taken",
                 "participant_id": info["participant_id"],
                 "display_name":   info["display_name"],
                 "seat_id":        seat_id,
+                "old_seat_id":    old_seat,
             }))
             self._broadcast_room_state()
 
         elif msg_type == "leave_seat":
-            old_seat = info["seat_id"]
+            old_seat = info.get("seat_id", "")
             if not old_seat:
                 return
+            info["seat_id"] = ""
+            self._persist_attachment(sid, info)
+
             for s_id, s_info in self.sessions.items():
-                if s_info["participant_id"] == info["participant_id"]:
+                if s_info.get("can_interact", True) and s_info["participant_id"] == info["participant_id"]:
                     s_info["seat_id"] = ""
                     self._persist_attachment(s_id, s_info)
 
@@ -7826,7 +8073,371 @@ class ClassroomDO(DurableObject):
             }))
             self._broadcast_room_state()
 
+        elif msg_type in ("signal_offer", "signal_answer", "ice_candidate"):
+            now = time.time()
+            sig_times = [t for t in info.get("_sig_times", []) if now - t < 1.0]
+            if len(sig_times) >= 50:
+                return
+            sig_times.append(now)
+            info["_sig_times"] = sig_times
+
+            target_id = data.get("target_peer_id") or data.get("target_id") or data.get("target")
+            if not target_id or not isinstance(target_id, str):
+                return
+
+            offer_payload = data.get("offer") or data.get("sdp")
+            answer_payload = data.get("answer") or data.get("sdp")
+            candidate_payload = data.get("candidate")
+
+            envelope = {
+                "type":                msg_type,
+                "sender_peer_id":      info["participant_id"],
+                "sender_display_name": info["display_name"],
+                "target_peer_id":      target_id,
+                "from":                info["participant_id"],
+                "target":              target_id,
+            }
+            if msg_type == "signal_offer":
+                envelope["offer"] = offer_payload
+            elif msg_type == "signal_answer":
+                envelope["answer"] = answer_payload
+            elif msg_type == "ice_candidate":
+                envelope["candidate"] = candidate_payload
+
+            for s_id, s_info in self.sessions.items():
+                if s_info.get("can_interact", True) and (s_info["participant_id"] == target_id or s_id == target_id):
+                    try:
+                        s_info["ws"].send(json.dumps(envelope))
+                    except Exception as exc:
+                        print(f"[ClassroomDO.signaling] error routing {msg_type} to {target_id}: {exc!r}")
+
+        elif msg_type == "media_state":
+            audio = bool(data.get("audio", data.get("mic_enabled", False)))
+            video = bool(data.get("video", data.get("cam_enabled", False)))
+            info["media_state"] = {
+                "audio":       audio,
+                "video":       video,
+                "mic_enabled": audio,
+                "cam_enabled": video,
+            }
+            self._persist_attachment(sid, info)
+            pid = info["participant_id"]
+            merged_audio = any(
+                s.get("media_state", {}).get("audio", False) or s.get("media_state", {}).get("mic_enabled", False)
+                for s in self.sessions.values()
+                if s.get("participant_id") == pid
+            )
+            merged_video = any(
+                s.get("media_state", {}).get("video", False) or s.get("media_state", {}).get("cam_enabled", False)
+                for s in self.sessions.values()
+                if s.get("participant_id") == pid
+            )
+            self._broadcast(json.dumps({
+                "type":           "media_state",
+                "participant_id": pid,
+                "audio":          merged_audio,
+                "video":          merged_video,
+                "mic_enabled":    merged_audio,
+                "cam_enabled":    merged_video,
+            }))
+
+        elif msg_type == "start_screen_share":
+            stream_id = data.get("stream_id")
+            if not isinstance(stream_id, str) or not stream_id.strip() or len(stream_id) > 256:
+                return
+
+            current_sharer = getattr(self, "screen_sharer", None)
+            sharer_sid = getattr(self, "screen_sharer_session_id", None)
+            if current_sharer and (not sharer_sid or sharer_sid not in self.sessions):
+                current_sharer = None
+                self.screen_sharer = None
+                self.screen_sharer_session_id = None
+
+            if current_sharer and current_sharer.get("participant_id") != info["participant_id"]:
+                if not info.get("is_instructor", False):
+                    try:
+                        ws.send(json.dumps({
+                            "type": "screen_share_rejected",
+                            "message": f"{current_sharer.get('display_name', 'Another participant')} is already sharing their screen."
+                        }))
+                    except Exception as exc:
+                        await capture_exception(exc, None, self.env, f"classroom.screen_share_rejected pid={info['participant_id']}")
+                    return
+
+            old_sharer_sid = getattr(self, "screen_sharer_session_id", None)
+            self.screen_sharer = {
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "stream_id":      stream_id,
+            }
+            self.screen_sharer_session_id = sid
+            if old_sharer_sid and old_sharer_sid != sid and old_sharer_sid in self.sessions:
+                self._persist_attachment(old_sharer_sid, self.sessions[old_sharer_sid])
+            self._persist_attachment(sid, info)
+            self._broadcast(json.dumps({
+                "type":           "screen_share_started",
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "stream_id":      stream_id,
+            }))
+            self._broadcast_room_state()
+
+        elif msg_type == "stop_screen_share":
+            current_sharer = getattr(self, "screen_sharer", None)
+            sharer_sid = getattr(self, "screen_sharer_session_id", None)
+            if current_sharer and current_sharer.get("participant_id") == info["participant_id"] and sharer_sid == sid:
+                self.screen_sharer = None
+                self.screen_sharer_session_id = None
+                for s_id, s_info in self.sessions.items():
+                    if s_info.get("participant_id") == info["participant_id"]:
+                        self._persist_attachment(s_id, s_info)
+                self._broadcast(json.dumps({
+                    "type":           "screen_share_stopped",
+                    "participant_id": info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "hand_raised":
+            hand_state = bool(data.get("hand_raised", False))
+            pid = info["participant_id"]
+            if not hasattr(self, "hand_raise_queue"):
+                self.hand_raise_queue = []
+            if hand_state:
+                if pid not in self.hand_raise_queue:
+                    self.hand_raise_queue.append(pid)
+            else:
+                if pid in self.hand_raise_queue:
+                    self.hand_raise_queue.remove(pid)
+            for other_sid, other_info in self.sessions.items():
+                if other_info.get("participant_id") == pid:
+                    other_info["hand_raised"] = hand_state
+                    self._persist_attachment(other_sid, other_info)
+
+            self._broadcast(json.dumps({
+                "type":              "hand_raised",
+                "participant_id":    pid,
+                "display_name":      info["display_name"],
+                "hand_raised":       hand_state,
+                "hand_raise_queue":  list(self.hand_raise_queue),
+            }))
+            self._broadcast_room_state()
+
+        elif msg_type == "reaction":
+            emoji = str(data.get("emoji", ""))[:16]
+            self._broadcast(json.dumps({
+                "type":           "reaction",
+                "participant_id": info["participant_id"],
+                "display_name":   info["display_name"],
+                "emoji":          emoji,
+            }))
+
+        elif msg_type == "mute_participant":
+            if await self._is_authorized_instructor(info):
+                target_id = str(data.get("target_participant_id") or data.get("target_peer_id") or "")
+                if target_id:
+                    for other_sid, other_info in self.sessions.items():
+                        if str(other_info.get("participant_id")) == target_id:
+                            if "media_state" in other_info:
+                                other_info["media_state"]["audio"] = False
+                                other_info["media_state"]["mic_enabled"] = False
+                            self._persist_attachment(other_sid, other_info)
+                    self._broadcast(json.dumps({
+                        "type": "force_mute",
+                        "target_participant_id": target_id,
+                        "target_peer_id": target_id,
+                        "by": info["participant_id"],
+                    }))
+                    self._broadcast_room_state()
+
+        elif msg_type == "mute_all":
+            if await self._is_authorized_instructor(info):
+                for other_sid, other_info in self.sessions.items():
+                    if not other_info.get("is_instructor") and other_info.get("participant_id") != info["participant_id"]:
+                        if "media_state" in other_info:
+                            other_info["media_state"]["audio"] = False
+                            other_info["media_state"]["mic_enabled"] = False
+                        self._persist_attachment(other_sid, other_info)
+                self._broadcast(json.dumps({
+                    "type": "force_mute",
+                    "by":   info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "spotlight":
+            if await self._is_authorized_instructor(info):
+                target_id = str(data.get("target_peer_id") or data.get("target_participant_id") or "")
+                if getattr(self, "spotlight_peer_id", None) == target_id and target_id:
+                    self.spotlight_peer_id = None
+                else:
+                    self.spotlight_peer_id = target_id if target_id else None
+                self._broadcast(json.dumps({
+                    "type":              "spotlight_changed",
+                    "spotlight_peer_id": self.spotlight_peer_id,
+                    "by":                info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "lower_hand":
+            target_id = str(data.get("target_participant_id") or data.get("target_peer_id") or "")
+            is_inst = await self._is_authorized_instructor(info)
+            if is_inst or target_id == info["participant_id"]:
+                pid = target_id or info["participant_id"]
+                if not hasattr(self, "hand_raise_queue"):
+                    self.hand_raise_queue = []
+                if pid in self.hand_raise_queue:
+                    self.hand_raise_queue.remove(pid)
+                for other_sid, other_info in self.sessions.items():
+                    if other_info.get("participant_id") == pid:
+                        other_info["hand_raised"] = False
+                        self._persist_attachment(other_sid, other_info)
+                self._broadcast(json.dumps({
+                    "type":              "hand_raised",
+                    "participant_id":    pid,
+                    "display_name":      "",
+                    "hand_raised":       False,
+                    "hand_raise_queue":  list(self.hand_raise_queue),
+                    "by":                info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "lower_all_hands":
+            if await self._is_authorized_instructor(info):
+                self.hand_raise_queue = []
+                for other_sid, other_info in self.sessions.items():
+                    other_info["hand_raised"] = False
+                    self._persist_attachment(other_sid, other_info)
+                self._broadcast(json.dumps({
+                    "type":              "all_hands_lowered",
+                    "hand_raise_queue":  [],
+                    "by":                info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "live_caption":
+            text = str(data.get("text", "")).strip()[:500]
+            if text:
+                is_final = bool(data.get("is_final", False))
+                self._broadcast(json.dumps({
+                    "type":           "live_caption",
+                    "participant_id": info["participant_id"],
+                    "display_name":   info["display_name"],
+                    "text":           text,
+                    "is_final":       is_final,
+                }))
+                if is_final:
+                    await self._persist_transcript(sid, info, text, "live")
+
+        elif msg_type == "create_breakouts":
+            if await self._is_authorized_instructor(info):
+                rooms_data = data.get("rooms")
+                count = data.get("count")
+                created = []
+                if isinstance(rooms_data, list) and rooms_data:
+                    for i, r in enumerate(rooms_data[:10]):
+                        if not isinstance(r, dict):
+                            continue
+                        r_title = str(r.get("title") or f"Breakout Room {i+1}").strip()[:64]
+                        sub_id = f"{self.room_id}:breakout:{i+1}"
+                        assigned = [str(p)[:64] for p in r.get("participants", []) if isinstance(p, str)]
+                        created.append({
+                            "id": sub_id,
+                            "breakout_room_id": sub_id,
+                            "title": r_title,
+                            "participants": assigned,
+                        })
+                elif isinstance(count, int) and 1 <= count <= 10:
+                    for i in range(count):
+                        sub_id = f"{self.room_id}:breakout:{i+1}"
+                        created.append({
+                            "id": sub_id,
+                            "breakout_room_id": sub_id,
+                            "title": f"Breakout Room {i+1}",
+                            "participants": [],
+                        })
+                if created:
+                    self.breakout_rooms = created
+                    try:
+                        await self.ctx.storage.put("breakout_rooms", json.dumps(created))
+                    except Exception as exc:
+                        await capture_exception(exc, None, self.env, "classroom.create_breakouts.persist")
+                    if hasattr(self.env, "DB") and self.env.DB:
+                        for r in created:
+                            try:
+                                bid = str(uuid.uuid4())
+                                await self.env.DB.prepare(
+                                    "INSERT INTO classroom_breakouts (id, parent_room_id, breakout_room_id, title) "
+                                    "VALUES (?, ?, ?, ?)"
+                                ).bind(bid, self.room_id, r["breakout_room_id"], r["title"]).run()
+                            except Exception as exc:
+                                await capture_exception(exc, None, self.env, "classroom.create_breakouts.db")
+                    self._broadcast(json.dumps({
+                        "type": "breakout_rooms_created",
+                        "parent_room_id": self.room_id,
+                        "rooms": created,
+                        "by": info["participant_id"],
+                    }))
+                    self._broadcast_room_state()
+
+        elif msg_type == "close_breakouts":
+            if await self._is_authorized_instructor(info):
+                self.breakout_rooms = []
+                try:
+                    await self.ctx.storage.delete("breakout_rooms")
+                except Exception as exc:
+                    await capture_exception(exc, None, self.env, "classroom.close_breakouts.storage")
+                self._broadcast(json.dumps({
+                    "type": "breakout_rooms_closed",
+                    "parent_room_id": self.room_id,
+                    "by": info["participant_id"],
+                }))
+                self._broadcast_room_state()
+
+        elif msg_type == "broadcast_to_breakouts":
+            if await self._is_authorized_instructor(info):
+                if not getattr(self, "breakout_rooms", None):
+                    try:
+                        stored = await self.ctx.storage.get("breakout_rooms")
+                        if stored:
+                            self.breakout_rooms = json.loads(stored) if isinstance(stored, str) else stored
+                    except Exception as exc:
+                        await capture_exception(exc, None, self.env, "classroom.broadcast_to_breakouts.storage")
+                announcement = str(data.get("message", "")).strip()[:500]
+                if announcement:
+                    payload = json.dumps({
+                        "type": "breakout_announcement",
+                        "message": announcement,
+                        "from": info["display_name"],
+                    })
+                    self._broadcast(payload)
+                    if hasattr(self.env, "CLASSROOM_DO") and self.env.CLASSROOM_DO and getattr(self, "breakout_rooms", None):
+                        for b_room in self.breakout_rooms:
+                            try:
+                                b_id = b_room.get("breakout_room_id")
+                                if b_id:
+                                    stub = self.env.CLASSROOM_DO.get(self.env.CLASSROOM_DO.idFromName(b_id))
+                                    await stub.fetch(f"http://internal/api/classroom/{b_id}/broadcast_internal", {
+                                        "method": "POST",
+                                        "headers": {"Content-Type": "application/json"},
+                                        "body": payload,
+                                    })
+                            except Exception as exc:
+                                await capture_exception(exc, None, self.env, "classroom.broadcast_to_breakouts")
+
+        elif msg_type == "connection_mode":
+            mode = str(data.get("mode", "full")).strip().lower()
+            if mode not in ("full", "audio_only", "captions_only"):
+                mode = "full"
+            info["connection_mode"] = mode
+            self._persist_attachment(sid, info)
+            self._broadcast(json.dumps({
+                "type": "connection_mode_changed",
+                "participant_id": info["participant_id"],
+                "mode": mode,
+            }))
+            self._broadcast_room_state()
+
     async def on_webSocketClose(self, ws, code, reason, wasClean):
+        """Handle WebSocket close event and clean up associated participant state."""
         session = self._session_for_ws(ws)
         if not session:
             return
@@ -7838,6 +8449,32 @@ class ClassroomDO(DurableObject):
         self.sessions.pop(sid, None)
         if not info.get("can_interact", True):
             return
+
+        if getattr(self, "screen_sharer_session_id", None) == sid:
+            self.screen_sharer = None
+            self.screen_sharer_session_id = None
+            self._broadcast(json.dumps({
+                "type":           "screen_share_stopped",
+                "participant_id": pid,
+            }))
+
+        if hasattr(self, "hand_raise_queue") and pid in self.hand_raise_queue:
+            other_tabs = [s for s in self.sessions.values() if s.get("participant_id") == pid]
+            if not other_tabs:
+                try:
+                    self.hand_raise_queue.remove(pid)
+                except ValueError:
+                    pass
+
+        if getattr(self, "spotlight_peer_id", None) == pid:
+            other_tabs = [s for s in self.sessions.values() if s.get("participant_id") == pid]
+            if not other_tabs:
+                self.spotlight_peer_id = None
+                self._broadcast(json.dumps({
+                    "type":              "spotlight_changed",
+                    "spotlight_peer_id": None,
+                    "by":                "system",
+                }))
 
         still_connected = any(
             s.get("can_interact", True) and s["participant_id"] == pid for s in self.sessions.values()
@@ -7853,13 +8490,13 @@ class ClassroomDO(DurableObject):
         self._broadcast_room_state()
 
     async def on_webSocketError(self, ws, error):
-        # Log for visibility; the runtime will invoke on_webSocketClose separately
-        # which performs the actual session cleanup and broadcasts.
+        """Handle WebSocket error logs."""
         print(f"[ClassroomDO.on_webSocketError] error={error!r}")
 
     # HELPERS:
 
     def _session_for_ws(self, ws):
+        """Lookup session (session_id, session_dict) by WebSocket instance."""
         try:
             raw = ws.deserializeAttachment()
             if raw:
@@ -7874,22 +8511,38 @@ class ClassroomDO(DurableObject):
             try:
                 if info["ws"] == ws:
                     return (sid, info)
-            except Exception as exc:
-                print(f"[ClassroomDO._session_for_ws.fallback] sid={sid} error={exc!r}")
+            except Exception:
+                pass
         return None
 
+    def _valid_norm_position(self, raw_pos):
+        """Validate and round normalized 0-1 coordinates."""
+        if not isinstance(raw_pos, dict):
+            return None
+        try:
+            x = float(raw_pos.get("x", 0.0))
+            y = float(raw_pos.get("y", 0.0))
+            if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
+                return None
+            return {"x": round(x, 4), "y": round(y, 4)}
+        except (TypeError, ValueError):
+            return None
+
     def _whiteboard_point(self, value):
+        """Validate point coordinates for whiteboard strokes."""
         if not isinstance(value, dict):
             return None
         try:
-            x = float(value.get("x", 0))
-            y = float(value.get("y", 0))
+            x = float(value.get("x", 0.0))
+            y = float(value.get("y", 0.0))
+            if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
+                return None
+            return {"x": round(x, 4), "y": round(y, 4)}
         except (TypeError, ValueError):
             return None
-        return {"x": max(0.0, min(1.0, x)), "y": max(0.0, min(1.0, y))}
 
     async def _load_whiteboard_events(self):
-        # Stored as a JSON string: Python lists can't be structured-cloned into DO storage.
+        """Load persisted whiteboard events list from storage."""
         stored = await self.ctx.storage.get("whiteboard_events")
         if isinstance(stored, str):
             try:
@@ -7903,53 +8556,133 @@ class ClassroomDO(DurableObject):
         return events if isinstance(events, list) else []
 
     async def _save_whiteboard_events(self, events):
+        """Save serialized whiteboard events list to storage."""
         await self.ctx.storage.put("whiteboard_events", json.dumps(events[-1000:]))
 
     def _sanitize_whiteboard_event(self, value):
+        """Sanitize incoming whiteboard event object supporting shape and stroke schemas."""
         if not isinstance(value, dict):
             return None
-        start = self._whiteboard_point(value.get("from"))
-        end = self._whiteboard_point(value.get("to")) or start
-        if not start:
-            return None
-        kind = value.get("kind") or value.get("tool") or "stroke"
-        if kind not in {"stroke", "line", "rectangle", "circle", "arrow", "text"}:
-            kind = "stroke"
-        if kind != "text" and not end:
-            return None
-        color = value.get("color", "#7a6418")
-        if not isinstance(color, str) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
+
+        event_id = str(value.get("event_id") or value.get("id") or uuid.uuid4())[:64]
+        color = str(value.get("color", "#7a6418"))[:32]
+        if not re.fullmatch(r"^#[0-9a-fA-F]{3,8}$", color):
             color = "#7a6418"
-        mode = value.get("mode") or ("text" if kind == "text" else "pen")
-        if mode not in {"pen", "highlighter", "eraser", "shape", "text"}:
-            mode = "pen"
+
         try:
-            size = int(value.get("size", 4))
+            size = max(1, min(int(value.get("size") or value.get("width") or 2), 64))
         except (TypeError, ValueError):
-            size = 4
-        try:
-            alpha = float(value.get("alpha", 0.3 if mode == "highlighter" else 1))
-        except (TypeError, ValueError):
-            alpha = 1
-        text = value.get("text", "")
-        if not isinstance(text, str):
-            text = ""
-        event_id = value.get("event_id", "")
-        if not isinstance(event_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", event_id):
-            event_id = str(uuid.uuid4())
-        return {
+            size = 2
+
+        clean = {
             "event_id": event_id,
-            "kind": kind,
-            "from": start,
-            "to": end,
+            "id": event_id,
             "color": color,
-            "size": max(1, min(32, size)),
-            "mode": mode,
-            "alpha": max(0.05, min(1.0, alpha)),
-            "text": text[:240],
+            "size": size,
+            "width": size,
         }
 
+        # Handle whiteboard client (from / to / kind / mode) format
+        if "from" in value:
+            from_pt = self._whiteboard_point(value.get("from"))
+            to_pt = self._whiteboard_point(value.get("to")) or from_pt
+            if not from_pt:
+                return None
+            clean["from"] = from_pt
+            clean["to"] = to_pt
+            clean["kind"] = str(value.get("kind", "stroke"))[:32]
+            clean["mode"] = str(value.get("mode", "pen"))[:32]
+            try:
+                alpha = float(value.get("alpha", 1.0))
+                clean["alpha"] = alpha if math.isfinite(alpha) else 1.0
+            except (TypeError, ValueError):
+                clean["alpha"] = 1.0
+            if "text" in value and value.get("text"):
+                clean["text"] = str(value.get("text", ""))[:200]
+            if "participant_id" in value:
+                clean["participant_id"] = str(value.get("participant_id", ""))[:64]
+            return clean
+
+        # Handle legacy points/tool format
+        tool = str(value.get("tool", "pen"))
+        if tool not in {"pen", "line", "rect", "circle", "eraser", "text"}:
+            tool = "pen"
+        clean["tool"] = tool
+
+        points_raw = value.get("points")
+        if not isinstance(points_raw, list):
+            points_raw = []
+        points = []
+        for p in points_raw[:500]:
+            pt = self._whiteboard_point(p)
+            if pt is not None:
+                points.append(pt)
+        if not points:
+            return None
+        clean["points"] = points
+        if tool == "text":
+            text = str(value.get("text", "")).strip()[:100]
+            if not text:
+                return None
+            clean["text"] = text
+        return clean
+
+    async def _persist_transcript(self, sid: str, info: dict, text: str, source: str = "live") -> None:
+        """Persist final transcript entry in memory, storage, and database."""
+        clean_text = str(text).strip()[:500]
+        if not clean_text:
+            return
+        now = datetime.datetime.now(datetime.timezone.utc)
+        # Deduplicate consecutive identical transcript from same participant within a short window (5s)
+        if hasattr(self, "transcripts") and self.transcripts:
+            last = self.transcripts[-1]
+            if (last.get("participant_id") == info.get("participant_id")
+                    and last.get("text") == clean_text):
+                last_ts_str = last.get("timestamp")
+                if last_ts_str:
+                    try:
+                        last_ts = datetime.datetime.fromisoformat(last_ts_str)
+                        if (now - last_ts).total_seconds() < 5:
+                            return
+                    except Exception:
+                        pass
+        entry = {
+            "id": str(uuid.uuid4()),
+            "room_id": getattr(self, "room_id", "default"),
+            "session_id": sid,
+            "participant_id": info.get("participant_id", "unknown"),
+            "display_name": info.get("display_name", "Anonymous"),
+            "text": clean_text,
+            "timestamp": now.isoformat(),
+            "source": source,
+        }
+        if not hasattr(self, "transcripts"):
+            self.transcripts = []
+        self.transcripts.append(entry)
+        self.transcripts = self.transcripts[-1000:]
+        try:
+            await self.ctx.storage.put("classroom_transcripts", json.dumps(self.transcripts))
+        except Exception as exc:
+            await capture_exception(exc, None, self.env, "classroom.persist_transcript.storage")
+        if source != "voxbridge" and hasattr(self.env, "DB") and self.env.DB:
+            try:
+                await self.env.DB.prepare(
+                    "INSERT INTO classroom_transcripts (id, room_id, session_id, participant_id, display_name, text, timestamp, source) "
+                    "VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)"
+                ).bind(
+                    entry["id"],
+                    entry["room_id"],
+                    sid,
+                    entry["participant_id"],
+                    entry["display_name"],
+                    clean_text,
+                    source,
+                ).run()
+            except Exception as exc:
+                await capture_exception(exc, None, self.env, "classroom.persist_transcript.db")
+
     def _broadcast(self, msg, exclude_session_id=None):
+        """Broadcast message string to all active sessions without evicting on error."""
         for sid, info in self.sessions.items():
             if sid == exclude_session_id:
                 continue
@@ -7957,45 +8690,79 @@ class ClassroomDO(DurableObject):
                 info["ws"].send(msg)
             except Exception as exc:
                 print(f"[ClassroomDO._broadcast] sid={sid} pid={info.get('participant_id')} error={exc!r}")
-                # Do not pop here - rely on on_webSocketClose to run the full
-                # cleanup + participant_left broadcast. Transient send errors
-                # shouldn't silently evict a session.
 
     def _broadcast_room_state(self):
-        seen = {}
-        for info in self.sessions.values():
+        """Broadcast aggregated room state including media state and hand-raise queue."""
+        participants_by_pid = {}
+        for sid, info in self.sessions.items():
             if not info.get("can_interact", True):
                 continue
             pid = info["participant_id"]
-            if pid not in seen:
-                seen[pid] = {
+            if pid not in participants_by_pid:
+                participants_by_pid[pid] = {
                     "participant_id": pid,
                     "display_name":   info["display_name"],
                     "position":       info["position"],
                     "direction":      info["direction"],
                     "is_moving":      info.get("is_moving", False),
                     "seat_id":        info.get("seat_id", ""),
+                    "role":           info.get("role", "student"),
+                    "is_instructor":  info.get("is_instructor", False),
+                    "media_state":    dict(info.get("media_state", {"audio": False, "video": False, "mic_enabled": False, "cam_enabled": False})),
+                    "hand_raised":    pid in getattr(self, "hand_raise_queue", []),
+                    "connection_mode": info.get("connection_mode", "full"),
                 }
+            else:
+                cur_media = participants_by_pid[pid]["media_state"]
+                sess_media = info.get("media_state", {})
+                if sess_media.get("audio") or sess_media.get("mic_enabled"):
+                    cur_media["audio"] = True
+                    cur_media["mic_enabled"] = True
+                if sess_media.get("video") or sess_media.get("cam_enabled"):
+                    cur_media["video"] = True
+                    cur_media["cam_enabled"] = True
+                if info.get("seat_id"):
+                    participants_by_pid[pid]["seat_id"] = info["seat_id"]
+
+        is_breakout = ":breakout:" in getattr(self, "room_id", "")
+        parent_room_id = self.room_id.split(":breakout:")[0] if is_breakout else None
 
         self._broadcast(json.dumps({
-            "type":         "room_state",
-            "participants": list(seen.values()),
-            "count":        len(seen),
+            "type":              "room_state",
+            "participants":      list(participants_by_pid.values()),
+            "count":             len(participants_by_pid),
+            "screen_sharer":     getattr(self, "screen_sharer", None),
+            "spotlight_peer_id": getattr(self, "spotlight_peer_id", None),
+            "hand_raise_queue":  list(getattr(self, "hand_raise_queue", [])),
+            "breakout_rooms":    list(getattr(self, "breakout_rooms", [])),
+            "is_breakout":       is_breakout,
+            "parent_room_id":    parent_room_id,
         }))
 
     def _persist_attachment(self, session_id, info):
+        """Serialize session attachment to WebSocket for hibernation durability."""
         ws = self.sessions.get(session_id, {}).get("ws")
         if not ws:
             return
         try:
+            is_sharing = (getattr(self, "screen_sharer_session_id", None) == session_id)
+            stream_id = getattr(self, "screen_sharer", {}).get("stream_id") if (is_sharing and getattr(self, "screen_sharer", None)) else None
             ws.serializeAttachment(json.dumps({
-                "session_id":     session_id,
-                "participant_id": info["participant_id"],
-                "display_name":   info["display_name"],
-                "position":       info["position"],
-                "direction":      info["direction"],
-                "seat_id":        info.get("seat_id", ""),
-                "can_interact":   info.get("can_interact", True),
+                "session_id":        session_id,
+                "participant_id":    info["participant_id"],
+                "display_name":      info["display_name"],
+                "position":          info["position"],
+                "direction":         info["direction"],
+                "seat_id":           info.get("seat_id", ""),
+                "role":              info.get("role", "student"),
+                "is_instructor":     info.get("is_instructor", False),
+                "can_interact":      info.get("can_interact", True),
+                "media_state":       info.get("media_state", {"audio": False, "video": False, "mic_enabled": False, "cam_enabled": False}),
+                "hand_raised":       info.get("hand_raised", False),
+                "is_screen_sharing": is_sharing,
+                "screen_stream_id":  stream_id,
+                "connection_mode":   info.get("connection_mode", "full"),
+                "client_ip":         info.get("client_ip", ""),
             }))
         except Exception as exc:
             print(f"[ClassroomDO._persist_attachment] sid={session_id} pid={info.get('participant_id')} error={exc!r}")
@@ -8005,6 +8772,7 @@ class PresenceDO(DurableObject):
     """Room-scoped real-time user presence Durable Object."""
 
     def __init__(self, ctx, env):
+        """Initialize PresenceDO instance and restore hibernated WebSockets."""
         super().__init__(ctx, env)
         # session_id -> {ws, user_id, display_name}
         self.sessions = {}
@@ -8028,6 +8796,7 @@ class PresenceDO(DurableObject):
                     "user_id": user_id,
                     "display_name": display_name,
                     "can_interact": bool(data.get("can_interact", True)),
+                    "is_authenticated": bool(data.get("is_authenticated", False)),
                 }
                 if self.sessions[session_id]["can_interact"] and user_id not in self.presence:
                     self.presence[user_id] = {
@@ -8036,6 +8805,7 @@ class PresenceDO(DurableObject):
                         "emoji": data.get("emoji", "") if isinstance(data.get("emoji", ""), str) else "",
                         "hand_raised": data.get("hand_raised", False) is True,
                         "display_name": display_name,
+                        "is_authenticated": bool(data.get("is_authenticated", False)),
                     }
             except Exception as exc:
                 print(f"[PresenceDO.__init__.restore] error={exc!r}")
@@ -8045,6 +8815,7 @@ class PresenceDO(DurableObject):
         )
 
     async def on_fetch(self, request):
+        """Handle WebSocket upgrade requests for presence coordination."""
         upgrade = request.headers.get("Upgrade") or ""
         if upgrade.lower() != "websocket":
             return Response(
@@ -8059,14 +8830,19 @@ class PresenceDO(DurableObject):
         user_param = (qs.get("user_id") or [None])[0]
         display_param = (qs.get("display_name") or [None])[0]
 
+        allow_presence_setting = getattr(self.env, "ALLOW_ANON_PRESENCE", None)
+        if allow_presence_setting is None:
+            allow_presence_setting = getattr(self.env, "ALLOW_ANON_CLASSROOM_POC", "true")
+        allow_anonymous = str(allow_presence_setting).lower() in {"1", "true", "yes"}
         authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
-        can_interact = authenticated_user is not None
 
         if authenticated_user:
             user_id = str(authenticated_user.get("id", ""))
             display_name = str(authenticated_user.get("username") or user_id)
+            can_interact = True
+            is_authenticated = True
         else:
-            if token_param or not user_param:
+            if not allow_anonymous or not user_param:
                 return Response(
                     json.dumps({"error": "Authentication required"}),
                     status=401,
@@ -8074,6 +8850,13 @@ class PresenceDO(DurableObject):
                 )
             user_id = str(user_param)
             display_name = str(display_param or user_id)
+            is_authenticated = False
+            # Prevent anonymous sockets from hijacking existing authenticated users
+            existing_auth = any(
+                s.get("user_id") == user_id and s.get("is_authenticated", False)
+                for s in self.sessions.values()
+            )
+            can_interact = not existing_auth
 
         user_id = user_id[:64]
         display_name = display_name[:64]
@@ -8104,10 +8887,18 @@ class PresenceDO(DurableObject):
                 "emoji": "",
                 "hand_raised": False,
                 "display_name": display_name,
+                "is_authenticated": is_authenticated,
             }
             self.presence[user_id] = dict(existing)
         else:
-            existing["display_name"] = display_name
+            if is_authenticated or not existing.get("is_authenticated", False):
+                existing["display_name"] = display_name
+            if is_authenticated:
+                existing["is_authenticated"] = True
+                for s_info in self.sessions.values():
+                    if s_info.get("user_id") == user_id and not s_info.get("is_authenticated", False):
+                        s_info["can_interact"] = False
+                self._persist_user_attachments(user_id)
             self.presence[user_id] = existing
 
         attachment = json.dumps({
@@ -8119,6 +8910,7 @@ class PresenceDO(DurableObject):
             "emoji": existing["emoji"],
             "hand_raised": existing["hand_raised"],
             "can_interact": can_interact,
+            "is_authenticated": is_authenticated,
         })
         server.serializeAttachment(attachment)
 
@@ -8127,6 +8919,7 @@ class PresenceDO(DurableObject):
             "user_id": user_id,
             "display_name": display_name,
             "can_interact": can_interact,
+            "is_authenticated": is_authenticated,
         }
 
         self._send_welcome(server, session_id, user_id)
@@ -8315,6 +9108,7 @@ class PresenceDO(DurableObject):
                     "emoji": state["emoji"],
                     "hand_raised": state["hand_raised"],
                     "can_interact": info.get("can_interact", True),
+                    "is_authenticated": info.get("is_authenticated", False),
                 }))
             except Exception as exc:
                 print(f"[PresenceDO._persist_user_attachments] sid={sid} user_id={user_id} error={exc!r}")
@@ -8928,6 +9722,157 @@ async def api_list_users(req, env):
     return ok({"users": users_list, "total": len(users_list)})
 
 
+async def api_classroom_transcripts(req, env, room_id: str):
+    """Retrieve searchable transcripts for a classroom session."""
+    if not hasattr(env, "DB") or not env.DB:
+        return err("Database unavailable", 503)
+    parsed = urlparse(req.url)
+    qs = parse_qs(parsed.query)
+    q = (qs.get("q") or [""])[0].strip()[:100]
+    limit_str = (qs.get("limit") or ["100"])[0]
+    try:
+        limit = max(1, min(int(limit_str), 500))
+    except (TypeError, ValueError):
+        limit = 100
+    try:
+        if q:
+            rows = await env.DB.prepare(
+                "SELECT id, room_id, session_id, participant_id, display_name, text, timestamp, source "
+                "FROM classroom_transcripts "
+                "WHERE room_id = ? AND text LIKE ? "
+                "ORDER BY timestamp ASC LIMIT ?"
+            ).bind(room_id, f"%{q}%", limit).all()
+        else:
+            rows = await env.DB.prepare(
+                "SELECT id, room_id, session_id, participant_id, display_name, text, timestamp, source "
+                "FROM classroom_transcripts "
+                "WHERE room_id = ? "
+                "ORDER BY timestamp ASC LIMIT ?"
+            ).bind(room_id, limit).all()
+        results = [
+            {
+                "id": r.id,
+                "room_id": r.room_id,
+                "session_id": r.session_id,
+                "participant_id": r.participant_id,
+                "display_name": r.display_name,
+                "text": r.text,
+                "timestamp": r.timestamp,
+                "source": r.source,
+            }
+            for r in (rows.results or [])
+        ]
+        return ok({"transcripts": results, "count": len(results)})
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_classroom_transcripts")
+        return err("Failed to retrieve transcripts", 500)
+
+
+async def api_classroom_caption(req, env, room_id: str):
+    """Process audio snippet using VoxBridge / Whisper AI, save transcript, and return."""
+    try:
+        raw_body = await req.text()
+        body = json.loads(raw_body) if raw_body else {}
+    except Exception:
+        return err("Invalid JSON body", 400)
+    if not isinstance(body, dict):
+        return err("Payload must be an object", 400)
+    audio_b64 = body.get("audio", "")
+    if not audio_b64 or not isinstance(audio_b64, str):
+        return err("Missing required field: audio", 400)
+    if len(audio_b64) > 10 * 1024 * 1024:
+        return err("Audio payload too large (max 10MB)", 413)
+
+    if "," in audio_b64:
+        audio_b64 = audio_b64.split(",", 1)[1]
+
+    participant_id = str(body.get("participant_id") or "anonymous")[:64]
+    display_name = str(body.get("display_name") or participant_id)[:64]
+    session_id = str(body.get("session_id") or uuid.uuid4())[:64]
+
+    transcript = ""
+    try:
+        audio_bytes = base64.b64decode(audio_b64)
+        if hasattr(env, "AI") and env.AI:
+            try:
+                ai_input = to_js({"audio": list(audio_bytes)}, dict_converter=js.Object.fromEntries)
+            except Exception:
+                ai_input = {"audio": list(audio_bytes)}
+            ai_res = await env.AI.run("@cf/openai/whisper", ai_input)
+            transcript = (
+                ai_res.get("text", "")
+                if isinstance(ai_res, dict)
+                else getattr(ai_res, "text", str(ai_res))
+            )
+        elif hasattr(env, "VOXBRIDGE") and env.VOXBRIDGE:
+            v_res = await env.VOXBRIDGE.fetch("http://voxbridge/api/caption", {
+                "method": "POST",
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"audio": audio_b64}),
+            })
+            v_data = await v_res.json()
+            transcript = v_data.get("text", "") if isinstance(v_data, dict) else ""
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_classroom_caption.transcribe")
+
+    clean_text = str(transcript).strip()[:500]
+    if clean_text and hasattr(env, "DB") and env.DB:
+        try:
+            tid = str(uuid.uuid4())
+            await env.DB.prepare(
+                "INSERT INTO classroom_transcripts (id, room_id, session_id, participant_id, display_name, text, timestamp, source) "
+                "VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 'voxbridge')"
+            ).bind(tid, room_id, session_id, participant_id, display_name, clean_text).run()
+        except Exception as exc:
+            await capture_exception(exc, req, env, "api_classroom_caption.db")
+
+    if clean_text and hasattr(env, "CLASSROOM_DO") and env.CLASSROOM_DO:
+        try:
+            stub = env.CLASSROOM_DO.get(env.CLASSROOM_DO.idFromName(room_id))
+            await stub.fetch(f"http://internal/api/classroom/{room_id}/broadcast_internal", {
+                "method": "POST",
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({
+                    "type": "live_caption",
+                    "participant_id": participant_id,
+                    "display_name": display_name,
+                    "text": clean_text,
+                    "is_final": True,
+                }),
+            })
+        except Exception:
+            pass
+
+    return ok({"text": clean_text, "room_id": room_id, "participant_id": participant_id})
+
+
+async def api_classroom_breakouts(req, env, room_id: str):
+    """List active or saved breakout rooms for this parent classroom."""
+    if not hasattr(env, "DB") or not env.DB:
+        return err("Database unavailable", 503)
+    try:
+        rows = await env.DB.prepare(
+            "SELECT id, parent_room_id, breakout_room_id, title, created_at "
+            "FROM classroom_breakouts "
+            "WHERE parent_room_id = ? "
+            "ORDER BY created_at ASC"
+        ).bind(room_id).all()
+        results = [
+            {
+                "id": r.id,
+                "parent_room_id": r.parent_room_id,
+                "breakout_room_id": r.breakout_room_id,
+                "title": r.title,
+                "created_at": r.created_at,
+            }
+            for r in (rows.results or [])
+        ]
+        return ok({"breakouts": results})
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_classroom_breakouts")
+        return err("Failed to retrieve breakouts", 500)
+
+
 # ---------------------------------------------------------------------------
 # Main dispatcher
 # ---------------------------------------------------------------------------
@@ -9006,7 +9951,19 @@ async def _dispatch(request, env):
     if path.startswith("/media/") and method == "GET":
         return await serve_r2_media(path, env)
 
-    m_classroom = re.fullmatch(r"/api/classroom/([A-Za-z0-9_-]+)", path)
+    m_classroom_transcripts = re.fullmatch(r"/api/classroom/([A-Za-z0-9_:-]+)/transcripts", path)
+    if m_classroom_transcripts and method == "GET":
+        return await api_classroom_transcripts(request, env, m_classroom_transcripts.group(1))
+
+    m_classroom_caption = re.fullmatch(r"/api/classroom/([A-Za-z0-9_:-]+)/caption", path)
+    if m_classroom_caption and method == "POST":
+        return await api_classroom_caption(request, env, m_classroom_caption.group(1))
+
+    m_classroom_breakouts = re.fullmatch(r"/api/classroom/([A-Za-z0-9_:-]+)/breakouts", path)
+    if m_classroom_breakouts and method == "GET":
+        return await api_classroom_breakouts(request, env, m_classroom_breakouts.group(1))
+
+    m_classroom = re.fullmatch(r"/api/classroom/([A-Za-z0-9_:-]+)", path)
     if m_classroom:
         room_id = m_classroom.group(1)
         try:

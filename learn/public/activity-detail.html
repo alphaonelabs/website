@@ -134,7 +134,7 @@
               <a id="act-classroom-link" href="/classroom_poc" class="a1-btn a1-btn--dark">
                 <i class="fas fa-door-open" aria-hidden="true"></i>Enter virtual classroom
               </a>
-              <a href="/whiteboard" class="a1-btn">
+              <a id="act-whiteboard-link" href="/whiteboard" class="a1-btn">
                 <i class="fas fa-chalkboard" aria-hidden="true"></i>Whiteboard
               </a>
             </div>
@@ -332,12 +332,18 @@
       img.onerror = function () { this.onerror = null; this.src = '/images/logo.png'; };
     });
 
+    const courseRoomId = a.slug || a.id || 'general';
+    const courseTitle = a.title || 'Course Classroom';
     const classroomLink = document.getElementById('act-classroom-link');
     if (classroomLink) {
-      classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(a.slug || a.id || 'lobby');
+      classroomLink.href = '/classroom_poc?autojoin=1&room=' + encodeURIComponent(courseRoomId) + '&title=' + encodeURIComponent(courseTitle) + (data.is_host ? '&role=instructor' : '');
       classroomLink.addEventListener('click', () => {
         sessionStorage.setItem('classroom_return_url', window.location.pathname + window.location.search);
       });
+    }
+    const whiteboardLink = document.getElementById('act-whiteboard-link');
+    if (whiteboardLink) {
+      whiteboardLink.href = '/whiteboard?room=' + encodeURIComponent(courseRoomId);
     }
 
     const isLive = a.format === 'live';

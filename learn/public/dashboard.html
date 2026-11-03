@@ -252,11 +252,17 @@ async function loadDashboard() {
         renderDashboard(data);
     } catch (err) {
         console.error('Error loading dashboard:', err);
+        const safeErrMsg = (err && err.message ? String(err.message) : 'An error occurred')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
         document.getElementById('activities-list').innerHTML = `
             <div class="col-span-full rounded-2xl p-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-center">
                 <i class="fas fa-exclamation-circle text-red-500 text-4xl mb-3 block"></i>
                 <p class="text-red-700 dark:text-red-300 font-semibold">Failed to load dashboard</p>
-                <p class="text-red-600 dark:text-red-400 text-sm mt-1">${err.message}</p>
+                <p class="text-red-600 dark:text-red-400 text-sm mt-1">${safeErrMsg}</p>
             </div>
         `;
     }

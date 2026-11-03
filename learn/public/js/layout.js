@@ -133,12 +133,29 @@ window.toggleProfileDropdown = function () {
 
 // ── Update auth section with profile ─────────────────────────────────
 // ── Avatar helpers ───────────────────────────────────────────────────
+function _getSafeAvatarUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    try {
+        const base = (typeof window !== 'undefined' && window.location && window.location.origin)
+            ? window.location.origin
+            : 'https://learn.alphaonelabs.com';
+        const parsed = new URL(url, base);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.href;
+        }
+    } catch {
+        // invalid URL
+    }
+    return '';
+}
+
 function _setNavAvatar(initialsId, imgId, name, username, avatarUrl) {
     const initials = (name || username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
     const initialsEl = document.getElementById(initialsId);
     const imgEl      = document.getElementById(imgId);
     if (!initialsEl) return;
-    if (avatarUrl) {
+    const safeAvatarUrl = _getSafeAvatarUrl(avatarUrl);
+    if (safeAvatarUrl) {
         initialsEl.textContent = initials;
         initialsEl.classList.add('hidden');
         if (imgEl) {
@@ -146,7 +163,7 @@ function _setNavAvatar(initialsId, imgId, name, username, avatarUrl) {
                 this.classList.add('hidden');
                 initialsEl.classList.remove('hidden');
             };
-            imgEl.src = avatarUrl;
+            imgEl.src = safeAvatarUrl;
             imgEl.classList.remove('hidden');
         }
     } else {
@@ -161,10 +178,11 @@ function _setNavButtonAvatar(avatarElId, name, username, avatarUrl) {
     const el = document.getElementById(avatarElId);
     if (!el) return;
     const initials = (name || username || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    if (avatarUrl) {
+    const safeAvatarUrl = _getSafeAvatarUrl(avatarUrl);
+    if (safeAvatarUrl) {
         // Build element programmatically — avoids XSS via inline onerror with user-derived initials
         const img = document.createElement('img');
-        img.src = avatarUrl;
+        img.src = safeAvatarUrl;
         img.className = 'w-full h-full object-cover rounded-full';
         img.alt = '';
         img.addEventListener('error', () => { el.textContent = initials; });
