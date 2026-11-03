@@ -122,10 +122,13 @@ class TestPostSessionAttendance:
         tok = _token(uid="host-1")
         session_row = MockRow(id="s-1", activity_id="act-1", title="Week 1", host_id="host-1")
         env = make_env(db=MockDB([
-            make_stmt(first=session_row),  # session check
-            make_stmt(),                   # upsert u-1
-            make_stmt(),                   # upsert u-2
-            make_stmt(),                   # upsert u-3
+            make_stmt(first=session_row),          # session check
+            make_stmt(first=MockRow(id="u-1")),   # user check u-1
+            make_stmt(first=MockRow(id="u-2")),   # user check u-2
+            make_stmt(first=MockRow(id="u-3")),   # user check u-3
+            make_stmt(),                           # upsert u-1
+            make_stmt(),                           # upsert u-2
+            make_stmt(),                           # upsert u-3
         ]))
         payload = [
             {"user_id": "u-1", "status": "attended"},
@@ -143,12 +146,32 @@ class TestPostSessionAttendance:
         assert data["records"][1] == {"user_id": "u-2", "status": "missed"}
         assert data["records"][2] == {"user_id": "u-3", "status": "attended"}
 
+        # Assert DB writes and batched statement execution
+        assert env.DB.batch.await_count == 1
+        upserts = [
+            (sql, stmt) for (sql, stmt) in env.DB.prepared
+            if "INSERT INTO session_attendance" in sql
+        ]
+        assert len(upserts) == 3
+        assert upserts[0][1].bind_args[1] == "s-1"
+        assert upserts[0][1].bind_args[2] == "u-1"
+        assert upserts[0][1].bind_args[3] == "attended"
+
+        assert upserts[1][1].bind_args[1] == "s-1"
+        assert upserts[1][1].bind_args[2] == "u-2"
+        assert upserts[1][1].bind_args[3] == "missed"
+
+        assert upserts[2][1].bind_args[1] == "s-1"
+        assert upserts[2][1].bind_args[2] == "u-3"
+        assert upserts[2][1].bind_args[3] == "attended"
+
     async def test_host_successfully_marks_attendance_object_wrapper(self):
         tok = _token(uid="host-1")
         session_row = MockRow(id="s-1", activity_id="act-1", title="Week 1", host_id="host-1")
         env = make_env(db=MockDB([
-            make_stmt(first=session_row),
-            make_stmt(),
+            make_stmt(first=session_row),          # session check
+            make_stmt(first=MockRow(id="u-1")),   # user check u-1
+            make_stmt(),                           # upsert u-1
         ]))
         payload = {
             "attendance": [
@@ -161,6 +184,30 @@ class TestPostSessionAttendance:
         data = _parse(r)
         assert data["success"] is True
         assert data["updated"] == 1
+
+        assert env.DB.batch.await_count == 1
+        upserts = [
+            (sql, stmt) for (sql, stmt) in env.DB.prepared
+            if "INSERT INTO session_attendance" in sql
+        ]
+        assert len(upserts) == 1
+        assert upserts[0][1].bind_args[1] == "s-1"
+        assert upserts[0][1].bind_args[2] == "u-1"
+        assert upserts[0][1].bind_args[3] == "attended"
+
+    async def test_unknown_user_id_returns_400(self):
+        tok = _token(uid="host-1")
+        session_row = MockRow(id="s-1", activity_id="act-1", title="Week 1", host_id="host-1")
+        env = make_env(db=MockDB([
+            make_stmt(first=session_row),  # session check
+            make_stmt(first=None),         # user check: not found
+        ]))
+        payload = [{"user_id": "ghost-user", "status": "attended"}]
+        req = self._req("s-1", payload, token=tok)
+        r = await worker.api_record_session_attendance(req, env, "s-1")
+        assert r.status == 400
+        data = _parse(r)
+        assert "User 'ghost-user' not found" in data.get("error", "")
 
     async def test_host_successfully_undos_attendance_with_registered_status(self):
         tok = _token(uid="host-1")
@@ -183,6 +230,15 @@ class TestPostSessionAttendance:
         assert len(data["records"]) == 2
         assert data["records"][0] == {"user_id": "u-1", "status": "registered"}
         assert data["records"][1] == {"user_id": "u-2", "status": "unmarked"}
+
+        assert env.DB.batch.await_count == 1
+        deletes = [
+            (sql, stmt) for (sql, stmt) in env.DB.prepared
+            if "DELETE FROM session_attendance" in sql
+        ]
+        assert len(deletes) == 2
+        assert deletes[0][1].bind_args == ("s-1", "u-1")
+        assert deletes[1][1].bind_args == ("s-1", "u-2")
 
 
 # ---------------------------------------------------------------------------
@@ -411,6 +467,77 @@ class TestAttendancePercentageCalculation:
         assert att["missed"] == 1
         assert att["percentage"] == 33.3
 
+    async def test_cancelled_enrollment_does_not_receive_attendance(self):
+        tok = _token(uid="student-1", role="member")
+        act_row = MockRow(
+            id="act-1", title="Data Science", description="", type="course",
+            format="live", schedule_type="multi_session", host_id="host-1",
+            host_uid="host-1", host_name_enc=_enc("Host User"), created_at="2026-01-01",
+            status="published", slug="data-science",
+        )
+        enr_row = MockRow(id="enr-1", role="participant", status="cancelled", user_id="student-1", activity_id="act-1")
+        s1 = MockRow(id="s-1", title="Session 1", description="", start_time="10:00", end_time="11:00", location="")
+
+        env = make_env(
+            db=MockDB([
+                make_stmt(first=act_row),
+                make_stmt(first=enr_row),
+                make_stmt(first=None),
+                make_stmt(first=None),
+                make_stmt(all_results=[]),
+                make_stmt(all_results=[s1]),
+                make_stmt(all_results=[]),
+                make_stmt(first=MockRow(cnt=0)),
+                make_stmt(first=MockRow(cnt=0)),
+            ]),
+            enc_key=ENC_KEY,
+        )
+
+        req = MockRequest(method="GET", url="http://localhost/api/activities/act-1", headers=_auth(tok))
+        r = await worker.api_get_activity("act-1", req, env)
+        assert r.status == 200
+        data = _parse(r)
+        assert data["is_enrolled"] is True
+        assert data["attendance"] is None
+
+    async def test_attendance_lookup_failure_marks_unavailable(self):
+        tok = _token(uid="student-1", role="member")
+        act_row = MockRow(
+            id="act-1", title="Data Science", description="", type="course",
+            format="live", schedule_type="multi_session", host_id="host-1",
+            host_uid="host-1", host_name_enc=_enc("Host User"), created_at="2026-01-01",
+            status="published", slug="data-science",
+        )
+        enr_row = MockRow(id="enr-1", role="participant", status="active", user_id="student-1", activity_id="act-1")
+        s1 = MockRow(id="s-1", title="Session 1", description="", start_time="10:00", end_time="11:00", location="")
+
+        # Make attendance query raise an exception
+        err_stmt = make_stmt()
+        err_stmt.bind.return_value.all.side_effect = Exception("D1 database locked")
+
+        env = make_env(
+            db=MockDB([
+                make_stmt(first=act_row),
+                make_stmt(first=enr_row),
+                make_stmt(first=None),
+                make_stmt(first=None),
+                err_stmt,
+                make_stmt(all_results=[s1]),
+                make_stmt(all_results=[]),
+                make_stmt(first=MockRow(cnt=1)),
+                make_stmt(first=MockRow(cnt=0)),
+            ]),
+            enc_key=ENC_KEY,
+        )
+
+        req = MockRequest(method="GET", url="http://localhost/api/activities/act-1", headers=_auth(tok))
+        r = await worker.api_get_activity("act-1", req, env)
+        assert r.status == 200
+        data = _parse(r)
+        assert data["attendance"]["unavailable"] is True
+        assert data["attendance"]["percentage"] is None
+        assert data["sessions"][0]["my_attendance"] is None
+
 
 # ---------------------------------------------------------------------------
 # Dispatcher End-to-End Route Matching
@@ -440,6 +567,7 @@ class TestAttendanceDispatcher:
         env = make_env(
             db=MockDB([
                 make_stmt(first=session_row),
+                make_stmt(first=MockRow(id="u-1")),
                 make_stmt(),
             ]),
             enc_key=ENC_KEY,

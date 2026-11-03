@@ -2526,6 +2526,7 @@ async def api_get_activity(activity_ref: str, req, env):
     is_host = bool(user and act.host_uid == user["id"])
 
     user_attendance = {}
+    attendance_lookup_failed = False
     if user and user.get("id"):
         try:
             att_res = await env.DB.prepare(
@@ -2539,8 +2540,9 @@ async def api_get_activity(activity_ref: str, req, env):
                     "status": ar.status,
                     "marked_at": getattr(ar, "updated_at", None) or getattr(ar, "created_at", None),
                 }
-        except Exception:
-            user_attendance = {}
+        except Exception as exc:
+            await capture_exception(exc, req, env, "api_get_activity.attendance_lookup")
+            attendance_lookup_failed = True
 
     ses_res = await env.DB.prepare(
         "SELECT id,title,description,start_time,end_time,location,created_at"
@@ -2557,7 +2559,7 @@ async def api_get_activity(activity_ref: str, req, env):
             "start_time":    s.start_time,
             "end_time":      s.end_time,
             "location":      await decrypt_aes(s.location or "", enc) if (is_enrolled or is_host) else None,
-            "my_attendance": att_info.get("status") if att_info else None,
+            "my_attendance": None if attendance_lookup_failed else (att_info.get("status") if att_info else None),
         })
 
     t_res = await env.DB.prepare(
@@ -2629,16 +2631,26 @@ async def api_get_activity(activity_ref: str, req, env):
             "status": enrollment.status,
             "id":     enrollment.id,
         } if enrollment else None,
-        "attendance": {
-            "total_sessions": len(sessions),
-            "attended": sum(1 for s in sessions if s.get("my_attendance") == "attended"),
-            "missed": sum(1 for s in sessions if s.get("my_attendance") == "missed"),
-            "percentage": (
-                round((sum(1 for s in sessions if s.get("my_attendance") == "attended") / len(sessions)) * 100, 1)
-                if len(sessions) > 0
-                else None
-            ),
-        } if is_enrolled else None,
+        "attendance": (
+            {
+                "unavailable": True,
+                "total_sessions": len(sessions),
+                "attended": None,
+                "missed": None,
+                "percentage": None,
+            }
+            if attendance_lookup_failed
+            else {
+                "total_sessions": len(sessions),
+                "attended": sum(1 for s in sessions if s.get("my_attendance") == "attended"),
+                "missed": sum(1 for s in sessions if s.get("my_attendance") == "missed"),
+                "percentage": (
+                    round((sum(1 for s in sessions if s.get("my_attendance") == "attended") / len(sessions)) * 100, 1)
+                    if len(sessions) > 0
+                    else None
+                ),
+            }
+        ) if (is_enrolled and enrollment and getattr(enrollment, "status", None) == "active") else None,
     })
 
 _ACTIVITY_TYPES = ("course", "meetup", "workshop", "seminar", "club", "event", "video", "study_group", "other")
@@ -3988,7 +4000,7 @@ async def api_get_session_attendance(req, env, session_id: str):
         " FROM enrollments e"
         " JOIN users u ON e.user_id = u.id"
         " LEFT JOIN session_attendance sa ON sa.session_id = ? AND sa.user_id = e.user_id"
-        " WHERE e.activity_id = ? AND e.status = 'active'"
+        " WHERE e.activity_id = ? AND e.status = 'active' AND e.role = 'participant'"
         " ORDER BY e.created_at ASC"
     ).bind(session_id, session.activity_id).all()
 
@@ -4015,13 +4027,17 @@ async def api_get_session_attendance(req, env, session_id: str):
             "marked_at": getattr(r, "updated_at", None) or getattr(r, "marked_at", None),
         })
 
-    # 2. Check any additional attendance rows for this session not covered by active enrollments
+    # 2. Check any additional attendance rows for this session not covered by active participant enrollments
     extra_att = await env.DB.prepare(
         "SELECT sa.user_id, sa.status, sa.created_at, sa.updated_at, u.name, u.username"
         " FROM session_attendance sa"
         " JOIN users u ON u.id = sa.user_id"
         " WHERE sa.session_id = ?"
-    ).bind(session_id).all()
+        " AND NOT EXISTS ("
+        "   SELECT 1 FROM enrollments e2"
+        "   WHERE e2.activity_id = ? AND e2.user_id = sa.user_id AND e2.role != 'participant'"
+        " )"
+    ).bind(session_id, session.activity_id).all()
 
     for r in (extra_att.results or []):
         if r.user_id not in seen_user_ids:
@@ -4113,23 +4129,40 @@ async def api_record_session_attendance(req, env, session_id: str):
             return err(f"Invalid status '{item.get('status')}'. Must be one of: attended, missed, registered", 400)
         records_to_save.append((uid, raw_status))
 
+    # Verify users exist for attended or missed status before persisting
+    for uid, status in records_to_save:
+        if status in ("attended", "missed"):
+            user_exists = await env.DB.prepare(
+                "SELECT id FROM users WHERE id = ?"
+            ).bind(uid).first()
+            if not user_exists:
+                return err(f"User '{uid}' not found", 400)
+
+    stmts = []
     saved_count = 0
     for uid, status in records_to_save:
         if status in ("registered", "unmarked"):
             # Undo / reset attendance mark
-            await env.DB.prepare(
-                "DELETE FROM session_attendance WHERE session_id = ? AND user_id = ?"
-            ).bind(session_id, uid).run()
+            stmts.append(
+                env.DB.prepare(
+                    "DELETE FROM session_attendance WHERE session_id = ? AND user_id = ?"
+                ).bind(session_id, uid)
+            )
         else:
             att_id = new_id()
-            await env.DB.prepare(
-                "INSERT INTO session_attendance (id, session_id, user_id, status, created_at, updated_at)"
-                " VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))"
-                " ON CONFLICT(session_id, user_id) DO UPDATE SET"
-                "   status = excluded.status,"
-                "   updated_at = datetime('now')"
-            ).bind(att_id, session_id, uid, status).run()
+            stmts.append(
+                env.DB.prepare(
+                    "INSERT INTO session_attendance (id, session_id, user_id, status, created_at, updated_at)"
+                    " VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))"
+                    " ON CONFLICT(session_id, user_id) DO UPDATE SET"
+                    "   status = excluded.status,"
+                    "   updated_at = datetime('now')"
+                ).bind(att_id, session_id, uid, status)
+            )
         saved_count += 1
+
+    if stmts:
+        await env.DB.batch(stmts)
 
     return json_resp({
         "success": True,

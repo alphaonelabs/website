@@ -278,7 +278,7 @@ function renderDashboard(data) {
         ? `${data.attendance_percentage}%`
         : (data.attendance_summary && data.attendance_summary.total_sessions > 0
             ? `${data.attendance_summary.attendance_percentage || 0}%`
-            : (joined.length ? '100%' : 'N/A'));
+            : 'N/A');
 
     // Render stat cards
     document.getElementById('stat-cards').innerHTML =

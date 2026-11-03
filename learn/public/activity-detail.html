@@ -512,7 +512,7 @@
       ) : '';
 
       let attendanceBadge = '';
-      if (data.is_enrolled) {
+      if (data.is_enrolled && (!data.attendance || !data.attendance.unavailable)) {
         if (s.my_attendance === 'attended') {
           attendanceBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"><i class="fas fa-check-circle text-emerald-600 dark:text-emerald-400"></i>Attended</span>';
         } else if (s.my_attendance === 'missed') {
@@ -524,7 +524,7 @@
 
       let hostActionBtn = '';
       if (data.is_host) {
-        hostActionBtn = '<button type="button" onclick="openAttendanceModal(\'' + esc(s.id) + '\', \'' + esc(s.title || 'Session') + '\')" class="a1-btn a1-btn--sm shrink-0" style="min-height:32px" title="Mark student attendance"><i class="fas fa-clipboard-user" aria-hidden="true"></i><span>Attendance</span></button>';
+        hostActionBtn = '<button type="button" onclick="openAttendanceModal(\'' + esc(s.id) + '\', ' + esc(JSON.stringify(s.title || 'Session')) + ')" class="a1-btn a1-btn--sm shrink-0" style="min-height:32px" title="Mark student attendance"><i class="fas fa-clipboard-user" aria-hidden="true"></i><span>Attendance</span></button>';
       }
 
       return '<li class="px-5 py-4">' +
@@ -664,7 +664,7 @@
       renderCertificateSection(data);
       document.getElementById('member-card').classList.remove('hidden');
       let attHtml = '';
-      if (data.attendance && data.attendance.total_sessions > 0) {
+      if (data.attendance && !data.attendance.unavailable && data.attendance.total_sessions > 0) {
         const pct = data.attendance.percentage !== null ? data.attendance.percentage : 0;
         attHtml = '<div class="w-full mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">' +
           '<div class="flex items-center justify-between text-xs mb-1">' +
@@ -862,8 +862,17 @@
   // --- Session Attendance Register (Host) & Viewer (Student) ---
   let activeAttendanceSessionId = null;
   let attendanceRegisterState = []; // [{ user_id, name, username, status }]
+  let attendanceLoadGeneration = 0;
+  let attendanceDialogGeneration = 0;
+  let attendancePreviouslyFocused = null;
+  let attendanceKeydownHandler = null;
 
   async function openAttendanceModal(sessionId, sessionTitle) {
+    attendancePreviouslyFocused = document.activeElement;
+    attendanceLoadGeneration += 1;
+    attendanceDialogGeneration += 1;
+    const currentLoadGen = attendanceLoadGeneration;
+
     activeAttendanceSessionId = sessionId;
     const modal = document.getElementById('attendance-modal');
     const title = document.getElementById('att-modal-title');
@@ -880,7 +889,39 @@
       statusMsg.className = 'text-xs font-medium';
       statusMsg.textContent = '';
     }
-    if (saveBtn) saveBtn.disabled = false;
+    // Keep save button disabled until register loads successfully
+    if (saveBtn) saveBtn.disabled = true;
+
+    // Trap focus and handle Escape
+    if (attendanceKeydownHandler) {
+      document.removeEventListener('keydown', attendanceKeydownHandler);
+    }
+    attendanceKeydownHandler = function(e) {
+      if (modal.classList.contains('hidden')) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeAttendanceModal();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const focusable = modal.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', attendanceKeydownHandler);
+
+    // Focus close button or first interactive element in modal
+    const closeBtn = modal.querySelector('button[aria-label="Close modal"]') || modal.querySelector('button');
+    if (closeBtn) closeBtn.focus();
 
     if (list) {
       list.innerHTML = `
@@ -896,6 +937,7 @@
         headers: { Authorization: 'Bearer ' + token }
       });
       const data = await res.json();
+      if (currentLoadGen !== attendanceLoadGeneration) return;
       if (!res.ok) throw new Error(data.error || 'Failed to load attendance');
 
       attendanceRegisterState = (data.attendance || []).map(r => ({
@@ -905,8 +947,11 @@
         status: (r.status === 'attended' || r.status === 'missed') ? r.status : 'registered'
       }));
 
+      if (saveBtn) saveBtn.disabled = false;
       renderAttendanceRegister();
     } catch (err) {
+      if (currentLoadGen !== attendanceLoadGeneration) return;
+      if (saveBtn) saveBtn.disabled = true;
       if (list) {
         list.innerHTML = `
           <div class="py-8 text-center text-red-500 text-sm">
@@ -919,10 +964,19 @@
   }
 
   function closeAttendanceModal() {
+    attendanceLoadGeneration += 1;
+    if (attendanceKeydownHandler) {
+      document.removeEventListener('keydown', attendanceKeydownHandler);
+      attendanceKeydownHandler = null;
+    }
     const modal = document.getElementById('attendance-modal');
     if (modal) modal.classList.add('hidden');
     activeAttendanceSessionId = null;
     attendanceRegisterState = [];
+    if (attendancePreviouslyFocused && typeof attendancePreviouslyFocused.focus === 'function') {
+      try { attendancePreviouslyFocused.focus(); } catch (_) {}
+      attendancePreviouslyFocused = null;
+    }
   }
 
   function renderAttendanceRegister() {
@@ -956,11 +1010,11 @@
               ${st.username ? `<p class="text-xs text-gray-500 dark:text-gray-400 truncate">@${esc(st.username)}</p>` : ''}
             </div>
           </div>
-          <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto" role="radiogroup" aria-label="Attendance status for ${esc(st.name)}">
-            <button type="button" onclick="setStudentStatus('${esc(st.user_id)}', 'attended')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 ${isAttended ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}">
+          <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto" role="group" aria-label="Attendance status for ${esc(st.name)}">
+            <button type="button" aria-pressed="${isAttended}" onclick="setStudentStatus('${esc(st.user_id)}', 'attended')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 ${isAttended ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}">
               <i class="fas fa-check text-[10px]"></i><span>Attended</span>
             </button>
-            <button type="button" onclick="setStudentStatus('${esc(st.user_id)}', 'missed')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 ${isMissed ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-rose-50 dark:hover:bg-rose-950/30'}">
+            <button type="button" aria-pressed="${isMissed}" onclick="setStudentStatus('${esc(st.user_id)}', 'missed')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 ${isMissed ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-rose-50 dark:hover:bg-rose-950/30'}">
               <i class="fas fa-times text-[10px]"></i><span>Missed</span>
             </button>
           </div>
@@ -1003,6 +1057,7 @@
 
   async function saveAttendance() {
     if (!activeAttendanceSessionId || !token) return;
+    const saveDialogGen = attendanceDialogGeneration;
     const statusMsg = document.getElementById('att-status-msg');
     const saveBtn = document.getElementById('btn-save-attendance');
 
@@ -1038,8 +1093,10 @@
       }
 
       setTimeout(async () => {
-        closeAttendanceModal();
-        await loadActivityDetail();
+        if (saveDialogGen === attendanceDialogGeneration) {
+          closeAttendanceModal();
+          await loadActivityDetail();
+        }
       }, 700);
     } catch (err) {
       if (statusMsg) {
