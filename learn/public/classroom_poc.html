@@ -320,6 +320,11 @@
                 <i data-lucide="hash" class="w-3 h-3 text-teal-400"></i>
                 <span id="topRoomId">—</span>
             </div>
+            <!-- Connection Mode Badge (Graceful Degradation) -->
+            <div id="btnNetworkMode" class="flex items-center gap-1.5 px-3 py-1 bg-gray-800 hover:bg-gray-700 cursor-pointer rounded-full text-xs font-medium text-gray-300 transition" title="Connection Mode (Click to cycle Full / Audio / Captions)">
+                <span id="networkModeDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span id="networkModeText">Full HD</span>
+            </div>
         </div>
         <div class="flex items-center gap-2">
             <button id="btnParticipants"
@@ -341,6 +346,18 @@
 
     <div id="viewerBanner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-xs sm:text-sm text-amber-100">
         You are viewing this classroom. <a id="viewerLoginLink" href="/login" class="font-semibold text-white underline underline-offset-2">Sign in to chat, move, sit, react, or use the whiteboard.</a>
+    </div>
+
+    <!-- Breakout Room Return Banner (shown when inside breakout room) -->
+    <div id="breakoutBanner" class="hidden bg-teal-900/40 border-b border-teal-500/40 px-4 py-2 text-xs sm:text-sm text-teal-200 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+            <span class="font-bold text-teal-300">Breakout Room Active:</span>
+            <span id="breakoutBannerTitle" class="text-white"></span>
+        </div>
+        <button id="btnReturnToMain" type="button" class="px-3 py-1 bg-teal-600 hover:bg-teal-500 text-white rounded text-xs font-semibold transition shadow">
+            Return to Main Room
+        </button>
     </div>
 
     <!-- Main Content -->
@@ -587,6 +604,16 @@
                         <!-- Closed Captions Button (GSoC 2027) -->
                         <button id="btnToggleCaptions" type="button" class="w-10 h-10 rounded-full bg-[#2b2c2f] hover:bg-white/10 text-white flex items-center justify-center border border-gray-700/60 transition text-xs font-bold font-mono tracking-wider" title="Turn on captions (CC)">
                             CC
+                        </button>
+
+                        <!-- Searchable Transcripts Button -->
+                        <button id="btnTranscripts" type="button" class="w-10 h-10 rounded-full bg-[#2b2c2f] hover:bg-white/10 text-white flex items-center justify-center border border-gray-700/60 transition" title="Searchable transcripts & captions">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                        </button>
+
+                        <!-- Breakout Rooms Button (Instructor Only) -->
+                        <button id="btnBreakouts" type="button" class="hidden w-10 h-10 rounded-full bg-[#2b2c2f] hover:bg-white/10 text-white flex items-center justify-center border border-gray-700/60 transition" title="Breakout Rooms">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm0 9h7v7H4v-7zm9-9h7v7h-7V4zm0 9h7v7h-7v-7z"/></svg>
                         </button>
 
                         <!-- Raise Hand Button -->
@@ -1800,19 +1827,105 @@
     let captionRecognizer = null;
     let captionTimeout = null;
     let activeSpotlightPeerId = null;
+    const sessionTranscripts = [];
+    let audioRecorder = null;
+    let pendingBreakoutRoomId = '';
+    let currentConnectionMode = 'full';
+    let highLossCount = 0;
+    let connectionMonitorTimer = null;
+
+    function appendTranscriptToUI(timeStr, speaker, text) {
+        const container = document.getElementById('transcriptLogList');
+        if (!container) return;
+        const emptyPlaceholder = container.querySelector('.text-center');
+        if (emptyPlaceholder) emptyPlaceholder.remove();
+
+        const row = document.createElement('div');
+        row.className = 'p-2.5 rounded-lg bg-gray-800/80 border border-gray-700/60 flex flex-col gap-1 text-xs';
+        row.innerHTML = `
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="font-bold text-teal-400">${escapeHtml(speaker)}</span>
+                <span class="text-[10px] text-gray-500">${escapeHtml(timeStr)}</span>
+            </div>
+            <div class="text-gray-100">${escapeHtml(text)}</div>
+        `;
+        container.appendChild(row);
+        container.scrollTop = container.scrollHeight;
+    }
 
     function showLiveCaption(speaker, text) {
+        if (!text) return;
         const banner = document.getElementById('liveCaptionBanner');
         const spk = document.getElementById('captionSpeaker');
         const txt = document.getElementById('captionText');
-        if (!banner || !txt) return;
-        if (spk) spk.textContent = speaker ? speaker + ':' : '';
-        txt.textContent = text;
-        banner.classList.remove('hidden');
-        if (captionTimeout) clearTimeout(captionTimeout);
-        captionTimeout = setTimeout(() => {
-            banner.classList.add('hidden');
-        }, 4000);
+        if (txt) {
+            if (spk) spk.textContent = speaker ? speaker + ':' : '';
+            txt.textContent = text;
+            if (banner) {
+                banner.classList.remove('hidden');
+                if (captionTimeout) clearTimeout(captionTimeout);
+                captionTimeout = setTimeout(() => {
+                    banner.classList.add('hidden');
+                }, 4000);
+            }
+        }
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        sessionTranscripts.push({ speaker: speaker || 'Participant', text, time: timeStr });
+        appendTranscriptToUI(timeStr, speaker || 'Participant', text);
+    }
+
+    function startVoxBridgeSTT() {
+        if (!localStream || audioRecorder) return;
+        try {
+            const audioTracks = localStream.getAudioTracks();
+            if (!audioTracks || audioTracks.length === 0) return;
+            const audioOnlyStream = new MediaStream(audioTracks);
+            const mimeType = (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+                ? 'audio/webm;codecs=opus'
+                : ((typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/ogg')) ? 'audio/ogg' : '');
+            audioRecorder = mimeType ? new MediaRecorder(audioOnlyStream, { mimeType }) : new MediaRecorder(audioOnlyStream);
+            audioRecorder.ondataavailable = async (e) => {
+                if (!isCaptionsActive || !localMediaState.mic_enabled || e.data.size < 500) return;
+                try {
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const base64Audio = (reader.result || '').split(',')[1];
+                        if (!base64Audio) return;
+                        const res = await fetch(`/api/classroom/${encodeURIComponent(roomId)}/caption`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                audio: base64Audio,
+                                participant_id: myParticipantId,
+                                display_name: myDisplayName,
+                                session_id: mySessionId
+                            })
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            const transcribed = json?.data?.text || json?.text;
+                            if (transcribed && transcribed.trim()) {
+                                showLiveCaption(myDisplayName, transcribed.trim());
+                            }
+                        }
+                    };
+                    reader.readAsDataURL(e.data);
+                } catch (err) {
+                    console.warn('[VoxBridge STT] slice send failed:', err);
+                }
+            };
+            audioRecorder.start(3000);
+        } catch (err) {
+            console.warn('[VoxBridge STT] MediaRecorder init error:', err);
+        }
+    }
+
+    function stopVoxBridgeSTT() {
+        if (audioRecorder) {
+            try { audioRecorder.stop(); } catch (_) {}
+            audioRecorder = null;
+        }
     }
 
     function toggleCaptions() {
@@ -1853,20 +1966,226 @@
                     captionRecognizer.start();
                     showToast('Live captions enabled (listening)', 'info');
                 } catch (e) {
-                    showToast('Speech recognition: ' + e.message, 'warning');
+                    startVoxBridgeSTT();
+                    showToast('Live captions enabled via VoxBridge STT', 'info');
                 }
             } else {
-                showToast('Speech recognition unavailable in browser. Captions in receive mode.', 'info');
+                startVoxBridgeSTT();
+                showToast('Live captions enabled via VoxBridge AI speech recognition.', 'info');
             }
         } else {
             if (captionRecognizer) {
                 try { captionRecognizer.stop(); } catch (_) {}
                 captionRecognizer = null;
             }
+            stopVoxBridgeSTT();
             const banner = document.getElementById('liveCaptionBanner');
             if (banner) banner.classList.add('hidden');
             showToast('Live captions disabled', 'info');
         }
+    }
+
+    function setConnectionMode(mode, notifyServer = true) {
+        if (mode !== 'full' && mode !== 'audio_only' && mode !== 'captions_only') mode = 'full';
+        currentConnectionMode = mode;
+        const dot = document.getElementById('networkModeDot');
+        const txt = document.getElementById('networkModeText');
+
+        if (mode === 'full') {
+            if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+            if (txt) txt.textContent = 'Full HD';
+            if (localStream) {
+                localStream.getVideoTracks().forEach(t => { t.enabled = localMediaState.cam_enabled; });
+                localStream.getAudioTracks().forEach(t => { t.enabled = localMediaState.mic_enabled; });
+            }
+            document.querySelectorAll('video[data-seat-video], video[data-remote-video]').forEach(v => {
+                v.style.display = '';
+            });
+        } else if (mode === 'audio_only') {
+            if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            if (txt) txt.textContent = 'Audio Only';
+            if (localStream) {
+                localStream.getVideoTracks().forEach(t => { t.enabled = false; });
+                localStream.getAudioTracks().forEach(t => { t.enabled = localMediaState.mic_enabled; });
+            }
+            document.querySelectorAll('video[data-seat-video], video[data-remote-video]').forEach(v => {
+                v.style.display = 'none';
+            });
+        } else if (mode === 'captions_only') {
+            if (dot) dot.className = 'w-2 h-2 rounded-full bg-cyan-400';
+            if (txt) txt.textContent = 'Captions Only';
+            if (localStream) {
+                localStream.getVideoTracks().forEach(t => { t.enabled = false; });
+                localStream.getAudioTracks().forEach(t => { t.enabled = false; });
+            }
+            document.querySelectorAll('video[data-seat-video], video[data-remote-video]').forEach(v => {
+                v.style.display = 'none';
+            });
+            if (!isCaptionsActive) {
+                toggleCaptions();
+            }
+        }
+
+        if (notifyServer) {
+            wsSend({ type: 'connection_mode', mode });
+        }
+    }
+
+    function startNetworkQualityMonitor() {
+        if (connectionMonitorTimer) clearInterval(connectionMonitorTimer);
+        connectionMonitorTimer = setInterval(async () => {
+            const pcs = Object.values(peerConnections);
+            if (pcs.length === 0) return;
+            let totalLoss = 0;
+            let totalReceived = 0;
+            let maxRtt = 0;
+
+            for (const pc of pcs) {
+                if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') continue;
+                try {
+                    const stats = await pc.getStats();
+                    stats.forEach(report => {
+                        if (report.type === 'inbound-rtp') {
+                            totalLoss += (report.packetsLost || 0);
+                            totalReceived += (report.packetsReceived || 0);
+                        }
+                        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                            if (report.currentRoundTripTime) {
+                                maxRtt = Math.max(maxRtt, report.currentRoundTripTime);
+                            }
+                        }
+                    });
+                } catch (_) {}
+            }
+
+            const totalPackets = totalLoss + totalReceived;
+            const lossRate = totalPackets > 50 ? (totalLoss / totalPackets) : 0;
+
+            if (lossRate > 0.20 || maxRtt > 0.700) {
+                highLossCount++;
+                if (highLossCount >= 2) {
+                    if (currentConnectionMode === 'full') {
+                        setConnectionMode('audio_only');
+                        showToast('Poor connection: switched to Audio-Only mode to save bandwidth.', 'warning');
+                    } else if (currentConnectionMode === 'audio_only' && (lossRate > 0.40 || maxRtt > 1.200)) {
+                        setConnectionMode('captions_only');
+                        showToast('Low bandwidth: switched to Captions-Only mode.', 'warning');
+                    }
+                }
+            } else if (lossRate < 0.05 && maxRtt < 0.250 && maxRtt > 0) {
+                highLossCount = 0;
+            }
+        }, 5000);
+    }
+
+    function openBreakoutModal() {
+        const modal = document.getElementById('breakoutModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+    function closeBreakoutModal() {
+        const modal = document.getElementById('breakoutModal');
+        if (modal) modal.classList.add('hidden');
+    }
+    function handleCreateBreakouts() {
+        const countInput = document.getElementById('breakoutCountInput');
+        const count = parseInt(countInput ? countInput.value : '2', 10) || 2;
+        wsSend({
+            type: 'create_breakouts',
+            count: Math.min(Math.max(count, 1), 6)
+        });
+        showToast(`Creating ${count} breakout rooms...`, 'info');
+        closeBreakoutModal();
+    }
+    function handleCloseBreakouts() {
+        wsSend({ type: 'close_breakouts' });
+        showToast('Closing breakout rooms...', 'info');
+        closeBreakoutModal();
+    }
+    function handleBroadcastToBreakouts() {
+        const msgInput = document.getElementById('breakoutBroadcastInput');
+        const msg = msgInput ? msgInput.value.trim() : '';
+        if (!msg) return;
+        wsSend({
+            type: 'broadcast_to_breakouts',
+            message: msg
+        });
+        if (msgInput) msgInput.value = '';
+        showToast('Announcement sent to all breakout rooms', 'success');
+    }
+
+    function openTranscriptModal() {
+        const modal = document.getElementById('transcriptModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            renderTranscriptLog();
+            fetchPersistedTranscripts();
+        }
+    }
+    function closeTranscriptModal() {
+        const modal = document.getElementById('transcriptModal');
+        if (modal) modal.classList.add('hidden');
+    }
+    async function fetchPersistedTranscripts() {
+        try {
+            const res = await fetch(`/api/classroom/${encodeURIComponent(roomId)}/transcripts`);
+            if (res.ok) {
+                const data = await res.json();
+                const list = data?.data?.transcripts || data?.transcripts || [];
+                if (list.length > 0) {
+                    list.forEach(item => {
+                        if (!sessionTranscripts.some(t => t.text === item.text && t.speaker === item.display_name)) {
+                            const d = item.timestamp ? new Date(item.timestamp) : new Date();
+                            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            sessionTranscripts.push({
+                                speaker: item.display_name,
+                                text: item.text,
+                                time: timeStr
+                            });
+                        }
+                    });
+                    renderTranscriptLog();
+                }
+            }
+        } catch (e) {
+            console.warn('[Transcripts] fetch error:', e);
+        }
+    }
+    function renderTranscriptLog(filterQuery = '') {
+        const container = document.getElementById('transcriptLogList');
+        if (!container) return;
+        const q = (filterQuery || '').toLowerCase().trim();
+        const filtered = q ? sessionTranscripts.filter(t => t.text.toLowerCase().includes(q) || t.speaker.toLowerCase().includes(q)) : sessionTranscripts;
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="text-center text-xs text-gray-500 py-10">${q ? 'No matching transcripts found.' : 'No captions recorded yet.'}</div>`;
+            return;
+        }
+        container.innerHTML = filtered.map(t => `
+            <div class="p-2.5 rounded-lg bg-gray-800/80 border border-gray-700/60 flex flex-col gap-1 text-xs">
+                <div class="flex items-center justify-between text-gray-400">
+                    <span class="font-bold text-teal-400">${escapeHtml(t.speaker)}</span>
+                    <span class="text-[10px] text-gray-500">${escapeHtml(t.time)}</span>
+                </div>
+                <div class="text-gray-100">${escapeHtml(t.text)}</div>
+            </div>
+        `).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+    function exportTranscriptTxt() {
+        if (sessionTranscripts.length === 0) {
+            showToast('No transcript entries to export', 'warning');
+            return;
+        }
+        const lines = sessionTranscripts.map(t => `[${t.time}] ${t.speaker}: ${t.text}`);
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `classroom-transcript-${roomId}-${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Transcript downloaded', 'success');
     }
 
     async function toggleScreenShare() {
@@ -2228,6 +2547,91 @@
     if (btnToggleScreenShare) btnToggleScreenShare.addEventListener('click', toggleScreenShare);
     const btnToggleCaptions = document.getElementById('btnToggleCaptions');
     if (btnToggleCaptions) btnToggleCaptions.addEventListener('click', toggleCaptions);
+
+    // Breakouts
+    const btnBreakouts = document.getElementById('btnBreakouts');
+    const btnCloseBreakoutModal = document.getElementById('btnCloseBreakoutModal');
+    const btnCreateBreakoutsSubmit = document.getElementById('btnCreateBreakoutsSubmit');
+    const btnCloseBreakoutsSubmit = document.getElementById('btnCloseBreakoutsSubmit');
+    const btnBroadcastBreakoutsSubmit = document.getElementById('btnBroadcastBreakoutsSubmit');
+    const btnDismissBreakoutInvite = document.getElementById('btnDismissBreakoutInvite');
+    const btnJoinBreakoutSubmit = document.getElementById('btnJoinBreakoutSubmit');
+    const btnReturnToMain = document.getElementById('btnReturnToMain');
+
+    if (btnBreakouts) btnBreakouts.addEventListener('click', openBreakoutModal);
+    if (btnCloseBreakoutModal) btnCloseBreakoutModal.addEventListener('click', closeBreakoutModal);
+    if (btnCreateBreakoutsSubmit) btnCreateBreakoutsSubmit.addEventListener('click', handleCreateBreakouts);
+    if (btnCloseBreakoutsSubmit) btnCloseBreakoutsSubmit.addEventListener('click', handleCloseBreakouts);
+    if (btnBroadcastBreakoutsSubmit) btnBroadcastBreakoutsSubmit.addEventListener('click', handleBroadcastToBreakouts);
+    if (btnDismissBreakoutInvite) btnDismissBreakoutInvite.addEventListener('click', () => {
+        const modal = document.getElementById('breakoutInviteModal');
+        if (modal) modal.classList.add('hidden');
+    });
+    if (btnJoinBreakoutSubmit) btnJoinBreakoutSubmit.addEventListener('click', () => {
+        if (pendingBreakoutRoomId) {
+            window.location.search = `?room=${encodeURIComponent(pendingBreakoutRoomId)}&autojoin=1`;
+        }
+    });
+    if (btnReturnToMain) {
+        btnReturnToMain.addEventListener('click', () => {
+            const parent = roomId.split(':breakout:')[0] || 'lobby';
+            window.location.search = `?room=${encodeURIComponent(parent)}&autojoin=1`;
+        });
+    }
+
+    // Transcripts
+    const btnTranscripts = document.getElementById('btnTranscripts');
+    const btnCloseTranscriptModal = document.getElementById('btnCloseTranscriptModal');
+    const btnCloseTranscriptModalBottom = document.getElementById('btnCloseTranscriptModalBottom');
+    const transcriptSearchInput = document.getElementById('transcriptSearchInput');
+    const btnExportTranscriptTxt = document.getElementById('btnExportTranscriptTxt');
+
+    if (btnTranscripts) btnTranscripts.addEventListener('click', openTranscriptModal);
+    if (btnCloseTranscriptModal) btnCloseTranscriptModal.addEventListener('click', closeTranscriptModal);
+    if (btnCloseTranscriptModalBottom) btnCloseTranscriptModalBottom.addEventListener('click', closeTranscriptModal);
+    if (transcriptSearchInput) {
+        transcriptSearchInput.addEventListener('input', (e) => {
+            renderTranscriptLog(e.target.value);
+        });
+    }
+    if (btnExportTranscriptTxt) btnExportTranscriptTxt.addEventListener('click', exportTranscriptTxt);
+
+    // Network Mode Selector
+    const btnNetworkMode = document.getElementById('btnNetworkMode');
+    const networkModeModal = document.getElementById('networkModeModal');
+    const btnCloseNetworkModal = document.getElementById('btnCloseNetworkModal');
+    const btnModeFull = document.getElementById('btnModeFull');
+    const btnModeAudio = document.getElementById('btnModeAudio');
+    const btnModeCaptions = document.getElementById('btnModeCaptions');
+
+    if (btnNetworkMode) {
+        btnNetworkMode.addEventListener('click', () => {
+            if (networkModeModal) networkModeModal.classList.remove('hidden');
+        });
+    }
+    if (btnCloseNetworkModal) {
+        btnCloseNetworkModal.addEventListener('click', () => {
+            if (networkModeModal) networkModeModal.classList.add('hidden');
+        });
+    }
+    if (btnModeFull) {
+        btnModeFull.addEventListener('click', () => {
+            setConnectionMode('full');
+            if (networkModeModal) networkModeModal.classList.add('hidden');
+        });
+    }
+    if (btnModeAudio) {
+        btnModeAudio.addEventListener('click', () => {
+            setConnectionMode('audio_only');
+            if (networkModeModal) networkModeModal.classList.add('hidden');
+        });
+    }
+    if (btnModeCaptions) {
+        btnModeCaptions.addEventListener('click', () => {
+            setConnectionMode('captions_only');
+            if (networkModeModal) networkModeModal.classList.add('hidden');
+        });
+    }
 
     if (btnMicOptions) {
         btnMicOptions.addEventListener('click', (e) => {
@@ -2748,6 +3152,17 @@
                 if (data.display_name) myDisplayName = data.display_name;
                 setInteractionMode(data.can_interact !== false);
                 myIsInstructor  = Boolean(data.is_instructor);
+                if (data.is_breakout || roomId.includes(':breakout:')) {
+                    const banner = document.getElementById('breakoutBanner');
+                    const bTitle = document.getElementById('breakoutBannerTitle');
+                    if (banner) banner.classList.remove('hidden');
+                    if (bTitle) bTitle.textContent = roomId.split(':breakout:')[1] ? `Room ${roomId.split(':breakout:')[1]}` : 'Active';
+                }
+                if (data.is_instructor) {
+                    const btnB = document.getElementById('btnBreakouts');
+                    if (btnB) btnB.classList.remove('hidden');
+                }
+                startNetworkQualityMonitor();
                 const strMyId = String(myParticipantId);
                 const curPres = getPresence(strMyId) || {};
                 setPresence(strMyId, {
@@ -2846,6 +3261,50 @@
 
             case 'live_caption': {
                 showLiveCaption(data.display_name || 'Participant', data.text);
+                break;
+            }
+
+            case 'breakout_rooms_created': {
+                showToast('Breakout rooms have started', 'info');
+                const rooms = data.rooms || [];
+                const myBreakout = rooms.find(r => (r.participants || []).includes(myParticipantId));
+                if (myBreakout) {
+                    pendingBreakoutRoomId = myBreakout.breakout_room_id;
+                    const inviteText = document.getElementById('breakoutInviteText');
+                    if (inviteText) inviteText.textContent = `You have been assigned to ${myBreakout.title}.`;
+                    const inviteModal = document.getElementById('breakoutInviteModal');
+                    if (inviteModal) inviteModal.classList.remove('hidden');
+                } else if (myIsInstructor) {
+                    showToast('Breakout rooms created. You can manage them anytime from the breakout menu.', 'info');
+                }
+                break;
+            }
+
+            case 'breakout_rooms_closed': {
+                showToast('Breakout rooms closed by instructor. Returning to main room...', 'warning');
+                const parentRoom = data.parent_room_id || roomId.split(':breakout:')[0];
+                if (roomId.includes(':breakout:')) {
+                    setTimeout(() => {
+                        window.location.search = `?room=${encodeURIComponent(parentRoom)}&autojoin=1`;
+                    }, 1500);
+                }
+                break;
+            }
+
+            case 'breakout_announcement': {
+                showToast(`[Announcement] ${data.message}`, 'info');
+                break;
+            }
+
+            case 'connection_mode_changed': {
+                const pid = data.participant_id;
+                const mode = data.mode || 'full';
+                if (pid === myParticipantId) {
+                    setConnectionMode(mode, false);
+                } else if (participants[pid]) {
+                    participants[pid].connection_mode = mode;
+                    renderParticipantsList();
+                }
                 break;
             }
 
@@ -3641,6 +4100,133 @@
     </div>
     <div class="flex-1 flex items-center justify-center p-2 min-h-0">
         <video id="modalPresentationVideo" autoplay playsinline muted class="max-w-full max-h-full rounded-lg shadow-2xl object-contain"></video>
+    </div>
+</div>
+
+<!-- BREAKOUT ROOMS MANAGEMENT MODAL (Instructor) -->
+<div id="breakoutModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col text-white">
+        <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-teal-400"></span>
+                <h3 class="font-bold text-sm text-gray-100">Breakout Rooms</h3>
+            </div>
+            <button id="btnCloseBreakoutModal" type="button" class="text-gray-400 hover:text-white transition">✕</button>
+        </div>
+        <div class="p-5 space-y-4 text-xs">
+            <div>
+                <label for="breakoutCountInput" class="block font-medium text-gray-300 mb-1">Number of Rooms</label>
+                <div class="flex gap-2">
+                    <input id="breakoutCountInput" type="number" min="2" max="6" value="2" class="w-20 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-center focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                    <button id="btnCreateBreakoutsSubmit" type="button" class="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition shadow">
+                        Create & Split
+                    </button>
+                </div>
+            </div>
+            <div class="pt-3 border-t border-gray-800">
+                <label for="breakoutBroadcastInput" class="block font-medium text-gray-300 mb-1">Broadcast to All Breakouts</label>
+                <div class="flex gap-2">
+                    <input id="breakoutBroadcastInput" type="text" placeholder="e.g. 2 minutes remaining!" class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                    <button id="btnBroadcastBreakoutsSubmit" type="button" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-lg transition">
+                        Send
+                    </button>
+                </div>
+            </div>
+            <div class="pt-2">
+                <button id="btnCloseBreakoutsSubmit" type="button" class="w-full py-2 bg-red-600/80 hover:bg-red-600 text-white font-semibold rounded-lg transition shadow">
+                    Close All Breakouts & Return
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BREAKOUT INVITATION MODAL (Student) -->
+<div id="breakoutInviteModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-teal-500/50 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 text-center text-white">
+        <div class="w-12 h-12 mx-auto rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center mb-3">
+            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm0 9h7v7H4v-7zm9-9h7v7h-7V4zm0 9h7v7h-7v-7z"/></svg>
+        </div>
+        <h3 class="font-bold text-base text-gray-100 mb-1">Breakout Room Ready</h3>
+        <p id="breakoutInviteText" class="text-xs text-gray-400 mb-4">You have been assigned to Breakout Room 1.</p>
+        <div class="flex gap-2">
+            <button id="btnDismissBreakoutInvite" type="button" class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold transition">
+                Later
+            </button>
+            <button id="btnJoinBreakoutSubmit" type="button" class="flex-1 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold transition shadow">
+                Join Now
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- SEARCHABLE TRANSCRIPTS & LIVE CAPTIONS MODAL -->
+<div id="transcriptModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-xl h-[520px] overflow-hidden shadow-2xl flex flex-col text-white">
+        <div class="px-5 py-3.5 border-b border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-teal-400 fill-current" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                <h3 class="font-bold text-sm text-gray-100">Classroom Transcripts & Captions</h3>
+            </div>
+            <button id="btnCloseTranscriptModal" type="button" class="text-gray-400 hover:text-white transition">✕</button>
+        </div>
+        <div class="p-3 border-b border-gray-800">
+            <div class="relative">
+                <input id="transcriptSearchInput" type="text" placeholder="Search transcript by speaker or keywords…" class="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-teal-500" />
+                <svg class="w-4 h-4 text-gray-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+        </div>
+        <div id="transcriptLogList" class="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-0 bg-gray-950/40">
+            <div class="text-center text-xs text-gray-500 py-10">No captions recorded yet.</div>
+        </div>
+        <div class="px-5 py-3 border-t border-gray-800 flex items-center justify-between bg-gray-900/90">
+            <button id="btnExportTranscriptTxt" type="button" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-teal-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                <span>↓</span> Download Transcript (.txt)
+            </button>
+            <button id="btnCloseTranscriptModalBottom" type="button" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium transition">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- CONNECTION QUALITY & DEGRADATION MODAL -->
+<div id="networkModeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 text-white">
+        <h3 class="font-bold text-sm text-gray-100 mb-3 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            Connection & Bandwidth Mode
+        </h3>
+        <p class="text-xs text-gray-400 mb-4">Choose quality mode or allow automatic degradation for slow networks.</p>
+        <div class="space-y-2 text-xs">
+            <button id="btnModeFull" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
+                <div>
+                    <div class="font-bold text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Full HD
+                    </div>
+                    <div class="text-[11px] text-gray-400">Video + Audio (standard high quality)</div>
+                </div>
+            </button>
+            <button id="btnModeAudio" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
+                <div>
+                    <div class="font-bold text-amber-300 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-400"></span> Audio Only
+                    </div>
+                    <div class="text-[11px] text-gray-400">Disables camera & video to save bandwidth</div>
+                </div>
+            </button>
+            <button id="btnModeCaptions" type="button" class="w-full p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 flex items-center justify-between text-left transition">
+                <div>
+                    <div class="font-bold text-cyan-300 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Captions Only
+                    </div>
+                    <div class="text-[11px] text-gray-400">Ultra-low bandwidth (whiteboard + subtitles)</div>
+                </div>
+            </button>
+        </div>
+        <button id="btnCloseNetworkModal" type="button" class="w-full mt-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold transition">
+            Close
+        </button>
     </div>
 </div>
 

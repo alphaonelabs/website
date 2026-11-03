@@ -6,12 +6,13 @@ All WebSocket interactions use unittest.mock.MagicMock so no real runtime
 primitives are needed.
 """
 
+import base64
 import json
 from types import SimpleNamespace
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 
-from tests.helpers import load_worker, make_env
+from tests.helpers import load_worker, make_env, MockRequest, MockRow, make_stmt, MockDB
 
 worker = load_worker()
 
@@ -535,7 +536,9 @@ class TestClassroomDOSignaling:
         """Helper to instantiate a ClassroomDO with mocked ctx and env."""
         ctx = _make_ctx()
         env = make_env()
-        return worker.ClassroomDO(ctx, env)
+        do = worker.ClassroomDO(ctx, env)
+        do.room_id = "lobby"
+        return do
 
     def _add_session(self, do, pid, dname="User", sid=None, can_interact=True):
         """Helper to add a session mock to ClassroomDO."""
@@ -1011,6 +1014,117 @@ class TestClassroomDOSignaling:
         assert do.sessions["sid-alice"].get("seat_id") == "seat-15"
 
     @pytest.mark.asyncio
+    async def test_create_and_close_breakout_rooms(self):
+        """Verify instructor can create and close breakout rooms, while student cannot."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_teacher = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+
+        storage_put = AsyncMock()
+        storage_del = AsyncMock()
+        do.ctx.storage = SimpleNamespace(put=storage_put, delete=storage_del)
+
+        # Alice (student) attempts to create breakout rooms -> rejected
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "create_breakouts",
+            "count": 2,
+        }))
+        assert do.breakout_rooms == []
+
+        # Teacher (instructor) creates breakout rooms
+        ws_alice.send.reset_mock()
+        await do.on_webSocketMessage(ws_teacher, json.dumps({
+            "type": "create_breakouts",
+            "count": 3,
+        }))
+        assert len(do.breakout_rooms) == 3
+        assert do.breakout_rooms[0]["breakout_room_id"] == f"{do.room_id}:breakout:1"
+
+        calls = [json.loads(c[0][0]) for c in ws_alice.send.call_args_list if c[0]]
+        created_msg = next((c for c in calls if c.get("type") == "breakout_rooms_created"), None)
+        assert created_msg is not None
+        assert len(created_msg["rooms"]) == 3
+
+        # Teacher closes breakout rooms
+        ws_alice.send.reset_mock()
+        await do.on_webSocketMessage(ws_teacher, json.dumps({
+            "type": "close_breakouts",
+        }))
+        assert do.breakout_rooms == []
+        storage_del.assert_called_once_with("breakout_rooms")
+
+        calls = [json.loads(c[0][0]) for c in ws_alice.send.call_args_list if c[0]]
+        closed_msg = next((c for c in calls if c.get("type") == "breakout_rooms_closed"), None)
+        assert closed_msg is not None
+
+    @pytest.mark.asyncio
+    async def test_breakout_announcement_broadcast(self):
+        """Verify instructor can broadcast announcements across breakout rooms."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_teacher = self._add_session(do, "teacher", "Teacher")
+        do.sessions["sid-teacher"]["is_instructor"] = True
+
+        ws_alice.send.reset_mock()
+        await do.on_webSocketMessage(ws_teacher, json.dumps({
+            "type": "broadcast_to_breakouts",
+            "message": "Class resuming in 2 minutes!",
+        }))
+
+        calls = [json.loads(c[0][0]) for c in ws_alice.send.call_args_list if c[0]]
+        ann_msg = next((c for c in calls if c.get("type") == "breakout_announcement"), None)
+        assert ann_msg is not None
+        assert ann_msg["message"] == "Class resuming in 2 minutes!"
+
+    @pytest.mark.asyncio
+    async def test_connection_mode_changed_broadcast(self):
+        """Verify changing connection mode updates session and broadcasts to room."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_bob = self._add_session(do, "bob", "Bob")
+
+        ws_bob.send.reset_mock()
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "connection_mode",
+            "mode": "audio_only",
+        }))
+
+        assert do.sessions["sid-alice"]["connection_mode"] == "audio_only"
+        calls = [json.loads(c[0][0]) for c in ws_bob.send.call_args_list if c[0]]
+        mode_msg = next((c for c in calls if c.get("type") == "connection_mode_changed"), None)
+        assert mode_msg is not None
+        assert mode_msg["participant_id"] == "alice"
+        assert mode_msg["mode"] == "audio_only"
+
+    @pytest.mark.asyncio
+    async def test_live_caption_persists_to_storage_and_d1(self):
+        """Verify final live captions are broadcast and persisted to storage and D1."""
+        do = self._make_classroom_do()
+        ws_alice = self._add_session(do, "alice", "Alice")
+        ws_bob = self._add_session(do, "bob", "Bob")
+
+        storage_put = AsyncMock()
+        do.ctx.storage = SimpleNamespace(put=storage_put)
+
+        ws_bob.send.reset_mock()
+        await do.on_webSocketMessage(ws_alice, json.dumps({
+            "type": "live_caption",
+            "text": "Hello world, welcome to class",
+            "is_final": True,
+        }))
+
+        calls = [json.loads(c[0][0]) for c in ws_bob.send.call_args_list if c[0]]
+        cap_msg = next((c for c in calls if c.get("type") == "live_caption"), None)
+        assert cap_msg is not None
+        assert cap_msg["text"] == "Hello world, welcome to class"
+        assert cap_msg["is_final"] is True
+
+        assert len(do.transcripts) == 1
+        assert do.transcripts[0]["text"] == "Hello world, welcome to class"
+        storage_put.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_presence_do_persist_user_attachments_keeps_is_authenticated(self):
         """Verify PresenceDO._persist_user_attachments preserves is_authenticated flag."""
         do = worker.PresenceDO.__new__(worker.PresenceDO)
@@ -1029,3 +1143,62 @@ class TestClassroomDOSignaling:
         ws.serializeAttachment.assert_called_once()
         saved = json.loads(ws.serializeAttachment.call_args[0][0])
         assert saved["is_authenticated"] is True
+
+
+@pytest.mark.asyncio
+async def test_api_classroom_transcripts_search():
+    """Verify GET /api/classroom/:room_id/transcripts returns filtered transcripts."""
+    row1 = MockRow(id="t1", room_id="lobby", session_id="s1", participant_id="p1", display_name="Alice", text="Introduction to Physics", timestamp="2026-11-03T10:00:00", source="live")
+    stmt = make_stmt(all_results=[row1])
+    env = make_env(db=MockDB([stmt]))
+
+    req = MockRequest(method="GET", url="http://localhost/api/classroom/lobby/transcripts?q=Physics")
+    res = await worker.api_classroom_transcripts(req, env, "lobby")
+    assert res.status == 200
+    body = json.loads(res.body)
+    assert body["success"] is True
+    assert len(body["data"]["transcripts"]) == 1
+    assert body["data"]["transcripts"][0]["text"] == "Introduction to Physics"
+
+
+@pytest.mark.asyncio
+async def test_api_classroom_breakouts_list():
+    """Verify GET /api/classroom/:room_id/breakouts returns list of breakout rooms."""
+    row = MockRow(id="b1", parent_room_id="lobby", breakout_room_id="lobby:breakout:1", title="Team Alpha", created_at="2026-11-03T10:00:00")
+    stmt = make_stmt(all_results=[row])
+    env = make_env(db=MockDB([stmt]))
+
+    req = MockRequest(method="GET", url="http://localhost/api/classroom/lobby/breakouts")
+    res = await worker.api_classroom_breakouts(req, env, "lobby")
+    assert res.status == 200
+    body = json.loads(res.body)
+    assert body["success"] is True
+    assert len(body["data"]["breakouts"]) == 1
+    assert body["data"]["breakouts"][0]["breakout_room_id"] == "lobby:breakout:1"
+
+
+@pytest.mark.asyncio
+async def test_api_classroom_caption_transcribe():
+    """Verify POST /api/classroom/:room_id/caption accepts audio and returns transcript."""
+    env = make_env()
+    env.AI = MagicMock()
+    env.AI.run = AsyncMock(return_value={"text": "Transcribed speech from audio snippet"})
+
+    audio_bytes = b"RIFFmockwavcontent"
+    b64_audio = base64.b64encode(audio_bytes).decode("ascii")
+
+    req = MockRequest(
+        method="POST",
+        url="http://localhost/api/classroom/lobby/caption",
+        body=json.dumps({
+            "audio": b64_audio,
+            "participant_id": "alice",
+            "display_name": "Alice",
+        }),
+    )
+    res = await worker.api_classroom_caption(req, env, "lobby")
+    assert res.status == 200
+    body = json.loads(res.body)
+    assert body["success"] is True
+    assert body["data"]["text"] == "Transcribed speech from audio snippet"
+    assert body["data"]["room_id"] == "lobby"

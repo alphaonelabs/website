@@ -35,6 +35,8 @@ class MockRequest:
         self.method = method
         self.url = url
         self.headers = dict(headers or {})
+        if "CF-Connecting-IP" not in self.headers:
+            self.headers["CF-Connecting-IP"] = "127.0.0.1"
         self._body = body
 
     async def text(self):
