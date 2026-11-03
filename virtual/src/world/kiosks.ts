@@ -68,6 +68,7 @@ const BODY_H = 2.5;
 const BODY_D = 0.3;
 const SIGN = 1.16;
 
+/** Returns the enrollment label displayed on an activity kiosk sign. */
 function priceLabel(a: CampusActivity): string {
   if (isWaitlist(a)) return "WAITLIST";
   if (a.priceCents > 0) return `$${(a.priceCents / 100).toFixed(a.priceCents % 100 ? 2 : 0)}`;

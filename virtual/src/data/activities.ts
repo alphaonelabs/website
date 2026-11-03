@@ -234,6 +234,7 @@ export function selectForCampus(
   return { hall: groups, study, hallHiddenCount: Math.max(0, rest.length - hallCount) };
 }
 
+/** Selects the most relevant published or waitlisted study groups for community kiosks. */
 export function selectCommunityItems(all: CampusActivity[], cap = 4): CampusActivity[] {
   return all
     .filter((a) => isStudyGroup(a) && (a.status === "published" || a.status === "waitlist"))

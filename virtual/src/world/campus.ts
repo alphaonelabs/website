@@ -204,6 +204,7 @@ interface BuildingSpec {
   subtitle: string;
 }
 
+/** Builds the campus geometry, landmarks, and routing destinations around the scene. */
 export function buildCampus(scene: THREE.Scene): Campus {
   const interactables: Interactable[] = [];
   const colliders: Box2[] = [];
@@ -449,7 +450,8 @@ export function buildCampus(scene: THREE.Scene): Campus {
   for (const [z, rot] of [[-4.6, 0], [4.6, Math.PI]] as [number, number][]) {
     studyRows.push({ header: { x: 23.8, z, rot }, slots: studyXs.map((x) => ({ x, z, rot })) });
   }
-  const hallMoreSlot: Slot = { x: -23.8, z: 18.6, rot: 0 };
+  // Keep the overflow kiosk in the open center aisle, away from row headers.
+  const hallMoreSlot: Slot = { x: -40, z: 0, rot: 0 };
 
   // ── Whiteboard on the plaza's north-east edge ─────────────────────────
   {

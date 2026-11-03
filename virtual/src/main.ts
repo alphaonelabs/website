@@ -3,6 +3,7 @@ import { isAuthenticated, logout } from "./auth";
 import {
   eyebrowFor,
   fetchActivities,
+  isLive,
   isWaitlist,
   learnUrl,
   selectCommunityItems,
@@ -20,6 +21,7 @@ import { createScene } from "./world/scene";
 import { loadBrandFont, setMaxAnisotropy } from "./world/text";
 import { applyTheme, detectTheme, watchTheme } from "./world/theme";
 
+/** Builds a campus destination for one of the teaching or community link kiosks. */
 function campusLinkDestination(
   id: string,
   eyebrow: string,
@@ -179,6 +181,12 @@ if (signedIn) {
   });
 }
 
+// Authentication can change in another tab; reload so hosted kiosks and sign-in
+// controls reflect the current session without waiting for an in-page action.
+window.addEventListener("storage", (event) => {
+  if (event.key === "edu_token") window.location.reload();
+});
+
 // ── Real activities from learn.alphaonelabs.com ──────────────────────────
 void fetchActivities().then(({ activities, source }) => {
   const { hall, study, hallHiddenCount } = selectForCampus(activities);
@@ -256,7 +264,8 @@ void fetchActivities().then(({ activities, source }) => {
     slot: campus.communitySlots[index],
     eyebrow: "COMMUNITY · STUDY GROUP",
     footer: activity.hostName ? `By ${activity.hostName}`.slice(0, 26) : "Learn community",
-    badge: "JOIN",
+    badge: isWaitlist(activity) ? "WAITLIST" : "JOIN",
+    live: isLive(activity),
   }));
   if (communityLinks.length === 0) {
     for (const [index, dest] of [
