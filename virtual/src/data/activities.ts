@@ -197,7 +197,7 @@ export function selectForCampus(
   all: CampusActivity[],
   hallCap = 40,
   studyCap = 8,
-): { hall: ActivityGroup[]; study: CampusActivity[] } {
+): { hall: ActivityGroup[]; study: CampusActivity[]; hallHiddenCount: number } {
   const visible = all.filter((a) => a.status === "published" || a.status === "waitlist");
   const byPriority = (a: CampusActivity, b: CampusActivity): number =>
     Number(isLive(b)) - Number(isLive(a)) ||
@@ -230,5 +230,19 @@ export function selectForCampus(
     budget -= take.length;
     groups.push({ label, items: take });
   }
-  return { hall: groups, study };
+  const hallCount = groups.reduce((total, group) => total + group.items.length, 0);
+  return { hall: groups, study, hallHiddenCount: Math.max(0, rest.length - hallCount) };
+}
+
+/** Selects the most relevant published or waitlisted study groups for community kiosks. */
+export function selectCommunityItems(all: CampusActivity[], cap = 4): CampusActivity[] {
+  return all
+    .filter((a) => isStudyGroup(a) && (a.status === "published" || a.status === "waitlist"))
+    .sort((a, b) =>
+      Number(isLive(b)) - Number(isLive(a)) ||
+      Number(b.featured) - Number(a.featured) ||
+      b.popularity - a.popularity ||
+      b.createdAt.localeCompare(a.createdAt),
+    )
+    .slice(0, cap);
 }

@@ -7,7 +7,7 @@ import {
   type ActivityGroup,
   type CampusActivity,
 } from "../data/activities";
-import type { Arrival, Box2 } from "../types";
+import type { Arrival, Box2, Destination } from "../types";
 import { footprint, yawToward, type Interactable, type LazySign, type Row, type Slot } from "./campus";
 import { kioskSignTexture, rowSignTexture } from "./text";
 import { materials } from "./theme";
@@ -54,11 +54,21 @@ export interface KioskBuild {
   arrivals: Map<string, Arrival>;
 }
 
+export interface LinkKioskPlacement {
+  dest: Destination;
+  slot: Slot;
+  eyebrow?: string;
+  footer?: string;
+  badge?: string;
+  live?: boolean;
+}
+
 const BODY_W = 1.3;
 const BODY_H = 2.5;
 const BODY_D = 0.3;
 const SIGN = 1.16;
 
+/** Returns the enrollment label displayed on an activity kiosk sign. */
 function priceLabel(a: CampusActivity): string {
   if (isWaitlist(a)) return "WAITLIST";
   if (a.priceCents > 0) return `$${(a.priceCents / 100).toFixed(a.priceCents % 100 ? 2 : 0)}`;
@@ -66,9 +76,14 @@ function priceLabel(a: CampusActivity): string {
 }
 
 /** Instanced kiosk bodies; only the sign faces are individual meshes. */
-export function buildKiosks(scene: THREE.Scene, kiosks: KioskPlacement[], headers: HeaderPlacement[]): KioskBuild {
+export function buildKiosks(
+  scene: THREE.Scene,
+  kiosks: KioskPlacement[],
+  headers: HeaderPlacement[],
+  links: LinkKioskPlacement[] = [],
+): KioskBuild {
   const out: KioskBuild = { interactables: [], colliders: [], signs: [], arrivals: new Map() };
-  const count = kiosks.length + headers.length;
+  const count = kiosks.length + headers.length + links.length;
   if (count === 0) return out;
 
   const body = new THREE.InstancedMesh(new THREE.BoxGeometry(BODY_W, BODY_H, BODY_D), materials.kiosk, count);
@@ -132,6 +147,34 @@ export function buildKiosks(scene: THREE.Scene, kiosks: KioskPlacement[], header
     scene.add(sign);
     out.signs.push({ mesh: sign, x: slot.x, z: slot.z, make: () => rowSignTexture(label, countText), eager: true });
     out.colliders.push(footprint(slot.x, slot.z, BODY_W + 0.3, 0.7, slot.rot));
+  });
+
+  links.forEach(({ dest, slot, eyebrow, footer, badge, live }, j) => {
+    place(kiosks.length + headers.length + j, slot, 1);
+    const fx = Math.sin(slot.rot);
+    const fz = Math.cos(slot.rot);
+    const sign = new THREE.Mesh(signGeom, materials.signBlank);
+    sign.position.set(slot.x + fx * (BODY_D / 2 + 0.01), 1.95, slot.z + fz * (BODY_D / 2 + 0.01));
+    sign.rotation.y = slot.rot;
+    scene.add(sign);
+
+    out.signs.push({
+      mesh: sign,
+      x: slot.x,
+      z: slot.z,
+      make: () => kioskSignTexture({
+        eyebrow: eyebrow || dest.eyebrow,
+        title: dest.title,
+        footer: footer || "Alpha One Labs",
+        badge,
+        live,
+      }),
+    });
+    out.colliders.push(footprint(slot.x, slot.z, BODY_W + 0.3, 0.7, slot.rot));
+    out.interactables.push({ dest, x: slot.x + fx * 1.3, z: slot.z + fz * 1.3, radius: 2.1 });
+    const ax = slot.x + fx * 3.2;
+    const az = slot.z + fz * 3.2;
+    out.arrivals.set(dest.id, { x: ax, z: az, yaw: yawToward(ax, az, slot.x, slot.z) });
   });
 
   for (const m of [body, base, cap]) {

@@ -3,8 +3,12 @@ import { isAuthenticated, logout } from "./auth";
 import {
   eyebrowFor,
   fetchActivities,
+  isLive,
   isWaitlist,
+  learnUrl,
+  selectCommunityItems,
   selectForCampus,
+  activityDestination,
   type CampusActivity,
 } from "./data/activities";
 import type { Arrival, Destination } from "./types";
@@ -12,10 +16,28 @@ import { Overlay, type SearchEntry } from "./ui/overlay";
 import { buildCampus, type Interactable, type LazySign } from "./world/campus";
 import { FirstPersonControls } from "./world/controls";
 import { Interactions } from "./world/interact";
-import { buildKiosks, layoutRows } from "./world/kiosks";
+import { buildKiosks, layoutRows, type LinkKioskPlacement } from "./world/kiosks";
 import { createScene } from "./world/scene";
 import { loadBrandFont, setMaxAnisotropy } from "./world/text";
 import { applyTheme, detectTheme, watchTheme } from "./world/theme";
+
+/** Builds a campus destination for one of the teaching or community link kiosks. */
+function campusLinkDestination(
+  id: string,
+  eyebrow: string,
+  title: string,
+  description: string,
+  links: [string, string][],
+): Destination {
+  return {
+    id,
+    kind: "zone",
+    eyebrow,
+    title,
+    description,
+    links: links.map(([label, path]) => ({ label, url: learnUrl(path) })),
+  };
+}
 
 const canvas = document.querySelector<HTMLCanvasElement>("#app")!;
 const { scene, camera, renderer, hemi, sun, grid } = createScene(canvas);
@@ -148,7 +170,8 @@ overlay.renderZones(
 );
 
 // Anyone can explore as a guest; signing in only matters for the learn activities.
-if (isAuthenticated()) {
+const signedIn = isAuthenticated();
+if (signedIn) {
   overlay.onLogout(() => logout());
   overlay.showLogout();
 } else {
@@ -158,12 +181,129 @@ if (isAuthenticated()) {
   });
 }
 
+// Authentication can change in another tab; reload so hosted kiosks and sign-in
+// controls reflect the current session without waiting for an in-page action.
+window.addEventListener("storage", (event) => {
+  if (event.key === "edu_token") window.location.reload();
+});
+
 // ── Real activities from learn.alphaonelabs.com ──────────────────────────
 void fetchActivities().then(({ activities, source }) => {
-  const { hall, study } = selectForCampus(activities);
+  const { hall, study, hallHiddenCount } = selectForCampus(activities);
   const hallLayout = layoutRows(hall, campus.hallRows);
   const studyLayout = layoutRows(study.length ? [{ label: "Live study groups", items: study }] : [], campus.studyRows);
-  const built = buildKiosks(scene, [...studyLayout.kiosks, ...hallLayout.kiosks], [...studyLayout.headers, ...hallLayout.headers]);
+
+  const teachLinks: LinkKioskPlacement[] = [
+    {
+      dest: campusLinkDestination(
+        "teach:create",
+        "Teach",
+        "Create an activity",
+        "Set up a course, workshop, event, or study group on learn.",
+        [["Create an activity", "/teach"]],
+      ),
+      slot: campus.teachSlots[0],
+      eyebrow: "TEACH · CREATE",
+      footer: "Learn teaching tools",
+    },
+    {
+      dest: campusLinkDestination(
+        "teach:study-group",
+        "Teach",
+        "Host a study group",
+        "Bring learners together around a shared topic and meeting schedule.",
+        [["Browse study group tools", "/study-groups"], ["Host on learn", "/teach"]],
+      ),
+      slot: campus.teachSlots[1],
+      eyebrow: "TEACH · GATHER",
+      footer: "Learn together",
+    },
+    {
+      dest: campusLinkDestination(
+        "teach:guide",
+        "Teach",
+        "Teaching guide",
+        "Explore learn's teaching options and start sharing what you know.",
+        [["Open teaching page", "/teach"]],
+      ),
+      slot: campus.teachSlots[2],
+      eyebrow: "TEACH · GUIDE",
+      footer: "Share your expertise",
+    },
+  ];
+  if (signedIn) {
+    teachLinks.push({
+      dest: campusLinkDestination(
+        "teach:hosted",
+        "Teach",
+        "Your hosted activities",
+        "Open your learn account to manage the activities and study groups you host.",
+        [["Open hosted activities", "/teach"]],
+      ),
+      slot: campus.teachSlots[3],
+      eyebrow: "TEACH · SIGNED IN",
+      footer: "Your learn account",
+    });
+  } else {
+    teachLinks[2] = {
+      ...teachLinks[2],
+      dest: campusLinkDestination(
+        "teach:guide",
+        "Teach",
+        "Teaching guide",
+        "Explore learn's teaching options and start sharing what you know.",
+        [["Sign in to teach", "/login"]],
+      ),
+      slot: campus.teachSlots[2],
+    };
+  }
+
+  const communityItems = selectCommunityItems(activities);
+  const communityLinks: LinkKioskPlacement[] = communityItems.map((activity, index) => ({
+    dest: activityDestination(activity),
+    slot: campus.communitySlots[index],
+    eyebrow: "COMMUNITY · STUDY GROUP",
+    footer: activity.hostName ? `By ${activity.hostName}`.slice(0, 26) : "Learn community",
+    badge: isWaitlist(activity) ? "WAITLIST" : "JOIN",
+    live: isLive(activity),
+  }));
+  if (communityLinks.length === 0) {
+    for (const [index, dest] of [
+      campusLinkDestination("community:forum", "Community", "Open the forum", "Ask questions, share projects, and meet other learners.", [["Open forum", "/forum"]]),
+      campusLinkDestination("community:groups", "Community", "Study groups", "Find a study group or join an upcoming session.", [["Browse study groups", "/study-groups"]]),
+    ].entries()) {
+      communityLinks.push({
+        dest,
+        slot: campus.communitySlots[index],
+        eyebrow: "COMMUNITY",
+        footer: "Learn community",
+      });
+    }
+  }
+
+  const linkKiosks = [...teachLinks, ...communityLinks];
+  if (hallHiddenCount > 0) {
+    linkKiosks.push({
+      dest: campusLinkDestination(
+        "activities:more",
+        "Activities Hall",
+        `+${hallHiddenCount} more`,
+        `${hallHiddenCount} additional activities are not shown in the hall. Browse the complete catalog on learn.`,
+        [["Browse all activities", "/activity"]],
+      ),
+      slot: campus.hallMoreSlot,
+      eyebrow: "ACTIVITIES · CATALOG",
+      footer: "Browse all on learn",
+      badge: `${hallHiddenCount} MORE`,
+    });
+  }
+
+  const built = buildKiosks(
+    scene,
+    [...studyLayout.kiosks, ...hallLayout.kiosks],
+    [...studyLayout.headers, ...hallLayout.headers],
+    linkKiosks,
+  );
 
   interactions.add(built.interactables);
   controls.colliders.push(...built.colliders);

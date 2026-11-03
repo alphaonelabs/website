@@ -51,6 +51,9 @@ export interface Campus {
   signs: LazySign[];
   hallRows: Row[];
   studyRows: Row[];
+  teachSlots: Slot[];
+  communitySlots: Slot[];
+  hallMoreSlot: Slot;
   spawn: Arrival;
 }
 
@@ -201,6 +204,7 @@ interface BuildingSpec {
   subtitle: string;
 }
 
+/** Builds the campus geometry, landmarks, and routing destinations around the scene. */
 export function buildCampus(scene: THREE.Scene): Campus {
   const interactables: Interactable[] = [];
   const colliders: Box2[] = [];
@@ -208,6 +212,8 @@ export function buildCampus(scene: THREE.Scene): Campus {
   const zones: Zone[] = [];
   const traceGeoms: THREE.BufferGeometry[] = [];
   const pathGeoms: THREE.BufferGeometry[] = [];
+  const teachSlots: Slot[] = [];
+  const communitySlots: Slot[] = [];
 
   // Ground and a faint engineering grid.
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), materials.ground);
@@ -266,9 +272,24 @@ export function buildCampus(scene: THREE.Scene): Campus {
     const g = new THREE.Group();
     g.position.set(b.x, 0, b.z);
     g.rotation.y = b.rot;
-    g.add(withEdges(box(b.w, b.h, b.d, materials.building, 0, b.h / 2, 0)));
-    g.add(box(b.w + 0.3, 0.28, b.d + 0.3, materials.trim, 0, b.h + 0.14, 0));
-    g.add(box(b.w + 0.12, 0.3, b.d + 0.12, materials.kiosk, 0, 0.15, 0));
+    const openInterior = b.key === "teach" || b.key === "community";
+    if (!openInterior) {
+      g.add(withEdges(box(b.w, b.h, b.d, materials.building, 0, b.h / 2, 0)));
+      g.add(box(b.w + 0.3, 0.28, b.d + 0.3, materials.trim, 0, b.h + 0.14, 0));
+      g.add(box(b.w + 0.12, 0.3, b.d + 0.12, materials.kiosk, 0, 0.15, 0));
+    } else {
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(b.w - 0.4, b.d - 0.4), materials.plaza);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(0, 0.012, 0);
+      floor.receiveShadow = true;
+      g.add(floor);
+      for (const side of [-1, 1]) {
+        g.add(withEdges(box(WALL_T, b.h, b.d, materials.building, side * (b.w / 2 - WALL_T / 2), b.h / 2, 0)));
+      }
+      g.add(withEdges(box(b.w, b.h, WALL_T, materials.building, 0, b.h / 2, -b.d / 2 + WALL_T / 2)));
+      g.add(box(b.w + 0.3, 0.28, b.d + 0.3, materials.trim, 0, b.h + 0.14, 0));
+      g.add(box(b.w + 0.12, 0.3, b.d + 0.12, materials.kiosk, 0, 0.15, 0));
+    }
     // Doorway: dark opening framed in gold.
     const front = b.d / 2;
     const door = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.8), materials.doorway);
@@ -292,7 +313,28 @@ export function buildCampus(scene: THREE.Scene): Campus {
 
     const title = DEST[b.key].title;
     signs.push({ mesh: sign, x: b.x, z: b.z, make: () => buildingSignTexture(title, b.subtitle), eager: true });
-    colliders.push(footprint(b.x, b.z, b.w + 0.2, b.d + 0.2, b.rot));
+    if (openInterior) {
+      const localToWorld = (lx: number, lz: number): { x: number; z: number } => {
+        const v = new THREE.Vector3(lx, 0, lz).applyAxisAngle(new THREE.Vector3(0, 1, 0), b.rot);
+        return { x: b.x + v.x, z: b.z + v.z };
+      };
+      for (const side of [-1, 1]) {
+        const p = localToWorld(side * (b.w / 2), 0);
+        colliders.push(footprint(p.x, p.z, WALL_T, b.d, b.rot));
+      }
+      const back = localToWorld(0, -b.d / 2);
+      colliders.push(footprint(back.x, back.z, b.w, WALL_T, b.rot));
+
+      const xs = [-3.9, -1.3, 1.3, 3.9];
+      const slots = xs.map((x): Slot => {
+        const p = localToWorld(x, -0.8);
+        return { x: p.x, z: p.z, rot: b.rot };
+      });
+      if (b.key === "teach") teachSlots.push(...slots);
+      if (b.key === "community") communitySlots.push(...slots);
+    } else {
+      colliders.push(footprint(b.x, b.z, b.w + 0.2, b.d + 0.2, b.rot));
+    }
 
     const ox = Math.sin(b.rot);
     const oz = Math.cos(b.rot);
@@ -408,6 +450,8 @@ export function buildCampus(scene: THREE.Scene): Campus {
   for (const [z, rot] of [[-4.6, 0], [4.6, Math.PI]] as [number, number][]) {
     studyRows.push({ header: { x: 23.8, z, rot }, slots: studyXs.map((x) => ({ x, z, rot })) });
   }
+  // Keep the overflow kiosk in the open center aisle, away from row headers.
+  const hallMoreSlot: Slot = { x: -40, z: 0, rot: 0 };
 
   // ── Whiteboard on the plaza's north-east edge ─────────────────────────
   {
@@ -490,5 +534,5 @@ export function buildCampus(scene: THREE.Scene): Campus {
   const order = ["plaza", "live", "activities", "study", "teach", "community", "whiteboard"];
   zones.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 
-  return { zones, interactables, colliders, signs, hallRows, studyRows, spawn };
+  return { zones, interactables, colliders, signs, hallRows, studyRows, teachSlots, communitySlots, hallMoreSlot, spawn };
 }
