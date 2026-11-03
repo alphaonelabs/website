@@ -28,7 +28,7 @@ Alternatively, serve the static files with Python 3:
 python3 -m http.server 8000
 ```
 
-Open the local URL printed by Wrangler, or visit [http://localhost:8000](http://localhost:8000) when using Python. See the [README](README.md) for simulator controls, 3D mode details, and test instructions.
+Open the local URL printed by Wrangler, or visit [http://localhost:8000](http://localhost:8000) when using Python. See the [README](README.md) for simulator controls and 3D mode details, and follow [Make and test changes](#make-and-test-changes) for verification instructions.
 
 ## Make and test changes
 
@@ -48,7 +48,7 @@ For simulator changes, verify the affected experience in a browser and check the
 Commit your focused changes and push the branch to your fork:
 
 ```bash
-git add botlab/
+git add .
 git commit -m "docs(botlab): describe local development"
 git push origin feature/your-feature-name
 ```
