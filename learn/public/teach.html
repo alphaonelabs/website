@@ -84,8 +84,7 @@
         }
 
         // Remove the deleted activity from the displayed list.
-        hostedActivities = hostedActivities.filter(a => String(a.id) !== String(id));
-        renderActivityList();
+        await loadHostedActivities();
 
         alert('Activity deleted successfully.');
     } catch (err) {
@@ -318,7 +317,9 @@ function esc(s) {
     return String(s || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function logout() {

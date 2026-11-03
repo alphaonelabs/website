@@ -3128,7 +3128,7 @@ async def api_delete_activity(activity_ref: str, req, env):
 
     try:
         act = await env.DB.prepare(
-            "SELECT id,title,host_id FROM activities WHERE id=? OR slug=? LIMIT 1"
+            "SELECT id,title,host_id,price_cents FROM activities WHERE id=? OR slug=? LIMIT 1"
         ).bind(activity_ref, activity_ref).first()
     except Exception as exc:
         await capture_exception(exc, req, env, "api_delete_activity.lookup")
@@ -3140,9 +3140,51 @@ async def api_delete_activity(activity_ref: str, req, env):
         return err("Only the host can delete this activity", 403)
 
     act_id = act.id
+
+    try:
+        # 1. Checkout in progress: payment could complete after deletion.
+        open_checkout = await env.DB.prepare(
+            "SELECT 1 FROM activity_checkout_sessions cs"
+            " JOIN activity_cart_items ci ON ci.cart_id=cs.cart_id"
+            " WHERE ci.activity_id=? AND cs.status<>'paid'"
+            " AND cs.created_at > datetime('now','-24 hours') LIMIT 1"
+        ).bind(act_id).first()
+        if open_checkout:
+            return err("Someone is checking out this activity right now. Try again in a few minutes.", 409)
+
+        # 2. Payment history shows a purchase of this activity.
+        paid = await env.DB.prepare(
+            "SELECT 1 FROM activity_checkout_sessions cs"
+            " JOIN activity_cart_items ci ON ci.cart_id=cs.cart_id"
+            " WHERE ci.activity_id=? AND cs.status='paid'"
+            " AND cs.amount_total>0 AND ci.unit_price_cents>0 LIMIT 1"
+        ).bind(act_id).first()
+
+        # 3. Conservative fallback: enrollments have no payment link, so a priced
+        #    activity with other participants can't be proven free to delete.
+        priced_with_participants = None
+        if int(getattr(act, "price_cents", 0) or 0) > 0:
+            priced_with_participants = await env.DB.prepare(
+                "SELECT 1 FROM enrollments WHERE activity_id=? AND user_id<>? LIMIT 1"
+            ).bind(act_id, user["id"]).first()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_activity.guards")
+        return err("Could not delete activity — please try again", 500)
+
+    if paid or priced_with_participants:
+        return err(
+            "This activity has paid purchases or participants and can't be deleted. "
+            "Contact support if it needs to be removed.",
+            409,
+        )
+
     title = act.title or "An activity"
     # Collect enrollees before their rows are deleted so they can be notified.
-    recipient_ids = await _activity_enrollee_ids(env, act_id, exclude_user_id=user["id"])
+    rows = await env.DB.prepare(
+        "SELECT DISTINCT user_id FROM enrollments"
+        " WHERE activity_id=? AND status IN ('active','completed') AND user_id<>?"
+    ).bind(act_id, user["id"]).all()
+    recipient_ids = [r.user_id for r in (rows.results or [])]
 
     # Children first: D1 enforces foreign keys, and several of these tables have no ON DELETE CASCADE.
     cleanup = [
@@ -6514,6 +6556,20 @@ async def api_create_checkout(req, env):
                 int(session.get("amount_total") or cart.get("subtotal_cents") or 0),
                 (session.get("currency") or "usd").upper(),
             ).run()
+        ids = list({i["activity_id"] for i in paid_items})
+        marks = ",".join("?" * len(ids))
+        found = await env.DB.prepare(
+            f"SELECT id FROM activities WHERE id IN ({marks})"
+        ).bind(*ids).all()
+        if len(found.results or []) != len(ids):
+            try:
+                await _stripe_form_request(
+                        env, 
+                        "/checkout/sessions/" + quote(session.get("id", ""), safe="") + "/expire", {}
+                )
+            except Exception as exc:
+                    await capture_exception(exc, req, env, "api_create_checkout.expire")
+            return err("An activity in your cart is no longer available", 409)
         return ok({"checkout_url": session.get("url"), "session_id": session.get("id")}, "Checkout created")
     except Exception as exc:
         await capture_exception(exc, req, env, "api_create_checkout")
@@ -6601,6 +6657,10 @@ async def api_complete_checkout(req, env):
 
 
 async def api_list_learning_intents(req, env):
+    user = verify_token(
+        req.headers.get("Authorization") or "",
+        env.JWT_SECRET
+    )
     parsed = urlparse(req.url)
     params = parse_qs(parsed.query)
     kind = (params.get("kind") or [""])[0]
@@ -6609,13 +6669,13 @@ async def api_list_learning_intents(req, env):
         return err("kind must be learn or teach", 400)
     if kind:
         res = await env.DB.prepare(
-            "SELECT li.id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
+            "SELECT li.id,li.user_id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
             " FROM learning_intents li JOIN users u ON u.id=li.user_id"
             " WHERE li.kind=? AND li.status='open' ORDER BY li.created_at DESC LIMIT 100"
         ).bind(kind).all()
     else:
         res = await env.DB.prepare(
-            "SELECT li.id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
+            "SELECT li.id,li.user_id,li.kind,li.title,li.subject,li.description,li.status,li.created_at,u.name AS name_enc"
             " FROM learning_intents li JOIN users u ON u.id=li.user_id"
             " WHERE li.status='open' ORDER BY li.created_at DESC LIMIT 100"
         ).all()
@@ -6630,6 +6690,7 @@ async def api_list_learning_intents(req, env):
             "status": row.status,
             "created_at": row.created_at,
             "user_name": await decrypt_aes(row.name_enc or "", enc),
+            "is_own": bool(user and row.user_id == user["id"]),
         })
     return json_resp({"intents": intents})
 
