@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS session_attendance (
     user_id    TEXT NOT NULL,
     status     TEXT NOT NULL DEFAULT 'registered', -- registered | attended | missed
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT,
     UNIQUE (session_id, user_id),
     FOREIGN KEY (session_id) REFERENCES sessions(id),
     FOREIGN KEY (user_id)    REFERENCES users(id)

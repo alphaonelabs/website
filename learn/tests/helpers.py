@@ -76,13 +76,21 @@ def make_stmt(*, first=None, all_results=None):
     bound.first = AsyncMock(return_value=first)
     bound.run = AsyncMock(return_value=None)
     bound.all = AsyncMock(return_value=all_result)
+    bound.bind_args = ()
 
     # ---- top-level async methods (used when .bind() is NOT called) ---------
     stmt = MagicMock()
-    stmt.bind.return_value = bound
+    def _bind(*args):
+        bound.bind_args = args
+        stmt.bind_args = args
+        return bound
+    stmt.bind = MagicMock(side_effect=_bind, return_value=bound)
     stmt.first = AsyncMock(return_value=first)
     stmt.run = AsyncMock(return_value=None)
     stmt.all = AsyncMock(return_value=all_result)
+    stmt.sql = None
+    stmt.bind_args = ()
+    stmt.bound = bound
     return stmt
 
 
@@ -98,12 +106,16 @@ class MockDB:
     def __init__(self, stmts=None):
         self._stmts = list(stmts or [])
         self._idx = 0
+        self.prepared = []  # list of (sql, stmt)
+        self.batch = AsyncMock(return_value=[])
 
-    def prepare(self, _sql):
+    def prepare(self, sql):
         if self._idx < len(self._stmts):
             stmt = self._stmts[self._idx]
         else:
             stmt = make_stmt()
+        stmt.sql = sql
+        self.prepared.append((sql, stmt))
         self._idx += 1
         return stmt
 
