@@ -173,7 +173,7 @@ http://localhost:3000
 
 ## Running tests
 
-The tests use `pytest` and `pytest-asyncio`.
+The tests use `pytest` and `pytest-asyncio`. The `tests/conftest.py` file provides stubs for `workers`, `js`, and `pyodide`, allowing the tests to run with standard Python without requiring a Cloudflare account.
 
 ### 1. Create a virtual environment
 
@@ -209,7 +209,7 @@ python -m pip install -r requirements-dev.txt
 ### 3. Run all tests
 
 ```bash
-python -m pytest
+python -m pytest -q
 ```
 
 ### 4. Run a specific test file
