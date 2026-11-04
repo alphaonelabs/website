@@ -6,15 +6,20 @@ unknown API paths (404), and static-file serving.
 """
 
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from tests.helpers import (
-    MockRequest, MockRow, MockDB, make_env, make_stmt,
-    json_request, basic_auth_header, set_static_content, load_worker,
+    MockDB,
+    MockRequest,
+    basic_auth_header,
+    json_request,
+    load_worker,
+    make_env,
+    make_stmt,
+    set_static_content,
 )
-
 
 worker = load_worker()
 
@@ -350,3 +355,243 @@ class TestStudyGroupRedirection:
         r = await worker._dispatch(req, env)
         assert r.status == 302
         assert r.headers.get("Location") == "http://localhost/activity/my-awesome-group"
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting tests (Issue 4)
+# ---------------------------------------------------------------------------
+
+class TestAuthRateLimiting:
+    @pytest.fixture(autouse=True)
+    def setup_limiter(self):
+        worker._AUTH_RATE_LIMIT_STATE.clear()
+        yield
+        worker._AUTH_RATE_LIMIT_STATE.clear()
+
+    async def test_burst_login_returns_429_after_5_failed_attempts(self):
+        env = make_env(db=MockDB([make_stmt(first=None) for _ in range(12)]))
+        ip = "198.51.100.55"
+
+        for i in range(5):
+            req = json_request(
+                "/api/login",
+                {"username": f"user{i}", "password": "WrongPassword1!"},
+                headers={"CF-Connecting-IP": ip},
+            )
+            r = await worker._dispatch(req, env)
+            assert r.status == 401, f"Attempt {i+1} should return 401, got {r.status}"
+
+        # 6th burst request must be blocked
+        blocked_req = json_request(
+            "/api/login",
+            {"username": "user5", "password": "WrongPassword1!"},
+            headers={"CF-Connecting-IP": ip},
+        )
+        r_blocked = await worker._dispatch(blocked_req, env)
+        assert r_blocked.status == 429
+        assert "Retry-After" in r_blocked.headers
+        assert int(r_blocked.headers["Retry-After"]) > 0
+        assert "Too many requests" in _parse(r_blocked).get("error", "")
+
+    async def test_burst_register_returns_429_after_5_attempts(self):
+        env = make_env(db=MockDB([make_stmt() for _ in range(12)]))
+        ip = "198.51.100.56"
+
+        for i in range(5):
+            req = json_request(
+                "/api/register",
+                {"username": f"user{i}", "email": f"user{i}@example.com", "password": "SuperSecret123!"},
+                headers={"CF-Connecting-IP": ip},
+            )
+            r = await worker._dispatch(req, env)
+            assert r.status == 200, f"Attempt {i+1} should return 200, got {r.status}"
+
+        blocked_req = json_request(
+            "/api/register",
+            {"username": "user5", "email": "user5@example.com", "password": "SuperSecret123!"},
+            headers={"CF-Connecting-IP": ip},
+        )
+        r_blocked = await worker._dispatch(blocked_req, env)
+        assert r_blocked.status == 429
+        assert "Retry-After" in r_blocked.headers
+        assert int(r_blocked.headers["Retry-After"]) > 0
+
+    async def test_burst_forgot_password_returns_429_after_5_attempts(self):
+        env = make_env(db=MockDB([make_stmt(first=None) for _ in range(12)]))
+        ip = "198.51.100.57"
+
+        for i in range(5):
+            req = json_request(
+                "/api/forgot-password",
+                {"email": f"test{i}@example.com"},
+                headers={"CF-Connecting-IP": ip},
+            )
+            r = await worker._dispatch(req, env)
+            assert r.status == 200, f"Attempt {i+1} should return 200, got {r.status}"
+
+        blocked_req = json_request(
+            "/api/forgot-password",
+            {"email": "test5@example.com"},
+            headers={"CF-Connecting-IP": ip},
+        )
+        r_blocked = await worker._dispatch(blocked_req, env)
+        assert r_blocked.status == 429
+        assert "Retry-After" in r_blocked.headers
+        assert int(r_blocked.headers["Retry-After"]) > 0
+
+    async def test_rate_limiting_via_durable_object_actor(self):
+        do = worker.RateLimiterDO()
+        mock_binding = MagicMock()
+        mock_binding.idFromName.return_value = "rate_limiter_id"
+        mock_binding.get.return_value = do
+
+        env = make_env(db=MockDB([make_stmt(first=None) for _ in range(12)]))
+        env.RATE_LIMITER_DO = mock_binding
+
+        ip = "198.51.100.77"
+        for i in range(5):
+            req = json_request(
+                "/api/login",
+                {"username": f"user{i}", "password": "WrongPassword1!"},
+                headers={"CF-Connecting-IP": ip},
+            )
+            r = await worker._dispatch(req, env)
+            assert r.status == 401
+
+        blocked_req = json_request(
+            "/api/login",
+            {"username": "user5", "password": "WrongPassword1!"},
+            headers={"CF-Connecting-IP": ip},
+        )
+        r_blocked = await worker._dispatch(blocked_req, env)
+        assert r_blocked.status == 429
+        assert "Retry-After" in r_blocked.headers
+        assert int(r_blocked.headers["Retry-After"]) > 0
+        assert len(do.windows) > 0
+
+    async def test_rate_limiting_via_kv_store(self):
+        storage = {}
+        mock_kv = MagicMock()
+        async def mock_get(key):
+            return storage.get(key)
+        async def mock_put(key, val, expiration_ttl=None):
+            storage[key] = val
+        mock_kv.get = AsyncMock(side_effect=mock_get)
+        mock_kv.put = AsyncMock(side_effect=mock_put)
+
+        env = make_env(db=MockDB([make_stmt(first=None) for _ in range(12)]))
+        env.RATE_LIMIT_KV = mock_kv
+
+        ip = "198.51.100.88"
+        for i in range(5):
+            req = json_request(
+                "/api/login",
+                {"username": f"user{i}", "password": "WrongPassword1!"},
+                headers={"CF-Connecting-IP": ip},
+            )
+            r = await worker._dispatch(req, env)
+            assert r.status == 401
+
+        blocked_req = json_request(
+            "/api/login",
+            {"username": "user5", "password": "WrongPassword1!"},
+            headers={"CF-Connecting-IP": ip},
+        )
+        r_blocked = await worker._dispatch(blocked_req, env)
+        assert r_blocked.status == 429
+        assert "Retry-After" in r_blocked.headers
+        assert any(k.startswith("rl:") for k in storage)
+
+    async def test_username_hash_rate_limiting_across_different_ips(self):
+        env = make_env(db=MockDB([make_stmt(first=None) for _ in range(12)]))
+        username = "target_victim"
+
+        for i in range(5):
+            req = json_request(
+                "/api/login",
+                {"username": username, "password": "WrongPassword1!"},
+                headers={"CF-Connecting-IP": f"203.0.113.{i+1}"},
+            )
+            r = await worker._dispatch(req, env)
+            assert r.status == 401
+
+        # 6th attempt from a fresh new IP targeting same user is blocked by username_hash
+        blocked_req = json_request(
+            "/api/login",
+            {"username": username, "password": "WrongPassword1!"},
+            headers={"CF-Connecting-IP": "203.0.113.99"},
+        )
+        r_blocked = await worker._dispatch(blocked_req, env)
+        assert r_blocked.status == 429
+        assert "Retry-After" in r_blocked.headers
+        assert _parse(r_blocked).get("error") == "Too many requests"
+
+    async def test_rate_limiter_do_sliding_window_expiry(self):
+        do = worker.RateLimiterDO()
+        key = "test:client:1"
+
+        # 5 attempts at t = 1000
+        for _ in range(5):
+            res = await do.check_limit(key, max_attempts=5, window_seconds=60, now=1000)
+            assert res["allowed"] is True
+
+        # 6th attempt at t = 1000 is blocked
+        blocked = await do.check_limit(key, max_attempts=5, window_seconds=60, now=1000)
+        assert blocked["allowed"] is False
+        assert blocked["retry_after"] == 60
+
+        # Attempt after 61 seconds (t = 1061) is allowed because window slid
+        allowed_later = await do.check_limit(key, max_attempts=5, window_seconds=60, now=1061)
+        assert allowed_later["allowed"] is True
+
+    async def test_rate_limiter_do_storage_error_falls_back_to_kv(self):
+        mock_storage = MagicMock()
+        mock_storage.get = AsyncMock(side_effect=RuntimeError("Storage connection failed"))
+        mock_ctx = MagicMock()
+        mock_ctx.storage = mock_storage
+        do = worker.RateLimiterDO(ctx=mock_ctx)
+
+        mock_binding = MagicMock()
+        mock_binding.idFromName.return_value = "rate_limiter_id"
+        mock_binding.get.return_value = do
+
+        storage = {}
+        mock_kv = MagicMock()
+        async def mock_get(key):
+            return storage.get(key)
+        async def mock_put(key, val, expiration_ttl=None):
+            storage[key] = val
+        mock_kv.get = AsyncMock(side_effect=mock_get)
+        mock_kv.put = AsyncMock(side_effect=mock_put)
+
+        env = make_env(db=MockDB([make_stmt(first=None) for _ in range(12)]))
+        env.RATE_LIMITER_DO = mock_binding
+        env.RATE_LIMIT_KV = mock_kv
+
+        ip = "198.51.100.99"
+        for i in range(5):
+            req = json_request(
+                "/api/login",
+                {"username": f"user{i}", "password": "WrongPassword1!"},
+                headers={"CF-Connecting-IP": ip},
+            )
+            r = await worker._dispatch(req, env)
+            assert r.status == 401
+
+        blocked_req = json_request(
+            "/api/login",
+            {"username": "user5", "password": "WrongPassword1!"},
+            headers={"CF-Connecting-IP": ip},
+        )
+        r_blocked = await worker._dispatch(blocked_req, env)
+        assert r_blocked.status == 429
+        assert "Retry-After" in r_blocked.headers
+        assert any(k.startswith("rl:") for k in storage)
+
+    async def test_missing_cf_connecting_ip_returns_429(self):
+        env = make_env()
+        req = MockRequest(method="POST", url="http://localhost/api/login", body=json.dumps({"username": "a", "password": "b"}))
+        r = await worker._dispatch(req, env)
+        assert r.status == 429
+        assert "Retry-After" in r.headers
+        assert _parse(r).get("error") == "Too many requests"
