@@ -170,3 +170,56 @@ http://localhost:3000
 | Method | Endpoint | Description |
 |----------|----------|-------------|
 | GET | /api/dashboard | User dashboard |
+
+## Running tests
+
+The tests use `pytest` and `pytest-asyncio`.
+
+### 1. Create a virtual environment
+
+Run these commands from the `learn` directory.
+
+**Windows (PowerShell):**
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks script activation, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+**macOS / Linux:**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install development dependencies
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+### 3. Run all tests
+
+```bash
+python -m pytest
+```
+
+### 4. Run a specific test file
+
+```bash
+python -m pytest tests/test_api_auth.py
+```
+
+### 5. Run an individual test
+
+```bash
+python -m pytest tests/test_api_auth.py::TestApiRegister::test_successful_registration
+```
