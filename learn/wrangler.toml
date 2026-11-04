@@ -39,6 +39,10 @@ class_name = "ClassroomDO"
 name = "PRESENCE_DO"
 class_name = "PresenceDO"
 
+[[durable_objects.bindings]]
+name = "RATE_LIMITER_DO"
+class_name = "RateLimiterDO"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ClassroomDO"]
@@ -46,6 +50,10 @@ new_sqlite_classes = ["ClassroomDO"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["PresenceDO"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["RateLimiterDO"]
 
 [[r2_buckets]]
 binding = "MY_BUCKET"
