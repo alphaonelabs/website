@@ -4637,6 +4637,10 @@ async def api_add_quiz_questions(req, env, quiz_id: str):
 
 async def api_get_quiz_questions(req, env, quiz_id: str):
     """GET /api/quizzes/:id/questions — Retrieve questions for a quiz."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
     row = await env.DB.prepare(
         "SELECT q.id, q.activity_id, a.host_id "
         "FROM quizzes q "
@@ -4646,10 +4650,17 @@ async def api_get_quiz_questions(req, env, quiz_id: str):
     if not row:
         return err("Quiz not found", 404)
 
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     user_id = user.get("id") if user else None
     host_id = getattr(row, "host_id", None)
     is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    if not is_host:
+        enrollment = await env.DB.prepare(
+            "SELECT id FROM enrollments "
+            "WHERE activity_id=? AND user_id=? AND status='active'"
+        ).bind(row.activity_id, user_id).first()
+        if not enrollment:
+            return err("Forbidden: You must be enrolled in this activity to view its quiz", 403)
+
     enc = env.ENCRYPTION_KEY
 
     async def run():
@@ -4688,6 +4699,10 @@ async def api_get_quiz_questions(req, env, quiz_id: str):
 
 async def api_get_quiz(req, env, quiz_id: str):
     """GET /api/quizzes/:id — Retrieve quiz details with questions."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
     row = await env.DB.prepare(
         "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
         "a.title AS activity_title, a.host_id "
@@ -4698,10 +4713,17 @@ async def api_get_quiz(req, env, quiz_id: str):
     if not row:
         return err("Quiz not found", 404)
 
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    user_id = user.get("id") if user else None
+    user_id = user.get("id")
     host_id = getattr(row, "host_id", None)
     is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    if not is_host:
+        enrollment = await env.DB.prepare(
+            "SELECT id FROM enrollments "
+            "WHERE activity_id=? AND user_id=? AND status='active'"
+        ).bind(row.activity_id, user_id).first()
+        if not enrollment:
+            return err("Forbidden: You must be enrolled in this activity to view its quiz", 403)
+
     enc = env.ENCRYPTION_KEY
 
     async def run():
