@@ -7,6 +7,7 @@ API Routes
   POST /api/register          – register a new user
   POST /api/login             – authenticate -> signed token
   POST /api/quizzes/:id/attempts – start a learner quiz attempt
+  PUT  /api/quiz-attempts/:id/answers/:question_id – save a learner answer
   GET  /api/activities        – list activities (?type=&format=&q=&tag=)
   POST /api/activities        – create activity              [host]
   GET  /api/activities/:id    – activity + sessions + state
@@ -1194,6 +1195,19 @@ _DDL = [
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz ON quiz_attempts(quiz_id)",
+    # Learner quiz answers
+    """CREATE TABLE IF NOT EXISTS quiz_answers (
+        id           TEXT PRIMARY KEY,
+        attempt_id   TEXT NOT NULL,
+        question_id  TEXT NOT NULL,
+        answer_json  TEXT NOT NULL,
+        created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (attempt_id, question_id),
+        FOREIGN KEY (attempt_id) REFERENCES quiz_attempts(id) ON DELETE CASCADE,
+        FOREIGN KEY (question_id) REFERENCES quiz_questions(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_quiz_answers_attempt ON quiz_answers(attempt_id)",
 ]
 
 
@@ -4608,6 +4622,89 @@ async def api_create_quiz_attempt(req, env, quiz_id: str):
     if created:
         attempt["created_at"] = created.created_at
     return ok(attempt, "Quiz attempt created")
+
+
+def _validate_quiz_answer(question_type, options_json, answer):
+    """Validate a learner answer without inspecting or exposing the answer key."""
+    if question_type not in ("multiple_choice", "true_false"):
+        return None, "Unsupported question type"
+    if isinstance(answer, (dict, list)) or answer is None:
+        return None, "answer must be a scalar value"
+    try:
+        options = json.loads(options_json or "[]")
+    except (TypeError, ValueError):
+        return None, "Question options are invalid"
+    if not isinstance(options, list) or answer not in options:
+        return None, "answer must match one of the question options"
+    return json.dumps(answer, separators=(",", ":")), None
+
+
+async def api_save_quiz_answer(req, env, attempt_id: str, question_id: str):
+    """PUT /api/quiz-attempts/:attempt_id/answers/:question_id — Save an answer."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+    if set(body) != {"answer"}:
+        return err("Only an answer field is accepted", 400)
+
+    async def run():
+        attempt = await env.DB.prepare(
+            "SELECT id, quiz_id, user_id, status FROM quiz_attempts WHERE id=?"
+        ).bind(attempt_id).first()
+        if not attempt:
+            return None, err("Attempt not found", 404)
+        if getattr(attempt, "user_id", None) != user_id:
+            return None, err("Forbidden", 403)
+        if getattr(attempt, "status", None) != "in_progress":
+            return None, err("Only in-progress attempts can be updated", 409)
+
+        question = await env.DB.prepare(
+            "SELECT id, quiz_id, question_type, options_json "
+            "FROM quiz_questions WHERE id=?"
+        ).bind(question_id).first()
+        if not question or getattr(question, "quiz_id", None) != getattr(attempt, "quiz_id", None):
+            return None, err("Question not found for attempt", 404)
+
+        answer_json, validation_error = _validate_quiz_answer(
+            getattr(question, "question_type", None),
+            getattr(question, "options_json", None),
+            body["answer"],
+        )
+        if validation_error:
+            return None, err(validation_error, 400)
+
+        answer_id = new_id()
+        await env.DB.prepare(
+            "INSERT INTO quiz_answers "
+            "(id, attempt_id, question_id, answer_json, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, datetime('now'), datetime('now')) "
+            "ON CONFLICT(attempt_id, question_id) DO UPDATE SET "
+            "answer_json=excluded.answer_json, updated_at=datetime('now')"
+        ).bind(answer_id, attempt_id, question_id, answer_json).run()
+        saved = await env.DB.prepare(
+            "SELECT id, attempt_id, question_id, answer_json, created_at, updated_at "
+            "FROM quiz_answers WHERE attempt_id=? AND question_id=?"
+        ).bind(attempt_id, question_id).first()
+        if not saved:
+            return None, err("Failed to save answer", 500)
+        return {
+            "id": saved.id,
+            "attempt_id": saved.attempt_id,
+            "question_id": saved.question_id,
+            "answer": json.loads(saved.answer_json),
+            "created_at": saved.created_at,
+            "updated_at": saved.updated_at,
+        }, None
+
+    answer, error_resp = await _quiz_db(env, run)
+    if error_resp:
+        return error_resp
+    return ok(answer, "Quiz answer saved")
 
 
 async def api_add_quiz_questions(req, env, quiz_id: str):
@@ -9230,6 +9327,13 @@ async def _dispatch(request, env):
         m_quiz_attempts = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)/attempts", path)
         if m_quiz_attempts and method == "POST":
             return await api_create_quiz_attempt(request, env, m_quiz_attempts.group(1))
+        m_quiz_answer = re.fullmatch(
+            r"/api/quiz-attempts/([A-Za-z0-9_-]+)/answers/([A-Za-z0-9_-]+)", path
+        )
+        if m_quiz_answer and method == "PUT":
+            return await api_save_quiz_answer(
+                request, env, m_quiz_answer.group(1), m_quiz_answer.group(2)
+            )
         m_quiz_questions = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)/questions", path)
         if m_quiz_questions and method == "POST":
             return await api_add_quiz_questions(request, env, m_quiz_questions.group(1))
