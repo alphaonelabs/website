@@ -6,6 +6,7 @@ API Routes
   POST /api/seed              – seed sample data          [admin]
   POST /api/register          – register a new user
   POST /api/login             – authenticate -> signed token
+  POST /api/quizzes/:id/attempts – start a learner quiz attempt
   GET  /api/activities        – list activities (?type=&format=&q=&tag=)
   POST /api/activities        – create activity              [host]
   GET  /api/activities/:id    – activity + sessions + state
@@ -1179,6 +1180,20 @@ _DDL = [
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
+    # Learner quiz attempts
+    """CREATE TABLE IF NOT EXISTS quiz_attempts (
+        id           TEXT PRIMARY KEY,
+        quiz_id      TEXT NOT NULL,
+        activity_id  TEXT NOT NULL,
+        user_id      TEXT NOT NULL,
+        status       TEXT NOT NULL DEFAULT 'in_progress',
+        created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE,
+        FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz ON quiz_attempts(quiz_id)",
 ]
 
 
@@ -4544,6 +4559,55 @@ async def api_list_activity_quizzes(req, env, activity_id: str):
 
     quizzes = await _quiz_db(env, run)
     return json_resp({"activity_id": act.id, "quizzes": quizzes})
+
+
+async def api_create_quiz_attempt(req, env, quiz_id: str):
+    """POST /api/quizzes/:id/attempts — Start an attempt for an enrolled learner."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+
+    async def run():
+        quiz = await env.DB.prepare(
+            "SELECT id, activity_id FROM quizzes WHERE id=?"
+        ).bind(quiz_id).first()
+        if not quiz:
+            return None, err("Quiz not found", 404)
+
+        enrollment = await env.DB.prepare(
+            "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='active'"
+        ).bind(quiz.activity_id, user_id).first()
+        if not enrollment:
+            return None, err("Active enrollment required", 403)
+
+        attempt_id = new_id()
+        await env.DB.prepare(
+            "INSERT INTO quiz_attempts "
+            "(id, quiz_id, activity_id, user_id, status, created_at) "
+            "VALUES (?, ?, ?, ?, 'in_progress', datetime('now'))"
+        ).bind(attempt_id, quiz.id, quiz.activity_id, user_id).run()
+        return {
+            "id": attempt_id,
+            "quiz_id": quiz.id,
+            "activity_id": quiz.activity_id,
+            "user_id": user_id,
+            "status": "in_progress",
+            "created_at": None,
+        }, None
+
+    attempt, error_resp = await _quiz_db(env, run)
+    if error_resp:
+        return error_resp
+
+    created = await env.DB.prepare(
+        "SELECT id, quiz_id, activity_id, user_id, status, created_at "
+        "FROM quiz_attempts WHERE id=?"
+    ).bind(attempt["id"]).first()
+    if created:
+        attempt["created_at"] = created.created_at
+    return ok(attempt, "Quiz attempt created")
 
 
 async def api_add_quiz_questions(req, env, quiz_id: str):
@@ -9163,6 +9227,9 @@ async def _dispatch(request, env):
 
         if path == "/api/quizzes" and method == "GET":
             return await api_list_quizzes(request, env)
+        m_quiz_attempts = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)/attempts", path)
+        if m_quiz_attempts and method == "POST":
+            return await api_create_quiz_attempt(request, env, m_quiz_attempts.group(1))
         m_quiz_questions = re.fullmatch(r"/api/quizzes/([A-Za-z0-9_-]+)/questions", path)
         if m_quiz_questions and method == "POST":
             return await api_add_quiz_questions(request, env, m_quiz_questions.group(1))

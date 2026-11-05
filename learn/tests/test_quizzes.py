@@ -8,6 +8,7 @@ Covers:
 - GET /api/quizzes/:id (quiz detail with questions)
 - GET /api/quizzes (all quizzes list)
 - DELETE /api/quizzes/:id (host quiz deletion)
+- POST /api/quizzes/:id/attempts (learner attempt creation)
 """
 
 import json
@@ -121,6 +122,80 @@ class TestQuizAuthorization:
 # ---------------------------------------------------------------------------
 # Quiz Creation Validation & Functionality
 # ---------------------------------------------------------------------------
+
+class TestQuizAttemptCreation:
+    async def test_attempt_without_auth_returns_401(self):
+        req = json_request("/api/quizzes/quiz-1/attempts", {})
+        r = await worker.api_create_quiz_attempt(req, make_env(), "quiz-1")
+        assert r.status == 401
+
+    async def test_nonexistent_quiz_returns_404(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request("/api/quizzes/missing/attempts", {}, headers=_auth(tok))
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+        r = await worker.api_create_quiz_attempt(req, env, "missing")
+        assert r.status == 404
+        assert "Quiz not found" in _parse(r)["error"]
+
+    async def test_attempt_requires_enrollment(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request("/api/quizzes/quiz-1/attempts", {}, headers=_auth(tok))
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(id="quiz-1", activity_id="act-1")),
+            make_stmt(first=None),
+        ]))
+        r = await worker.api_create_quiz_attempt(req, env, "quiz-1")
+        assert r.status == 403
+
+    async def test_attempt_rejects_inactive_enrollment(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request("/api/quizzes/quiz-1/attempts", {}, headers=_auth(tok))
+
+        class EnrollmentStatusDB(MockDB):
+            def __init__(self):
+                super().__init__([
+                    make_stmt(first=MockRow(id="quiz-1", activity_id="act-1")),
+                    make_stmt(first=None),
+                ])
+                self.sql = []
+
+            def prepare(self, sql):
+                self.sql.append(sql)
+                return super().prepare(sql)
+
+        db = EnrollmentStatusDB()
+        r = await worker.api_create_quiz_attempt(req, make_env(db=db), "quiz-1")
+        assert r.status == 403
+        assert "status='active'" in db.sql[1]
+
+    async def test_attempt_uses_authenticated_learner_and_persists(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request(
+            "/api/quizzes/quiz-1/attempts",
+            {"user_id": "another-learner"},
+            headers=_auth(tok),
+        )
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(id="quiz-1", activity_id="act-1")),
+            make_stmt(first=MockRow(id="enr-1")),
+            make_stmt(),
+            make_stmt(first=MockRow(
+                id="attempt-1",
+                quiz_id="quiz-1",
+                activity_id="act-1",
+                user_id="learner-1",
+                status="in_progress",
+                created_at="2026-11-05 12:00:00",
+            )),
+        ]))
+        r = await worker.api_create_quiz_attempt(req, env, "quiz-1")
+        assert r.status == 200
+        data = _parse(r)["data"]
+        assert data["quiz_id"] == "quiz-1"
+        assert data["activity_id"] == "act-1"
+        assert data["user_id"] == "learner-1"
+        assert data["status"] == "in_progress"
+        assert data["created_at"] == "2026-11-05 12:00:00"
 
 class TestQuizCreation:
     async def test_missing_title_returns_400(self):
