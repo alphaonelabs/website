@@ -447,13 +447,6 @@ function renderActivityList() {
         `;
     }).join('');
 }
-
-document.querySelectorAll('input[name="pricing"]').forEach(r => r.addEventListener('change', () => {
-  const paid = document.querySelector('input[name="pricing"]:checked').value === 'paid';
-  document.getElementById('price-wrap').classList.toggle('hidden', !paid);
-  if (!paid) document.getElementById('act-price').value = '';
-}));
-
 // Returns fields to merge into the POST /api/activities body, or throws a readable error.
 function getPricingPayload() {
     if (!isPaid()) return { is_free: true, price_cents: 0, price_currency: 'USD' };

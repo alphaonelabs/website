@@ -116,6 +116,7 @@ const activityId = new URLSearchParams(location.search).get('id');
 
 const form = document.getElementById('edit-form');
 const statusEl = document.getElementById('edit-status');
+let loadedPriceCents = 0;
 
 function showError(msg) {
   const el = document.getElementById('edit-error');
@@ -141,6 +142,7 @@ function fill(a) {
   document.getElementById('f-prereq').value = a.prerequisites || '';
   document.getElementById('f-tags').value = (a.tags || []).join(', ');
   document.getElementById('f-price').value = ((Number(a.price_cents) || 0) / 100).toFixed(2);
+  loadedPriceCents = Math.round(Number(a.price_cents) || 0);
   form.classList.remove('hidden');
 }
 
@@ -168,16 +170,19 @@ form.addEventListener('submit', async e => {
   e.preventDefault();
   const title = document.getElementById('f-title').value.trim();
   if (!title) { setStatus('Title is required.', true); return; }
-  const priceRaw = document.getElementById('f-price').value.trim();
-  const priceDollars = priceRaw === '' ? 0 : Number(priceRaw);
-  if (!Number.isFinite(priceDollars) || priceDollars < 0) {
-    setStatus('Enter a valid price (0 for free).', true); return;
+
+  const priceInput = document.getElementById('f-price');
+  const priceRaw = priceInput.value.trim();
+  // An unfinished entry such as "-" or "1e" reads as '' but is flagged as bad input.
+  if (priceInput.validity.badInput || (priceRaw !== '' && !/^(\d+(\.\d{1,2})?|\.\d{1,2})$/.test(priceRaw))) {
+    setStatus('Enter a valid price with at most two decimals (0 for free).', true); return;
   }
-  const priceCents = Math.round(priceDollars * 100);
-  if (priceCents > 0 && priceCents < 50) {
+  const priceCents = priceRaw === '' ? 0 : Math.round(parseFloat(priceRaw) * 100);
+  const priceChanged = priceCents !== loadedPriceCents;
+  if (priceChanged && priceCents > 0 && priceCents < 50) {
     setStatus('Paid activities must cost at least $0.50.', true); return;
   }
-  if (priceCents > 1000000) {
+  if (priceChanged && priceCents > 1000000) {
     setStatus('The maximum price is $10,000.', true); return;
   }
 
@@ -191,8 +196,8 @@ form.addEventListener('submit', async e => {
     learning_objectives: document.getElementById('f-objectives').value,
     prerequisites: document.getElementById('f-prereq').value,
     tags: document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
-    price_cents: priceCents,
   };
+  if (priceChanged) body.price_cents = priceCents;
 
   const btn = document.getElementById('edit-save');
   btn.disabled = true;

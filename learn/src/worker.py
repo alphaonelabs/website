@@ -2328,6 +2328,26 @@ async def _activity_list_payload(req, env):
         },
     }
 
+def _parse_price_cents(value):
+    """Return (cents, error). Rejects fractional cents, bad types and out-of-range amounts."""
+    if isinstance(value, bool):
+        return None, "price_cents must be a whole number of cents"
+    if isinstance(value, float):
+        if not value.is_integer():
+            return None, "price_cents must be a whole number of cents"
+        value = int(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not re.fullmatch(r"\d+", text):
+            return None, "price_cents must be a whole number of cents"
+        value = int(text)
+    if not isinstance(value, int):
+        return None, "price_cents must be a whole number of cents"
+    if value < 0 or value > 1_000_000:
+        return None, "price_cents must be between 0 and 1000000"
+    if 0 < value < 50:
+        return None, "Paid activities must cost at least $0.50"
+    return value, None
 
 async def api_create_activity(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -2366,20 +2386,18 @@ async def api_create_activity(req, env):
     price_cents = 0
     if not is_free:
         if body.get("price_cents") not in (None, ""):
-            try:
-                price_cents = int(body.get("price_cents"))
-            except (TypeError, ValueError):
-                return err("Price must be a valid number")
+            price_cents, price_err = _parse_price_cents(body.get("price_cents"))
+            if price_err:
+                return err(price_err)
         else:
-            parsed_cents = _legacy_money_cents(body.get("price"))
-            if parsed_cents is None:
-                return err("Price must be a valid number")
-            price_cents = parsed_cents
+            raw_price = _legacy_text(body.get("price")).strip()
+            if not re.fullmatch(r"\d+(\.\d{1,2})?|\.\d{1,2}", raw_price):
+                return err("Price must be a valid amount with at most two decimals")
+            price_cents = int(round(float(raw_price) * 100))
         if price_cents < 50:
             return err("Paid activities must cost at least $0.50 (or mark the activity as free)")
         if price_cents > 1_000_000:
             return err("Price is too large")
-
     enc    = env.ENCRYPTION_KEY
     act_id = new_id()
     try:
@@ -2707,14 +2725,9 @@ async def api_update_activity(activity_ref: str, req, env):
 
     price_cents = None
     if "price_cents" in body:
-        raw_price = body.get("price_cents")
-        if isinstance(raw_price, bool) or not isinstance(raw_price, int):
-            return err("price_cents must be a whole number of cents")
-        if raw_price < 0 or raw_price > 1_000_000:
-            return err("price_cents must be between 0 and 1000000")
-        if 0 < raw_price < 50:
-            return err("Paid activities must cost at least $0.50")
-        price_cents = raw_price
+        price_cents, price_err = _parse_price_cents(body.get("price_cents"))
+        if price_err:
+            return err(price_err)
         sets.append("price_cents=?")
         binds.append(price_cents)
 
@@ -6272,23 +6285,15 @@ async def api_add_cart_item(req, env):
         if count_row and int(getattr(count_row, "cnt", 0) or 0) >= 20:
             return err("Guest carts are limited to 20 activities", 400)
     item_id = new_id()
-    await env.DB.prepare(
-        "INSERT INTO activity_cart_items"
-        " (id,cart_id,activity_id,session_id,quantity,unit_price_cents,title_snapshot)"
-        " VALUES (?,?,?,?,?,?,?)"
-        " ON CONFLICT(cart_id,activity_id,session_id) DO UPDATE SET"
-        " unit_price_cents=excluded.unit_price_cents,"
-        " title_snapshot=excluded.title_snapshot,"
-        " updated_at=datetime('now')"
-    ).bind(
-        new_id(),
-        cart_id,
-        activity_id,
-        session_id,
-        1,
-        int(getattr(act, "price_cents", 0) or 0),
-        act.title or "",
-    ).run()
+
+    res = await env.DB.prepare(
+    "INSERT INTO activity_cart_items"
+    " (id,cart_id,activity_id,session_id,quantity,unit_price_cents,title_snapshot)"
+    " SELECT ?,?,a.id,?,1,COALESCE(a.price_cents,0),a.title FROM activities a WHERE a.id=?"
+    " ON CONFLICT(cart_id,activity_id,session_id) DO UPDATE SET"
+    " unit_price_cents=excluded.unit_price_cents, updated_at=datetime('now')"
+    ).bind(new_id(), cart_id, session_id, activity_id).run()
+
     await env.DB.prepare(
         "UPDATE activity_carts SET updated_at=datetime('now') WHERE id=?"
     ).bind(cart_id).run()
