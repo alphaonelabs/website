@@ -64,6 +64,28 @@
       </div>
 
       <div>
+        <label class="block text-sm font-medium mb-1" for="f-price">
+          Price (USD)
+        </label>
+        <input
+          id="f-price"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          placeholder="0 for free"
+          class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+          aria-invalid="false"
+          aria-describedby="f-price-error"
+        >
+        <p id="f-price-error" class="text-xs text-red-500 mt-1" role="alert" hidden></p>
+        <p class="text-xs text-gray-400 mt-1">
+          Use 0 for a free activity. Paid activities must cost at least $0.50.
+          A new price applies to carts and future checkouts; people who already paid keep their enrollment.
+        </p>
+      </div>
+
+      <div>
         <label class="block text-sm font-medium mb-1" for="f-objectives">Learning objectives</label>
         <textarea id="f-objectives" rows="3" maxlength="2000" class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"></textarea>
       </div>
@@ -97,6 +119,7 @@ const activityId = new URLSearchParams(location.search).get('id');
 
 const form = document.getElementById('edit-form');
 const statusEl = document.getElementById('edit-status');
+let loadedPriceCents = 0;
 
 function showError(msg) {
   const el = document.getElementById('edit-error');
@@ -121,6 +144,8 @@ function fill(a) {
   document.getElementById('f-objectives').value = a.learning_objectives || '';
   document.getElementById('f-prereq').value = a.prerequisites || '';
   document.getElementById('f-tags').value = (a.tags || []).join(', ');
+  document.getElementById('f-price').value = ((Number(a.price_cents) || 0) / 100).toFixed(2);
+  loadedPriceCents = Math.round(Number(a.price_cents) || 0);
   form.classList.remove('hidden');
 }
 
@@ -146,8 +171,31 @@ async function init() {
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
+  const priceInput = document.getElementById('f-price');
+  priceInput.removeAttribute('aria-invalid');
+  priceInput.removeAttribute('aria-describedby');
+
   const title = document.getElementById('f-title').value.trim();
   if (!title) { setStatus('Title is required.', true); return; }
+
+  const setPriceError = msg => {
+    priceInput.setAttribute('aria-invalid', 'true');
+    priceInput.setAttribute('aria-describedby', 'edit-status');
+    setStatus(msg, true);
+  };
+  const priceRaw = priceInput.value.trim();
+  // An unfinished entry such as "-" or "1e" reads as '' but is flagged as bad input.
+  if (priceInput.validity.badInput || (priceRaw !== '' && !/^(\d+(\.\d{1,2})?|\.\d{1,2})$/.test(priceRaw))) {
+    setPriceError('Enter a valid price with at most two decimals (0 for free).'); return;
+  }
+  const priceCents = priceRaw === '' ? 0 : Math.round(parseFloat(priceRaw) * 100);
+  const priceChanged = priceCents !== loadedPriceCents;
+  if (priceChanged && priceCents > 0 && priceCents < 50) {
+    setPriceError('Paid activities must cost at least $0.50.'); return;
+  }
+  if (priceChanged && priceCents > 1000000) {
+    setPriceError('The maximum price is $10,000.'); return;
+  }
 
   const body = {
     title: title,
@@ -158,8 +206,9 @@ form.addEventListener('submit', async e => {
     level: document.getElementById('f-level').value,
     learning_objectives: document.getElementById('f-objectives').value,
     prerequisites: document.getElementById('f-prereq').value,
-    tags: document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean)
+    tags: document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
   };
+  if (priceChanged) body.price_cents = priceCents;
 
   const btn = document.getElementById('edit-save');
   btn.disabled = true;
@@ -170,7 +219,7 @@ form.addEventListener('submit', async e => {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
       body: JSON.stringify(body)
     });
-    const data = await res.json();
+    const data = await  res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save changes');
     setStatus('Saved. Redirecting…', false);
     setTimeout(() => { window.location.href = '/dashboard'; }, 800);

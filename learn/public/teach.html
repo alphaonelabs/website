@@ -129,7 +129,6 @@
                                 class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-sm resize-none">
                             </textarea>
                         </div>
-
                         <div class="grid grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Type</label>
@@ -171,6 +170,27 @@
                             <input id="a-tags" type="text" placeholder="Python, Beginners, Data Science" 
                                 class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-sm" />
                         </div>
+
+                        <fieldset class="space-y-3">
+                            <legend class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Pricing</legend>
+                            <div class="flex items-center gap-6 text-sm text-gray-700 dark:text-gray-300">
+                                <label class="inline-flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="pricing" value="free" checked class="accent-orange-500"> Free
+                                </label>
+                                <label class="inline-flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="pricing" value="paid" class="accent-orange-500"> Paid
+                                </label>
+                            </div>
+                            <div id="price-wrap" class="hidden">
+                                 <label for="a-price" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Price (USD)</label>
+                                 <div class="flex items-center gap-2">
+                                    <span class="font-bold text-gray-700 dark:text-gray-300">$</span>
+                                    <input id="a-price" type="number" min="0.50" step="0.01" placeholder="e.g. 25.00"
+                                        class="w-40 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:text-white text-sm" />
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum $0.50. Payments are processed in USD.</p>
+                            </div>
+                        </fieldset>
 
                         <div id="act-err" class="hidden p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm"></div>
                         <div id="act-ok" class="hidden p-3 bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 rounded-lg text-gray-700 dark:text-gray-300 text-sm"></div>
@@ -409,6 +429,7 @@ function renderActivityList() {
                     <span>${schedLabel[a.schedule_type] || a.schedule_type}</span>
                     <span>👥 ${a.participant_count || 0} participants</span>
                     <span>🗓 ${a.session_count || 0} sessions</span>
+                    <span class="font-semibold text-orange-600 dark:text-orange-400">${priceLabel(a.price_cents)}</span>
                     ${tagsList ? `<div class="flex flex-wrap gap-1">${tagsList}</div>` : ''}
                 </div>
                 <div class="flex gap-2 mt-3">
@@ -426,6 +447,34 @@ function renderActivityList() {
         `;
     }).join('');
 }
+// Returns fields to merge into the POST /api/activities body, or throws a readable error.
+function getPricingPayload() {
+    if (!isPaid()) return { is_free: true, price_cents: 0, price_currency: 'USD' };
+    const dollars = parseFloat(document.getElementById('a-price').value);
+    if (!Number.isFinite(dollars) || dollars < 0.5) {
+        throw new Error('Enter a price of at least $0.50, or choose Free.');
+    }
+    return { is_free: false, price_cents: Math.round(dollars * 100), price_currency: 'USD' };
+}
+
+// Pricing: show/hide the price input
+function isPaid() {
+    const checked = document.querySelector('input[name="pricing"]:checked');
+    return !!checked && checked.value === 'paid';
+}
+
+document.querySelectorAll('input[name="pricing"]').forEach(r => {
+    r.addEventListener('change', () => {
+        const paid = isPaid();
+        document.getElementById('price-wrap').classList.toggle('hidden', !paid);
+        if (!paid) document.getElementById('a-price').value = '';
+    });
+});
+
+function priceLabel(cents) {
+    const n = Number(cents || 0);
+    return n > 0 ? '$' + (n / 100).toFixed(2) : 'Free';
+}
 
 // Form: Create Activity
 document.getElementById('form-activity').addEventListener('submit', async e => {
@@ -441,6 +490,8 @@ document.getElementById('form-activity').addEventListener('submit', async e => {
     const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
     try {
+        const pricing = getPricingPayload();   // throws if the price is invalid
+
         const res = await fetch(`${API}/api/activities`, {
             method: 'POST',
             headers: {
@@ -453,17 +504,20 @@ document.getElementById('form-activity').addEventListener('submit', async e => {
                 type: document.getElementById('a-type').value,
                 format: document.getElementById('a-format').value,
                 schedule_type: document.getElementById('a-schedule').value,
-                tags
+                tags,
+                ...pricing
             })
         });
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create activity');
 
-        showMsg('act-ok', `Activity created: ${data.data.title}`, false);
+        showMsg('act-ok', `Activity created: ${data.data.title} (${priceLabel(data.data.price_cents)})`, false);
         e.target.reset();
+        document.getElementById('price-wrap').classList.add('hidden');
         await loadHostedActivities();
-    } catch (err) {
+    }
+    catch (err) {
         showMsg('act-err', err.message, true);
     } finally {
         btn.textContent = 'Create Activity';

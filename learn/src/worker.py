@@ -2328,6 +2328,26 @@ async def _activity_list_payload(req, env):
         },
     }
 
+def _parse_price_cents(value):
+    """Return (cents, error). Rejects fractional cents, bad types and out-of-range amounts."""
+    if isinstance(value, bool):
+        return None, "price_cents must be a whole number of cents"
+    if isinstance(value, float):
+        if not value.is_integer():
+            return None, "price_cents must be a whole number of cents"
+        value = int(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not re.fullmatch(r"\d+", text):
+            return None, "price_cents must be a whole number of cents"
+        value = int(text)
+    if not isinstance(value, int):
+        return None, "price_cents must be a whole number of cents"
+    if value < 0 or value > 1_000_000:
+        return None, "price_cents must be between 0 and 1000000"
+    if 0 < value < 50:
+        return None, "Paid activities must cost at least $0.50"
+    return value, None
 
 async def api_create_activity(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -2353,25 +2373,51 @@ async def api_create_activity(req, env):
     if schedule_type not in ("one_time", "multi_session", "recurring", "ongoing"):
         schedule_type = "ongoing"
 
+    # ---- pricing (checkout is USD-only) ----
+    price_currency = (body.get("price_currency") or "USD").strip().upper()
+    if price_currency != "USD":
+        return err("Only USD pricing is supported right now")
+
+    is_free = body.get("is_free")
+    if is_free in (None, ""):
+        is_free = not (body.get("price") or body.get("price_cents"))
+    is_free = _legacy_bool(is_free) == 1
+
+    price_cents = 0
+    if not is_free:
+        if body.get("price_cents") not in (None, ""):
+            price_cents, price_err = _parse_price_cents(body.get("price_cents"))
+            if price_err:
+                return err(price_err)
+        else:
+            raw_price = _legacy_text(body.get("price")).strip()
+            if not re.fullmatch(r"\d+(\.\d{1,2})?|\.\d{1,2}", raw_price):
+                return err("Price must be a valid amount with at most two decimals")
+            price_cents = int(round(float(raw_price) * 100))
+        if price_cents < 50:
+            return err("Paid activities must cost at least $0.50 (or mark the activity as free)")
+        if price_cents > 1_000_000:
+            return err("Price is too large")
     enc    = env.ENCRYPTION_KEY
     act_id = new_id()
     try:
         slug   = await _unique_activity_slug(env, title, act_id)
         await env.DB.prepare(
             "INSERT INTO activities "
-            "(id,title,description,type,format,schedule_type,host_id,slug)"
-            " VALUES (?,?,?,?,?,?,?,?)"
+            "(id,title,description,type,format,schedule_type,host_id,slug,price_cents,price_currency)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?)"
         ).bind(
             act_id, title,
             await encrypt_aes(description, enc) if description else "",
-            atype, fmt, schedule_type, user["id"], slug
+            atype, fmt, schedule_type, user["id"], slug,
+            price_cents, price_currency,
         ).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_create_activity.insert_activity")
         return err("Failed to create activity — please try again", 500)
 
     for tag_name in (body.get("tags") or []):
-        tag_name = tag_name.strip()
+        tag_name = str(tag_name).strip()
         if not tag_name:
             continue
         t_row = await env.DB.prepare(
@@ -2394,13 +2440,13 @@ async def api_create_activity(req, env):
             ).bind(act_id, tag_id).run()
         except Exception as e:
             await capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
-            pass
 
     await emit_event(env, "ACTIVITY_CREATED", {
         "user_id": user["id"], "activity_id": act_id, "title": title,
     })
 
-    return ok({"id": act_id, "slug": slug, "title": title}, "Activity created")
+    return ok({"id": act_id, "slug": slug, "title": title,
+               "price_cents": price_cents, "price_currency": price_currency}, "Activity created")
 
 
 async def api_classes_near_me(req, env):
@@ -2677,6 +2723,14 @@ async def api_update_activity(activity_ref: str, req, env):
         sets.append("level=?")
         binds.append(level)
 
+    price_cents = None
+    if "price_cents" in body:
+        price_cents, price_err = _parse_price_cents(body.get("price_cents"))
+        if price_err:
+            return err(price_err)
+        sets.append("price_cents=?")
+        binds.append(price_cents)
+
     tag_ids = None
     if "tags" in body:
         raw_tags = body.get("tags")
@@ -2715,6 +2769,15 @@ async def api_update_activity(activity_ref: str, req, env):
             env.DB.prepare(
                 "UPDATE activities SET " + ", ".join(sets) + " WHERE id=? AND host_id=?"
             ).bind(*binds, act.id, user["id"])
+        )
+    if price_cents is not None:
+        # Open carts only: checked-out carts are payment history and must not change.
+        stmts.append(
+            env.DB.prepare(
+                "UPDATE activity_cart_items SET unit_price_cents=?, updated_at=datetime('now')"
+                " WHERE activity_id=? AND cart_id IN"
+                " (SELECT id FROM activity_carts WHERE status='open')"
+            ).bind(price_cents, act.id)
         )
     if tag_ids is not None:
         stmts.append(env.DB.prepare("DELETE FROM activity_tags WHERE activity_id=?").bind(act.id))
@@ -3377,7 +3440,7 @@ async def api_dashboard(req, env):
     enc = env.ENCRYPTION_KEY
 
     res = await env.DB.prepare(
-        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,a.created_at,"
+        "SELECT a.id,a.title,a.description,a.slug,a.type,a.format,a.schedule_type,a.created_at,a.price_cents,"
         "(SELECT COUNT(*) FROM enrollments WHERE activity_id=a.id AND status='active')"
         " AS participant_count,"
         "(SELECT COUNT(*) FROM sessions WHERE activity_id=a.id) AS session_count"
@@ -3403,6 +3466,7 @@ async def api_dashboard(req, env):
             "session_count":     r.session_count,
             "tags":              [t.name for t in (t_res.results or [])],
             "created_at":        r.created_at,
+            "price_cents":       int(getattr(r, "price_cents", 0) or 0),
         })
 
     res2 = await env.DB.prepare(
@@ -6221,19 +6285,15 @@ async def api_add_cart_item(req, env):
         if count_row and int(getattr(count_row, "cnt", 0) or 0) >= 20:
             return err("Guest carts are limited to 20 activities", 400)
     item_id = new_id()
+
     await env.DB.prepare(
-        "INSERT OR IGNORE INTO activity_cart_items"
-        " (id,cart_id,activity_id,session_id,quantity,unit_price_cents,title_snapshot)"
-        " VALUES (?,?,?,?,?,?,?)"
-    ).bind(
-        item_id,
-        cart_id,
-        activity_id,
-        session_id,
-        1,
-        int(getattr(act, "price_cents", 0) or 0),
-        act.title or "",
-    ).run()
+    "INSERT INTO activity_cart_items"
+    " (id,cart_id,activity_id,session_id,quantity,unit_price_cents,title_snapshot)"
+    " SELECT ?,?,a.id,?,1,COALESCE(a.price_cents,0),a.title FROM activities a WHERE a.id=?"
+    " ON CONFLICT(cart_id,activity_id,session_id) DO UPDATE SET"
+    " unit_price_cents=excluded.unit_price_cents, updated_at=datetime('now')"
+    ).bind(new_id(), cart_id, session_id, activity_id).run()
+
     await env.DB.prepare(
         "UPDATE activity_carts SET updated_at=datetime('now') WHERE id=?"
     ).bind(cart_id).run()

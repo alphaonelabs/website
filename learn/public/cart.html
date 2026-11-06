@@ -108,7 +108,10 @@
           <div class="flex-1 min-w-0">
             <a href="/activity/${encodeURIComponent(item.slug || item.activity_id)}" class="font-bold text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400">${esc(item.title)}</a>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${esc(item.status || 'activity')}</p>
-            <p class="font-semibold text-teal-600 dark:text-teal-400 mt-2">${money(item.line_total_cents, body.currency)}</p>
+            <p class="font-semibold text-teal-600 dark:text-teal-400 mt-2">
+              ${Number(item.line_total_cents) > 0 ? money(item.line_total_cents, body.currency) : 'Free'}
+            </p>
+            ${Number(item.quantity) > 1 ? `<p class="text-xs text-gray-500 dark:text-gray-400">${money(item.unit_price_cents, body.currency)} × ${Number(item.quantity)}</p>` : ''}
           </div>
           <button onclick="removeItem('${esc(item.id)}')" class="text-red-600 dark:text-red-400 hover:text-red-700" aria-label="Remove item">
             <i class="fas fa-trash"></i>
