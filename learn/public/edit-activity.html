@@ -75,7 +75,10 @@
           inputmode="decimal"
           placeholder="0 for free"
           class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+          aria-invalid="false"
+          aria-describedby="f-price-error"
         >
+        <p id="f-price-error" class="text-xs text-red-500 mt-1" role="alert" hidden></p>
         <p class="text-xs text-gray-400 mt-1">
           Use 0 for a free activity. Paid activities must cost at least $0.50.
           A new price applies to carts and future checkouts; people who already paid keep their enrollment.
@@ -168,22 +171,30 @@ async function init() {
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
+  const priceInput = document.getElementById('f-price');
+  priceInput.removeAttribute('aria-invalid');
+  priceInput.removeAttribute('aria-describedby');
+
   const title = document.getElementById('f-title').value.trim();
   if (!title) { setStatus('Title is required.', true); return; }
 
-  const priceInput = document.getElementById('f-price');
+  const setPriceError = msg => {
+    priceInput.setAttribute('aria-invalid', 'true');
+    priceInput.setAttribute('aria-describedby', 'edit-status');
+    setStatus(msg, true);
+  };
   const priceRaw = priceInput.value.trim();
   // An unfinished entry such as "-" or "1e" reads as '' but is flagged as bad input.
   if (priceInput.validity.badInput || (priceRaw !== '' && !/^(\d+(\.\d{1,2})?|\.\d{1,2})$/.test(priceRaw))) {
-    setStatus('Enter a valid price with at most two decimals (0 for free).', true); return;
+    setPriceError('Enter a valid price with at most two decimals (0 for free).'); return;
   }
   const priceCents = priceRaw === '' ? 0 : Math.round(parseFloat(priceRaw) * 100);
   const priceChanged = priceCents !== loadedPriceCents;
   if (priceChanged && priceCents > 0 && priceCents < 50) {
-    setStatus('Paid activities must cost at least $0.50.', true); return;
+    setPriceError('Paid activities must cost at least $0.50.'); return;
   }
   if (priceChanged && priceCents > 1000000) {
-    setStatus('The maximum price is $10,000.', true); return;
+    setPriceError('The maximum price is $10,000.'); return;
   }
 
   const body = {

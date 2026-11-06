@@ -6286,7 +6286,7 @@ async def api_add_cart_item(req, env):
             return err("Guest carts are limited to 20 activities", 400)
     item_id = new_id()
 
-    res = await env.DB.prepare(
+    await env.DB.prepare(
     "INSERT INTO activity_cart_items"
     " (id,cart_id,activity_id,session_id,quantity,unit_price_cents,title_snapshot)"
     " SELECT ?,?,a.id,?,1,COALESCE(a.price_cents,0),a.title FROM activities a WHERE a.id=?"
