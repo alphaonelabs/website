@@ -2705,6 +2705,19 @@ async def api_update_activity(activity_ref: str, req, env):
         sets.append("level=?")
         binds.append(level)
 
+    price_cents = None
+    if "price_cents" in body:
+        raw_price = body.get("price_cents")
+        if isinstance(raw_price, bool) or not isinstance(raw_price, int):
+            return err("price_cents must be a whole number of cents")
+        if raw_price < 0 or raw_price > 1_000_000:
+            return err("price_cents must be between 0 and 1000000")
+        if 0 < raw_price < 50:
+            return err("Paid activities must cost at least $0.50")
+        price_cents = raw_price
+        sets.append("price_cents=?")
+        binds.append(price_cents)
+
     tag_ids = None
     if "tags" in body:
         raw_tags = body.get("tags")
@@ -2743,6 +2756,15 @@ async def api_update_activity(activity_ref: str, req, env):
             env.DB.prepare(
                 "UPDATE activities SET " + ", ".join(sets) + " WHERE id=? AND host_id=?"
             ).bind(*binds, act.id, user["id"])
+        )
+    if price_cents is not None:
+        # Open carts only: checked-out carts are payment history and must not change.
+        stmts.append(
+            env.DB.prepare(
+                "UPDATE activity_cart_items SET unit_price_cents=?, updated_at=datetime('now')"
+                " WHERE activity_id=? AND cart_id IN"
+                " (SELECT id FROM activity_carts WHERE status='open')"
+            ).bind(price_cents, act.id)
         )
     if tag_ids is not None:
         stmts.append(env.DB.prepare("DELETE FROM activity_tags WHERE activity_id=?").bind(act.id))
