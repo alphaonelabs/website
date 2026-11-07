@@ -7,6 +7,8 @@ import importlib.util
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock
+import re
+from types import SimpleNamespace
 
 
 # ---------------------------------------------------------------------------
@@ -203,3 +205,88 @@ async def make_init_db_stmts(worker_mod):
     cnt = await get_init_db_statement_count(worker_mod)
     return [make_stmt() for _ in range(cnt)]
 
+# ---------------------------------------------------------------------------
+# Strict D1 fake: rejects what real D1 rejects (None binds, wrong arg count)
+# ---------------------------------------------------------------------------
+
+class _StrictStmt:
+    def __init__(self, db, sql):
+        self.db = db
+        self.sql = sql
+        self.args = ()
+
+    def bind(self, *args):
+        for i, value in enumerate(args):
+            if value is None:
+                raise Exception(
+                    "D1_TYPE_ERROR: Type 'undefined' not supported for value 'undefined'"
+                    f" (bind argument {i + 1} of: {self.sql})"
+                )
+        placeholders = self.sql.count("?")
+        if placeholders != len(args):
+            raise Exception(
+                f"D1_ERROR: {placeholders} placeholders but {len(args)} values bound: {self.sql}"
+            )
+        self.args = args
+        return self
+
+    async def first(self):
+        return self.db._first(self.sql, self.args)
+
+    async def all(self):
+        return SimpleNamespace(results=list(self.db._all(self.sql, self.args)))
+
+    async def run(self):
+        if self.db.run_error:
+            raise self.db.run_error
+        self.db.writes.append((self.sql, self.args))
+        return None
+    
+    async def run(self):
+        if self.db.run_error_once:
+            exc, self.db.run_error_once = self.db.run_error_once, None
+            raise exc
+        if self.db.run_error:
+            raise self.db.run_error
+        self.db.writes.append((self.sql, self.args))
+        return None
+
+
+class StrictD1:
+    """
+    D1 stand-in. Reads are answered by the `first(sql, args)` / `all_(sql, args)`
+    callables; writes are recorded in `.writes` (from .run()) and `.batches`
+    (from .batch()).
+    """
+
+    def __init__(self, first=None, all_=None, run_error=None, batch_error=None, run_error_once=None):
+        self._first = first or (lambda sql, args: None)
+        self._all = all_ or (lambda sql, args: [])
+        self.run_error = run_error
+        self.batch_error = batch_error
+        self.run_error_once = run_error_once
+        self.writes = []
+        self.batches = []
+
+    def prepare(self, sql):
+        return _StrictStmt(self, sql)
+
+    async def batch(self, stmts):
+        if self.batch_error:
+            raise self.batch_error
+        self.batches.append([(s.sql, s.args) for s in stmts])
+
+
+def row_as_dict(sql, args):
+    """Map an INSERT's columns to the values it saves (NULL literal -> None)."""
+    cols_m = re.search(r"\(([^)]*)\)\s*VALUES", sql)
+    vals_m = re.search(r"VALUES\s*\(([^)]*)\)", sql)
+    if not cols_m or not vals_m:
+        raise ValueError(f"Not a simple INSERT ... VALUES statement: {sql}")
+    cols = cols_m.group(1).split(",")
+    vals = vals_m.group(1).split(",")
+    it = iter(args)
+    return {
+        col.strip(): (None if val.strip().upper() == "NULL" else next(it))
+        for col, val in zip(cols, vals, strict=True)
+    }
