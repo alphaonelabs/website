@@ -147,6 +147,52 @@ Frontend Server will start at:
 ```bash
 http://localhost:3000
 ```
+### IndexedDB storage foundation
+
+The reusable native IndexedDB wrapper in `public/js/learn-storage.js` uses the
+`learn-local` database at schema version `1`. It is not registered globally;
+future features should import and initialize it only when they need local
+persistence:
+
+```js
+import { openLearnStorage } from "/js/learn-storage.js";
+
+const storage = await openLearnStorage();
+await storage.put({ key: "example", value: { ready: true } });
+const item = await storage.get("example");
+const items = await storage.list();
+await storage.delete("example");
+await storage.clear();
+storage.close();
+```
+
+Versioned migrations are supplied as ordered `{ version, migrate }` entries.
+Version `1` creates the initial `meta` object store, whose records use a
+string `key` property. A later feature must add a higher migration version
+instead of changing an existing migration. Migration callbacks run inside the
+`onupgradeneeded` transaction and initialization rejects if any migration
+fails.
+
+The wrapper reports unavailable IndexedDB with `StorageUnavailableError`,
+quota failures with `StorageQuotaError`, initialization or migration failures
+with `StorageInitializationError` or `StorageMigrationError`, and transaction
+failures with `StorageTransactionError`. It never substitutes an in-memory
+store for persistent writes. Credential-like keys and nested credential fields
+are rejected, and authentication tokens must remain in the existing
+authentication storage.
+
+The focused tests use the real `fake-indexeddb` implementation:
+
+```bash
+npm --prefix learn run test:indexeddb
+```
+
+For browser validation, serve `public/` over HTTP, open DevTools Application >
+Storage > IndexedDB, initialize the wrapper from the console, and verify the
+`learn-local` database, `meta` store, version upgrades, blocked connections,
+private-browsing storage behavior, and quota failures where the browser
+supports reproducing them.
+
 ## API Endpoints
 
 ### Authentication
