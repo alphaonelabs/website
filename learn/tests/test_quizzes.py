@@ -8,10 +8,15 @@ Covers:
 - GET /api/quizzes/:id (quiz detail with questions)
 - GET /api/quizzes (all quizzes list)
 - DELETE /api/quizzes/:id (host quiz deletion)
+- POST /api/quizzes/:id/attempts (learner attempt creation)
+- PUT /api/quiz-attempts/:id/answers/:question_id (answer persistence)
 """
 
 import json
+from types import SimpleNamespace
+
 import pytest
+
 from tests.helpers import (
     load_worker,
     MockRequest,
@@ -121,6 +126,362 @@ class TestQuizAuthorization:
 # ---------------------------------------------------------------------------
 # Quiz Creation Validation & Functionality
 # ---------------------------------------------------------------------------
+
+class TestQuizAttemptCreation:
+    async def test_attempt_without_auth_returns_401(self):
+        req = json_request("/api/quizzes/quiz-1/attempts", {})
+        r = await worker.api_create_quiz_attempt(req, make_env(), "quiz-1")
+        assert r.status == 401
+
+    async def test_nonexistent_quiz_returns_404(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request("/api/quizzes/missing/attempts", {}, headers=_auth(tok))
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+        r = await worker.api_create_quiz_attempt(req, env, "missing")
+        assert r.status == 404
+        assert "Quiz not found" in _parse(r)["error"]
+
+    async def test_attempt_requires_enrollment(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request("/api/quizzes/quiz-1/attempts", {}, headers=_auth(tok))
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(id="quiz-1", activity_id="act-1")),
+            make_stmt(first=None),
+        ]))
+        r = await worker.api_create_quiz_attempt(req, env, "quiz-1")
+        assert r.status == 403
+
+    async def test_attempt_rejects_inactive_enrollment(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request("/api/quizzes/quiz-1/attempts", {}, headers=_auth(tok))
+
+        class EnrollmentStatusDB(MockDB):
+            def __init__(self):
+                super().__init__([
+                    make_stmt(first=MockRow(id="quiz-1", activity_id="act-1")),
+                    make_stmt(first=None),
+                ])
+                self.sql = []
+
+            def prepare(self, sql):
+                self.sql.append(sql)
+                return super().prepare(sql)
+
+        db = EnrollmentStatusDB()
+        r = await worker.api_create_quiz_attempt(req, make_env(db=db), "quiz-1")
+        assert r.status == 403
+        assert "status='active'" in db.sql[1]
+
+    async def test_attempt_uses_authenticated_learner_and_persists(self):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request(
+            "/api/quizzes/quiz-1/attempts",
+            {"user_id": "another-learner"},
+            headers=_auth(tok),
+        )
+        db = MockDB([
+            make_stmt(first=MockRow(id="quiz-1", activity_id="act-1")),
+            make_stmt(first=MockRow(id="enr-1")),
+            make_stmt(),
+            make_stmt(first=MockRow(
+                id="attempt-1",
+                quiz_id="quiz-1",
+                activity_id="act-1",
+                user_id="learner-1",
+                status="in_progress",
+                created_at="2026-11-05 12:00:00",
+            )),
+        ])
+        env = make_env(db=db)
+        r = await worker.api_create_quiz_attempt(req, env, "quiz-1")
+        assert r.status == 200
+        insert_stmt = db._stmts[2]
+        assert insert_stmt.bind.call_args.args[3] == "learner-1"
+        insert_stmt.bind.return_value.run.assert_awaited_once()
+        data = _parse(r)["data"]
+        assert data["quiz_id"] == "quiz-1"
+        assert data["activity_id"] == "act-1"
+        assert data["user_id"] == "learner-1"
+        assert data["status"] == "in_progress"
+        assert data["created_at"] == "2026-11-05 12:00:00"
+
+
+class TestQuizAnswerPersistence:
+    def _request(self, payload, token=None, attempt_id="attempt-1", question_id="question-1"):
+        return json_request(
+            f"/api/quiz-attempts/{attempt_id}/answers/{question_id}",
+            payload,
+            headers=_auth(token),
+            method="PUT",
+        )
+
+    def _db(self, *, attempt=None, question=None, saved=None):
+        return MockDB([
+            make_stmt(first=attempt),
+            make_stmt(first=question),
+            make_stmt(),
+            make_stmt(first=saved),
+        ])
+
+    async def test_answer_creation_persists_authenticated_learner_answer(self):
+        tok = _token(uid="learner-1", role="member")
+        saved = MockRow(
+            id="answer-1",
+            attempt_id="attempt-1",
+            question_id="question-1",
+            answer_json='"A"',
+            created_at="2026-11-05 12:00:00",
+            updated_at="2026-11-05 12:00:00",
+        )
+        db = self._db(
+            attempt=MockRow(id="attempt-1", quiz_id="quiz-1", user_id="learner-1", status="in_progress"),
+            question=MockRow(
+                id="question-1", quiz_id="quiz-1",
+                question_type="multiple_choice", options_json='["A","B"]',
+            ),
+            saved=saved,
+        )
+        env = make_env(db=db)
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A", "user_id": "other-user"}, tok),
+            env, "attempt-1", "question-1",
+        )
+        assert r.status == 400
+
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 200
+        data = _parse(r)["data"]
+        assert data["answer"] == "A"
+        assert data["attempt_id"] == "attempt-1"
+        assert "correct_answer" not in data
+        assert "is_correct" not in data
+        insert_stmt = db._stmts[2]
+        assert insert_stmt.bind.call_args.args[3] == '"A"'
+        insert_stmt.bind.return_value.run.assert_awaited_once()
+
+    async def test_answer_upsert_is_idempotent(self):
+        tok = _token(uid="learner-1", role="member")
+        attempt = MockRow(
+            id="attempt-1", quiz_id="quiz-1", user_id="learner-1", status="in_progress"
+        )
+        question = MockRow(
+            id="question-1", quiz_id="quiz-1",
+            question_type="multiple_choice", options_json='["A","B"]',
+        )
+
+        class RecordingDB(MockDB):
+            def __init__(self, stmts):
+                super().__init__(stmts)
+                self.sql = []
+
+            def prepare(self, sql):
+                self.sql.append(sql)
+                return super().prepare(sql)
+
+        first_db = RecordingDB([
+            make_stmt(first=attempt),
+            make_stmt(first=question),
+            make_stmt(),
+            make_stmt(first=MockRow(
+                id="answer-1", attempt_id="attempt-1", question_id="question-1",
+                answer_json='"B"', created_at="created", updated_at="updated",
+            )),
+        ])
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "B"}, tok),
+            make_env(db=first_db), "attempt-1", "question-1",
+        )
+        assert r.status == 200
+        assert "ON CONFLICT(attempt_id, question_id) DO UPDATE" in first_db.sql[2]
+        assert first_db._stmts[2].bind.call_args.args[1:3] == (
+            "attempt-1", "question-1"
+        )
+
+        second_db = RecordingDB([
+            make_stmt(first=attempt),
+            make_stmt(first=question),
+            make_stmt(),
+            make_stmt(first=MockRow(
+                id="answer-1", attempt_id="attempt-1", question_id="question-1",
+                answer_json='"A"', created_at="created", updated_at="updated-again",
+            )),
+        ])
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok),
+            make_env(db=second_db), "attempt-1", "question-1",
+        )
+        assert r.status == 200
+        assert _parse(r)["data"]["answer"] == "A"
+        assert second_db._stmts[2].bind.call_args.args[3] == '"A"'
+        second_db._stmts[2].bind.return_value.run.assert_awaited_once()
+
+    async def test_answer_requires_authentication(self):
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}), make_env(), "attempt-1", "question-1"
+        )
+        assert r.status == 401
+
+    async def test_missing_attempt_is_404(self):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 404
+
+    async def test_other_learner_attempt_is_403(self):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(
+                id="attempt-1", quiz_id="quiz-1", user_id="learner-2", status="in_progress"
+            )),
+        ]))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 403
+
+    async def test_non_in_progress_attempt_is_rejected(self):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(
+                id="attempt-1", quiz_id="quiz-1", user_id="learner-1", status="submitted"
+            )),
+        ]))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 409
+
+    async def test_status_change_between_validation_and_write_is_rejected(self):
+        tok = _token(uid="learner-1", role="member")
+        attempt = MockRow(
+            id="attempt-1", quiz_id="quiz-1",
+            user_id="learner-1", status="in_progress",
+        )
+        question = MockRow(
+            id="question-1", quiz_id="quiz-1",
+            question_type="multiple_choice", options_json='["A"]',
+        )
+        write_stmt = make_stmt()
+        write_stmt.bind.return_value.run.return_value = SimpleNamespace(
+            meta=SimpleNamespace(changes=0)
+        )
+        db = MockDB([
+            make_stmt(first=attempt),
+            make_stmt(first=question),
+            write_stmt,
+        ])
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok), make_env(db=db),
+            "attempt-1", "question-1",
+        )
+        assert r.status == 409
+        assert "in-progress" in _parse(r)["error"]
+
+    async def test_question_must_belong_to_attempt_quiz(self):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=MockDB([
+            make_stmt(first=MockRow(
+                id="attempt-1", quiz_id="quiz-1", user_id="learner-1", status="in_progress"
+            )),
+            make_stmt(first=MockRow(
+                id="question-1", quiz_id="different-quiz",
+                question_type="multiple_choice", options_json='["A"]',
+            )),
+        ]))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 404
+
+    @pytest.mark.parametrize("question_type, options, answer", (
+        ("multiple_choice", '["A","B"]', "C"),
+        ("true_false", '["True","False"]', "maybe"),
+        ("essay", '["text"]', "text"),
+        ("multiple_choice", '["A","B"]', None),
+        ("multiple_choice", '["A","B"]', {"value": "A"}),
+        ("multiple_choice", '["A","B"]', ["A"]),
+    ))
+    async def test_invalid_answer_payloads_are_rejected(self, question_type, options, answer):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=self._db(
+            attempt=MockRow(id="attempt-1", quiz_id="quiz-1", user_id="learner-1", status="in_progress"),
+            question=MockRow(
+                id="question-1", quiz_id="quiz-1",
+                question_type=question_type, options_json=options,
+            ),
+        ))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": answer}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 400
+
+    async def test_true_false_answer_uses_existing_string_options(self):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=self._db(
+            attempt=MockRow(id="attempt-1", quiz_id="quiz-1", user_id="learner-1", status="in_progress"),
+            question=MockRow(
+                id="question-1", quiz_id="quiz-1",
+                question_type="true_false", options_json='["True","False"]',
+            ),
+            saved=MockRow(
+                id="answer-1", attempt_id="attempt-1", question_id="question-1",
+                answer_json='"True"', created_at="created", updated_at="updated",
+            ),
+        ))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "True"}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 200
+        assert _parse(r)["data"]["answer"] == "True"
+
+    async def test_true_false_answer_accepts_boolean_option(self):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=self._db(
+            attempt=MockRow(
+                id="attempt-1", quiz_id="quiz-1",
+                user_id="learner-1", status="in_progress",
+            ),
+            question=MockRow(
+                id="question-1", quiz_id="quiz-1",
+                question_type="true_false", options_json="[true,false]",
+            ),
+            saved=MockRow(
+                id="answer-1", attempt_id="attempt-1", question_id="question-1",
+                answer_json="true", created_at="created", updated_at="updated",
+            ),
+        ))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": True}, tok), env,
+            "attempt-1", "question-1",
+        )
+        assert r.status == 200
+        assert _parse(r)["data"]["answer"] is True
+
+    @pytest.mark.parametrize(
+        "options, answer",
+        [("[true]", 1), ("[1]", True)],
+    )
+    async def test_boolean_and_numeric_options_must_match_types(self, options, answer):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=self._db(
+            attempt=MockRow(
+                id="attempt-1", quiz_id="quiz-1",
+                user_id="learner-1", status="in_progress",
+            ),
+            question=MockRow(
+                id="question-1", quiz_id="quiz-1",
+                question_type="multiple_choice", options_json=options,
+            ),
+        ))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": answer}, tok), env, "attempt-1", "question-1"
+        )
+        assert r.status == 400
+
 
 class TestQuizCreation:
     async def test_missing_title_returns_400(self):
@@ -462,3 +823,51 @@ class TestQuizRouterDispatch:
         r_global = await worker._dispatch(req_global, env_global)
         assert r_global.status == 200
         assert len(_parse(r_global)["quizzes"]) == 1
+
+    async def test_dispatch_creates_quiz_attempt_with_captured_id(self, monkeypatch):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request(
+            "/api/quizzes/quiz-1/attempts", {}, headers=_auth(tok)
+        )
+        captured = []
+
+        async def fake_create(request, env, quiz_id):
+            captured.append((request, env, quiz_id))
+            return worker.ok({"quiz_id": quiz_id})
+
+        monkeypatch.setattr(worker, "api_create_quiz_attempt", fake_create)
+        env = make_env()
+        response = await worker._dispatch(req, env)
+        assert response.status == 200
+        assert captured[0][0] is req
+        assert captured[0][1] is env
+        assert captured[0][2] == "quiz-1"
+        assert _parse(response)["data"]["quiz_id"] == "quiz-1"
+
+    async def test_dispatch_saves_quiz_answer_with_captured_ids(self, monkeypatch):
+        tok = _token(uid="learner-1", role="member")
+        req = json_request(
+            "/api/quiz-attempts/attempt-1/answers/question-1",
+            {"answer": "A"},
+            headers=_auth(tok),
+            method="PUT",
+        )
+        captured = []
+
+        async def fake_save(request, env, attempt_id, question_id):
+            captured.append((request, env, attempt_id, question_id))
+            return worker.ok({
+                "attempt_id": attempt_id,
+                "question_id": question_id,
+            })
+
+        monkeypatch.setattr(worker, "api_save_quiz_answer", fake_save)
+        env = make_env()
+        response = await worker._dispatch(req, env)
+        assert response.status == 200
+        data = _parse(response)["data"]
+        assert data["attempt_id"] == "attempt-1"
+        assert data["question_id"] == "question-1"
+        assert captured[0][0] is req
+        assert captured[0][1] is env
+        assert captured[0][2:] == ("attempt-1", "question-1")
