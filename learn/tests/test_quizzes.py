@@ -13,7 +13,10 @@ Covers:
 """
 
 import json
+from types import SimpleNamespace
+
 import pytest
+
 from tests.helpers import (
     load_worker,
     MockRequest,
@@ -352,6 +355,32 @@ class TestQuizAnswerPersistence:
         )
         assert r.status == 409
 
+    async def test_status_change_between_validation_and_write_is_rejected(self):
+        tok = _token(uid="learner-1", role="member")
+        attempt = MockRow(
+            id="attempt-1", quiz_id="quiz-1",
+            user_id="learner-1", status="in_progress",
+        )
+        question = MockRow(
+            id="question-1", quiz_id="quiz-1",
+            question_type="multiple_choice", options_json='["A"]',
+        )
+        write_stmt = make_stmt()
+        write_stmt.bind.return_value.run.return_value = SimpleNamespace(
+            meta=SimpleNamespace(changes=0)
+        )
+        db = MockDB([
+            make_stmt(first=attempt),
+            make_stmt(first=question),
+            write_stmt,
+        ])
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": "A"}, tok), make_env(db=db),
+            "attempt-1", "question-1",
+        )
+        assert r.status == 409
+        assert "in-progress" in _parse(r)["error"]
+
     async def test_question_must_belong_to_attempt_quiz(self):
         tok = _token(uid="learner-1", role="member")
         env = make_env(db=MockDB([
@@ -368,11 +397,14 @@ class TestQuizAnswerPersistence:
         )
         assert r.status == 404
 
-    @pytest.mark.parametrize("question_type, options, answer", [
+    @pytest.mark.parametrize("question_type, options, answer", (
         ("multiple_choice", '["A","B"]', "C"),
         ("true_false", '["True","False"]', "maybe"),
         ("essay", '["text"]', "text"),
-    ])
+        ("multiple_choice", '["A","B"]', None),
+        ("multiple_choice", '["A","B"]', {"value": "A"}),
+        ("multiple_choice", '["A","B"]', ["A"]),
+    ))
     async def test_invalid_answer_payloads_are_rejected(self, question_type, options, answer):
         tok = _token(uid="learner-1", role="member")
         env = make_env(db=self._db(
@@ -405,6 +437,29 @@ class TestQuizAnswerPersistence:
         )
         assert r.status == 200
         assert _parse(r)["data"]["answer"] == "True"
+
+    async def test_true_false_answer_accepts_boolean_option(self):
+        tok = _token(uid="learner-1", role="member")
+        env = make_env(db=self._db(
+            attempt=MockRow(
+                id="attempt-1", quiz_id="quiz-1",
+                user_id="learner-1", status="in_progress",
+            ),
+            question=MockRow(
+                id="question-1", quiz_id="quiz-1",
+                question_type="true_false", options_json="[true,false]",
+            ),
+            saved=MockRow(
+                id="answer-1", attempt_id="attempt-1", question_id="question-1",
+                answer_json="true", created_at="created", updated_at="updated",
+            ),
+        ))
+        r = await worker.api_save_quiz_answer(
+            self._request({"answer": True}, tok), env,
+            "attempt-1", "question-1",
+        )
+        assert r.status == 200
+        assert _parse(r)["data"]["answer"] is True
 
     @pytest.mark.parametrize(
         "options, answer",

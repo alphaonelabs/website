@@ -4585,6 +4585,7 @@ async def api_create_quiz_attempt(req, env, quiz_id: str):
     user_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
 
     async def run():
+        """Create an attempt after verifying the learner's active enrollment."""
         quiz = await env.DB.prepare(
             "SELECT id, activity_id FROM quizzes WHERE id=?"
         ).bind(quiz_id).first()
@@ -4657,6 +4658,7 @@ async def api_save_quiz_answer(req, env, attempt_id: str, question_id: str):
         return err("Only an answer field is accepted", 400)
 
     async def run():
+        """Validate ownership and persist the answer in one conditional write."""
         attempt = await env.DB.prepare(
             "SELECT id, quiz_id, user_id, status FROM quiz_attempts WHERE id=?"
         ).bind(attempt_id).first()
@@ -4683,13 +4685,33 @@ async def api_save_quiz_answer(req, env, attempt_id: str, question_id: str):
             return None, err(validation_error, 400)
 
         answer_id = new_id()
-        await env.DB.prepare(
+        write_result = await env.DB.prepare(
             "INSERT INTO quiz_answers "
             "(id, attempt_id, question_id, answer_json, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, datetime('now'), datetime('now')) "
+            "SELECT ?, ?, ?, ?, datetime('now'), datetime('now') "
+            "WHERE EXISTS ("
+            "SELECT 1 FROM quiz_attempts "
+            "WHERE id=? AND user_id=? AND status='in_progress'"
+            ") "
             "ON CONFLICT(attempt_id, question_id) DO UPDATE SET "
-            "answer_json=excluded.answer_json, updated_at=datetime('now')"
-        ).bind(answer_id, attempt_id, question_id, answer_json).run()
+            "answer_json=excluded.answer_json, updated_at=datetime('now') "
+            "WHERE EXISTS ("
+            "SELECT 1 FROM quiz_attempts "
+            "WHERE id=? AND user_id=? AND status='in_progress'"
+            ")"
+        ).bind(
+            answer_id,
+            attempt_id,
+            question_id,
+            answer_json,
+            attempt_id,
+            user_id,
+            attempt_id,
+            user_id,
+        ).run()
+        changes = getattr(getattr(write_result, "meta", None), "changes", None)
+        if changes == 0:
+            return None, err("Only in-progress attempts can be updated", 409)
         saved = await env.DB.prepare(
             "SELECT id, attempt_id, question_id, answer_json, created_at, updated_at "
             "FROM quiz_answers WHERE attempt_id=? AND question_id=?"
