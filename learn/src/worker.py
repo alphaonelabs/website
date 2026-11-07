@@ -1208,6 +1208,7 @@ _DDL = [
         FOREIGN KEY (question_id) REFERENCES quiz_questions(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_answers_attempt ON quiz_answers(attempt_id)",
+    "CREATE INDEX IF NOT EXISTS idx_quiz_answers_question ON quiz_answers(question_id)",
 ]
 
 
@@ -4634,7 +4635,10 @@ def _validate_quiz_answer(question_type, options_json, answer):
         options = json.loads(options_json or "[]")
     except (TypeError, ValueError):
         return None, "Question options are invalid"
-    if not isinstance(options, list) or answer not in options:
+    if not isinstance(options, list) or not any(
+        isinstance(option, bool) == isinstance(answer, bool) and option == answer
+        for option in options
+    ):
         return None, "answer must match one of the question options"
     return json.dumps(answer, separators=(",", ":")), None
 
@@ -9094,6 +9098,7 @@ async def api_list_users(req, env):
 # ---------------------------------------------------------------------------
 
 async def _dispatch(request, env):
+    """Route an incoming request to the matching API handler."""
     path   = urlparse(request.url).path
     method = request.method.upper()
     admin_path = _clean_path(getattr(env, "ADMIN_URL", ""))

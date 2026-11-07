@@ -227,3 +227,4 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
     FOREIGN KEY (question_id) REFERENCES quiz_questions(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_quiz_answers_attempt ON quiz_answers(attempt_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_answers_question ON quiz_answers(question_id);
