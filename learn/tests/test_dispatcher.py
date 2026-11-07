@@ -130,6 +130,18 @@ class TestApiRouting:
         r = await worker._dispatch(req, env)
         assert r.status == 404  # not found
 
+    async def test_get_offline_package_by_id_routed(self):
+        token = _token()
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/activities/some-id/offline-package",
+            headers=_auth(token),
+        )
+        r = await worker._dispatch(req, env)
+        assert r.status == 404
+        assert _parse(r)["error"] == "Activity not found"
+
     async def test_post_join_routed(self):
         req = json_request("/api/join", {"activity_id": "act-1"})
         r = await worker._dispatch(req, make_env())

@@ -9,6 +9,7 @@ API Routes
   GET  /api/activities        – list activities (?type=&format=&q=&tag=)
   POST /api/activities        – create activity              [host]
   GET  /api/activities/:id    – activity + sessions + state
+  GET  /api/activities/:id/offline-package – authorized offline package manifest
   GET  /api/activities/:id/calendar.ics – export course sessions (.ics)
   GET  /api/calendar/user.ics – student/instructor iCal feed (?token=...)
   POST /api/join              – join an activity
@@ -2608,6 +2609,210 @@ async def api_get_activity(activity_ref: str, req, env):
             "id":     enrollment.id,
         } if enrollment else None,
     })
+
+
+def _offline_package_r2_metadata(obj) -> Dict[str, Any]:
+    """Extract stable, non-sensitive metadata from an R2 object."""
+    metadata: Dict[str, Any] = {}
+    size = getattr(obj, "size", None)
+    if isinstance(size, (int, float)) and size >= 0:
+        metadata["size_bytes"] = int(size)
+
+    http_metadata = getattr(obj, "http_metadata", None) or getattr(obj, "httpMetadata", None)
+    content_type = getattr(http_metadata, "contentType", None) if http_metadata else None
+    if content_type:
+        metadata["content_type"] = str(content_type)
+
+    checksums = getattr(obj, "checksums", None)
+    if checksums is not None:
+        for algorithm in ("sha256", "md5"):
+            value = getattr(checksums, algorithm, None)
+            if value is None and isinstance(checksums, dict):
+                value = checksums.get(algorithm)
+            if value is None:
+                continue
+            digest = _offline_package_digest(value)
+            if digest:
+                metadata["content_hash"] = f"{algorithm}:{digest}"
+                break
+
+    etag = getattr(obj, "etag", None)
+    if etag:
+        metadata["revision"] = str(etag)
+    return metadata
+
+
+def _offline_package_digest(value) -> Optional[str]:
+    """Return a checksum as a stable hexadecimal digest without fabricating it."""
+    if isinstance(value, str):
+        return value
+    converted = value
+    to_py = getattr(value, "to_py", None)
+    if callable(to_py):
+        try:
+            converted = to_py()
+        except Exception:
+            converted = value
+    if isinstance(converted, str):
+        return converted
+    if isinstance(converted, (bytes, bytearray, memoryview)):
+        return bytes(converted).hex()
+    if isinstance(converted, (list, tuple)):
+        try:
+            return bytes(converted).hex()
+        except (TypeError, ValueError):
+            return None
+    try:
+        return bytes(converted).hex()
+    except (TypeError, ValueError):
+        return None
+
+
+def _r2_key_from_media_path(path: str) -> Optional[str]:
+    """Decode a public /media/ path into its corresponding R2 object key."""
+    parsed_path = urlparse(path).path
+    prefix = "/media/"
+    if not parsed_path.startswith(prefix):
+        return None
+    encoded_key = parsed_path[len(prefix):]
+    return unquote(encoded_key) if encoded_key else None
+
+
+async def api_get_offline_package(activity_ref: str, req, env):
+    """GET /api/activities/:id/offline-package — return an authorized manifest."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    activity = await env.DB.prepare(
+        "SELECT id,title,type,format,slug,host_id FROM activities WHERE slug=? LIMIT 1"
+    ).bind(activity_ref).first()
+    if not activity:
+        activity = await env.DB.prepare(
+            "SELECT id,title,type,format,slug,host_id FROM activities WHERE id=? LIMIT 1"
+        ).bind(activity_ref).first()
+    if not activity:
+        return err("Activity not found", 404)
+
+    user_id = user.get("id")
+    is_host = user_id == getattr(activity, "host_id", None) or user.get("role") == "admin"
+    enrollment = await env.DB.prepare(
+        "SELECT role,status FROM enrollments WHERE activity_id=? AND user_id=?"
+    ).bind(activity.id, user_id).first()
+    is_active_enrollee = bool(
+        enrollment and getattr(enrollment, "status", "") == "active"
+    )
+    if not (is_host or is_active_enrollee):
+        return err("Activity enrollment required", 403)
+
+    materials_result = await env.DB.prepare(
+        "SELECT id,title,description,material_type,file_url,file_r2_key,external_url,"
+        "display_order,is_downloadable,requires_enrollment,created_at,updated_at "
+        "FROM activity_materials WHERE activity_id=? ORDER BY display_order,id"
+    ).bind(activity.id).all()
+
+    bucket = getattr(env, "MY_BUCKET", None)
+    resources = []
+    seen_ids = set()
+    for material in materials_result.results or []:
+        material_id = getattr(material, "id", None)
+        if not isinstance(material_id, str) or not material_id or material_id in seen_ids:
+            continue
+        seen_ids.add(material_id)
+
+        r2_key = getattr(material, "file_r2_key", None) or ""
+        file_url = getattr(material, "file_url", None) or ""
+        external_url = getattr(material, "external_url", None) or ""
+        downloadable = bool(getattr(material, "is_downloadable", 0))
+        resource = {
+            "asset_id": f"material:{material_id}",
+            "material_id": material_id,
+            "title": getattr(material, "title", None) or "",
+            "description": getattr(material, "description", None) or "",
+            "material_type": getattr(material, "material_type", None) or "resource",
+            "display_order": int(getattr(material, "display_order", 0) or 0),
+            "downloadable": False,
+            "availability": "unavailable",
+            "url": None,
+            "content_type": None,
+            "size_bytes": None,
+            "content_hash": None,
+            "updated_at": getattr(material, "updated_at", None),
+            "created_at": getattr(material, "created_at", None),
+            "revision": getattr(material, "updated_at", None) or getattr(material, "created_at", None),
+        }
+
+        if r2_key:
+            if bucket is None or not hasattr(bucket, "get"):
+                resource["availability"] = "unavailable"
+            else:
+                try:
+                    obj = await bucket.get(r2_key)
+                    if obj:
+                        resource.update(_offline_package_r2_metadata(obj))
+                        resource["downloadable"] = downloadable
+                        resource["availability"] = "available" if downloadable else "online_only"
+                        resource["url"] = f"/media/{quote(r2_key, safe='/')}"
+                    else:
+                        resource["availability"] = "unavailable"
+                except Exception as exc:
+                    await capture_exception(exc, req, env, "api_get_offline_package.r2_get")
+                    resource["availability"] = "unavailable"
+        elif file_url:
+            parsed_file_url = urlparse(file_url)
+            if parsed_file_url.scheme in {"http", "https"}:
+                resource["url"] = file_url
+                resource["availability"] = "online_only"
+            elif file_url.startswith("/media/"):
+                media_key = _r2_key_from_media_path(file_url)
+                if bucket is not None and media_key and hasattr(bucket, "get"):
+                    try:
+                        obj = await bucket.get(media_key)
+                        if obj:
+                            resource.update(_offline_package_r2_metadata(obj))
+                            resource["url"] = file_url
+                            resource["downloadable"] = downloadable
+                            resource["availability"] = "available" if downloadable else "online_only"
+                        else:
+                            resource["availability"] = "unavailable"
+                    except Exception as exc:
+                        await capture_exception(exc, req, env, "api_get_offline_package.media_r2_get")
+                        resource["availability"] = "unavailable"
+            else:
+                resource["availability"] = "unavailable"
+        elif external_url:
+            resource["url"] = external_url
+            resource["availability"] = "online_only"
+
+        if not resource["downloadable"]:
+            resource["content_type"] = None
+            resource["size_bytes"] = None
+            resource["content_hash"] = None
+        resources.append(resource)
+
+    resources.sort(key=lambda item: (item["display_order"], item["material_id"]))
+    version_basis = {
+        "activity": {
+            "id": activity.id,
+            "title": getattr(activity, "title", "") or "",
+            "type": getattr(activity, "type", "") or "",
+            "format": getattr(activity, "format", "") or "",
+        },
+        "resources": resources,
+    }
+    package_version = hashlib.sha256(
+        json.dumps(version_basis, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    ).hexdigest()
+    package = {
+        "package_id": f"activity:{activity.id}",
+        "package_version": package_version,
+        "activity_id": activity.id,
+        "title": getattr(activity, "title", "") or "",
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "resources": resources,
+    }
+    return json_resp({"package": package})
+
 
 _ACTIVITY_TYPES = ("course", "meetup", "workshop", "seminar", "club", "event", "video", "study_group", "other")
 _ACTIVITY_FORMATS = ("live", "self_paced", "hybrid")
@@ -5893,7 +6098,9 @@ async def serve_r2_media(path: str, env):
     bucket = getattr(env, "MY_BUCKET", None)
     if not bucket:
         return err("Media bucket is not configured", 500)
-    key = path.lstrip("/")
+    key = _r2_key_from_media_path(path)
+    if not key:
+        return err("Media not found", 404)
     try:
         obj = await bucket.get(key)
     except Exception as exc:
@@ -9074,6 +9281,10 @@ async def _dispatch(request, env):
         m_complete = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/complete", path)
         if m_complete and method == "POST":
             return await api_complete_activity(m_complete.group(1), request, env)
+
+        m_offline_package = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/offline-package", path)
+        if m_offline_package and method == "GET":
+            return await api_get_offline_package(m_offline_package.group(1), request, env)
 
         m_interest = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/interest", path)
         if m_interest and method == "POST":
