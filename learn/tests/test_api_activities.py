@@ -258,6 +258,20 @@ class TestApiGetOfflinePackage:
         )
         assert r.status == 403
 
+    async def test_rejects_inactive_enrollee_without_manifest_data(self):
+        token = _make_host_token(uid="learner-1", role="member")
+        r = await worker.api_get_offline_package(
+            "act-1", self._req(token=token),
+            self._env(
+                activity=self._activity(),
+                enrollment=MockRow(role="participant", status="inactive"),
+                materials=[self._material("private")],
+            ),
+        )
+        assert r.status == 403
+        assert "package" not in _parse(r)
+        assert "private" not in r.body
+
     async def test_active_enrollee_receives_manifest(self):
         token = _make_host_token(uid="learner-1", role="member")
         enrollment = MockRow(role="participant", status="active")
@@ -308,16 +322,78 @@ class TestApiGetOfflinePackage:
         assert downloadable["content_hash"] == "sha256:hash-a"
         assert "file_r2_key" not in json.dumps(package)
 
+    async def test_r2_checksum_bytes_are_encoded(self):
+        token = _make_host_token()
+        bucket = SimpleNamespace(
+            get=AsyncMock(return_value=SimpleNamespace(
+                size=2,
+                checksums=SimpleNamespace(sha256=b"\x01\x02", md5=None),
+            ))
+        )
+        r = await worker.api_get_offline_package(
+            "act-1", self._req(token=token),
+            self._env(
+                activity=self._activity(), enrollment=None,
+                materials=[self._material("mat-a", file_r2_key="courses/a.pdf", is_downloadable=1)],
+                bucket=bucket,
+            ),
+        )
+        assert _parse(r)["package"]["resources"][0]["content_hash"] == "sha256:0102"
+
+    async def test_slug_resolution_precedes_id_resolution(self):
+        token = _make_host_token()
+        slug_activity = self._activity(aid="slug-activity", slug="collision")
+        env = make_env(db=MockDB([
+            make_stmt(first=slug_activity),
+            make_stmt(first=None),
+            make_stmt(all_results=[self._material("mat-a")]),
+        ]))
+        r = await worker.api_get_offline_package(
+            "collision", self._req("collision", token),
+            env,
+        )
+        assert r.status == 200
+        assert _parse(r)["package"]["activity_id"] == "slug-activity"
+
+    async def test_resource_availability_distinguishes_locations(self):
+        token = _make_host_token()
+        existing = SimpleNamespace(etag="etag", checksums=None)
+        bucket = SimpleNamespace(
+            get=AsyncMock(side_effect=lambda key: existing if key == "media/file.pdf" else None)
+        )
+        materials = [
+            self._material("missing", is_downloadable=1),
+            self._material("external", external_url="https://example.test/guide"),
+            self._material("download", file_url="/media/media/file.pdf", is_downloadable=1),
+        ]
+        r = await worker.api_get_offline_package(
+            "act-1", self._req(token=token),
+            self._env(activity=self._activity(), enrollment=None, materials=materials, bucket=bucket),
+        )
+        resources = {item["material_id"]: item for item in _parse(r)["package"]["resources"]}
+        assert resources["missing"]["availability"] == "unavailable"
+        assert resources["external"]["availability"] == "online_only"
+        assert resources["download"]["availability"] == "available"
+
+    async def test_media_manifest_url_resolves_to_exact_r2_key(self):
+        bucket = SimpleNamespace(get=AsyncMock(return_value=SimpleNamespace(body=b"data")))
+        response = await worker.serve_r2_media(
+            "/media/courses/lesson%20one.pdf", SimpleNamespace(MY_BUCKET=bucket)
+        )
+        assert response.status == 200
+        bucket.get.assert_awaited_once_with("courses/lesson one.pdf")
+
     async def test_identical_manifests_have_identical_versions(self):
         token = _make_host_token()
         material = self._material("mat-a", file_url="/media/material-a.pdf", is_downloadable=1)
+        bucket = SimpleNamespace(get=AsyncMock(return_value=SimpleNamespace(etag="etag")))
         first = await worker.api_get_offline_package(
             "act-1", self._req(token=token),
-            self._env(activity=self._activity(), enrollment=None, materials=[material]),
+            self._env(activity=self._activity(), enrollment=None, materials=[material], bucket=bucket),
         )
         second = await worker.api_get_offline_package(
             "act-1", self._req(token=token),
-            self._env(activity=self._activity(), enrollment=None, materials=[material]),
+            self._env(activity=self._activity(), enrollment=None, materials=[material], bucket=bucket),
         )
         assert _parse(first)["package"]["package_version"] == _parse(second)["package"]["package_version"]
 
@@ -325,13 +401,14 @@ class TestApiGetOfflinePackage:
         token = _make_host_token()
         base = self._material("mat-a", file_url="/media/material-a.pdf", is_downloadable=1)
         changed = self._material("mat-a", file_url="/media/material-a.pdf", is_downloadable=0)
+        bucket = SimpleNamespace(get=AsyncMock(return_value=SimpleNamespace(etag="etag")))
         first = await worker.api_get_offline_package(
             "act-1", self._req(token=token),
-            self._env(activity=self._activity(), enrollment=None, materials=[base]),
+            self._env(activity=self._activity(), enrollment=None, materials=[base], bucket=bucket),
         )
         second = await worker.api_get_offline_package(
             "act-1", self._req(token=token),
-            self._env(activity=self._activity(), enrollment=None, materials=[changed]),
+            self._env(activity=self._activity(), enrollment=None, materials=[changed], bucket=bucket),
         )
         assert _parse(first)["package"]["package_version"] != _parse(second)["package"]["package_version"]
         assert _parse(second)["package"]["resources"][0]["availability"] == "online_only"

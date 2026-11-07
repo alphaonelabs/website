@@ -2624,17 +2624,58 @@ def _offline_package_r2_metadata(obj) -> Dict[str, Any]:
         metadata["content_type"] = str(content_type)
 
     checksums = getattr(obj, "checksums", None)
-    if isinstance(checksums, dict):
+    if checksums is not None:
         for algorithm in ("sha256", "md5"):
-            value = checksums.get(algorithm)
-            if value:
-                metadata["content_hash"] = f"{algorithm}:{value}"
+            value = getattr(checksums, algorithm, None)
+            if value is None and isinstance(checksums, dict):
+                value = checksums.get(algorithm)
+            if value is None:
+                continue
+            digest = _offline_package_digest(value)
+            if digest:
+                metadata["content_hash"] = f"{algorithm}:{digest}"
                 break
 
     etag = getattr(obj, "etag", None)
     if etag:
         metadata["revision"] = str(etag)
     return metadata
+
+
+def _offline_package_digest(value) -> Optional[str]:
+    """Return a checksum as a stable hexadecimal digest without fabricating it."""
+    if isinstance(value, str):
+        return value
+    converted = value
+    to_py = getattr(value, "to_py", None)
+    if callable(to_py):
+        try:
+            converted = to_py()
+        except Exception:
+            converted = value
+    if isinstance(converted, str):
+        return converted
+    if isinstance(converted, (bytes, bytearray, memoryview)):
+        return bytes(converted).hex()
+    if isinstance(converted, (list, tuple)):
+        try:
+            return bytes(converted).hex()
+        except (TypeError, ValueError):
+            return None
+    try:
+        return bytes(converted).hex()
+    except (TypeError, ValueError):
+        return None
+
+
+def _r2_key_from_media_path(path: str) -> Optional[str]:
+    """Decode a public /media/ path into its corresponding R2 object key."""
+    parsed_path = urlparse(path).path
+    prefix = "/media/"
+    if not parsed_path.startswith(prefix):
+        return None
+    encoded_key = parsed_path[len(prefix):]
+    return unquote(encoded_key) if encoded_key else None
 
 
 async def api_get_offline_package(activity_ref: str, req, env):
@@ -2644,9 +2685,12 @@ async def api_get_offline_package(activity_ref: str, req, env):
         return err("Authentication required", 401)
 
     activity = await env.DB.prepare(
-        "SELECT id,title,type,format,slug,host_id FROM activities "
-        "WHERE id=? OR slug=? LIMIT 1"
-    ).bind(activity_ref, activity_ref).first()
+        "SELECT id,title,type,format,slug,host_id FROM activities WHERE slug=? LIMIT 1"
+    ).bind(activity_ref).first()
+    if not activity:
+        activity = await env.DB.prepare(
+            "SELECT id,title,type,format,slug,host_id FROM activities WHERE id=? LIMIT 1"
+        ).bind(activity_ref).first()
     if not activity:
         return err("Activity not found", 404)
 
@@ -2688,7 +2732,7 @@ async def api_get_offline_package(activity_ref: str, req, env):
             "material_type": getattr(material, "material_type", None) or "resource",
             "display_order": int(getattr(material, "display_order", 0) or 0),
             "downloadable": False,
-            "availability": "online_only",
+            "availability": "unavailable",
             "url": None,
             "content_type": None,
             "size_bytes": None,
@@ -2720,13 +2764,25 @@ async def api_get_offline_package(activity_ref: str, req, env):
                 resource["url"] = file_url
                 resource["availability"] = "online_only"
             elif file_url.startswith("/media/"):
-                resource["url"] = file_url
-                resource["downloadable"] = downloadable
-                resource["availability"] = "available" if downloadable else "online_only"
+                media_key = _r2_key_from_media_path(file_url)
+                if bucket is not None and media_key and hasattr(bucket, "get"):
+                    try:
+                        obj = await bucket.get(media_key)
+                        if obj:
+                            resource.update(_offline_package_r2_metadata(obj))
+                            resource["url"] = file_url
+                            resource["downloadable"] = downloadable
+                            resource["availability"] = "available" if downloadable else "online_only"
+                        else:
+                            resource["availability"] = "unavailable"
+                    except Exception as exc:
+                        await capture_exception(exc, req, env, "api_get_offline_package.media_r2_get")
+                        resource["availability"] = "unavailable"
             else:
                 resource["availability"] = "unavailable"
         elif external_url:
             resource["url"] = external_url
+            resource["availability"] = "online_only"
 
         if not resource["downloadable"]:
             resource["content_type"] = None
@@ -6042,7 +6098,9 @@ async def serve_r2_media(path: str, env):
     bucket = getattr(env, "MY_BUCKET", None)
     if not bucket:
         return err("Media bucket is not configured", 500)
-    key = path.lstrip("/")
+    key = _r2_key_from_media_path(path)
+    if not key:
+        return err("Media not found", 404)
     try:
         obj = await bucket.get(key)
     except Exception as exc:

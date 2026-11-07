@@ -140,6 +140,7 @@ class TestApiRouting:
         )
         r = await worker._dispatch(req, env)
         assert r.status == 404
+        assert _parse(r)["error"] == "Activity not found"
 
     async def test_post_join_routed(self):
         req = json_request("/api/join", {"activity_id": "act-1"})

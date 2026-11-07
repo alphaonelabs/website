@@ -208,12 +208,16 @@ resource entries:
 excluding the request timestamp, so identical manifests produce identical
 versions. Material ordering is deterministic. A manifest revision changes
 when relevant activity/material metadata, availability, or R2 revision
-metadata changes. Resource availability is `available`, `online_only`, or
-`unavailable`; online-only resources are never advertised as downloadable.
-Missing R2 size, content type, checksum, or revision metadata is returned as
-`null` rather than fabricated. The API does not expose a separate R2 bucket
-key, credentials, authentication data, quiz answers, or unrelated learner
-data. Removed materials are absent from the current manifest.
+metadata changes. When an R2 object is available, `revision` is its R2 ETag;
+when the object cannot provide an ETag, the API may use the material's
+`updated_at`, then `created_at`, as a fallback. A timestamp fallback is not a
+verified R2 object revision and clients must not treat it as one. Resource
+availability is `available`, `online_only`, or `unavailable`; online-only
+resources are never advertised as downloadable. Missing R2 size, content
+type, checksum, or revision metadata is returned as `null` rather than
+fabricated. The API does not expose a separate R2 bucket key, credentials,
+authentication data, quiz answers, or unrelated learner data. Removed
+materials are absent from the current manifest.
 
 This endpoint defines metadata only. It does not download files, add IndexedDB
 domain stores, modify the service worker, synchronize content, or manage
