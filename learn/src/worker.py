@@ -4590,6 +4590,16 @@ async def api_add_quiz_questions(req, env, quiz_id: str):
     for idx, q in enumerate(items):
         if not isinstance(q, dict) or not str(q.get("prompt") or "").strip():
             return err(f"Question prompt is required for question {idx + 1}", 400)
+        opts = q.get("options") if "options" in q else q.get("options_json")
+        if opts is None:
+            continue
+        if isinstance(opts, str):
+            try:
+                opts = json.loads(opts)
+            except (TypeError, ValueError):
+                return err(f"Question options must be a list of strings for question {idx + 1}", 400)
+        if not isinstance(opts, list) or not all(isinstance(option, str) for option in opts):
+            return err(f"Question options must be a list of strings for question {idx + 1}", 400)
 
     enc = env.ENCRYPTION_KEY
 
@@ -4637,6 +4647,10 @@ async def api_add_quiz_questions(req, env, quiz_id: str):
 
 async def api_get_quiz_questions(req, env, quiz_id: str):
     """GET /api/quizzes/:id/questions — Retrieve questions for a quiz."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
     row = await env.DB.prepare(
         "SELECT q.id, q.activity_id, a.host_id "
         "FROM quizzes q "
@@ -4646,10 +4660,17 @@ async def api_get_quiz_questions(req, env, quiz_id: str):
     if not row:
         return err("Quiz not found", 404)
 
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     user_id = user.get("id") if user else None
     host_id = getattr(row, "host_id", None)
     is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    if not is_host:
+        enrollment = await env.DB.prepare(
+            "SELECT id FROM enrollments "
+            "WHERE activity_id=? AND user_id=? AND status='active'"
+        ).bind(row.activity_id, user_id).first()
+        if not enrollment:
+            return err("Forbidden: You must be enrolled in this activity to view its quiz", 403)
+
     enc = env.ENCRYPTION_KEY
 
     async def run():
@@ -4663,7 +4684,9 @@ async def api_get_quiz_questions(req, env, quiz_id: str):
         questions = []
         for r in (res.results or []):
             try:
-                opts = json.loads(r.options_json) if r.options_json else []
+                opts = _learner_safe_options(
+                    json.loads(r.options_json) if r.options_json else []
+                )
             except Exception:
                 opts = []
             item = {
@@ -4686,8 +4709,24 @@ async def api_get_quiz_questions(req, env, quiz_id: str):
     return json_resp({"quiz_id": quiz_id, "questions": questions})
 
 
+def _learner_safe_options(options):
+    """Return option labels without exposing answer metadata to learners."""
+    if not isinstance(options, list):
+        return []
+    return [
+        option if isinstance(option, str) else option["text"]
+        for option in options
+        if isinstance(option, str)
+        or (isinstance(option, dict) and isinstance(option.get("text"), str))
+    ]
+
+
 async def api_get_quiz(req, env, quiz_id: str):
     """GET /api/quizzes/:id — Retrieve quiz details with questions."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
     row = await env.DB.prepare(
         "SELECT q.id, q.activity_id, q.title, q.description, q.time_limit_minutes, q.passing_score, q.created_at, q.updated_at, "
         "a.title AS activity_title, a.host_id "
@@ -4698,10 +4737,17 @@ async def api_get_quiz(req, env, quiz_id: str):
     if not row:
         return err("Quiz not found", 404)
 
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
-    user_id = user.get("id") if user else None
+    user_id = user.get("id")
     host_id = getattr(row, "host_id", None)
     is_host = bool(user and (user_id == host_id or user.get("role") == "admin"))
+    if not is_host:
+        enrollment = await env.DB.prepare(
+            "SELECT id FROM enrollments "
+            "WHERE activity_id=? AND user_id=? AND status='active'"
+        ).bind(row.activity_id, user_id).first()
+        if not enrollment:
+            return err("Forbidden: You must be enrolled in this activity to view its quiz", 403)
+
     enc = env.ENCRYPTION_KEY
 
     async def run():
@@ -4715,7 +4761,9 @@ async def api_get_quiz(req, env, quiz_id: str):
         questions = []
         for r in (res.results or []):
             try:
-                opts = json.loads(r.options_json) if r.options_json else []
+                opts = _learner_safe_options(
+                    json.loads(r.options_json) if r.options_json else []
+                )
             except Exception:
                 opts = []
             item = {

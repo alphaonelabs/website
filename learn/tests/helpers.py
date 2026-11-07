@@ -98,13 +98,22 @@ class MockDB:
     def __init__(self, stmts=None):
         self._stmts = list(stmts or [])
         self._idx = 0
+        self.prepare_calls = []
 
-    def prepare(self, _sql):
+    def prepare(self, sql):
         if self._idx < len(self._stmts):
             stmt = self._stmts[self._idx]
         else:
             stmt = make_stmt()
         self._idx += 1
+        stmt.sql = sql
+        self.prepare_calls.append(stmt)
+
+        def record_bind(*args):
+            stmt.bound_args = args
+            return stmt.bind.return_value
+
+        stmt.bind.side_effect = record_bind
         return stmt
 
 
@@ -202,4 +211,3 @@ async def make_init_db_stmts(worker_mod):
     """Return a list of dummy statements sized to match worker.init_db()."""
     cnt = await get_init_db_statement_count(worker_mod)
     return [make_stmt() for _ in range(cnt)]
-
