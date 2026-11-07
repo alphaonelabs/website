@@ -90,3 +90,14 @@ class TestApiFeedback:
             )
         assert r.status == 500
         cap.assert_awaited_once()
+
+    async def test_missing_table_initialises_db_and_retries(self):
+        db = StrictD1(run_error_once=Exception("no such table: feedback_messages"))
+        with patch.object(worker, "init_db", new=AsyncMock()) as init:
+            r = await worker.api_feedback(
+                json_request("/api/feedback", PAYLOAD), make_env(db=db)
+           )
+        assert r.status == 200
+        init.assert_awaited_once()
+        assert len(db.writes) == 1          # only the retried insert is recorded
+        assert row_as_dict(*db.writes[0])["message"] == _enc("Nice site")

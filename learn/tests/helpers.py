@@ -241,6 +241,15 @@ class _StrictStmt:
             raise self.db.run_error
         self.db.writes.append((self.sql, self.args))
         return None
+    
+    async def run(self):
+        if self.db.run_error_once:
+            exc, self.db.run_error_once = self.db.run_error_once, None
+            raise exc
+        if self.db.run_error:
+            raise self.db.run_error
+        self.db.writes.append((self.sql, self.args))
+        return None
 
 
 class StrictD1:
@@ -250,11 +259,12 @@ class StrictD1:
     (from .batch()).
     """
 
-    def __init__(self, first=None, all_=None, run_error=None, batch_error=None):
+    def __init__(self, first=None, all_=None, run_error=None, batch_error=None, run_error_once=None):
         self._first = first or (lambda sql, args: None)
         self._all = all_ or (lambda sql, args: [])
         self.run_error = run_error
         self.batch_error = batch_error
+        self.run_error_once = run_error_once
         self.writes = []
         self.batches = []
 
@@ -269,10 +279,14 @@ class StrictD1:
 
 def row_as_dict(sql, args):
     """Map an INSERT's columns to the values it saves (NULL literal -> None)."""
-    cols = re.search(r"\(([^)]*)\)\s*VALUES", sql).group(1).split(",")
-    vals = re.search(r"VALUES\s*\(([^)]*)\)", sql).group(1).split(",")
+    cols_m = re.search(r"\(([^)]*)\)\s*VALUES", sql)
+    vals_m = re.search(r"VALUES\s*\(([^)]*)\)", sql)
+    if not cols_m or not vals_m:
+        raise ValueError(f"Not a simple INSERT ... VALUES statement: {sql}")
+    cols = cols_m.group(1).split(",")
+    vals = vals_m.group(1).split(",")
     it = iter(args)
     return {
         col.strip(): (None if val.strip().upper() == "NULL" else next(it))
-        for col, val in zip(cols, vals)
+        for col, val in zip(cols, vals, strict=True)
     }
