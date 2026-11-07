@@ -400,7 +400,7 @@ async function handleGoogleCredential(response) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ credential: response.credential })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Google sign-in failed');
         storeAuth(data.data);
     } catch (err) {

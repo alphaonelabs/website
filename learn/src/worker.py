@@ -1497,6 +1497,16 @@ async def init_db(env):
             views INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (day, path)
         )""",
+        """CREATE TABLE IF NOT EXISTS oauth_identities (
+            id           TEXT PRIMARY KEY,
+            user_id      TEXT NOT NULL,
+            provider     TEXT NOT NULL,
+            subject_hash TEXT NOT NULL,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (provider, subject_hash),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_oauth_identities_user ON oauth_identities(user_id)",
     ]
     for sql in legacy_tables:
         await env.DB.prepare(sql).run()
@@ -1913,7 +1923,8 @@ def _b64url_decode(data: str) -> bytes:
 async def _google_jwks(force: bool = False) -> list:
     """Google's public signing keys, cached for an hour per isolate."""
     now = time.time()
-    if not force and _GOOGLE_JWKS_CACHE["keys"] and now - _GOOGLE_JWKS_CACHE["fetched_at"] < 3600:
+    age = now - _GOOGLE_JWKS_CACHE["fetched_at"]
+    if _GOOGLE_JWKS_CACHE["keys"] and age < (60 if force else 3600):
         return _GOOGLE_JWKS_CACHE["keys"]
     resp = await js.fetch(_GOOGLE_JWKS_URL)
     if resp.status != 200:
@@ -1932,6 +1943,8 @@ async def verify_google_id_token(credential: str, client_id: str) -> Optional[Di
         claims = json.loads(_b64url_decode(payload_b64))
         signature = _b64url_decode(sig_b64)
     except Exception:
+        return None
+    if not isinstance(header, dict) or not isinstance(claims, dict):
         return None
 
     if header.get("alg") != "RS256" or not header.get("kid"):
@@ -2027,9 +2040,10 @@ async def api_google_login(req, env):
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
-    credential = (body.get("credential") or "").strip()
-    if not credential:
+    credential = body.get("credential")
+    if not isinstance(credential, str) or not credential.strip():
         return err("Google credential is required")
+    credential = credential.strip()
 
     claims = await verify_google_id_token(credential, client_id)
     if not claims:
@@ -2049,20 +2063,54 @@ async def api_google_login(req, env):
             existing = await env.DB.prepare(
                 "SELECT id, email_verified FROM users WHERE email_hash=?"
             ).bind(blind_index(email, enc)).first()
+
             if existing:
+                hosted_domain = claims.get("hd")
+                email_domain = email.rsplit("@", 1)[-1].lower()
+
+                authoritative = (
+                    email.lower().endswith("@gmail.com")
+                    or (
+                        isinstance(hosted_domain, str)
+                        and hosted_domain.lower() == email_domain
+                    )
+                )
+
+                if not authoritative:
+                    return err(
+                        "An account with this email already exists. "
+                        "Sign in with your password instead.",
+                        403
+                    )
+
                 user_id = existing.id
+
                 if not existing.email_verified:
-                    # Someone may have pre-registered this address with their own password.
-                    # Google has proven who owns it, so invalidate that password.
                     await env.DB.prepare(
                         "UPDATE users SET password_hash=?, email_verified=1 WHERE id=?"
-                    ).bind("oauth:" + os.urandom(24).hex(), user_id).run()
+                    ).bind(
+                        "oauth:" + os.urandom(24).hex(),
+                        user_id
+                    ).run()
+
             else:
-                user_id = await _create_google_user(env, enc, email, str(claims.get("name") or ""))
+                user_id = await _create_google_user(
+                    env, enc, email, str(claims.get("name") or "")
+                )
+
+            # Link the Google identity for both existing and new accounts.
             await env.DB.prepare(
-                "INSERT INTO oauth_identities (id,user_id,provider,subject_hash) VALUES (?,?,?,?)"
+                "INSERT OR IGNORE INTO oauth_identities "
+                "(id,user_id,provider,subject_hash) VALUES (?,?,?,?)"
             ).bind(new_id(), user_id, "google", sub_hash).run()
 
+            link = await env.DB.prepare(
+                "SELECT user_id FROM oauth_identities "
+                "WHERE provider='google' AND subject_hash=?"
+            ).bind(sub_hash).first()
+
+            if link:
+                user_id = link.user_id
         row = await env.DB.prepare(
             "SELECT username, name, role FROM users WHERE id=?"
         ).bind(user_id).first()
@@ -2082,7 +2130,15 @@ async def api_google_login(req, env):
             or not role or role == "[decryption error]"):
         return err("This account is unavailable", 403)
 
-    token = create_token(user_id, username, role, env.JWT_SECRET)
+    ttl_val = getattr(env, "JWT_TTL_SECONDS", None)
+    try:
+        ttl_seconds = int(ttl_val) if ttl_val is not None else DEFAULT_JWT_TTL_SECONDS
+    except (ValueError, TypeError):
+        ttl_seconds = DEFAULT_JWT_TTL_SECONDS
+    token = create_token(
+        user_id, username, role, env.JWT_SECRET,
+        ttl_seconds=ttl_seconds
+    )
     return ok(
         {"token": token,
          "user": {"id": user_id, "username": username, "name": real_name, "role": role,
@@ -3869,6 +3925,9 @@ async def api_delete_account(req, env):
         for cart in cart_rows.results or []:
             await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
 
+        await env.DB.prepare(
+                "DELETE FROM oauth_identities WHERE user_id=?"
+        ).bind(uid).run()
         cleanup_sql = [
             "DELETE FROM notification_preferences WHERE user_id=?",
             "DELETE FROM notifications WHERE user_id=?",
@@ -3884,7 +3943,6 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
-            "DELETE FROM oauth_identities WHERE user_id=?",
         ]
         for sql in cleanup_sql:
             try:
@@ -3897,8 +3955,10 @@ async def api_delete_account(req, env):
             await env.DB.prepare(
                 "UPDATE activities SET status='archived' WHERE host_id=? AND status <> 'archived'"
             ).bind(uid).run()
-        except Exception:
-            pass
+        except Exception as archive_exc:
+            await capture_exception(
+                archive_exc, req, env, "api_delete_account.archive_activities"
+            )
 
         await env.DB.prepare(
             "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,password_hash=?,role=?,email_verified=0 WHERE id=?"
