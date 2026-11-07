@@ -3747,24 +3747,21 @@ async def api_feedback(req, env):
         return err("Feedback message is too long")
 
     async def insert_feedback():
-        await encrypt_aes(name, env.ENCRYPTION_KEY)
-        await encrypt_aes(email, env.ENCRYPTION_KEY)
-        await encrypt_aes(message, env.ENCRYPTION_KEY)
+        enc_name = await encrypt_aes(name, env.ENCRYPTION_KEY)
+        enc_email = await encrypt_aes(email, env.ENCRYPTION_KEY)
+        enc_msg = await encrypt_aes(message, env.ENCRYPTION_KEY)
         if user:
-            sql = """
-                INSERT INTO feedback_messages
-                (id, user_id, name, email, message)
-                VALUES (?, ?, ?, ?, ?)
-            """
+            sql = (
+                "INSERT INTO feedback_messages (id,user_id,name,email,message)"
+                " VALUES (?,?,?,?,?)"
+            )
             binds = (new_id(), user["id"], enc_name, enc_email, enc_msg)
         else:
-            sql = """
-                INSERT INTO feedback_messages
-                (id, user_id, name, email, message)
-                VALUES (?, NULL, ?, ?, ?)
-            """
+            sql = (
+                "INSERT INTO feedback_messages (id,user_id,name,email,message)"
+                " VALUES (?,NULL,?,?,?)"
+            )
             binds = (new_id(), enc_name, enc_email, enc_msg)
-
         await env.DB.prepare(sql).bind(*binds).run()
 
     try:
@@ -4201,7 +4198,7 @@ async def api_submit_survey(req, env, survey_id: str):
                     "INSERT INTO survey_answers (id,response_id,question_id,choice_id,text_value)"
                     " VALUES (?,?,?,NULL,?)"
                 ).bind(new_id(), response_id, question_id, enc_text)
-        )
+            )
         else:
             stmts.append(
                 env.DB.prepare(
@@ -4210,7 +4207,6 @@ async def api_submit_survey(req, env, survey_id: str):
                 ).bind(new_id(), response_id, question_id, choice_id)
             )
    
-
     async def run():
         await env.DB.batch(stmts)
 
