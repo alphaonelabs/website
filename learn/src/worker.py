@@ -3998,15 +3998,25 @@ async def api_feedback(req, env):
         return err("Feedback message is too long")
 
     async def insert_feedback():
-        await env.DB.prepare(
-            "INSERT INTO feedback_messages (id,user_id,name,email,message) VALUES (?,?,?,?,?)"
-        ).bind(
-            new_id(),
-            user["id"] if user else None,
-            await encrypt_aes(name, env.ENCRYPTION_KEY),
-            await encrypt_aes(email, env.ENCRYPTION_KEY),
-            await encrypt_aes(message, env.ENCRYPTION_KEY),
-        ).run()
+        await encrypt_aes(name, env.ENCRYPTION_KEY)
+        await encrypt_aes(email, env.ENCRYPTION_KEY)
+        await encrypt_aes(message, env.ENCRYPTION_KEY)
+        if user:
+            sql = """
+                INSERT INTO feedback_messages
+                (id, user_id, name, email, message)
+                VALUES (?, ?, ?, ?, ?)
+            """
+            binds = (new_id(), user["id"], enc_name, enc_email, enc_msg)
+        else:
+            sql = """
+                INSERT INTO feedback_messages
+                (id, user_id, name, email, message)
+                VALUES (?, NULL, ?, ?, ?)
+            """
+            binds = (new_id(), enc_name, enc_email, enc_msg)
+
+        await env.DB.prepare(sql).bind(*binds).run()
 
     try:
         await insert_feedback()
@@ -4435,12 +4445,22 @@ async def api_submit_survey(req, env, survey_id: str):
         ).bind(response_id, survey_id, user["id"])
     ]
     for question_id, choice_id, text_value in to_insert:
-        enc_text = await encrypt_aes(text_value, env.ENCRYPTION_KEY) if text_value is not None else None
-        stmts.append(
-            env.DB.prepare(
-                "INSERT INTO survey_answers (id,response_id,question_id,choice_id,text_value) VALUES (?,?,?,?,?)"
-            ).bind(new_id(), response_id, question_id, choice_id, enc_text)
+        if text_value is not None:
+            enc_text = await encrypt_aes(text_value, env.ENCRYPTION_KEY)
+            stmts.append(
+                env.DB.prepare(
+                    "INSERT INTO survey_answers (id,response_id,question_id,choice_id,text_value)"
+                    " VALUES (?,?,?,NULL,?)"
+                ).bind(new_id(), response_id, question_id, enc_text)
         )
+        else:
+            stmts.append(
+                env.DB.prepare(
+                    "INSERT INTO survey_answers (id,response_id,question_id,choice_id,text_value)"
+                    " VALUES (?,?,?,?,NULL)"
+                ).bind(new_id(), response_id, question_id, choice_id)
+            )
+   
 
     async def run():
         await env.DB.batch(stmts)
