@@ -1,0 +1,11 @@
+{
+  "name": "@alphaonelabs/learn-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:indexeddb": "node --test tests/test_indexed_db.mjs"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.1"
+  }
+}
