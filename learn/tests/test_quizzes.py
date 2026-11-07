@@ -387,21 +387,6 @@ class TestQuizRetrieval:
         assert "status='active'" in enrollment_stmt.sql
         assert enrollment_stmt.bound_args == ("act-1", "student-99")
 
-    async def test_get_questions_with_inactive_enrollment_returns_403(self):
-        quiz_row = MockRow(id="q-1", activity_id="act-1", host_id="host-1")
-        env = make_env(db=MockDB([
-            make_stmt(first=quiz_row),
-            make_stmt(first=None),
-        ]))
-        student_tok = _token(uid="student-99", role="student")
-        req = MockRequest(
-            method="GET",
-            url="http://localhost/api/quizzes/q-1/questions",
-            headers=_auth(student_tok),
-        )
-        r = await worker.api_get_quiz_questions(req, env, "q-1")
-        assert r.status == 403
-
     async def test_get_questions_as_host_includes_decrypted_answer(self):
         quiz_row = MockRow(id="q-1", activity_id="act-1", host_id="host-1")
         enc_answer = await worker.encrypt_aes("def", ENC_KEY)
@@ -481,6 +466,47 @@ class TestQuizRetrieval:
         r = await worker.api_get_quiz(req, env, "q-1")
         assert r.status == 403
         assert "Forbidden" in _parse(r)["error"]
+
+    async def test_get_quiz_detail_as_enrolled_student_hides_answer_metadata(self):
+        quiz_row = MockRow(
+            id="q-1",
+            activity_id="act-1",
+            activity_title="Python 101",
+            host_id="host-1",
+            title="Final Exam",
+            description="Testing your skills",
+            time_limit_minutes=60,
+            passing_score=80,
+            created_at="2026-10-22 10:00:00",
+            updated_at=None,
+        )
+        question_row = MockRow(
+            id="quest-1",
+            quiz_id="q-1",
+            prompt="Choose one",
+            question_type="multiple_choice",
+            options_json='[{"text":"A","is_correct":true},"B"]',
+            correct_answer_encrypted="encrypted-answer",
+            display_order=0,
+            created_at="2026-10-22 10:00:00",
+        )
+        env = make_env(db=MockDB([
+            make_stmt(first=quiz_row),
+            make_stmt(first=MockRow(id="enr-1", status="active")),
+            make_stmt(all_results=[question_row]),
+        ]))
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/quizzes/q-1",
+            headers=_auth(_token(uid="student-99", role="student")),
+        )
+        r = await worker.api_get_quiz(req, env, "q-1")
+        assert r.status == 200
+        question = _parse(r)["quiz"]["questions"][0]
+        assert question["options"] == ["A", "B"]
+        assert "correct_answer" not in question
+        assert "correct_answer_encrypted" not in question
+        assert "is_correct" not in json.dumps(question)
 
     async def test_get_quiz_detail_checks_active_enrollment_for_requesting_user(self):
         quiz_row = MockRow(id="q-1", activity_id="act-1", host_id="host-1")

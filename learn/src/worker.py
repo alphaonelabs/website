@@ -4590,6 +4590,16 @@ async def api_add_quiz_questions(req, env, quiz_id: str):
     for idx, q in enumerate(items):
         if not isinstance(q, dict) or not str(q.get("prompt") or "").strip():
             return err(f"Question prompt is required for question {idx + 1}", 400)
+        opts = q.get("options") if "options" in q else q.get("options_json")
+        if opts is None:
+            continue
+        if isinstance(opts, str):
+            try:
+                opts = json.loads(opts)
+            except (TypeError, ValueError):
+                return err(f"Question options must be a list of strings for question {idx + 1}", 400)
+        if not isinstance(opts, list) or not all(isinstance(option, str) for option in opts):
+            return err(f"Question options must be a list of strings for question {idx + 1}", 400)
 
     enc = env.ENCRYPTION_KEY
 
@@ -4674,7 +4684,9 @@ async def api_get_quiz_questions(req, env, quiz_id: str):
         questions = []
         for r in (res.results or []):
             try:
-                opts = json.loads(r.options_json) if r.options_json else []
+                opts = _learner_safe_options(
+                    json.loads(r.options_json) if r.options_json else []
+                )
             except Exception:
                 opts = []
             item = {
@@ -4695,6 +4707,18 @@ async def api_get_quiz_questions(req, env, quiz_id: str):
 
     questions = await _quiz_db(env, run)
     return json_resp({"quiz_id": quiz_id, "questions": questions})
+
+
+def _learner_safe_options(options):
+    """Return option labels without exposing answer metadata to learners."""
+    if not isinstance(options, list):
+        return []
+    return [
+        option if isinstance(option, str) else option["text"]
+        for option in options
+        if isinstance(option, str)
+        or (isinstance(option, dict) and isinstance(option.get("text"), str))
+    ]
 
 
 async def api_get_quiz(req, env, quiz_id: str):
@@ -4737,7 +4761,9 @@ async def api_get_quiz(req, env, quiz_id: str):
         questions = []
         for r in (res.results or []):
             try:
-                opts = json.loads(r.options_json) if r.options_json else []
+                opts = _learner_safe_options(
+                    json.loads(r.options_json) if r.options_json else []
+                )
             except Exception:
                 opts = []
             item = {
