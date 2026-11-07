@@ -163,7 +163,61 @@ http://localhost:3000
 | GET | /api/activities | List activities |
 | POST | /api/activities | Create activity |
 | GET | /api/activities/:id | Get activity details |
+| GET | /api/activities/:id/offline-package | Get an authorized offline activity manifest |
 | POST | /api/join | Join activity |
+
+#### Offline activity package manifest
+
+`GET /api/activities/:id/offline-package` requires a valid bearer token and an
+active enrollment, host role, or administrator access. The activity identifier
+may be its ID or slug. The response is a package manifest with stable
+`package_id`, deterministic `package_version`, activity metadata, and ordered
+resource entries:
+
+```json
+{
+  "package": {
+    "package_id": "activity:activity-id",
+    "package_version": "sha256 hex digest",
+    "activity_id": "activity-id",
+    "title": "Python 101",
+    "generated_at": "2026-11-07T00:00:00+00:00",
+    "resources": [
+      {
+        "asset_id": "material:material-id",
+        "material_id": "material-id",
+        "title": "Lesson notes",
+        "material_type": "pdf",
+        "display_order": 1,
+        "downloadable": true,
+        "availability": "available",
+        "url": "/media/materials/lesson.pdf",
+        "content_type": "application/pdf",
+        "size_bytes": 2048,
+        "content_hash": "sha256:...",
+        "revision": "r2-etag",
+        "created_at": "2026-01-01T00:00:00",
+        "updated_at": "2026-01-02T00:00:00"
+      }
+    ]
+  }
+}
+```
+
+`package_version` hashes the canonical activity and resource metadata,
+excluding the request timestamp, so identical manifests produce identical
+versions. Material ordering is deterministic. A manifest revision changes
+when relevant activity/material metadata, availability, or R2 revision
+metadata changes. Resource availability is `available`, `online_only`, or
+`unavailable`; online-only resources are never advertised as downloadable.
+Missing R2 size, content type, checksum, or revision metadata is returned as
+`null` rather than fabricated. The API does not expose a separate R2 bucket
+key, credentials, authentication data, quiz answers, or unrelated learner
+data. Removed materials are absent from the current manifest.
+
+This endpoint defines metadata only. It does not download files, add IndexedDB
+domain stores, modify the service worker, synchronize content, or manage
+storage.
 
 ### Dashboard
 
