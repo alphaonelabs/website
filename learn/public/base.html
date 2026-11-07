@@ -229,6 +229,21 @@
   </script>
   <script src="/js/layout.js?v=2" defer></script>
   <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+          .then(function (registration) {
+            registration.update().catch(function (error) {
+              console.warn('Learn service-worker update failed', error);
+            });
+          })
+          .catch(function (error) {
+            console.warn('Learn service-worker registration failed', error);
+          });
+      });
+    }
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

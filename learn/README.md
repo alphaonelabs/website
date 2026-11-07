@@ -147,6 +147,34 @@ Frontend Server will start at:
 ```bash
 http://localhost:3000
 ```
+
+### Service worker and offline shell
+
+Learn registers `public/service-worker.js` at the Learn origin with `/` scope.
+The worker uses the versioned `learn-app-shell-v1` cache for a small, explicit
+set of same-origin static assets and the offline fallback page. Static shell
+assets use cache-first behavior. Allowlisted public navigations use
+network-first behavior and are cached only after a successful same-origin
+response; if the network and navigation cache both miss, `offline.html` is
+returned. API, admin, media, referral, and authenticated requests are excluded
+from the generic cache.
+
+The worker removes older `learn-app-shell-*` caches during activation. Browser
+update failures are logged and do not block normal online page loading. The
+manifest and install icons are maintained separately by issue #1130 and PR
+#1197.
+
+For local manual validation, serve `public/` over a local HTTP server (service
+workers do not run from `file://` URLs), open a public page in a browser, and
+use DevTools Application > Service Workers and Network > Offline to verify
+cached navigation and the fallback page. The repository currently has no
+browser-test framework; the focused service-worker lifecycle test can be run
+with:
+
+```bash
+node --test learn/tests/test_service_worker.mjs
+```
+
 ## API Endpoints
 
 ### Authentication

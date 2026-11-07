@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#d4af37">
+  <title>You're offline - Alpha One Labs Learn</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f7f7; color: #171717; }
+    main { width: min(34rem, calc(100% - 2rem)); padding: 2rem; text-align: center; background: #fff; border: 1px solid #ddd; }
+    img { width: 4rem; height: 4rem; margin-bottom: 1rem; }
+    h1 { margin: 0 0 .75rem; }
+    p { line-height: 1.6; color: #555; }
+    button { padding: .7rem 1rem; border: 0; background: #d4af37; color: #080808; font-weight: 700; cursor: pointer; }
+    a { display: inline-block; margin-top: 1rem; color: #555; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/images/logo.svg" alt="Alpha One Labs">
+    <h1>You're offline</h1>
+    <p>Reconnect to continue browsing Learn. Previously visited public pages may still be available after you retry.</p>
+    <button type="button" onclick="window.location.reload()">Try again</button>
+    <a href="/">Return to Learn home</a>
+  </main>
+</body>
+</html>
