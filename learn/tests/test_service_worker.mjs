@@ -18,6 +18,8 @@ function createWorkerHarness() {
   const fetchCalls = [];
   const deletedCaches = [];
   let networkAvailable = true;
+  let cacheAvailable = true;
+  let cacheWritesAvailable = true;
 
   function makeResponse(body = "ok", status = 200, headers = {}) {
     return {
@@ -57,14 +59,24 @@ function createWorkerHarness() {
       },
     },
     caches: {
-      open: async (name) => ({
+      open: async (name) => {
+        if (!cacheAvailable) throw new Error("cache unavailable");
+        return {
         async match(request) {
           return getStore(name).get(cacheKey(request));
         },
         async put(request, response) {
+          if (!cacheWritesAvailable) throw new Error("cache write failed");
           getStore(name).set(cacheKey(request), response);
         },
-      }),
+        async keys() {
+          return [...getStore(name).keys()].map((url) => new Request(url));
+        },
+        async delete(request) {
+          return getStore(name).delete(cacheKey(request));
+        },
+        };
+      },
       keys: async () => [...stores.keys()],
       delete: async (name) => {
         deletedCaches.push(name);
@@ -91,6 +103,12 @@ function createWorkerHarness() {
     makeResponse,
     setNetworkAvailable(value) {
       networkAvailable = value;
+    },
+    setCacheAvailable(value) {
+      cacheAvailable = value;
+    },
+    setCacheWritesAvailable(value) {
+      cacheWritesAvailable = value;
     },
   };
 }
@@ -167,6 +185,51 @@ test("static assets use the shell cache before the network", async () => {
   await response;
 
   assert.equal(harness.fetchCalls.length, networkCallsAfterInstall);
+  assert.equal((await response).body, "/images/logo.svg");
+});
+
+test("static assets fall back to the network when cache storage is unavailable", async () => {
+  const harness = createWorkerHarness();
+  harness.setCacheAvailable(false);
+  let response;
+
+  harness.listeners.fetch({
+    request: eventRequest("/images/logo.svg"),
+    respondWith(promise) {
+      response = promise;
+    },
+  });
+
+  assert.equal((await response).body, "https://learn.example.test/images/logo.svg");
+});
+
+test("a failed static cache write does not discard the network response", async () => {
+  const harness = createWorkerHarness();
+  harness.setCacheWritesAvailable(false);
+  let response;
+
+  harness.listeners.fetch({
+    request: eventRequest("/images/logo.svg"),
+    respondWith(promise) {
+      response = promise;
+    },
+  });
+
+  assert.equal((await response).body, "https://learn.example.test/images/logo.svg");
+});
+
+test("failed shell installation rejects and cannot activate a partial cache", async () => {
+  const harness = createWorkerHarness();
+  harness.setCacheWritesAvailable(false);
+  let waited;
+
+  harness.listeners.install({
+    waitUntil(promise) {
+      waited = promise;
+    },
+  });
+
+  await assert.rejects(waited);
 });
 
 test("API and authenticated requests are not intercepted", () => {
@@ -193,7 +256,12 @@ test("offline public navigation returns the cached page", async () => {
   const shell = new Map();
   shell.set("https://learn.example.test/offline.html", harness.makeResponse("offline"));
   shell.set("https://learn.example.test/about", harness.makeResponse("cached about"));
-  harness.stores.set("learn-app-shell-v1", shell);
+  harness.stores.set("learn-app-shell-navigation-v1", shell);
+  harness.stores.set("learn-app-shell-v1", new Map());
+  harness.stores.get("learn-app-shell-v1").set(
+    "https://learn.example.test/offline.html",
+    harness.makeResponse("offline"),
+  );
   harness.setNetworkAvailable(false);
   let response;
   harness.listeners.fetch({
@@ -203,6 +271,42 @@ test("offline public navigation returns the cached page", async () => {
     },
   });
   assert.equal((await response).body, "cached about");
+});
+
+test("online navigation is cached for a later offline request", async () => {
+  const harness = createWorkerHarness();
+  let response;
+  harness.listeners.fetch({
+    request: eventRequest("/about", { mode: "navigate" }),
+    respondWith(promise) {
+      response = promise;
+    },
+  });
+  assert.equal((await response).body, "https://learn.example.test/about");
+
+  harness.setNetworkAvailable(false);
+  harness.listeners.fetch({
+    request: eventRequest("/about", { mode: "navigate" }),
+    respondWith(promise) {
+      response = promise;
+    },
+  });
+  assert.equal((await response).body, "https://learn.example.test/about");
+});
+
+test("navigation falls back to the network when navigation cache is unavailable", async () => {
+  const harness = createWorkerHarness();
+  harness.setCacheAvailable(false);
+  let response;
+
+  harness.listeners.fetch({
+    request: eventRequest("/about", { mode: "navigate" }),
+    respondWith(promise) {
+      response = promise;
+    },
+  });
+
+  assert.equal((await response).body, "https://learn.example.test/about");
 });
 
 test("uncached offline navigation returns the offline fallback", async () => {

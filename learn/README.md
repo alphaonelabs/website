@@ -151,18 +151,23 @@ http://localhost:3000
 ### Service worker and offline shell
 
 Learn registers `public/service-worker.js` at the Learn origin with `/` scope.
-The worker uses the versioned `learn-app-shell-v1` cache for a small, explicit
-set of same-origin static assets and the offline fallback page. Static shell
-assets use cache-first behavior. Allowlisted public navigations use
+The worker uses versioned `learn-app-shell-v1` and
+`learn-app-shell-navigation-v1` caches. The shell cache contains a small,
+explicit set of same-origin static assets and the offline fallback page.
+Static shell assets use cache-first behavior. Allowlisted public navigations use
 network-first behavior and are cached only after a successful same-origin
-response; if the network and navigation cache both miss, `offline.html` is
+response; navigation entries retain their query parameters and are bounded to
+20 entries. If the network and navigation cache both miss, `offline.html` is
 returned. API, admin, media, referral, and authenticated requests are excluded
-from the generic cache.
+from the generic caches.
 
-The worker removes older `learn-app-shell-*` caches during activation. Browser
-update failures are logged and do not block normal online page loading. The
-manifest and install icons are maintained separately by issue #1130 and PR
-#1197.
+Installation is atomic for the explicit shell assets: a failed fetch or cache
+write rejects installation, so an incomplete new worker does not activate over
+the previous working version. Cache read/write failures during normal fetches
+are logged and do not discard a successful network response. The worker removes
+older `learn-app-shell-*` caches during activation. Browser update failures are
+logged and do not block normal online page loading. The manifest and install
+icons are maintained separately by issue #1130 and PR #1197.
 
 For local manual validation, serve `public/` over a local HTTP server (service
 workers do not run from `file://` URLs), open a public page in a browser, and

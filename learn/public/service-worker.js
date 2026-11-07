@@ -1,7 +1,9 @@
 const CACHE_PREFIX = "learn-app-shell";
 const CACHE_VERSION = "v1";
 const SHELL_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}`;
+const NAVIGATION_CACHE = `${CACHE_PREFIX}-navigation-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const MAX_NAVIGATION_ENTRIES = 20;
 
 const CORE_ASSETS = [
   OFFLINE_URL,
@@ -58,14 +60,24 @@ function isCacheableResponse(response) {
 }
 
 async function cacheFirst(request) {
+  let cache;
+  let cached;
   try {
-    const cache = await caches.open(SHELL_CACHE);
-    const cached = await cache.match(request);
-    if (cached) return cached;
+    cache = await caches.open(SHELL_CACHE);
+    cached = await cache.match(request);
+  } catch (error) {
+    console.warn("Learn static asset cache read failed", error);
+  }
+  if (cached) return cached;
 
+  try {
     const response = await fetch(request);
-    if (isCacheableResponse(response)) {
-      await cache.put(request, response.clone());
+    if (cache && isCacheableResponse(response)) {
+      try {
+        await cache.put(request, response.clone());
+      } catch (error) {
+        console.warn("Learn static asset cache write failed", error);
+      }
     }
     return response;
   } catch (error) {
@@ -77,44 +89,59 @@ async function cacheFirst(request) {
 async function networkFirstNavigation(request) {
   let cache;
   try {
-    cache = await caches.open(SHELL_CACHE);
+    cache = await caches.open(NAVIGATION_CACHE);
   } catch (error) {
     console.warn("Learn navigation cache unavailable", error);
-    return Response.error();
   }
 
   try {
     const response = await fetch(request);
-    if (isCacheableResponse(response)) {
-      await cache.put(request, response.clone());
+    if (cache && isCacheableResponse(response)) {
+      try {
+        await cache.put(request, response.clone());
+        const entries = await cache.keys();
+        if (entries.length > MAX_NAVIGATION_ENTRIES) {
+          await Promise.all(
+            entries
+              .slice(0, entries.length - MAX_NAVIGATION_ENTRIES)
+              .map((entry) => cache.delete(entry)),
+          );
+        }
+      } catch (error) {
+        console.warn("Learn navigation cache write failed", error);
+      }
     }
     return response;
   } catch (error) {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    return cache.match(OFFLINE_URL);
+    if (cache) {
+      try {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const fallback = await caches.open(SHELL_CACHE);
+        return fallback.match(OFFLINE_URL);
+      } catch (cacheError) {
+        console.warn("Learn offline navigation cache read failed", cacheError);
+      }
+    }
+    return Response.error();
   }
 }
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then(async (cache) => {
-      const results = await Promise.allSettled(
+      await Promise.all(
         CORE_ASSETS.map(async (asset) => {
-          try {
-            const response = await fetch(asset, { cache: "no-cache" });
-            if (!isCacheableResponse(response)) {
-              throw new Error(`Non-cacheable response for ${asset}`);
-            }
-            await cache.put(asset, response);
-          } catch (error) {
-            console.warn(`Learn shell asset was not cached: ${asset}`, error);
+          const response = await fetch(asset, { cache: "no-cache" });
+          if (!isCacheableResponse(response)) {
+            throw new Error(`Non-cacheable response for ${asset}`);
           }
+          await cache.put(asset, response);
         }),
       );
-      return results;
     }).catch((error) => {
       console.warn("Learn shell cache installation failed", error);
+      throw error;
     }),
   );
 });
