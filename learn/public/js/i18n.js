@@ -27,6 +27,7 @@
   const TRANSLATABLE_ATTRIBUTES = ["placeholder", "title", "aria-label"];
 
   const catalogs = {};
+  const loadedLangs = new Set();
   let currentLang = DEFAULT_LANG;
   let initPromise = null;
 
@@ -50,6 +51,9 @@
   /**
    * Fetch and cache a catalog. Never throws: a failed load yields an empty
    * catalog so lookups fall back to English or the inline text.
+     /**
+   * Fetch and cache a catalog. Never throws. A failed load returns an empty
+   * catalog without caching it, so a later call can retry.
    * @param {string} lang
    * @returns {Promise<Object>}
    */
@@ -61,11 +65,12 @@
       const data = await res.json();
       catalogs[lang] =
         data && typeof data === "object" && !Array.isArray(data) ? data : {};
+      loadedLangs.add(lang);
+      return catalogs[lang];
     } catch (err) {
       console.warn(`[i18n] Could not load "${lang}" catalog:`, err);
-      catalogs[lang] = {};
+      return {};
     }
-    return catalogs[lang];
   }
 
   /**
@@ -108,11 +113,18 @@
     return text;
   }
 
-   /**
+  /**
    * Translate every tagged element in `root`, including `root` itself.
    * Uses textContent and setAttribute only (never innerHTML), so catalog
    * content cannot inject markup. Elements whose key is missing keep their
    * existing text.
+   *
+   * The page language (<html lang>) is updated only when `root` is the whole
+   * document and the current language's catalog was fetched successfully, so
+   * a failed load never labels English fallback text as another language.
+   * A catalog that loads but lacks some keys still sets the language; those
+   * strings fall back to English. Applying to an element or fragment never
+   * changes it.
    * @param {Document|Element|DocumentFragment} [root=document]
    */
   function apply(root = document) {
@@ -136,9 +148,10 @@
       });
     });
 
-    document.documentElement.lang = currentLang;
+    if (root === document && loadedLangs.has(currentLang)) {
+      document.documentElement.lang = currentLang;
+    }
   }
-  
 
   /**
    * Load catalogs and translate the page. Safe to call more than once.
