@@ -159,19 +159,19 @@
    * Dispatches a document-level "i18n:ready" event after each completed run.
    * @returns {Promise<void>}
    */
-  function init() {
+   function init() {
     if (!initPromise) {
       initPromise = (async () => {
         currentLang = detectLang();
         await loadCatalog(DEFAULT_LANG);
         if (currentLang !== DEFAULT_LANG) await loadCatalog(currentLang);
         apply(document);
-        document.dispatchEvent(
-          new CustomEvent("i18n:ready", { detail: { lang: currentLang } })
-        );
         if (!loadedLangs.has(DEFAULT_LANG) || !loadedLangs.has(currentLang)) {
           initPromise = null; // allow a later init() to retry
         }
+        document.dispatchEvent(
+          new CustomEvent("i18n:ready", { detail: { lang: currentLang } })
+        );
       })();
     }
     return initPromise;
