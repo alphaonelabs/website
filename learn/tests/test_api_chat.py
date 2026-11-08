@@ -26,10 +26,14 @@ class FakeAI:
 
 
 @pytest.fixture(autouse=True)
-def _reset_rate_limits():
+def _reset_state(monkeypatch):
     worker._AUTH_RATE_LIMIT_STATE.clear()
+    worker._CHAT_CATALOG_CACHE.update(at=0.0, text="")
+    # Default: an empty catalogue, so tests don't depend on the activities query.
+    monkeypatch.setattr(worker, "_server_list_activities", AsyncMock(return_value={"activities": []}))
     yield
     worker._AUTH_RATE_LIMIT_STATE.clear()
+    worker._CHAT_CATALOG_CACHE.update(at=0.0, text="")
 
 
 class FakeFetchResponse:
@@ -210,6 +214,48 @@ class TestApiChat:
         assert (await worker.api_chat(_chat({"message": "1"}), env)).status == 200
         # Exhausting chat must not block the auth limiter for the same IP
         assert worker._check_auth_rate_limit(_chat({}), env, "login") is None
+
+    async def test_system_prompt_includes_site_knowledge(self):
+        ai = FakeAI()
+        await worker.api_chat(_chat({"message": "hi"}), _env(ai))
+        system = ai.calls[0][1]["messages"][0]["content"]
+        assert "https://github.com/alphaonelabs/website" in system
+        assert "at least five pull requests" in system
+        assert "https://quantalab.alphaonelabs.com" in system
+        assert "CURRENT ACTIVITIES" in system
+
+    async def test_system_prompt_lists_live_activities(self, monkeypatch):
+        monkeypatch.setattr(worker, "_server_list_activities", AsyncMock(return_value={"activities": [
+            {"id": "act-1", "slug": "py", "title": "Intro to  Python", "type": "course",
+             "format": "self_paced", "price_cents": 0, "price_currency": "USD",
+             "level": "beginner", "tags": ["python", "beginner"], "description": "Learn the basics."},
+            {"id": "act-2", "title": "Robotics Club", "type": "study_group", "format": "live",
+             "price_cents": 1550, "price_currency": "usd", "tags": [], "description": ""},
+            {"id": "act-3", "title": "", "type": "course"},  # untitled: skipped
+        ]}))
+        ai = FakeAI()
+        await worker.api_chat(_chat({"message": "what courses?"}), _env(ai))
+        system = ai.calls[0][1]["messages"][0]["content"]
+        assert ("- Intro to Python (self_paced course, free), level: beginner, tags: python, beginner."
+                " Link: /activity/act-1. Learn the basics.") in system
+        assert "- Robotics Club (live study group, USD 15.50). Link: /activity/act-2" in system
+        assert system.count("Link: /activity/") == 2
+
+    async def test_activity_list_is_cached(self, monkeypatch):
+        lister = AsyncMock(return_value={"activities": [{"id": "a", "title": "T"}]})
+        monkeypatch.setattr(worker, "_server_list_activities", lister)
+        env = _env(FakeAI())
+        await worker.api_chat(_chat({"message": "1"}), env)
+        await worker.api_chat(_chat({"message": "2"}), env)
+        assert lister.await_count == 1
+
+    async def test_activity_list_failure_still_answers(self, monkeypatch):
+        monkeypatch.setattr(worker, "_server_list_activities", AsyncMock(side_effect=RuntimeError("D1 down")))
+        monkeypatch.setattr(worker, "capture_exception", AsyncMock())
+        ai = FakeAI(reply="Still here")
+        r = await worker.api_chat(_chat({"message": "hi"}), _env(ai))
+        assert r.status == 200
+        assert "Activity list unavailable" in ai.calls[0][1]["messages"][0]["content"]
 
     async def test_dispatch_routes_post_api_chat(self):
         r = await worker._dispatch(_chat({"message": "hi"}), _env(FakeAI(reply="Hello!")))

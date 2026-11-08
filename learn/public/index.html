@@ -163,6 +163,7 @@
   .a1h-chat__log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
   .a1h-chat__msg { max-width: 85%; padding: 10px 12px; border-radius: 8px; font: 400 14px/1.45 var(--h-body); white-space: pre-wrap; overflow-wrap: anywhere; }
   .a1h-chat__msg--bot { align-self: flex-start; background: var(--h-raised); border: 1px solid var(--h-soft); }
+  .a1h .a1h-chat__msg a { color: var(--h-gold-ink); text-decoration: underline; text-underline-offset: 2px; }
   .a1h-chat__msg--user { align-self: flex-end; background: var(--h-gold); color: #080808; }
   .a1h-chat__msg--error { align-self: stretch; max-width: none; background: transparent; border: 1px dashed var(--h-hard); }
   .a1h-chat__msg--typing { color: var(--h-muted); font-style: italic; }
@@ -329,10 +330,30 @@
   var history = [];
   var busy = false;
 
+  // Full https URLs, or site paths like /activity or /activity/abc-123 (after a space, bracket or line start).
+  var LINK_RE = /(https?:\/\/[^\s<>"')\]]+|(?:^|(?<=[\s(\[]))\/[a-z0-9][a-z0-9\-\/?=&%_.]*)/gi;
+
+  // Builds text and <a> nodes with the DOM, never innerHTML: replies are untrusted model output.
+  function appendLinkified(el, text) {
+    var last = 0;
+    text.replace(LINK_RE, function (match, _g, offset) {
+      var url = match.replace(/[.,;:!?]+$/, '');
+      if (offset > last) el.appendChild(document.createTextNode(text.slice(last, offset)));
+      var a = document.createElement('a');
+      a.href = url;
+      a.textContent = url;
+      if (/^https?:/i.test(url)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      el.appendChild(a);
+      last = offset + url.length;
+      return match;
+    });
+    if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
   function addMessage(text, kind) {
     var el = document.createElement('div');
     el.className = 'a1h-chat__msg a1h-chat__msg--' + kind;
-    el.textContent = text;  // never innerHTML: replies are untrusted model output
+    if (kind === 'bot') appendLinkified(el, text); else el.textContent = text;
     log.appendChild(el);
     log.scrollTop = log.scrollHeight;
     return el;
