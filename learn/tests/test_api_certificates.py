@@ -1,0 +1,380 @@
+"""Regression tests for certificate generation and public verification."""
+
+import base64
+import json
+
+from tests.helpers import (
+    MockDB,
+    MockRequest,
+    MockRow,
+    make_env,
+    make_stmt,
+    load_worker,
+)
+
+
+worker = load_worker()
+JWT = "test-jwt-secret"
+
+
+def _parse(response):
+    """Decode a worker response body for structured assertions."""
+    return json.loads(response.body)
+
+
+def _enc(value):
+    """Build the deterministic encrypted-name fixture expected by the worker."""
+    iv = b"\x00" * 12
+    return "v1:" + base64.b64encode(iv + value.encode("utf-8")).decode("ascii")
+
+
+def _token(user_id, role="student"):
+    """Create a test JWT for the requested Learn identity and role."""
+    return worker.create_token(user_id, user_id, role, JWT)
+
+
+def _request(method, path, token=None):
+    """Build a mock request with the authorization header used by the API."""
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return MockRequest(method=method, url=f"http://localhost{path}", headers=headers)
+
+
+def _enrollment(
+    *,
+    enrollment_id="enr-1",
+    user_id="learner-1",
+    host_id="host-1",
+    activity_id="activity-1",
+    status="completed",
+):
+    """Create a mock enrollment row with configurable ownership and status."""
+    return MockRow(
+        id=enrollment_id,
+        user_id=user_id,
+        host_id=host_id,
+        activity_id=activity_id,
+        status=status,
+    )
+
+
+class _RecordingDB(MockDB):
+    """Mock D1 database that also records prepared SQL statements."""
+
+    def __init__(self, stmts):
+        super().__init__(stmts)
+        self.sql = []
+
+    def prepare(self, sql):
+        self.sql.append(sql)
+        return super().prepare(sql)
+
+
+class TestCertificateGeneration:
+    async def test_requires_authentication(self):
+        """Reject certificate generation when no bearer token is supplied."""
+        env = make_env()
+
+        response = await worker.api_generate_certificate(
+            _request("POST", "/api/certificates/generate/enr-1"),
+            env,
+            "enr-1",
+        )
+
+        assert response.status == 401
+        assert _parse(response)["error"] == "Authentication required"
+
+    async def test_learner_can_generate_certificate_for_own_completed_enrollment(self):
+        """Allow a learner to generate one certificate for an eligible enrollment."""
+        insert_stmt = make_stmt()
+        notification_stmt = make_stmt()
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment()),
+                make_stmt(first=None),
+                insert_stmt,
+                make_stmt(first=None),
+                notification_stmt,
+            ]
+        )
+        env = make_env(db=db)
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("learner-1"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        body = _parse(response)
+        certificate = body["data"]
+        assert response.status == 200
+        assert body["success"] is True
+        assert certificate["uuid"]
+        assert certificate["url"] == f"/certificate.html?uuid={certificate['uuid']}"
+        assert insert_stmt.bind.call_args.args == (certificate["uuid"], "enr-1")
+        insert_stmt.bind.return_value.run.assert_awaited_once()
+        notification_stmt.bind.return_value.run.assert_awaited_once()
+        assert db.sql[-1].startswith("INSERT INTO notifications")
+        notification_args = notification_stmt.bind.call_args.args
+        assert notification_args[1:3] == ("learner-1", "certificate_issued")
+        assert notification_args[3] == _enc("Certificate Issued")
+        assert notification_args[4] == _enc(
+            "Your certificate is ready. View and download it from your activity page."
+        )
+        assert notification_args[5] == certificate["uuid"]
+
+    async def test_learner_cannot_generate_another_users_certificate(self):
+        """Reject a learner attempting to use another learner's enrollment."""
+        insert_stmt = make_stmt()
+        env = make_env(
+            db=MockDB(
+                [
+                    make_stmt(first=_enrollment(user_id="other-learner")),
+                    insert_stmt,
+                ]
+            )
+        )
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("learner-1"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        assert response.status == 403
+        assert _parse(response)["error"] == "Forbidden"
+        assert insert_stmt.bind.return_value.run.await_count == 0
+
+    async def test_activity_host_can_generate_certificate_for_enrollment(self):
+        """Preserve certificate generation access for the activity host."""
+        insert_stmt = make_stmt()
+        env = make_env(
+            db=MockDB(
+                [
+                    make_stmt(first=_enrollment(user_id="learner-1", host_id="host-1")),
+                    make_stmt(first=None),
+                    insert_stmt,
+                    make_stmt(first=None),
+                ]
+            )
+        )
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("host-1", role="host"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        assert response.status == 200
+        assert _parse(response)["data"]["url"].startswith("/certificate.html?uuid=")
+        insert_stmt.bind.return_value.run.assert_awaited_once()
+
+    async def test_unrelated_host_cannot_generate_certificate(self):
+        """Reject a host that does not own the activity enrollment."""
+        insert_stmt = make_stmt()
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment(user_id="learner-1", host_id="host-1")),
+                insert_stmt,
+            ]
+        )
+        env = make_env(db=db)
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("unrelated-host", role="host"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        assert response.status == 403
+        assert _parse(response)["error"] == "Forbidden"
+        assert not any(sql.startswith("INSERT INTO certificates") for sql in db.sql)
+        assert insert_stmt.bind.return_value.run.await_count == 0
+
+    async def test_incomplete_enrollment_is_rejected(self):
+        """Reject certificate generation until enrollment completion."""
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment(status="active")),
+                make_stmt(first=None),
+            ]
+        )
+        env = make_env(db=db)
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("learner-1"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        assert response.status == 400
+        assert "not completed" in _parse(response)["error"]
+        assert not any(sql.startswith("INSERT INTO certificates") for sql in db.sql)
+
+    async def test_completion_promotes_enrollment_before_generating_certificate(self):
+        """Promote an enrollment with a completion record before issuing a certificate."""
+        update_stmt = make_stmt()
+        certificate_stmt = make_stmt()
+        notification_stmt = make_stmt()
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment(status="active")),
+                make_stmt(first=MockRow(id="completion-1")),
+                update_stmt,
+                make_stmt(first=None),
+                certificate_stmt,
+                make_stmt(first=None),
+                notification_stmt,
+            ]
+        )
+        env = make_env(db=db)
+
+        response = await worker.api_generate_certificate(
+            _request("POST", "/api/certificates/generate/enr-1", _token("learner-1")),
+            env,
+            "enr-1",
+        )
+
+        body = _parse(response)
+        assert response.status == 200
+        assert body["data"]["uuid"]
+        update_stmt.bind.assert_called_once_with("enr-1")
+        update_stmt.bind.return_value.run.assert_awaited_once()
+        assert db.sql[2] == "UPDATE enrollments SET status='completed' WHERE id=?"
+
+    async def test_cancelled_enrollment_is_rejected(self):
+        """Reject certificate generation for cancelled enrollments."""
+        db = _RecordingDB([make_stmt(first=_enrollment(status="cancelled"))])
+        env = make_env(db=db)
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("learner-1"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        assert response.status == 400
+        assert _parse(response)["error"] == "Enrollment is cancelled"
+        assert not any(sql.startswith("INSERT INTO certificates") for sql in db.sql)
+
+    async def test_repeated_generation_returns_existing_certificate_without_insert(self):
+        """Return the existing certificate without inserting a duplicate."""
+        existing_id = "certificate-existing"
+        insert_stmt = make_stmt()
+        env = make_env(
+            db=MockDB(
+                [
+                    make_stmt(first=_enrollment()),
+                    make_stmt(first=MockRow(id=existing_id)),
+                    insert_stmt,
+                ]
+            )
+        )
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("learner-1"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        body = _parse(response)
+        assert response.status == 200
+        assert body["data"] == {
+            "uuid": existing_id,
+            "url": f"/certificate.html?uuid={existing_id}",
+        }
+        assert insert_stmt.bind.return_value.run.await_count == 0
+
+
+class TestPublicCertificateVerification:
+    async def test_valid_certificate_returns_certificate_page_fields(self):
+        """Expose exactly the fields required by the public certificate page."""
+        row = MockRow(
+            id="certificate-1",
+            enrollment_id="enr-1",
+            issued_at="2026-11-08 12:00:00",
+            student_name_enc=_enc("Ada Lovelace"),
+            activity_title="Introduction to Python",
+        )
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+
+        response = await worker.api_get_certificate(
+            _request("GET", "/api/certificates/certificate-1"),
+            env,
+            "certificate-1",
+        )
+
+        body = _parse(response)
+        data = body["data"]
+        assert response.status == 200
+        assert set(data) == {
+            "uuid",
+            "student_name",
+            "activity_title",
+            "issued_at",
+            "enrollment_id",
+        }
+        assert data["uuid"] == "certificate-1"
+        assert data["student_name"] == "Ada Lovelace"
+        assert data["activity_title"] == "Introduction to Python"
+        assert data["issued_at"] == "2026-11-08 12:00:00"
+        assert data["enrollment_id"] == "enr-1"
+        assert "password" not in data
+        assert "token" not in data
+        assert "password_hash" not in data
+        assert "credential" not in data
+
+    async def test_invalid_certificate_uuid_returns_not_found(self):
+        """Return not-found for a certificate identifier with invalid syntax."""
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+
+        response = await worker.api_get_certificate(
+            _request("GET", "/api/certificates/not-a-uuid"),
+            env,
+            "not-a-uuid",
+        )
+
+        assert response.status == 404
+        assert _parse(response)["error"] == "Certificate not found"
+
+    async def test_unknown_certificate_uuid_returns_not_found(self):
+        """Return not-found when a valid-looking certificate is absent."""
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+
+        response = await worker.api_get_certificate(
+            _request("GET", "/api/certificates/00000000-0000-4000-8000-000000000000"),
+            env,
+            "00000000-0000-4000-8000-000000000000",
+        )
+
+        assert response.status == 404
+        assert _parse(response)["error"] == "Certificate not found"
