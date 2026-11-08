@@ -49,9 +49,6 @@
   }
 
   /**
-   * Fetch and cache a catalog. Never throws: a failed load yields an empty
-   * catalog so lookups fall back to English or the inline text.
-     /**
    * Fetch and cache a catalog. Never throws. A failed load returns an empty
    * catalog without caching it, so a later call can retry.
    * @param {string} lang
@@ -63,10 +60,12 @@
       const res = await fetch(`/locales/${lang}.json`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      catalogs[lang] =
-        data && typeof data === "object" && !Array.isArray(data) ? data : {};
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("catalog must be a JSON object");
+      }
+      catalogs[lang] = data;
       loadedLangs.add(lang);
-      return catalogs[lang];
+      return data;
     } catch (err) {
       console.warn(`[i18n] Could not load "${lang}" catalog:`, err);
       return {};
@@ -154,8 +153,10 @@
   }
 
   /**
-   * Load catalogs and translate the page. Safe to call more than once.
-   * Dispatches a document-level "i18n:ready" event when done.
+   * Load catalogs and translate the page. Repeated calls reuse the first
+   * run, unless a required catalog failed to load: in that case the next
+   * call starts over, so a temporary failure can recover.
+   * Dispatches a document-level "i18n:ready" event after each completed run.
    * @returns {Promise<void>}
    */
   function init() {
@@ -168,11 +169,14 @@
         document.dispatchEvent(
           new CustomEvent("i18n:ready", { detail: { lang: currentLang } })
         );
+        if (!loadedLangs.has(DEFAULT_LANG) || !loadedLangs.has(currentLang)) {
+          initPromise = null; // allow a later init() to retry
+        }
       })();
     }
     return initPromise;
   }
-
+   
   window.i18n = Object.freeze({
     init,
     t,
