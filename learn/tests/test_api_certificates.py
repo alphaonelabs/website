@@ -98,9 +98,7 @@ class TestCertificateGeneration:
                 notification_stmt,
             ]
         )
-        env = make_env(
-            db=db
-        )
+        env = make_env(db=db)
 
         response = await worker.api_generate_certificate(
             _request(
@@ -118,6 +116,7 @@ class TestCertificateGeneration:
         assert body["success"] is True
         assert certificate["uuid"]
         assert certificate["url"] == f"/certificate.html?uuid={certificate['uuid']}"
+        assert insert_stmt.bind.call_args.args == (certificate["uuid"], "enr-1")
         insert_stmt.bind.return_value.run.assert_awaited_once()
         notification_stmt.bind.return_value.run.assert_awaited_once()
         assert db.sql[-1].startswith("INSERT INTO notifications")
@@ -183,16 +182,41 @@ class TestCertificateGeneration:
         assert _parse(response)["data"]["url"].startswith("/certificate.html?uuid=")
         insert_stmt.bind.return_value.run.assert_awaited_once()
 
+    async def test_unrelated_host_cannot_generate_certificate(self):
+        """Reject a host that does not own the activity enrollment."""
+        insert_stmt = make_stmt()
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment(user_id="learner-1", host_id="host-1")),
+                insert_stmt,
+            ]
+        )
+        env = make_env(db=db)
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("unrelated-host", role="host"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        assert response.status == 403
+        assert _parse(response)["error"] == "Forbidden"
+        assert not any(sql.startswith("INSERT INTO certificates") for sql in db.sql)
+        assert insert_stmt.bind.return_value.run.await_count == 0
+
     async def test_incomplete_enrollment_is_rejected(self):
         """Reject certificate generation until enrollment completion."""
-        env = make_env(
-            db=MockDB(
-                [
-                    make_stmt(first=_enrollment(status="active")),
-                    make_stmt(first=None),
-                ]
-            )
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment(status="active")),
+                make_stmt(first=None),
+            ]
         )
+        env = make_env(db=db)
 
         response = await worker.api_generate_certificate(
             _request(
@@ -206,6 +230,7 @@ class TestCertificateGeneration:
 
         assert response.status == 400
         assert "not completed" in _parse(response)["error"]
+        assert not any(sql.startswith("INSERT INTO certificates") for sql in db.sql)
 
     async def test_completion_promotes_enrollment_before_generating_certificate(self):
         """Promote an enrollment with a completion record before issuing a certificate."""
@@ -226,11 +251,7 @@ class TestCertificateGeneration:
         env = make_env(db=db)
 
         response = await worker.api_generate_certificate(
-            _request(
-                "POST",
-                "/api/certificates/generate/enr-1",
-                _token("learner-1"),
-            ),
+            _request("POST", "/api/certificates/generate/enr-1", _token("learner-1")),
             env,
             "enr-1",
         )
@@ -244,7 +265,8 @@ class TestCertificateGeneration:
 
     async def test_cancelled_enrollment_is_rejected(self):
         """Reject certificate generation for cancelled enrollments."""
-        env = make_env(db=MockDB([make_stmt(first=_enrollment(status="cancelled"))]))
+        db = _RecordingDB([make_stmt(first=_enrollment(status="cancelled"))])
+        env = make_env(db=db)
 
         response = await worker.api_generate_certificate(
             _request(
@@ -258,6 +280,7 @@ class TestCertificateGeneration:
 
         assert response.status == 400
         assert _parse(response)["error"] == "Enrollment is cancelled"
+        assert not any(sql.startswith("INSERT INTO certificates") for sql in db.sql)
 
     async def test_repeated_generation_returns_existing_certificate_without_insert(self):
         """Return the existing certificate without inserting a duplicate."""
