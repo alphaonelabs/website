@@ -59,6 +59,18 @@ def _enrollment(
     )
 
 
+class _RecordingDB(MockDB):
+    """Mock D1 database that also records prepared SQL statements."""
+
+    def __init__(self, stmts):
+        super().__init__(stmts)
+        self.sql = []
+
+    def prepare(self, sql):
+        self.sql.append(sql)
+        return super().prepare(sql)
+
+
 class TestCertificateGeneration:
     async def test_requires_authentication(self):
         """Reject certificate generation when no bearer token is supplied."""
@@ -76,15 +88,18 @@ class TestCertificateGeneration:
     async def test_learner_can_generate_certificate_for_own_completed_enrollment(self):
         """Allow a learner to generate one certificate for an eligible enrollment."""
         insert_stmt = make_stmt()
+        notification_stmt = make_stmt()
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment()),
+                make_stmt(first=None),
+                insert_stmt,
+                make_stmt(first=None),
+                notification_stmt,
+            ]
+        )
         env = make_env(
-            db=MockDB(
-                [
-                    make_stmt(first=_enrollment()),
-                    make_stmt(first=None),
-                    insert_stmt,
-                    make_stmt(first=None),
-                ]
-            )
+            db=db
         )
 
         response = await worker.api_generate_certificate(
@@ -104,6 +119,15 @@ class TestCertificateGeneration:
         assert certificate["uuid"]
         assert certificate["url"] == f"/certificate.html?uuid={certificate['uuid']}"
         insert_stmt.bind.return_value.run.assert_awaited_once()
+        notification_stmt.bind.return_value.run.assert_awaited_once()
+        assert db.sql[-1].startswith("INSERT INTO notifications")
+        notification_args = notification_stmt.bind.call_args.args
+        assert notification_args[1:3] == ("learner-1", "certificate_issued")
+        assert notification_args[3] == _enc("Certificate Issued")
+        assert notification_args[4] == _enc(
+            "Your certificate is ready. View and download it from your activity page."
+        )
+        assert notification_args[5] == certificate["uuid"]
 
     async def test_learner_cannot_generate_another_users_certificate(self):
         """Reject a learner attempting to use another learner's enrollment."""
@@ -182,6 +206,41 @@ class TestCertificateGeneration:
 
         assert response.status == 400
         assert "not completed" in _parse(response)["error"]
+
+    async def test_completion_promotes_enrollment_before_generating_certificate(self):
+        """Promote an enrollment with a completion record before issuing a certificate."""
+        update_stmt = make_stmt()
+        certificate_stmt = make_stmt()
+        notification_stmt = make_stmt()
+        db = _RecordingDB(
+            [
+                make_stmt(first=_enrollment(status="active")),
+                make_stmt(first=MockRow(id="completion-1")),
+                update_stmt,
+                make_stmt(first=None),
+                certificate_stmt,
+                make_stmt(first=None),
+                notification_stmt,
+            ]
+        )
+        env = make_env(db=db)
+
+        response = await worker.api_generate_certificate(
+            _request(
+                "POST",
+                "/api/certificates/generate/enr-1",
+                _token("learner-1"),
+            ),
+            env,
+            "enr-1",
+        )
+
+        body = _parse(response)
+        assert response.status == 200
+        assert body["data"]["uuid"]
+        update_stmt.bind.assert_called_once_with("enr-1")
+        update_stmt.bind.return_value.run.assert_awaited_once()
+        assert db.sql[2] == "UPDATE enrollments SET status='completed' WHERE id=?"
 
     async def test_cancelled_enrollment_is_rejected(self):
         """Reject certificate generation for cancelled enrollments."""
