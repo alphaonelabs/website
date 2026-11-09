@@ -67,11 +67,12 @@
     document.dispatchEvent(new CustomEvent("a1-themechange", { detail: { theme } }));
   };
   if (saved()) html.setAttribute("data-a1-theme", saved());
+  const isAlphaOneDomain = () => location.hostname === "alphaonelabs.com" || location.hostname.endsWith(".alphaonelabs.com");
   prefersDark.addEventListener("change", () => { if (!saved()) notify(); });
   window.A1Theme = {
     get: current,
     set(theme) {
-      const domain = location.hostname.endsWith("alphaonelabs.com") ? "; domain=.alphaonelabs.com" : "";
+      const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
       document.cookie = `a1-theme=${theme}; path=/; max-age=31536000; SameSite=Lax${domain}`;
       html.setAttribute("data-a1-theme", theme);
       notify();
@@ -83,6 +84,142 @@
     sync();
     listeners.add(sync);
   };
+
+  // ---- cross-site authentication -----------------------------------------
+  const getCookie = (name) => {
+    try {
+      const prefix = name + "=";
+      const cookies = document.cookie ? document.cookie.split("; ") : [];
+      for (const c of cookies) {
+        if (c.startsWith(prefix)) {
+          return decodeURIComponent(c.substring(prefix.length));
+        }
+      }
+    } catch (_) {}
+    return null;
+  };
+
+  const isTokenExpired = (token) => {
+    try {
+      const parts = String(token || "").split(".");
+      if (parts.length !== 3) return true;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (payload && typeof payload.exp === "number") {
+        return (Date.now() / 1000) >= payload.exp;
+      }
+      return false;
+    } catch (_) {
+      return true;
+    }
+  };
+
+  const sanitizeUserForCookie = (user) => {
+    if (!user || typeof user !== "object") return null;
+    const avatar = (user.avatar_url && !user.avatar_url.startsWith("data:") && user.avatar_url.length < 500)
+      ? user.avatar_url
+      : "";
+    return {
+      id: user.id,
+      username: user.username || "",
+      name: user.name || user.username || "",
+      role: user.role || "member",
+      avatar_url: avatar,
+    };
+  };
+
+  const clearAuthCookies = () => {
+    const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
+    document.cookie = `a1_token=; path=/; max-age=0; SameSite=Lax${domain}`;
+    document.cookie = `a1_user=; path=/; max-age=0; SameSite=Lax${domain}`;
+    document.cookie = "a1_token=; path=/; max-age=0; SameSite=Lax";
+    document.cookie = "a1_user=; path=/; max-age=0; SameSite=Lax";
+    try {
+      localStorage.removeItem("edu_token");
+      localStorage.removeItem("edu_user");
+      sessionStorage.clear();
+    } catch (_) {}
+    document.dispatchEvent(new CustomEvent("a1-authchange", { detail: { user: null, token: null } }));
+  };
+
+  const getAuthToken = () => {
+    const token = getCookie("a1_token");
+    if (token) {
+      if (isTokenExpired(token)) {
+        clearAuthCookies();
+        return null;
+      }
+      return token;
+    }
+    // Stale local storage should not restore session on production domain if cookies are gone
+    if (isAlphaOneDomain()) {
+      try {
+        localStorage.removeItem("edu_token");
+        localStorage.removeItem("edu_user");
+      } catch (_) {}
+      return null;
+    }
+    try {
+      const local = localStorage.getItem("edu_token");
+      if (local && !isTokenExpired(local)) return local;
+    } catch (_) {}
+    return null;
+  };
+
+  const getAuthUser = () => {
+    const token = getAuthToken();
+    if (!token) return null;
+    const raw = getCookie("a1_user");
+    if (raw) {
+      try { return JSON.parse(raw); } catch (_) {}
+    }
+    if (!isAlphaOneDomain()) {
+      try {
+        const local = localStorage.getItem("edu_user");
+        if (local) return JSON.parse(local);
+      } catch (_) {}
+    }
+    return null;
+  };
+
+  const setAuthCookies = (token, user) => {
+    const cleanUser = sanitizeUserForCookie(user) || user;
+    const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    const maxAge = 60 * 60 * 24 * 7;
+    try {
+      document.cookie = `a1_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+      document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(cleanUser))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+    } catch (_) {}
+    try {
+      localStorage.setItem("edu_token", token);
+      localStorage.setItem("edu_user", JSON.stringify(cleanUser));
+    } catch (_) {}
+    document.dispatchEvent(new CustomEvent("a1-authchange", { detail: { user: cleanUser, token } }));
+  };
+
+  window.A1Auth = {
+    getToken: getAuthToken,
+    getUser: getAuthUser,
+    isAuthenticated: () => !!getAuthToken() && !!getAuthUser(),
+    setAuth: setAuthCookies,
+    clearAuth: clearAuthCookies,
+    logout() {
+      clearAuthCookies();
+      if (location.hostname.includes("learn.")) {
+        location.href = "/login";
+      } else {
+        location.reload();
+      }
+    },
+  };
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === "edu_token" || e.key === "edu_user") {
+      document.dispatchEvent(new CustomEvent("a1-authchange", { detail: { user: getAuthUser(), token: getAuthToken() } }));
+    }
+  });
+
+  const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
   const BASE = `
     @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Inter:wght@500;600;700;800&display=swap");
@@ -105,15 +242,123 @@
 
   class A1Header extends HTMLElement {
     connectedCallback() {
-      if (this.shadowRoot) return;
+      if (!this.shadowRoot) {
+        this.attachShadow({ mode: "open" });
+      }
+      followTheme(this);
+      this._onAuthChange = () => this.render();
+      this._onSyncFocus = () => {
+        const cur = window.A1Auth.getToken();
+        if (cur !== this._lastToken) {
+          this._lastToken = cur;
+          this.render();
+        }
+      };
+      this._onDocClick = (e) => {
+        const root = this.shadowRoot;
+        if (!root) return;
+        const details = root.querySelector("details.sites");
+        const userMenu = root.querySelector("details.user-menu");
+        if (details && !e.composedPath().includes(details)) details.open = false;
+        if (userMenu && !e.composedPath().includes(userMenu)) userMenu.open = false;
+      };
+      this._onDocKeydown = (e) => {
+        if (e.key === "Escape") {
+          const root = this.shadowRoot;
+          if (!root) return;
+          const details = root.querySelector("details.sites");
+          const userMenu = root.querySelector("details.user-menu");
+          const header = root.querySelector("header");
+          if (details) details.open = false;
+          if (userMenu) userMenu.open = false;
+          if (header) header.classList.remove("open");
+        }
+      };
+
+      document.addEventListener("a1-authchange", this._onAuthChange);
+      window.addEventListener("focus", this._onSyncFocus);
+      document.addEventListener("visibilitychange", this._onSyncFocus);
+      document.addEventListener("click", this._onDocClick);
+      document.addEventListener("keydown", this._onDocKeydown);
+      this.render();
+    }
+
+    disconnectedCallback() {
+      if (this._onAuthChange) document.removeEventListener("a1-authchange", this._onAuthChange);
+      if (this._onSyncFocus) {
+        window.removeEventListener("focus", this._onSyncFocus);
+        document.removeEventListener("visibilitychange", this._onSyncFocus);
+      }
+      if (this._onDocClick) document.removeEventListener("click", this._onDocClick);
+      if (this._onDocKeydown) document.removeEventListener("keydown", this._onDocKeydown);
+    }
+
+    render() {
+      this._lastToken = window.A1Auth.getToken();
       const site = this.getAttribute("site");
       const siteHref = this.getAttribute("site-href") || "/";
       const showToggle = !this.hasAttribute("theme") && !this.hasAttribute("no-theme-toggle");
       const compact = this.hasAttribute("compact");
-      const root = this.attachShadow({ mode: "open" });
-      followTheme(this);
+      const root = this.shadowRoot;
       if (this.hasAttribute("sticky")) Object.assign(this.style, { position: "sticky", top: "0", zIndex: "1000" });
       const sitesMenu = SITES.map(([t, h, d]) => `<a role="menuitem" href="${h}"><b>${t}</b><span>${d}</span></a>`).join("");
+
+      const user = window.A1Auth.getUser();
+      const isAuthed = !!(user && window.A1Auth.getToken());
+      const displayName = user ? (user.name || user.username || "Account") : "";
+      const initials = user ? (user.name || user.username || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() : "?";
+      const rawAvatar = user && user.avatar_url ? user.avatar_url : "";
+      const avatarSrc = rawAvatar.startsWith("/") ? `${LEARN}${rawAvatar}` : rawAvatar;
+      const avatarMarkup = avatarSrc
+        ? `<img src="${esc(avatarSrc)}" alt="" class="u-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="u-initials" style="display:none">${esc(initials)}</span>`
+        : `<span class="u-initials">${esc(initials)}</span>`;
+
+      const authDesktop = isAuthed ? `
+        <details class="user-menu">
+          <summary class="user-btn" aria-label="User account menu" aria-haspopup="true">
+            <span class="user-avatar">${avatarMarkup}</span>
+            <span class="user-name">${esc(displayName)}</span>
+            <span class="caret" aria-hidden="true"></span>
+          </summary>
+          <div class="user-dropdown" role="menu">
+            <div class="user-dropdown-head">
+              <span class="user-avatar user-avatar--lg">${avatarMarkup}</span>
+              <div class="user-details">
+                <b class="user-display">${esc(displayName)}</b>
+                <span class="user-handle">@${esc(user.username || "")}</span>
+                ${user.role ? `<span class="user-badge">${esc(user.role)}</span>` : ""}
+              </div>
+            </div>
+            <a role="menuitem" href="${LEARN}/dashboard">Dashboard</a>
+            <a role="menuitem" href="${LEARN}/profile">Profile</a>
+            <a role="menuitem" href="${LEARN}/activity">Activities</a>
+            <button role="menuitem" type="button" class="logout-btn">Sign out</button>
+          </div>
+        </details>` : (compact
+          ? `<a class="btn signin" href="${LEARN}/login">Sign in</a>`
+          : `<a class="btn signin" href="${LEARN}/login">Sign in</a><a class="btn btn--gold explore" href="${LEARN}/activity">Explore Activities ↗</a>`
+        );
+
+      const authDrawer = isAuthed ? `
+        <div class="drawer-user">
+          <div class="user-dropdown-head">
+            <span class="user-avatar user-avatar--lg">${avatarMarkup}</span>
+            <div class="user-details">
+              <b class="user-display">${esc(displayName)}</b>
+              <span class="user-handle">@${esc(user.username || "")}</span>
+              ${user.role ? `<span class="user-badge">${esc(user.role)}</span>` : ""}
+            </div>
+          </div>
+          <a href="${LEARN}/dashboard" style="font-size:18px">Dashboard</a>
+          <a href="${LEARN}/profile" style="font-size:18px">Profile</a>
+          <a href="${LEARN}/activity" style="font-size:18px">Activities</a>
+          <button type="button" class="btn logout-btn" style="width:100%;margin-top:8px">Sign out</button>
+        </div>` : `
+        <div class="row">
+          <a class="btn" href="${LEARN}/login" style="font:800 13px Inter;border:1px solid var(--hard);padding:0 14px">Sign in</a>
+          <a class="btn btn--gold" href="${LEARN}/activity" style="font:800 13px Inter;padding:0 14px">Explore Activities ↗</a>
+        </div>`;
+
       root.innerHTML = `<style>${BASE}
         header { background:var(--bg); color:var(--fg); border-bottom:1px solid var(--soft); }
         .bar { max-width:1280px; margin:0 auto; min-height:76px; padding:0 clamp(16px,4vw,48px); display:flex; align-items:center; gap:18px; }
@@ -138,8 +383,28 @@
         .mobile { display:none; }
         .drawer { display:none; }
         :host([data-mode="light"]) .sun, :host([data-mode="dark"]) .moon { display:none; }
+        .caret { width:6px; height:6px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(45deg) translateY(-2px); }
+        .user-menu { position:relative; }
+        .user-btn { display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 8px 0 4px; border:1px solid transparent; border-radius:2px; font:700 13px/1 Inter,sans-serif; cursor:pointer; background:none; color:var(--fg); max-width:200px; }
+        .user-btn:hover, details.user-menu[open] > .user-btn { border-color:var(--soft); background:var(--hover); }
+        .user-avatar { width:30px; height:30px; flex:none; border-radius:2px; background:var(--gold); color:var(--on-gold); display:inline-flex; align-items:center; justify-content:center; font:800 12px/1 Inter,sans-serif; overflow:hidden; }
+        .user-avatar--lg { width:38px; height:38px; font-size:14px; }
+        .u-img { width:100%; height:100%; object-fit:cover; border-radius:2px; display:block; }
+        .u-initials { display:inline-flex; align-items:center; justify-content:center; width:100%; height:100%; }
+        .user-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .user-dropdown { position:absolute; right:0; top:calc(100% + 10px); width:240px; padding:6px; background:var(--bg); border:1px solid var(--hard); border-radius:2px; display:grid; gap:2px; z-index:20; }
+        .user-dropdown a, .user-dropdown button { display:flex; align-items:center; gap:8px; width:100%; min-height:36px; padding:0 10px; border:1px solid transparent; border-radius:2px; background:none; color:var(--fg); font:600 13px/1 Inter,sans-serif; text-align:left; cursor:pointer; }
+        .user-dropdown a:hover, .user-dropdown button:hover { border-color:var(--soft); background:var(--hover); }
+        .user-dropdown-head { display:flex; align-items:center; gap:10px; padding:8px 8px 10px; border-bottom:1px solid var(--soft); margin-bottom:4px; }
+        .user-details { display:grid; gap:2px; min-width:0; }
+        .user-display { font:700 13px/1.2 Inter,sans-serif; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .user-handle { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .user-badge { display:inline-block; align-self:start; font:800 10px/1 Inter,sans-serif; text-transform:uppercase; letter-spacing:.05em; padding:2px 6px; border-radius:2px; background:var(--soft); color:var(--fg); width:max-content; margin-top:2px; }
+        .logout-btn { color:#b42318 !important; }
+        :host([data-mode="dark"]) .logout-btn { color:#ff8a80 !important; }
+        .drawer-user { padding:14px 0; border-bottom:1px solid var(--soft); display:grid; gap:8px; }
         @media (max-width: 1080px) { nav.primary { display:none; } .mobile { display:inline-grid; } }
-        @media (max-width: 720px) { .site, .divider, .signin, .explore { display:none; } .wordmark { font-size:22px; } .sites { display:none; } }
+        @media (max-width: 720px) { .site, .divider, .signin, .explore, .user-menu { display:none; } .wordmark { font-size:22px; } .sites { display:none; } }
         header.open .drawer { display:block; border-top:1px solid var(--soft); }
         .drawer nav { max-width:1280px; margin:0 auto; padding:12px clamp(16px,4vw,48px) 20px; display:grid; gap:2px; }
         .drawer a { padding:12px 0; border-bottom:1px solid var(--soft); font:900 24px/1 "Barlow Condensed",sans-serif; text-transform:uppercase; }
@@ -155,16 +420,17 @@
             <details class="sites"><summary class="icon sites-btn" aria-label="All Alpha One Labs sites">Sites</summary><div class="menu" role="menu">${sitesMenu}</div></details>
             ${showToggle ? `<button class="icon toggle" type="button" aria-label="Toggle light and dark theme">${SUN}${MOON}</button>` : ""}
             <a class="icon" href="${REPO}" aria-label="Alpha One Labs on GitHub">${GH}</a>
-            ${compact ? "" : `<a class="btn signin" href="${LEARN}/login">Sign in</a><a class="btn btn--gold explore" href="${LEARN}/activity">Explore Activities ↗</a>`}
+            ${authDesktop}
             <button class="icon mobile" type="button" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
           </div>
         </div>
         <div class="drawer"><nav aria-label="Alpha One Labs menu">
           ${NAV.map(([t, h]) => `<a href="${h}">${t}</a>`).join("")}
           ${SITES.map(([t, h]) => `<a href="${h}" style="font-size:18px">${t}</a>`).join("")}
-          <div class="row"><a class="btn" href="${LEARN}/login" style="font:800 13px Inter;border:1px solid var(--hard);padding:0 14px">Sign in</a><a class="btn btn--gold" href="${LEARN}/activity" style="font:800 13px Inter;padding:0 14px">Explore Activities ↗</a></div>
+          ${authDrawer}
         </nav></div>
       </header>`;
+
       const toggle = root.querySelector(".toggle");
       if (toggle) toggle.addEventListener("click", () => window.A1Theme.toggle());
       const header = root.querySelector("header");
@@ -174,9 +440,9 @@
         burger.setAttribute("aria-expanded", String(open));
         burger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
       });
-      const details = root.querySelector("details");
-      document.addEventListener("click", (e) => { if (!e.composedPath().includes(details)) details.open = false; });
-      document.addEventListener("keydown", (e) => { if (e.key === "Escape") { details.open = false; header.classList.remove("open"); } });
+      root.querySelectorAll(".logout-btn").forEach((btn) => {
+        btn.addEventListener("click", () => window.A1Auth.logout());
+      });
     }
   }
 

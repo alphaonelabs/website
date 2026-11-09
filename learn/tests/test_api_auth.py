@@ -228,6 +228,105 @@ class TestApiLogin:
         assert "token" in data["data"]
         assert data["data"]["user"]["username"] == "alice"
         assert data["data"]["user"]["role"] == "member"
+        assert "Set-Cookie" in r.headers
+        assert "a1_token=" in r.headers["Set-Cookie"]
+
+    async def test_api_logout(self):
+        req = MockRequest(method="POST", url="http://localhost/api/logout")
+        r = await worker.api_logout(req, make_env())
+        assert r.status == 200
+        assert "Set-Cookie" in r.headers
+        assert "Max-Age=0" in r.headers["Set-Cookie"]
+        assert "a1_token=" in r.headers["Set-Cookie"]
+        assert "a1_user=" in r.headers["Set-Cookie"]
+
+    async def test_api_login_production_cookie(self):
+        row = self._make_user_row()
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+        req = MockRequest(
+            method="POST",
+            url="https://learn.alphaonelabs.com/api/login",
+            headers={"Content-Type": "application/json", "CF-Connecting-IP": "127.0.0.1"},
+            body=json.dumps({"username": "alice", "password": "password123"}),
+        )
+        r = await worker.api_login(req, env)
+        assert r.status == 200
+        assert "Set-Cookie" in r.headers
+        cookie = r.headers["Set-Cookie"]
+        assert "Domain=.alphaonelabs.com" in cookie
+        assert "Path=/" in cookie
+        assert "Secure" in cookie
+        assert "SameSite=Lax" in cookie
+
+    async def test_api_logout_production_cookie(self):
+        req = MockRequest(
+            method="POST",
+            url="https://learn.alphaonelabs.com/api/logout",
+        )
+        r = await worker.api_logout(req, make_env())
+        assert r.status == 200
+        assert "Set-Cookie" in r.headers
+        cookie = r.headers["Set-Cookie"]
+        assert "Domain=.alphaonelabs.com" in cookie
+        assert "Max-Age=0" in cookie
+        assert "a1_token=" in cookie
+        assert "a1_user=" in cookie
+
+    async def test_api_me_with_cookie(self):
+        row = self._make_user_row()
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+        token = worker.create_token("u1", "alice", "member", JWT)
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/me",
+            headers={"Cookie": f"a1_token={token}"},
+        )
+        r = await worker.api_me(req, env)
+        assert r.status == 200
+        data = _parse(r)
+        assert data["success"] is True
+        assert data["data"]["username"] == "alice"
+
+    async def test_api_me_tampered_cookie(self):
+        row = self._make_user_row()
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+        token = worker.create_token("u1", "alice", "member", JWT)
+        bad_token = token[:-5] + "wrong"
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/me",
+            headers={"Cookie": f"a1_token={bad_token}"},
+        )
+        r = await worker.api_me(req, env)
+        assert r.status == 401
+
+    async def test_api_me_expired_cookie(self):
+        row = self._make_user_row()
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+        expired_token = worker.create_token("u1", "alice", "member", JWT, ttl_seconds=-120)
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/me",
+            headers={"Cookie": f"a1_token={expired_token}"},
+        )
+        r = await worker.api_me(req, env)
+        assert r.status == 401
+
+    async def test_api_me_deleted_user(self):
+        env = make_env(db=MockDB([make_stmt(first=None)]))
+        token = worker.create_token("u1", "alice", "member", JWT)
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/me",
+            headers={"Cookie": f"a1_token={token}"},
+        )
+        r = await worker.api_me(req, env)
+        assert r.status == 401
+
+    async def test_api_me_unauthenticated(self):
+        req = MockRequest(method="GET", url="http://localhost/api/me")
+        r = await worker.api_me(req, make_env())
+        assert r.status == 401
 
     async def test_login_token_is_verifiable(self):
         row = self._make_user_row()

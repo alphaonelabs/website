@@ -111,7 +111,10 @@
 
       function storedAuthExists() {
         try {
-          return !!localStorage.getItem('edu_token') && !!localStorage.getItem('edu_user');
+          if (!!localStorage.getItem('edu_token') && !!localStorage.getItem('edu_user')) return true;
+        } catch (_) {}
+        try {
+          return /(?:^|; )a1_token=/.test(document.cookie) && /(?:^|; )a1_user=/.test(document.cookie);
         } catch (_) {
           return false;
         }

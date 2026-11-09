@@ -1,9 +1,93 @@
 // ── Authentication utilities ──────────────────────────────────────────
+function getCookie(name) {
+    try {
+        const prefix = name + '=';
+        const cookies = document.cookie ? document.cookie.split('; ') : [];
+        for (let i = 0; i < cookies.length; i++) {
+            const c = cookies[i];
+            if (c.indexOf(prefix) === 0) {
+                return decodeURIComponent(c.substring(prefix.length));
+            }
+        }
+    } catch (_) {}
+    return null;
+}
+
+function isTokenExpired(token) {
+    try {
+        const parts = String(token || '').split('.');
+        if (parts.length !== 3) return true;
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload && typeof payload.exp === 'number') {
+            return (Date.now() / 1000) >= payload.exp;
+        }
+        return false;
+    } catch (_) {
+        return true;
+    }
+}
+
 function getAuth() {
+    const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
+    const cToken = getCookie('a1_token');
+    const cUserRaw = getCookie('a1_user');
+
+    if (cToken && cUserRaw) {
+        if (isTokenExpired(cToken)) {
+            logoutCookiesOnly();
+            return { token: null, user: null };
+        }
+        try {
+            const user = JSON.parse(cUserRaw);
+            try {
+                localStorage.setItem('edu_token', cToken);
+                localStorage.setItem('edu_user', JSON.stringify(user));
+            } catch (_) {}
+            return { token: cToken, user: user };
+        } catch (_) {}
+    }
+
+    if (isAlphaOne) {
+        try {
+            localStorage.removeItem('edu_token');
+            localStorage.removeItem('edu_user');
+        } catch (_) {}
+        return { token: null, user: null };
+    }
+
+    let token = null;
+    let user = null;
+    try {
+        token = localStorage.getItem('edu_token');
+        user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+    } catch (_) {}
+
+    if (token && isTokenExpired(token)) {
+        try {
+            localStorage.removeItem('edu_token');
+            localStorage.removeItem('edu_user');
+        } catch (_) {}
+        return { token: null, user: null };
+    }
+
     return {
-        token: localStorage.getItem('edu_token'),
-        user: JSON.parse(localStorage.getItem('edu_user') || 'null')
+        token: token,
+        user: user
     };
+}
+
+function logoutCookiesOnly() {
+    const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
+    const domain = isAlphaOne ? '; domain=.alphaonelabs.com' : '';
+    document.cookie = `a1_token=; path=/; max-age=0; SameSite=Lax${domain}`;
+    document.cookie = `a1_user=; path=/; max-age=0; SameSite=Lax${domain}`;
+    document.cookie = 'a1_token=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'a1_user=; path=/; max-age=0; SameSite=Lax';
+    try {
+        localStorage.removeItem('edu_token');
+        localStorage.removeItem('edu_user');
+        sessionStorage.clear();
+    } catch (_) {}
 }
 
 function isAuthenticated() {
@@ -12,8 +96,8 @@ function isAuthenticated() {
 }
 
 function logout() {
-    localStorage.removeItem('edu_token');
-    localStorage.removeItem('edu_user');
+    logoutCookiesOnly();
+    document.dispatchEvent(new CustomEvent('a1-authchange', { detail: { user: null, token: null } }));
     window.location.href = '/login';
 }
 

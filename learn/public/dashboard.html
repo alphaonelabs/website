@@ -160,8 +160,13 @@
   </main>
 <script>
     const API = '';
-const token = localStorage.getItem('edu_token');
-const user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+const authState = (typeof getAuth === 'function') ? getAuth() : (function() {
+    let t = null, u = null;
+    try { t = localStorage.getItem('edu_token'); u = JSON.parse(localStorage.getItem('edu_user') || 'null'); } catch (_) {}
+    return { token: t, user: u };
+})();
+const token = authState.token;
+const user = authState.user;
 
 // Utility functions
 const pageEsc = window.esc || function (s) {
