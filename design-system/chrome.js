@@ -67,11 +67,12 @@
     document.dispatchEvent(new CustomEvent("a1-themechange", { detail: { theme } }));
   };
   if (saved()) html.setAttribute("data-a1-theme", saved());
+  const isAlphaOneDomain = () => location.hostname === "alphaonelabs.com" || location.hostname.endsWith(".alphaonelabs.com");
   prefersDark.addEventListener("change", () => { if (!saved()) notify(); });
   window.A1Theme = {
     get: current,
     set(theme) {
-      const domain = location.hostname.endsWith("alphaonelabs.com") ? "; domain=.alphaonelabs.com" : "";
+      const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
       document.cookie = `a1-theme=${theme}; path=/; max-age=31536000; SameSite=Lax${domain}`;
       html.setAttribute("data-a1-theme", theme);
       notify();
@@ -109,7 +110,7 @@
   };
 
   const setAuthCookies = (token, user) => {
-    const domain = location.hostname.endsWith("alphaonelabs.com") ? "; domain=.alphaonelabs.com" : "";
+    const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
     const secure = location.protocol === "https:" ? "; Secure" : "";
     const maxAge = 60 * 60 * 24 * 7;
     document.cookie = `a1_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
@@ -122,7 +123,7 @@
   };
 
   const clearAuthCookies = () => {
-    const domain = location.hostname.endsWith("alphaonelabs.com") ? "; domain=.alphaonelabs.com" : "";
+    const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
     document.cookie = `a1_token=; path=/; max-age=0; SameSite=Lax${domain}`;
     document.cookie = `a1_user=; path=/; max-age=0; SameSite=Lax${domain}`;
     document.cookie = "a1_token=; path=/; max-age=0; SameSite=Lax";

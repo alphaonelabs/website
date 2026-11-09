@@ -1857,6 +1857,14 @@ async def api_register(req, env):
     )
 
 
+def _is_alphaonelabs_host(url: str) -> bool:
+    try:
+        host = (urlparse(url).hostname or "").lower()
+        return host == "alphaonelabs.com" or host.endswith(".alphaonelabs.com")
+    except Exception:
+        return False
+
+
 async def api_login(req, env):
     rate_limit_resp = _check_auth_rate_limit(req, env, "login")
     if rate_limit_resp:
@@ -1930,7 +1938,7 @@ async def api_login(req, env):
         "avatar_url": avatar_url,
     }
     req_url = getattr(req, "url", "") or ""
-    domain = "; Domain=.alphaonelabs.com" if "alphaonelabs.com" in req_url else ""
+    domain = "; Domain=.alphaonelabs.com" if _is_alphaonelabs_host(req_url) else ""
     secure = "; Secure" if req_url.startswith("https:") else ""
     cookie_token = f"a1_token={token}; Path=/; Max-Age={ttl_seconds}; SameSite=Lax{domain}{secure}"
     return ok(
@@ -1943,7 +1951,7 @@ async def api_login(req, env):
 async def api_logout(req, env):
     """POST /api/logout — clear cross-site auth cookies."""
     req_url = getattr(req, "url", "") or ""
-    domain = "; Domain=.alphaonelabs.com" if "alphaonelabs.com" in req_url else ""
+    domain = "; Domain=.alphaonelabs.com" if _is_alphaonelabs_host(req_url) else ""
     cookie_token = f"a1_token=; Path=/; Max-Age=0; SameSite=Lax{domain}"
     return ok({"logged_out": True}, "Logged out successfully", headers={"Set-Cookie": cookie_token})
 

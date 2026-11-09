@@ -36,7 +36,8 @@ export function storeAuth(token: string, user: AuthUser): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   try {
-    const domain = location.hostname.endsWith('alphaonelabs.com') ? '; domain=.alphaonelabs.com' : '';
+    const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
+    const domain = isAlphaOne ? '; domain=.alphaonelabs.com' : '';
     const secure = location.protocol === 'https:' ? '; Secure' : '';
     const maxAge = 60 * 60 * 24 * 7;
     document.cookie = `a1_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
@@ -47,7 +48,8 @@ export function storeAuth(token: string, user: AuthUser): void {
 
 export function logout(): void {
   try {
-    const domain = location.hostname.endsWith('alphaonelabs.com') ? '; domain=.alphaonelabs.com' : '';
+    const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
+    const domain = isAlphaOne ? '; domain=.alphaonelabs.com' : '';
     document.cookie = `a1_token=; path=/; max-age=0; SameSite=Lax${domain}`;
     document.cookie = `a1_user=; path=/; max-age=0; SameSite=Lax${domain}`;
     document.cookie = 'a1_token=; path=/; max-age=0; SameSite=Lax';

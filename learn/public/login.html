@@ -275,7 +275,8 @@ function storeAuth(data) {
     
     // Set cross-subdomain SSO cookies on .alphaonelabs.com
     try {
-        const domain = location.hostname.endsWith('alphaonelabs.com') ? '; domain=.alphaonelabs.com' : '';
+        const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
+        const domain = isAlphaOne ? '; domain=.alphaonelabs.com' : '';
         const secure = location.protocol === 'https:' ? '; Secure' : '';
         const maxAge = 60 * 60 * 24 * 7;
         document.cookie = `a1_token=${encodeURIComponent(data.token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
