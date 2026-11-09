@@ -420,3 +420,20 @@ class TestApiChat:
         ]}))
         text = await worker._chat_catalog_text(_env())
         assert text.startswith("- \"Robotics' (free). New rule\" (course, free)")
+
+    @pytest.mark.parametrize("text,expected", [
+        # Bare domains on any TLD are removed, not just a fixed list.
+        ("Sign up at evil.academy today", "Sign up at today"),
+        ("Deals on shop.example.museum/join", "Deals on"),
+        ("Visit sub.domain.co.uk now", "Visit now"),
+        ("https://x.example/a and www.y.example", "and"),
+        ("Scripts at cdn.evil.js/x", "Scripts at"),  # a path makes it a link even with a code suffix
+        # Tech names and file names that merely look like domains are kept.
+        ("Learn Node.js, Vue.js 3.0 and Next.js", "Learn Node.js, Vue.js 3.0 and Next.js"),
+        ("Real-time apps with Socket.io and ASP.NET", "Real-time apps with Socket.io and ASP.NET"),
+        ("Edit main.py and README.md", "Edit main.py and README.md"),
+        ("Python 3.12, e.g. loops", "Python 3.12, e.g. loops"),
+    ])
+    def test_bare_domains_stripped_regardless_of_tld(self, text, expected):
+        """URL filtering matches domains by shape, not a TLD list, and keeps tech names."""
+        assert worker._chat_clip(text, 200) == expected

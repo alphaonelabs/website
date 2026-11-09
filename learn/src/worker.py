@@ -3854,10 +3854,32 @@ FACTS
 
 # URLs and bare domains in host-written activity text. They are removed before the text reaches
 # the prompt so a host cannot get the assistant to recommend an external link.
+# Bare domains are matched by shape (name.label with a 2+ letter last label) rather than a fixed TLD
+# list, since new TLDs (.academy, .shop, ...) keep appearing. Tech names that look like domains are kept.
 _CHAT_URL_RE = re.compile(
     r"(?i)\b(?:https?://|www\.)\S+"
-    r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|xyz|info|biz|app|dev|me|ly|gg|link|site|online|top|ru|cn)\b(?:/\S*)?"
+    r"|\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,24}\b(?:/\S*)?"
 )
+# Last labels that are file/code extensions, not TLDs ("Node.js", "main.py", "README.md").
+_CHAT_NAME_SUFFIXES = {
+    "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "ipynb", "rb", "java", "kt", "cs", "cpp", "hpp", "rs",
+    "json", "yaml", "yml", "toml", "csv", "txt", "md", "html", "css", "scss", "sql", "sh",
+}
+# Real tech names whose suffix happens to be a TLD.
+_CHAT_NAME_EXCEPTIONS = {"asp.net", "ado.net", "vb.net", "socket.io"}
+
+
+def _chat_strip_urls(text: str) -> str:
+    """Remove URLs and bare domains from host-written text, keeping tech names such as Node.js."""
+    def _replace(m):
+        found = m.group(0)
+        low = found.lower()
+        if "/" not in low and not low.startswith("www.") and (
+            low in _CHAT_NAME_EXCEPTIONS or low.rsplit(".", 1)[-1] in _CHAT_NAME_SUFFIXES
+        ):
+            return found
+        return " "
+    return _CHAT_URL_RE.sub(_replace, text)
 
 
 # Host-written text that reads like instructions to an AI, or like site-wide announcements. Listings
@@ -3874,7 +3896,7 @@ _CHAT_INJECTION_RE = re.compile(
 
 def _chat_clip(value, limit: int) -> str:
     """Strip URLs from a host-written catalogue field, collapse whitespace and cap its length."""
-    return " ".join(_CHAT_URL_RE.sub(" ", str(value or "")).split())[:limit]
+    return " ".join(_chat_strip_urls(str(value or "")).split())[:limit]
 
 
 def _chat_price(cents, currency) -> str:

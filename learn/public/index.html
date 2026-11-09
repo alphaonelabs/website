@@ -347,9 +347,11 @@
   function safeHref(url) {
     var parsed;
     try { parsed = new URL(url, window.location.origin); } catch (e) { return null; }
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
-    if (parsed.origin === window.location.origin || LINK_HOSTS.test(parsed.hostname)) return parsed.href;
-    if (parsed.href === SLACK_INVITE) return parsed.href;
+    // Same-site paths are always fine (they use this page's own protocol).
+    if (parsed.origin === window.location.origin) return parsed.href;
+    // External links must be HTTPS and on the allowlist.
+    if (parsed.protocol !== 'https:') return null;
+    if (LINK_HOSTS.test(parsed.hostname) || parsed.href === SLACK_INVITE) return parsed.href;
     return null;
   }
 
