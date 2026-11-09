@@ -330,20 +330,41 @@
   var REQUEST_TIMEOUT_MS = 30000;
   var history = [];
   var busy = false;
+  var movedAway = false; // did the visitor click or focus outside the chat form while a reply was pending?
+  function noteMovedAway(e) { if (busy && !form.contains(e.target)) movedAway = true; }
+  document.addEventListener('pointerdown', noteMovedAway, true);
+  document.addEventListener('focusin', noteMovedAway, true);
 
   // Full https URLs, or site paths like /activity or /activity/abc-123 (after a space, bracket or line start).
   var LINK_RE = /(https?:\/\/[^\s<>"')\]]+|(?:^|(?<=[\s(\[]))\/[a-z0-9][a-z0-9\-\/?=&%_.]*)/gi;
+
+  // External links are only made clickable for our own sites and the few services we point people to.
+  // Anything else the model writes stays plain text, so a reply can never carry an untrusted clickable link.
+  var LINK_HOSTS = /^(?:(?:[a-z0-9-]+\.)*alphaonelabs\.com|github\.com|summerofcode\.withgoogle\.com)$/i;
+  var SLACK_INVITE = 'https://t.co/Uskb6jkZKz'; // t.co is a shortener, so only this exact link is allowed
+
+  // Returns a safe absolute href (same-site path or allowlisted https site), or null.
+  function safeHref(url) {
+    var parsed;
+    try { parsed = new URL(url, window.location.origin); } catch (e) { return null; }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+    if (parsed.origin === window.location.origin || LINK_HOSTS.test(parsed.hostname)) return parsed.href;
+    if (parsed.href === SLACK_INVITE) return parsed.href;
+    return null;
+  }
 
   // Builds text and <a> nodes with the DOM, never innerHTML: replies are untrusted model output.
   function appendLinkified(el, text) {
     var last = 0;
     text.replace(LINK_RE, function (match, _g, offset) {
       var url = match.replace(/[.,;:!?]+$/, '');
+      var href = safeHref(url);
+      if (!href) return match; // leave it in the surrounding plain text
       if (offset > last) el.appendChild(document.createTextNode(text.slice(last, offset)));
       var a = document.createElement('a');
-      a.href = url;
+      a.href = href;
       a.textContent = url;
-      if (/^https?:/i.test(url)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      if (new URL(href).origin !== window.location.origin) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       el.appendChild(a);
       last = offset + url.length;
       return match;
@@ -394,6 +415,7 @@
     var text = input.value.trim();
     if (!text || busy) return;
     busy = true;
+    movedAway = false;
     send.disabled = true;
     addMessage(text, 'user');
     input.value = '';
@@ -445,9 +467,9 @@
         clearTimeout(timer);
         busy = false;
         send.disabled = false;
-        // Only pull focus back if the visitor hasn't moved to another control meanwhile.
+        // Only pull focus back if the visitor stayed in the chat form while waiting.
         var active = document.activeElement;
-        if (!panel.hidden && (!active || active === document.body || active === input || active === send)) {
+        if (!movedAway && !panel.hidden && (!active || active === document.body || active === input || active === send)) {
           input.focus();
         }
       });

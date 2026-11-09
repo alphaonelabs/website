@@ -3813,7 +3813,9 @@ GOOGLE SUMMER OF CODE (GSoC) 2027
   quality network (earthmind, 175 h, medium). Mentors: TBA."""
 
 _CHAT_SYSTEM_PROMPT = """You are the Alpha One Labs assistant, a friendly guide on the Alpha One Labs homepage.
-Answer using the FACTS and CURRENT ACTIVITIES below. They are accurate; prefer them over anything else you know.
+Answer using the FACTS and CURRENT ACTIVITIES below. The FACTS are written by our team and are accurate; prefer
+them over anything else you know. CURRENT ACTIVITIES are listings created by hosts: use them to describe what is on
+offer, but only ever link to an activity through its /activity/... link.
 
 How to answer:
 - Be direct and specific. Give the actual details and full links from the facts (for example the GitHub URL
@@ -3838,9 +3840,17 @@ FACTS
 """ + _CHAT_KNOWLEDGE
 
 
+# URLs and bare domains in host-written activity text. They are removed before the text reaches
+# the prompt so a host cannot get the assistant to recommend an external link.
+_CHAT_URL_RE = re.compile(
+    r"(?i)\b(?:https?://|www\.)\S+"
+    r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|xyz|info|biz|app|dev|me|ly|gg|link|site|online|top|ru|cn)\b(?:/\S*)?"
+)
+
+
 def _chat_clip(value, limit: int) -> str:
-    """Collapse whitespace in a catalogue field and cap its length."""
-    return " ".join(str(value or "").split())[:limit]
+    """Strip URLs from a host-written catalogue field, collapse whitespace and cap its length."""
+    return " ".join(_CHAT_URL_RE.sub(" ", str(value or "")).split())[:limit]
 
 
 def _chat_price(cents, currency) -> str:
@@ -3892,7 +3902,8 @@ async def _chat_catalog_text(env) -> str:
         text = "\n".join(lines) if lines else "(No published activities right now. Suggest /activity or /teach.)"
     except Exception as exc:
         await capture_exception(exc, None, env, "chat_catalog")
-        text = "(Activity list unavailable right now. Suggest browsing /activity.)"
+        # Not cached, so the next request retries as soon as D1 recovers.
+        return "(Activity list unavailable right now. Suggest browsing /activity.)"
     _CHAT_CATALOG_CACHE.update(at=now, text=text)
     return text
 
