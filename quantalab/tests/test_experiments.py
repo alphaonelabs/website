@@ -174,7 +174,11 @@ class TestAiMentor:
         prompt = ai_mentor._SYSTEM_PROMPT
         assert "Off-Topic" in prompt
         assert "QuantaMentor, your science and lab guide" in prompt
-        assert "Science bridge" in prompt or "science" in prompt
+        assert "cannot [perform the requested non-science task]" in prompt
+        assert "Science bridge" in prompt
+        assert "If you are curious about the" in prompt
+        assert "Redirect" in prompt
+        assert "Otherwise, which experiment or science concept" in prompt
 
     @pytest.mark.asyncio
     async def test_ask_mentor_includes_system_prompt_and_context(self):
@@ -197,7 +201,8 @@ class TestAiMentor:
         call_args = mock_env.AI.run.call_args[0]
         assert call_args[0] == "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
         messages = call_args[1]["messages"]
+        assert messages[0]["role"] == "system"
         system_msg = messages[0]["content"]
-        assert "QuantaMentor" in system_msg
-        assert "Off-Topic" in system_msg
-        assert "pendulum" in system_msg
+        assert system_msg.startswith(ai_mentor._SYSTEM_PROMPT)
+        assert "[Context: student is working on the 'pendulum' experiment in physics.]" in system_msg
+        assert messages[-1] == {"role": "user", "content": "How to make coffee?"}
