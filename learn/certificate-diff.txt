@@ -1,0 +1,57 @@
+﻿diff --git a/learn/public/certificate.html b/learn/public/certificate.html
+index ef434745..fa37aecb 100644
+--- a/learn/public/certificate.html
++++ b/learn/public/certificate.html
+@@ -192,18 +192,19 @@
+   <script src="/js/layout.js?v=2" defer></script>
+   <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
+   <script>
+     function formatDate(value) {
+       if (!value) return 'ΓÇö';
+-      const date = new Date(value);
+-      if (Number.isNaN(date.getTime())) return 'ΓÇö';
+-      return date.toLocaleDateString('en-US', {
+-        month: 'long',
+-        day: '2-digit',
+-        year: 'numeric',
+-      });
+-    }
++      const raw = String(value).trim();
++  // SQLite returns "YYYY-MM-DD HH:MM:SS" in UTC; older Safari can't parse the space form.
++      const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
++      ? raw.replace(' ', 'T') + 'Z'
++      : raw;
++      const date = new Date(normalized);
++      if (Number.isNaN(date.getTime())) return raw;
++      return date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
++   }
+ 
+     function showError(message) {
+       const wrapper = document.createElement('div');
+       wrapper.className = 'text-red-600 dark:text-red-400 font-semibold';
+       wrapper.textContent = message;
+@@ -255,17 +256,17 @@
+         document.getElementById('activity-title').textContent = data.activity_title;
+         document.getElementById('issued-at').textContent      = formattedDate;
+         document.getElementById('cert-id').textContent        = `Certificate ID: ${data.uuid}`;
+ 
+         // Single QR instance (screen only; cloned to print slot via beforeprint)
+-      try {
+-        new QRCode(document.getElementById('qr-code'), {
+-        text: verifyUrl, width: 128, height: 128,
+-      });
+-      } catch (_) {
+-        document.getElementById('qr-code').classList.add('hidden');
+-      }
++        const qrEl = document.getElementById('qr-code');
++        try {
++          new QRCode(qrEl, { text: verifyUrl, width: 128, height: 128 });
++        } catch (_) {
++          qrEl.innerHTML = '';              // drop any partial image so print omits it
++          qrEl.classList.add('hidden');
++        }
+ 
+         // Share buttons
+         const linkedInUrl = 'https://www.linkedin.com/shareArticle?mini=true'
+           + `&url=${encodeURIComponent(verifyUrl)}`
+           + `&title=${encodeURIComponent('Certificate of Completion ΓÇô ' + data.activity_title)}`

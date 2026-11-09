@@ -454,12 +454,20 @@ function renderDashboard(data) {
     document.getElementById('joined-section').innerHTML = joinedHtml;
 }
 async function loadMyCertificates() {
+  const token = localStorage.getItem('edu_token');
+  if (!token) return;
+
   const list = document.getElementById('cert-list');
   const count = document.getElementById('cert-count');
-  const token = localStorage.getItem('edu_token');
   const safe = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   try {
     const res = await fetch('/api/certificates', { headers: { Authorization: 'Bearer ' + token } });
+    if (res.status === 401) {
+        localStorage.removeItem('edu_token');
+        localStorage.removeItem('edu_user');
+        window.location.href = '/login';
+        return;
+    }
     if (!res.ok) throw new Error('Could not load certificates');
     const certs = ((await res.json()).data || {}).certificates || [];
     count.textContent = certs.length;
@@ -468,13 +476,13 @@ async function loadMyCertificates() {
       return;
     }
     list.innerHTML = certs.map(c => {
-      const d = new Date(String(c.issued_at).replace(' ', 'T') + 'Z');
+      const d = new Date(String(c.completed_at || c.issued_at).replace(' ', 'T') + 'Z');
       const when = isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
       return `
         <div class="px-6 py-4 flex items-center justify-between gap-4">
           <div class="min-w-0">
             <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate">${safe(c.activity_title)}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Issued ${safe(when)}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Completed ${safe(when)}</p>
           </div>
           <a href="${safe(c.url)}" target="_blank" rel="noopener"
              class="shrink-0 text-xs font-semibold text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20">

@@ -3205,7 +3205,7 @@ async def api_generate_certificate(request, env, target_id):
                 "Enrollment is not completed yet. Finish all sessions to earn your certificate.",
                 400,
             )
-    
+
     existing = await env.DB.prepare(
         "SELECT id FROM certificates WHERE enrollment_id = ?"
     ).bind(enrollment_id).first()
@@ -3248,12 +3248,14 @@ async def api_generate_certificate(request, env, target_id):
         "url": "/certificate.html?uuid=" + cert_uuid,
     })
 
-
+_CERT_COMPLETED_AT_SQL = (
+    "(SELECT MAX(ac.completed_at) FROM activity_completions ac"
+    " WHERE ac.activity_id = e.activity_id AND ac.user_id = e.user_id)"
+)
 async def api_get_certificate(request, env, cert_uuid):
     row = await env.DB.prepare(
         "SELECT c.id, c.issued_at, u.name AS student_name_enc, a.title AS activity_title,"
-        " (SELECT MAX(ac.completed_at) FROM activity_completions ac"
-        " WHERE ac.activity_id = e.activity_id AND ac.user_id = e.user_id) AS completed_at"
+        " " + _CERT_COMPLETED_AT_SQL + " AS completed_at"
         " FROM certificates c"
         " JOIN enrollments e ON c.enrollment_id = e.id"
         " JOIN users u ON e.user_id = u.id"
@@ -3283,6 +3285,7 @@ async def api_list_my_certificates(req, env):
 
     res = await env.DB.prepare(
         "SELECT c.id, c.issued_at,"
+        " " + _CERT_COMPLETED_AT_SQL + " AS completed_at,"
         " a.id AS activity_id, a.slug AS activity_slug, a.title AS activity_title"
         " FROM certificates c"
         " JOIN enrollments e ON c.enrollment_id = e.id"
@@ -3298,9 +3301,10 @@ async def api_list_my_certificates(req, env):
             "activity_slug":  getattr(r, "activity_slug", "") or "",
             "activity_title": r.activity_title,
             "issued_at":      r.issued_at,
+            "completed_at":   getattr(r, "completed_at", None) or r.issued_at,
             "url":            "/certificate.html?uuid=" + r.id,
         }
-        for r in (res.results or [])
+    for r in (res.results or [])
     ]
     return ok({"certificates": certificates})
 
