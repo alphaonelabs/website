@@ -3975,14 +3975,15 @@ async def _chat_catalog(env) -> Dict[str, str]:
     if _CHAT_CATALOG_CACHE["text"] and now - _CHAT_CATALOG_CACHE["at"] < _CHAT_CATALOG_TTL_SECONDS:
         return {"text": _CHAT_CATALOG_CACHE["text"], "summary": _CHAT_CATALOG_CACHE.get("summary", "")}
     try:
-        payload = await _server_list_activities(env, limit=_CHAT_CATALOG_LIMIT)
+        # Ask for one extra row: it is never shown, it only tells us whether more activities exist.
+        payload = await _server_list_activities(env, limit=_CHAT_CATALOG_LIMIT + 1)
         lines = []
         used = 0
         free = paid = waitlisted = 0
         types: Dict[str, int] = {}
-        fetched = payload.get("activities", [])[:_CHAT_CATALOG_LIMIT]
-        # The query is capped, so a full page means there may be more on /activity than we list.
-        more = len(fetched) >= _CHAT_CATALOG_LIMIT
+        rows = payload.get("activities", [])
+        fetched = rows[:_CHAT_CATALOG_LIMIT]
+        more = len(rows) > _CHAT_CATALOG_LIMIT
         budget = _CHAT_CATALOG_MAX_CHARS - len(_CHAT_MORE_ACTIVITIES) - 1  # always leave room for the note
         for a in fetched:
             title = _chat_clip(a.get("title"), 80)

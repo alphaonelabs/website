@@ -422,16 +422,21 @@ class TestCatalog:
         assert lines == [entry(i) for i in range(len(lines))]
         assert len(text) + 1 + len(entry(len(lines))) > worker._CHAT_CATALOG_MAX_CHARS - len(worker._CHAT_MORE_ACTIVITIES) - 1
 
-    @pytest.mark.parametrize("count,partial", [(3, False), (15, True)])
+    @pytest.mark.parametrize("count,partial", [(3, False), (15, False), (16, True)])
     async def test_partial_list_is_labelled(self, monkeypatch, count, partial):
-        """When the capped query may have left activities out, both the list and the counts say so."""
-        _activities(monkeypatch, *[{"id": f"a{i}", "title": f"T{i}", "type": "course"} for i in range(count)])
+        """Only when more activities exist than are listed do the list and the counts say so."""
+        limit = worker._CHAT_CATALOG_LIMIT
+        lister = AsyncMock(return_value={"activities": [
+            {"id": f"a{i}", "title": f"T{i}", "type": "course"} for i in range(count)]})
+        monkeypatch.setattr(worker, "_server_list_activities", lister)
         ai = FakeAI()
         await worker.api_chat(_chat({"message": "hi"}), _env(ai))
         text = await worker._chat_catalog_text(_env())
+        assert lister.await_args.kwargs["limit"] == limit + 1  # one extra row, used only to detect "more"
         assert text.endswith(worker._CHAT_MORE_ACTIVITIES) == partial
         assert ("Partial counts" in _system(ai)) == partial
-        assert f"{count} published activities" in _system(ai)
+        assert f"{min(count, limit)} published activities" in _system(ai)
+        assert f"/activity/a{limit}" not in text  # the extra row is never shown
 
     async def test_urls_and_markup_are_stripped_from_host_text(self, monkeypatch):
         """Links, bare domains and angle brackets in host-written fields are removed."""
