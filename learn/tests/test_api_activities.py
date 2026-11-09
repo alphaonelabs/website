@@ -7,6 +7,7 @@ Tests for activities API handlers:
 
 import base64
 import json
+import token
 import pytest
 from tests.helpers import (
     load_worker, MockRequest, MockRow, MockDB, make_env, make_stmt, json_request,
@@ -483,3 +484,103 @@ class TestApiCertificates:
         req = self._req(method="GET", path="/api/certificates/cert-uuid")
         r = await worker.api_get_certificate(req, env, "cert-uuid")
         assert r.status == 404
+
+    
+    async def test_generate_does_not_change_enrollment_status(self):
+        token = _make_host_token(uid="user-1")
+        enr = MockRow(
+            id="enr-1",
+            user_id="user-1",
+            host_id="host-1",
+            status="active",
+            activity_id="act-1",
+        )
+
+        queries = []
+        db = MockDB([
+            make_stmt(first=enr),                         # fetch enrollment
+            make_stmt(first=MockRow(id="completion-1")),  # completion check
+            make_stmt(first=None),                        # check existing certificate
+            make_stmt(),                                  # insert certificate
+            make_stmt(),                                  # notification
+        ])
+
+        real_prepare = db.prepare
+
+        def spy(sql):
+            queries.append(sql)
+            return real_prepare(sql)
+
+        db.prepare = spy
+        env = make_env(db=db)
+
+        req = self._req(
+            method="POST",
+            path="/api/certificates/generate/enr-1",
+            token=token,
+        )
+        r = await worker.api_generate_certificate(req, env, "enr-1")
+
+        assert r.status == 200
+        assert not any(
+            "UPDATE ENROLLMENTS" in query.upper()
+            for query in queries
+        )
+
+
+    async def test_get_certificate_falls_back_when_name_cannot_be_decrypted(self, monkeypatch):
+        async def _fail(*_args, **_kwargs):
+            return "[decryption error]"
+        monkeypatch.setattr(worker, "decrypt_aes", _fail)
+        row = MockRow(id="c1", issued_at="2024-06-02 10:00:00", completed_at=None,
+                        student_name_enc="x", activity_title="Python 101")
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+        r = await worker.api_get_certificate(self._req(path="/api/certificates/c1"), env, "c1")
+        data = _parse(r)["data"]
+        assert data["student_name"] == "Alpha One Labs learner"
+        assert data["completed_at"] == "2024-06-02 10:00:00"
+
+    async def test_list_my_certificates_requires_auth(self):
+        r = await worker.api_list_my_certificates(self._req(path="/api/certificates"), make_env())
+        assert r.status == 401
+
+    async def test_list_my_certificates_returns_rows(self):
+        token = _make_host_token(uid="user-1")
+        row = MockRow(id="cert-1", issued_at="2024-05-01 10:00:00", activity_id="act-1",
+                      activity_slug="python-101", activity_title="Python 101")
+        env = make_env(db=MockDB([make_stmt(all_results=[row])]))
+        r = await worker.api_list_my_certificates(
+            self._req(path="/api/certificates", token=token), env)
+        certs = _parse(r)["data"]["certificates"]
+        assert r.status == 200
+        assert certs[0]["uuid"] == "cert-1"
+        assert certs[0]["url"] == "/certificate.html?uuid=cert-1"
+
+    async def test_get_certificate_hides_internal_ids_and_uses_completion_date(self):
+        row = MockRow(id="c1", issued_at="2024-06-02 10:00:00", completed_at="2024-05-30 09:00:00",
+                      student_name_enc=_enc("Charlie Kim"), activity_title="Python 101")
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+        r = await worker.api_get_certificate(self._req(path="/api/certificates/c1"), env, "c1")
+        data = _parse(r)["data"]
+        assert "enrollment_id" not in data
+        assert data["completed_at"] == "2024-05-30 09:00:00"
+
+    async def test_generate_rejects_enrollment_without_completion(self):
+        token = _make_host_token(uid="user-1")
+        enr = MockRow(id="enr-1", user_id="user-1", host_id="host-1",
+                      status="active", activity_id="act-1")
+        env = make_env(db=MockDB([make_stmt(first=enr), make_stmt(first=None)]))
+        req = self._req(method="POST", path="/api/certificates/generate/enr-1", token=token)
+        r = await worker.api_generate_certificate(req, env, "enr-1")
+        assert r.status == 400
+
+    async def test_generate_forbidden_for_unrelated_user(self):
+        token = _make_host_token(uid="user-1")
+        enr = MockRow(id="enr-1", user_id="someone-else", host_id="host-9",
+                      status="completed", activity_id="act-1")
+        env = make_env(db=MockDB([make_stmt(first=enr)]))
+        req = self._req(method="POST", path="/api/certificates/generate/enr-1", token=token)
+        r = await worker.api_generate_certificate(req, env, "enr-1")
+        assert r.status == 403
+
+
