@@ -115,6 +115,17 @@
 
   .a1h-icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
+  /* Labs Grid */
+  .a1h-labs { border-top: 1px solid var(--h-soft); padding: 26px 0 32px; }
+  .a1h-labs__top { margin-bottom: 14px; }
+  .a1h-labs__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .a1h-lab-card { border: 1px solid var(--h-hard); border-radius: 6px; padding: 12px 14px; background: var(--h-bg); display: flex; flex-direction: column; gap: 6px; transition: border-color .15s, transform .15s, background .15s; }
+  .a1h-lab-card:hover { border-color: var(--h-gold); background: var(--h-raised); transform: translateY(-2px); }
+  .a1h-lab-card__header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .a1h-lab-card__title { font: 800 20px/1 var(--h-display); text-transform: uppercase; margin: 0; color: var(--h-fg); letter-spacing: -.01em; }
+  .a1h-lab-card__tag { font: 700 10px/1 var(--h-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--h-gold-ink); margin-left: auto; text-align: right; white-space: nowrap; }
+  .a1h-lab-card__desc { font-size: 12.5px; line-height: 1.4; color: var(--h-muted); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
   .home-auth-only { display: none !important; }
   .home-guest-only { display: inline-flex !important; }
   html.is-authenticated .home-auth-only { display: inline-flex !important; }
@@ -136,12 +147,13 @@
     .a1h-statement__vr { display: none; }
     .a1h-values { grid-template-columns: repeat(2, 1fr); row-gap: 22px; }
     .a1h-value:nth-child(3) { border-left: 0; padding-left: 0; }
+    .a1h-labs__grid { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 639px) {
     .a1h-hero__title { font-size: clamp(64px, 22vw, 104px); }
     .a1h-hero__lead { font-size: 15px; }
     .a1h-hero__actions .a1h-btn { flex: 1 1 100%; }
-    .a1h-cards, .a1h-ctas, .a1h-values { grid-template-columns: 1fr; }
+    .a1h-cards, .a1h-ctas, .a1h-values, .a1h-labs__grid { grid-template-columns: 1fr; }
     .a1h-value { border-left: 0; padding-left: 0; }
     .a1h-cta { padding: 16px 18px; gap: 16px; }
     .a1h-cta svg { width: 36px; height: 36px; }
@@ -256,6 +268,74 @@
       <div class="a1h-value">
         <svg viewBox="0 0 34 34" class="a1h-icon" aria-hidden="true"><circle cx="17" cy="17" r="13"/><path d="M4 17h26M17 4c3.5 3.6 5.2 8 5.2 13s-1.7 9.4-5.2 13c-3.5-3.6-5.2-8-5.2-13S13.5 7.6 17 4z"/></svg>
         <div><strong>Global Community</strong><span>Learners from everywhere.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== INTERACTIVE LABS GRID ===== -->
+  <section class="a1h-labs" aria-labelledby="home-labs-title">
+    <div class="a1h-wrap">
+      <div class="a1h-labs__top">
+        <p class="a1h-eyebrow">Ecosystem&nbsp;&nbsp;//&nbsp;&nbsp;Interactive Tools</p>
+        <h2 id="home-labs-title" class="a1h-display a1h-section__title" style="margin-top:6px">Explore the Labs</h2>
+      </div>
+      <div class="a1h-labs__grid">
+        <a href="https://quantalab.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">QuantaLab</h3>
+            <span class="a1h-lab-card__tag">Simulation</span>
+          </div>
+          <p class="a1h-lab-card__desc">Virtual science lab with interactive physics, chemistry, and biology simulations.</p>
+        </a>
+        <a href="https://botlab.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">BotLab</h3>
+            <span class="a1h-lab-card__tag">Robotics</span>
+          </div>
+          <p class="a1h-lab-card__desc">Robotics playground with block programming, sensors, and simulation physics.</p>
+        </a>
+        <a href="https://voxbridge.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">VoxBridge</h3>
+            <span class="a1h-lab-card__tag">Accessibility</span>
+          </div>
+          <p class="a1h-lab-card__desc">AI-powered accessibility: live captioning, sign-to-speech, and scene detection.</p>
+        </a>
+        <a href="https://virtual.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">Virtual World</h3>
+            <span class="a1h-lab-card__tag">Spatial</span>
+          </div>
+          <p class="a1h-lab-card__desc">Spatial 3D learning world &mdash; walk into virtual classrooms and interact live.</p>
+        </a>
+        <a href="https://earthmind.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">EarthMind</h3>
+            <span class="a1h-lab-card__tag">Climate</span>
+          </div>
+          <p class="a1h-lab-card__desc">Real-time environmental monitoring, planetary data sensing, and anomaly alerts.</p>
+        </a>
+        <a href="https://mockuper.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">Mockuper</h3>
+            <span class="a1h-lab-card__tag">Studio</span>
+          </div>
+          <p class="a1h-lab-card__desc">Fast wireframing, mockup generator, and quick UI sketching in the browser.</p>
+        </a>
+        <a href="https://pmoss.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">PMOSS</h3>
+            <span class="a1h-lab-card__tag">Projects</span>
+          </div>
+          <p class="a1h-lab-card__desc">Open-source project management platform built on GitHub issues and milestones.</p>
+        </a>
+        <a href="https://gsoc.alphaonelabs.com" target="_blank" rel="noopener noreferrer" class="a1h-lab-card">
+          <div class="a1h-lab-card__header">
+            <h3 class="a1h-lab-card__title">GSoC Hub</h3>
+            <span class="a1h-lab-card__tag">Open-Source</span>
+          </div>
+          <p class="a1h-lab-card__desc">Google Summer of Code guides, project ideas catalog, and contributor leaderboard.</p>
+        </a>
       </div>
     </div>
   </section>
