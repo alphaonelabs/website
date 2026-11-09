@@ -327,6 +327,7 @@
   var input = document.getElementById('a1h-chat-input');
   var send = document.getElementById('a1h-chat-send');
   var MAX_HISTORY = 6;
+  var REQUEST_TIMEOUT_MS = 30000;
   var history = [];
   var busy = false;
 
@@ -399,14 +400,26 @@
     input.style.height = 'auto';
     var typing = addMessage('Thinking…', 'bot a1h-chat__msg--typing');
 
-    fetch('/api/chat', {
+    // One deadline covers both the request and reading the response body.
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer;
+    var deadline = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        if (controller) controller.abort();
+        reject({ timeout: true });
+      }, REQUEST_TIMEOUT_MS);
+    });
+    var request = fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ message: text, history: history.slice(-MAX_HISTORY) })
+      body: JSON.stringify({ message: text, history: history.slice(-MAX_HISTORY) }),
+      signal: controller ? controller.signal : undefined
     })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (data) { return { status: r.status, data: data }; });
-      })
+      });
+
+    Promise.race([request, deadline])
       .then(function (res) {
         typing.remove();
         var reply = res.data && res.data.data && res.data.data.reply;
@@ -420,14 +433,23 @@
           addMessage((res.data && res.data.error) || 'Something went wrong. Please try again.', 'error');
         }
       })
-      .catch(function () {
+      .catch(function (e) {
         typing.remove();
-        addMessage("Couldn't reach the assistant. Check your connection and try again.", 'error');
+        if (e && (e.timeout || e.name === 'AbortError')) {
+          addMessage('The assistant is taking too long to answer. Please try again.', 'error');
+        } else {
+          addMessage("Couldn't reach the assistant. Check your connection and try again.", 'error');
+        }
       })
       .then(function () {
+        clearTimeout(timer);
         busy = false;
         send.disabled = false;
-        input.focus();
+        // Only pull focus back if the visitor hasn't moved to another control meanwhile.
+        var active = document.activeElement;
+        if (!panel.hidden && (!active || active === document.body || active === input || active === send)) {
+          input.focus();
+        }
       });
   });
 })();
