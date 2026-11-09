@@ -716,18 +716,29 @@ def _check_auth_rate_limit(req, env, route: str, window_seconds: Optional[int] =
         if expires_at <= now:
             _AUTH_RATE_LIMIT_STATE.pop(stale_key, None)
 
-    if len(_AUTH_RATE_LIMIT_STATE) > max_keys:
-        overflow = len(_AUTH_RATE_LIMIT_STATE) - max_keys
-        oldest_keys = sorted(
-            _AUTH_RATE_LIMIT_STATE.items(),
-            key=lambda item: int(item[1].get("window_start", 0)),
-        )[:overflow]
-        for oldest_key, _ in oldest_keys:
-            _AUTH_RATE_LIMIT_STATE.pop(oldest_key, None)
+    # If this route is still full, make room for a new visitor without locking anyone out.
+    # The cap applies per route, so one route's traffic can never evict another route's
+    # counters. Within the route, evict the counters that matter least first: low attempt
+    # counts (losing one gives that visitor at most one extra try), oldest first, and
+    # counters that are currently blocking someone last.
+    if key not in _AUTH_RATE_LIMIT_STATE:
+        prefix = f"{route}:"
+        route_items = [item for item in _AUTH_RATE_LIMIT_STATE.items() if item[0].startswith(prefix)]
+        overflow = len(route_items) - max_keys + 1
+        if overflow > 0:
+            route_items.sort(key=lambda item: (
+                int(item[1].get("count", 0)) >= int(item[1].get("limit") or max_attempts),
+                int(item[1].get("count", 0)),
+                int(item[1].get("window_start", 0)),
+            ))
+            for evict_key, _ in route_items[:overflow]:
+                _AUTH_RATE_LIMIT_STATE.pop(evict_key, None)
 
     state = _AUTH_RATE_LIMIT_STATE.get(key)
     if not state or now - int(state.get("window_start", 0)) >= window_seconds:
-        _AUTH_RATE_LIMIT_STATE[key] = {"window_start": now, "count": 1, "expires_at": now + window_seconds}
+        _AUTH_RATE_LIMIT_STATE[key] = {
+            "window_start": now, "count": 1, "expires_at": now + window_seconds, "limit": max_attempts,
+        }
         return None
 
     count = int(state.get("count", 0))
