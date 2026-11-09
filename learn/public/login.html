@@ -273,6 +273,16 @@ function storeAuth(data) {
     localStorage.setItem('edu_token', data.token);
     localStorage.setItem('edu_user', JSON.stringify(data.user));
     
+    // Set cross-subdomain SSO cookies on .alphaonelabs.com
+    try {
+        const domain = location.hostname.endsWith('alphaonelabs.com') ? '; domain=.alphaonelabs.com' : '';
+        const secure = location.protocol === 'https:' ? '; Secure' : '';
+        const maxAge = 60 * 60 * 24 * 7;
+        document.cookie = `a1_token=${encodeURIComponent(data.token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+        document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+        document.dispatchEvent(new CustomEvent('a1-authchange', { detail: { user: data.user, token: data.token } }));
+    } catch (_) {}
+
     // Show success toast
     showToast('Redirecting...');
     

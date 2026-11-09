@@ -228,6 +228,35 @@ class TestApiLogin:
         assert "token" in data["data"]
         assert data["data"]["user"]["username"] == "alice"
         assert data["data"]["user"]["role"] == "member"
+        assert "Set-Cookie" in r.headers
+        assert "a1_token=" in r.headers["Set-Cookie"]
+
+    async def test_api_logout(self):
+        req = MockRequest(method="POST", url="http://localhost/api/logout")
+        r = await worker.api_logout(req, make_env())
+        assert r.status == 200
+        assert "Set-Cookie" in r.headers
+        assert "Max-Age=0" in r.headers["Set-Cookie"]
+
+    async def test_api_me_with_cookie(self):
+        row = self._make_user_row()
+        env = make_env(db=MockDB([make_stmt(first=row)]))
+        token = worker.create_token("u1", "alice", "member", JWT)
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/me",
+            headers={"Cookie": f"a1_token={token}"},
+        )
+        r = await worker.api_me(req, env)
+        assert r.status == 200
+        data = _parse(r)
+        assert data["success"] is True
+        assert data["data"]["username"] == "alice"
+
+    async def test_api_me_unauthenticated(self):
+        req = MockRequest(method="GET", url="http://localhost/api/me")
+        r = await worker.api_me(req, make_env())
+        assert r.status == 401
 
     async def test_login_token_is_verifiable(self):
         row = self._make_user_row()

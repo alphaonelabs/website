@@ -417,10 +417,36 @@ def create_token(
     return f"{encoded_payload}.{sig}"
 
 
-def verify_token(raw: str, secret: str, leeway_seconds: int = 60) -> Optional[Dict[str, Any]]:
+def extract_auth_token(req_or_token: Any) -> Optional[str]:
+    """Extract auth token from string, Authorization header, or a1_token cookie."""
+    if not req_or_token:
+        return None
+    if isinstance(req_or_token, str):
+        return req_or_token
+    headers = getattr(req_or_token, "headers", None)
+    if not headers:
+        return None
+    auth = headers.get("Authorization") if hasattr(headers, "get") else None
+    if auth:
+        return auth
+    cookies = headers.get("Cookie", "") if hasattr(headers, "get") else ""
+    if cookies:
+        for part in cookies.split(";"):
+            part = part.strip()
+            if part.startswith("a1_token="):
+                from urllib.parse import unquote
+                return unquote(part.split("=", 1)[1])
+    return None
+
+
+def verify_token(raw: Any, secret: str, leeway_seconds: int = 60) -> Optional[Dict[str, Any]]:
     """Return decoded payload dict or None if invalid, missing, or expired."""
     if not raw or not secret:
         return None
+    if not isinstance(raw, str):
+        raw = extract_auth_token(raw)
+        if not raw:
+            return None
     try:
         token = raw.removeprefix("Bearer ").strip()
         dot   = token.rfind(".")
@@ -471,11 +497,14 @@ _CORS = {
 }
 
 
-def json_resp(data, status: int = 200):
+def json_resp(data, status: int = 200, headers: Optional[Dict[str, str]] = None):
+    resp_headers = {"Content-Type": "application/json", **_CORS}
+    if headers:
+        resp_headers.update(headers)
     return Response(
         json.dumps(data),
         status=status,
-        headers={"Content-Type": "application/json", **_CORS},
+        headers=resp_headers,
     )
 
 
@@ -529,11 +558,11 @@ def _get_request_postal_code(req) -> str:
     return getattr(cf, "postalCode", "") or getattr(cf, "postal_code", "") or ""
 
 
-def ok(data=None, msg: str = "OK"):
+def ok(data=None, msg: str = "OK", headers: Optional[Dict[str, str]] = None):
     body = {"success": True, "message": msg}
     if data is not None:
         body["data"] = data
-    return json_resp(body, 200)
+    return json_resp(body, 200, headers=headers)
 
 
 def err(msg: str, status: int = 400):
@@ -1892,13 +1921,50 @@ async def api_login(req, env):
     profile_row = await env.DB.prepare(
         "SELECT avatar_url FROM user_profiles WHERE user_id=?"
     ).bind(user_id).first()
+    avatar_url = (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""
+    user_data = {
+        "id": user_id,
+        "username": stored_username,
+        "name": real_name,
+        "role": real_role,
+        "avatar_url": avatar_url,
+    }
+    req_url = getattr(req, "url", "") or ""
+    domain = "; Domain=.alphaonelabs.com" if "alphaonelabs.com" in req_url else ""
+    secure = "; Secure" if req_url.startswith("https:") else ""
+    cookie_token = f"a1_token={token}; Path=/; Max-Age={ttl_seconds}; SameSite=Lax{domain}{secure}"
     return ok(
-        {"token": token,
-         "user": {"id": user_id, "username": stored_username,
-                  "name": real_name, "role": real_role,
-                  "avatar_url": (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""}},
+        {"token": token, "user": user_data},
         "Login successful",
+        headers={"Set-Cookie": cookie_token},
     )
+
+
+async def api_logout(req, env):
+    """POST /api/logout — clear cross-site auth cookies."""
+    req_url = getattr(req, "url", "") or ""
+    domain = "; Domain=.alphaonelabs.com" if "alphaonelabs.com" in req_url else ""
+    cookie_token = f"a1_token=; Path=/; Max-Age=0; SameSite=Lax{domain}"
+    return ok({"logged_out": True}, "Logged out successfully", headers={"Set-Cookie": cookie_token})
+
+
+async def api_me(req, env):
+    """GET /api/me — return current authenticated user data from token or cookie."""
+    token = extract_auth_token(req)
+    user = verify_token(token, env.JWT_SECRET) if token and getattr(env, "JWT_SECRET", None) else None
+    if not user:
+        return err("Not authenticated", 401)
+    user_id = user["id"]
+    profile_row = await env.DB.prepare(
+        "SELECT avatar_url FROM user_profiles WHERE user_id=?"
+    ).bind(user_id).first()
+    avatar_url = (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""
+    return ok({
+        "id": user_id,
+        "username": user.get("username", ""),
+        "role": user.get("role", "member"),
+        "avatar_url": avatar_url,
+    })
 
 
 async def api_verify_email(req, env):
@@ -9053,6 +9119,12 @@ async def _dispatch(request, env):
 
         if path == "/api/login" and method == "POST":
             return await api_login(request, env)
+
+        if path == "/api/logout" and method == "POST":
+            return await api_logout(request, env)
+
+        if path == "/api/me" and method == "GET":
+            return await api_me(request, env)
 
         if path == "/api/classes-near-me" and method == "GET":
             return await api_classes_near_me(request, env)

@@ -1,8 +1,41 @@
 // ── Authentication utilities ──────────────────────────────────────────
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
 function getAuth() {
+    let token = null;
+    let user = null;
+    try {
+        token = localStorage.getItem('edu_token');
+        user = JSON.parse(localStorage.getItem('edu_user') || 'null');
+    } catch (_) {}
+
+    if (!token || !user) {
+        const cToken = getCookie('a1_token');
+        const cUser = getCookie('a1_user');
+        if (cToken && cUser) {
+            try {
+                token = cToken;
+                user = JSON.parse(cUser);
+                localStorage.setItem('edu_token', token);
+                localStorage.setItem('edu_user', JSON.stringify(user));
+            } catch (_) {}
+        }
+    } else if (!getCookie('a1_token') || !getCookie('a1_user')) {
+        try {
+            const domain = location.hostname.endsWith('alphaonelabs.com') ? '; domain=.alphaonelabs.com' : '';
+            const secure = location.protocol === 'https:' ? '; Secure' : '';
+            const maxAge = 60 * 60 * 24 * 7;
+            document.cookie = `a1_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+            document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+        } catch (_) {}
+    }
+
     return {
-        token: localStorage.getItem('edu_token'),
-        user: JSON.parse(localStorage.getItem('edu_user') || 'null')
+        token: token,
+        user: user
     };
 }
 
@@ -12,8 +45,17 @@ function isAuthenticated() {
 }
 
 function logout() {
-    localStorage.removeItem('edu_token');
-    localStorage.removeItem('edu_user');
+    const domain = location.hostname.endsWith('alphaonelabs.com') ? '; domain=.alphaonelabs.com' : '';
+    document.cookie = `a1_token=; path=/; max-age=0; SameSite=Lax${domain}`;
+    document.cookie = `a1_user=; path=/; max-age=0; SameSite=Lax${domain}`;
+    document.cookie = 'a1_token=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'a1_user=; path=/; max-age=0; SameSite=Lax';
+    try {
+        localStorage.removeItem('edu_token');
+        localStorage.removeItem('edu_user');
+        sessionStorage.clear();
+    } catch (_) {}
+    document.dispatchEvent(new CustomEvent('a1-authchange', { detail: { user: null, token: null } }));
     window.location.href = '/login';
 }
 
