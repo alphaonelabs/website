@@ -3833,7 +3833,9 @@ specific activities, prices or levels, write one short friendly sentence (you ma
 then [[ACTIVITIES]] on its own line. The site replaces it with the live list (titles, prices, levels, links),
 so say something like "here is what's on right now". The list answers questions about titles, prices and
 levels, so don't say you are unsure about them, and never name, invent or describe individual activities
-yourself.
+yourself. For follow-up questions about one of the listed activities (for example "how much is the second
+one?"), you still cannot see it: say its price and details are shown next to it in the list and on its
+/activity page, then add [[ACTIVITIES]] on its own line again. Never guess a price.
 
 How to answer:
 - Be direct and specific. Give the actual details and full links from the facts (for example the GitHub URL
@@ -3959,6 +3961,7 @@ _CHAT_SAFE_LABEL_RE = re.compile(r"^[a-z][a-z ]{0,19}$")  # closed-vocabulary la
 _CHAT_ACTIVITIES_TOKEN_RE = re.compile(r"\[\[\s*activities\s*\]\]", re.I)
 _CHAT_NO_ACTIVITIES = "There are no published activities right now. Browse /activity or host one at /teach."
 _CHAT_CATALOG_UNAVAILABLE = "The activity list is unavailable right now. Please browse /activity."
+_CHAT_MORE_ACTIVITIES = "More activities are on /activity."
 
 
 async def _chat_catalog(env) -> Dict[str, str]:
@@ -3977,7 +3980,11 @@ async def _chat_catalog(env) -> Dict[str, str]:
         used = 0
         free = paid = waitlisted = 0
         types: Dict[str, int] = {}
-        for a in payload.get("activities", [])[:_CHAT_CATALOG_LIMIT]:
+        fetched = payload.get("activities", [])[:_CHAT_CATALOG_LIMIT]
+        # The query is capped, so a full page means there may be more on /activity than we list.
+        more = len(fetched) >= _CHAT_CATALOG_LIMIT
+        budget = _CHAT_CATALOG_MAX_CHARS - len(_CHAT_MORE_ACTIVITIES) - 1  # always leave room for the note
+        for a in fetched:
             title = _chat_clip(a.get("title"), 80)
             if not title:
                 continue
@@ -3999,7 +4006,8 @@ async def _chat_catalog(env) -> Dict[str, str]:
             if tags:
                 line += f". Tags: {tags}"
             line += f". /activity/{quote(str(ref), safe='')}"
-            if used + len(line) + 1 > _CHAT_CATALOG_MAX_CHARS:
+            if used + len(line) + 1 > budget:
+                more = True
                 break
             used += len(line) + 1
             lines.append(line)
@@ -4012,11 +4020,13 @@ async def _chat_catalog(env) -> Dict[str, str]:
             label = atype.lower() if _CHAT_SAFE_LABEL_RE.match(atype.lower()) else "other"
             types[label] = types.get(label, 0) + 1
         if lines:
-            text = "\n".join(lines)
+            text = "\n".join(lines + ([_CHAT_MORE_ACTIVITIES] if more else []))
             summary = (
                 f"{len(lines)} published activities: {free} free, {paid} paid, {waitlisted} on a waitlist "
                 f"(not open yet). By type: " + ", ".join(f"{n} {t}" for t, n in sorted(types.items())) + "."
             )
+            if more:
+                summary = "Partial counts (only the activities in the list; more are on /activity). " + summary
         else:
             text = _CHAT_NO_ACTIVITIES
             summary = "No activities are published right now."

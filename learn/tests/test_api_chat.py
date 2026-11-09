@@ -281,6 +281,24 @@ class TestSandbox:
         assert "Platform closes Friday" in first["data"]["reply"]
         assert "Platform closes Friday" not in first["data"]["context"]
 
+    async def test_follow_up_with_context_history_keeps_placeholder(self, monkeypatch):
+        """A second turn sent the way the widget sends it (first 'context' as history) never carries listing text."""
+        _activities(monkeypatch, HOSTILE)
+        first = _parse(await worker.api_chat(
+            _chat({"message": "what can I join?"}), _env(FakeAI(reply="Here you go:\n[[ACTIVITIES]]"))))["data"]
+        ai = FakeAI()
+        history = [{"role": "user", "content": "what can I join?"}, {"role": "assistant", "content": first["context"]}]
+        await worker.api_chat(_chat({"message": "how much is the first one?", "history": history}), _env(ai))
+        msgs = ai.calls[0][1]["messages"]
+        assert msgs[2] == {"role": "assistant", "content": "Here you go:\n[[ACTIVITIES]]"}
+        assert "Platform closes Friday" not in _prompt(ai)
+
+    async def test_prompt_handles_follow_ups_without_guessing(self):
+        """Follow-ups about a listed activity re-show the list instead of guessing a price."""
+        ai = FakeAI()
+        await worker.api_chat(_chat({"message": "hi"}), _env(ai))
+        assert "Never guess a price" in _system(ai)
+
     @pytest.mark.parametrize("reply,expected", [
         ("Pay at https://evil.example/pay now.", "Pay at [link removed] now."),
         ("See evil.academy or http://github.com/x", "See [link removed] or [link removed]"),
@@ -397,9 +415,23 @@ class TestCatalog:
         def entry(i):
             return f"- {'T' * 80} (course, free, beginner). Tags: {', '.join(['t' * 40] * 4)}. /activity/id{i}"
         lines = text.splitlines()
-        # Every kept line is a complete entry, in order; the first one that would overflow is dropped whole.
+        # Every kept line is a complete entry, in order; the first one that would overflow is dropped whole,
+        # and the list says more are on /activity.
+        assert lines[-1] == worker._CHAT_MORE_ACTIVITIES
+        lines = lines[:-1]
         assert lines == [entry(i) for i in range(len(lines))]
-        assert len(text) + 1 + len(entry(len(lines))) > worker._CHAT_CATALOG_MAX_CHARS
+        assert len(text) + 1 + len(entry(len(lines))) > worker._CHAT_CATALOG_MAX_CHARS - len(worker._CHAT_MORE_ACTIVITIES) - 1
+
+    @pytest.mark.parametrize("count,partial", [(3, False), (15, True)])
+    async def test_partial_list_is_labelled(self, monkeypatch, count, partial):
+        """When the capped query may have left activities out, both the list and the counts say so."""
+        _activities(monkeypatch, *[{"id": f"a{i}", "title": f"T{i}", "type": "course"} for i in range(count)])
+        ai = FakeAI()
+        await worker.api_chat(_chat({"message": "hi"}), _env(ai))
+        text = await worker._chat_catalog_text(_env())
+        assert text.endswith(worker._CHAT_MORE_ACTIVITIES) == partial
+        assert ("Partial counts" in _system(ai)) == partial
+        assert f"{count} published activities" in _system(ai)
 
     async def test_urls_and_markup_are_stripped_from_host_text(self, monkeypatch):
         """Links, bare domains and angle brackets in host-written fields are removed."""
