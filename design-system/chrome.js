@@ -241,7 +241,7 @@
           ${col("Learn", [["Browse Activities", `${LEARN}/activity`], ["Classroom", `${LEARN}/virtual-classroom`], ["Study Groups", `${LEARN}/study-groups`], ["Quizzes", `${LEARN}/quizzes`], ["Videos", `${LEARN}/activity?type=video`], ["Challenges", `${LEARN}/challenges`]])}
           ${col("Teach", [["Teach an Activity", `${LEARN}/teach`], ["Virtual Classroom", `${LEARN}/virtual-classroom`], ["Progress Trackers", `${LEARN}/progress`], ["Graphing Calculator", `${LEARN}/calculator`], ["Whiteboard", `${LEARN}/whiteboard`]])}
           ${col("Community", [["Forum", `${LEARN}/forum`], ["Blog", `${LEARN}/blog`], ["Discussions", "https://github.com/orgs/alphaonelabs/discussions"], ["Contribute", `${REPO}/blob/main/CONTRIBUTING.md`], ["GSoC", "https://gsoc.alphaonelabs.com"], ["Code of Conduct", `${REPO}/blob/main/CODE_OF_CONDUCT.md`]])}
-          ${col("About", [["About Us", `${LEARN}/about`], ["Affiliations", `${LEARN}/affiliations`], ["Privacy Policy", `${LEARN}/privacy`], ["Terms", `${LEARN}/terms`], ["Status", `${LEARN}/status`], ["Feedback", `${LEARN}/feedback`]])}
+          ${col("About", [["About Us", `${LEARN}/about`], ["Affiliations", `${LEARN}/affiliations`], ["Privacy Policy", `${LEARN}/privacy`], ["Cookie Policy", `${LEARN}/cookies`], ["Terms", `${LEARN}/terms`], ["Status", `${LEARN}/status`], ["Feedback", `${LEARN}/feedback`]])}
         </div>
         <div class="bottom">
           <span>© ${new Date().getFullYear()} Alpha One Labs · Open source, built by its community</span>

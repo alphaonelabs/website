@@ -1,4 +1,21 @@
 <!-- ===== FOOTER ===== -->
 <div class="mt-auto">
-<a1-footer source="learn"></a1-footer>
+<a1-footer source="learn">
+  <nav class="a1-footer-fallback" aria-label="Footer navigation">
+    <div class="max-w-[90rem] mx-auto px-4 py-6 flex flex-wrap gap-x-6 gap-y-2 justify-between items-center text-xs text-gray-500 border-t border-gray-200 dark:border-[#2e2e2e]">
+      <div class="flex flex-wrap gap-4">
+        <a href="/activity" class="hover:underline">Activities</a>
+        <a href="/virtual-classroom" class="hover:underline">Classroom</a>
+        <a href="/forum" class="hover:underline">Forum</a>
+        <a href="/about" class="hover:underline">About</a>
+        <a href="/privacy" class="hover:underline">Privacy</a>
+        <a href="/cookies" class="hover:underline">Cookies</a>
+      </div>
+      <span>&copy; Alpha One Labs</span>
+    </div>
+  </nav>
+</a1-footer>
+<style>
+  a1-footer:defined .a1-footer-fallback { display: none !important; }
+</style>
 </div>
