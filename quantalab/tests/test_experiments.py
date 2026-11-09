@@ -153,3 +153,56 @@ class TestExperimentsStructure:
             for exp in exps:
                 assert isinstance(exp["description"], str)
                 assert len(exp["description"]) > 10
+
+
+# ── AI Mentor tests ────────────────────────────────────────────────────────
+
+
+class TestAiMentor:
+    """Verifies QuantaMentor prompt guardrails and scope handling."""
+
+    def test_system_prompt_defines_science_scope(self):
+        import ai_mentor
+        prompt = ai_mentor._SYSTEM_PROMPT
+        assert "QuantaMentor" in prompt
+        assert "physics" in prompt.lower()
+        assert "chemistry" in prompt.lower()
+        assert "biology" in prompt.lower()
+
+    def test_system_prompt_defines_off_topic_guardrails(self):
+        import ai_mentor
+        prompt = ai_mentor._SYSTEM_PROMPT
+        assert "Off-Topic" in prompt
+        assert "QuantaMentor, your science and lab guide" in prompt
+        assert "cannot [perform the requested non-science task]" in prompt
+        assert "Science bridge" in prompt
+        assert "If you are curious about the" in prompt
+        assert "Redirect" in prompt
+        assert "Otherwise, which experiment or science concept" in prompt
+
+    @pytest.mark.asyncio
+    async def test_ask_mentor_includes_system_prompt_and_context(self):
+        import ai_mentor
+        from unittest.mock import AsyncMock, MagicMock
+
+        mock_env = MagicMock()
+        mock_env.AI.run = AsyncMock(return_value=MagicMock(response="Mock answer"))
+
+        res = await ai_mentor.ask_mentor(
+            mock_env,
+            user_message="How to make coffee?",
+            history=[],
+            domain="physics",
+            experiment="pendulum",
+        )
+
+        assert res == "Mock answer"
+        mock_env.AI.run.assert_called_once()
+        call_args = mock_env.AI.run.call_args[0]
+        assert call_args[0] == "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+        messages = call_args[1]["messages"]
+        assert messages[0]["role"] == "system"
+        system_msg = messages[0]["content"]
+        assert system_msg.startswith(ai_mentor._SYSTEM_PROMPT)
+        assert "[Context: student is working on the 'pendulum' experiment in physics.]" in system_msg
+        assert messages[-1] == {"role": "user", "content": "How to make coffee?"}
