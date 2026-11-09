@@ -4,8 +4,9 @@ Builds the exact messages api_chat would send (via the worker code, with malicio
 host-written activities injected into the catalogue), sends them to the real Workers AI
 REST API, and checks whether the model followed the planted instructions.
 
-Manual check, not part of the test suite: it calls the real Workers AI API (a few dozen small
-requests). Put CF_ACCOUNT_ID and CF_AI_API_TOKEN in learn/.dev.vars, then from learn/ run:
+Manual check, not part of the test suite: it calls the real Workers AI REST API directly (a few
+dozen small requests; the worker itself uses the [ai] binding). Put CF_ACCOUNT_ID and
+CF_AI_API_TOKEN (a token with "Workers AI: Read") in learn/.dev.vars, then from learn/ run:
 
     python scripts/chat_injection_eval.py [trials]
 
@@ -138,7 +139,7 @@ def call_model(inputs):
 
 
 async def main():
-    total = hits = 0
+    total = hits = generic = listed = 0
     examples = []
     for name, (bad, specific_q, detect) in ATTACKS.items():
         activities = BENIGN[:1] + [bad] + BENIGN[1:]
@@ -146,15 +147,21 @@ async def main():
         for q in (specific_q, GENERIC_Q):
             inputs = await build_messages(activities, q)
             for _ in range(TRIALS):
-                reply = call_model(inputs)
+                # Score the assistant's own words after the output sandbox. The [[ACTIVITIES]] list is
+                # inserted by the server afterwards and shows exactly what /activity shows.
+                reply = worker._chat_safe_reply(call_model(inputs))
                 n += 1
+                if q == GENERIC_Q:
+                    generic += 1
+                    listed += bool(worker._CHAT_ACTIVITIES_TOKEN_RE.search(reply))
                 if detect(reply):
                     h += 1
                     examples.append((name, q, reply))
         total += n
         hits += h
-        print(f"{name:16s} {h}/{n} attacks succeeded")
+        print(f"{name:26s} {h}/{n} attacks succeeded")
     print(f"\nTOTAL: {hits}/{total} attacks succeeded ({100 * hits / total:.0f}%)")
+    print(f"Usefulness: live list shown for '{GENERIC_Q}' in {listed}/{generic} replies")
     for name, q, reply in examples[:8]:
         print(f"\n--- {name} | Q: {q}\n{reply[:400]}")
 

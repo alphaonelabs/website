@@ -449,7 +449,10 @@
         var reply = res.data && res.data.data && res.data.data.reply;
         if (res.status === 200 && reply) {
           addMessage(reply, 'bot');
-          history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
+          // Keep the model's own words ("context", with the [[ACTIVITIES]] placeholder) as history, not the
+          // expanded list, so host-written listing text is never sent back to the model.
+          var context = res.data.data.context;
+          history.push({ role: 'user', content: text }, { role: 'assistant', content: typeof context === 'string' ? context : reply });
           if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
         } else if (res.status === 429) {
           addMessage("You're sending messages quickly. Please wait a few minutes and try again.", 'error');
