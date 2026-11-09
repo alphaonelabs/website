@@ -1865,6 +1865,16 @@ def _is_alphaonelabs_host(url: str) -> bool:
         return False
 
 
+def _cors_headers_for_req(req) -> Dict[str, str]:
+    headers = {}
+    if req and hasattr(req, "headers"):
+        origin = req.headers.get("Origin") or ""
+        if _is_alphaonelabs_host(origin):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+    return headers
+
+
 async def api_login(req, env):
     rate_limit_resp = _check_auth_rate_limit(req, env, "login")
     if rate_limit_resp:
@@ -1941,10 +1951,11 @@ async def api_login(req, env):
     domain = "; Domain=.alphaonelabs.com" if _is_alphaonelabs_host(req_url) else ""
     secure = "; Secure" if req_url.startswith("https:") else ""
     cookie_token = f"a1_token={token}; Path=/; Max-Age={ttl_seconds}; SameSite=Lax{domain}{secure}"
+    login_headers = {"Set-Cookie": cookie_token, **_cors_headers_for_req(req)}
     return ok(
         {"token": token, "user": user_data},
         "Login successful",
-        headers={"Set-Cookie": cookie_token},
+        headers=login_headers,
     )
 
 
@@ -1952,8 +1963,15 @@ async def api_logout(req, env):
     """POST /api/logout — clear cross-site auth cookies."""
     req_url = getattr(req, "url", "") or ""
     domain = "; Domain=.alphaonelabs.com" if _is_alphaonelabs_host(req_url) else ""
-    cookie_token = f"a1_token=; Path=/; Max-Age=0; SameSite=Lax{domain}"
-    return ok({"logged_out": True}, "Logged out successfully", headers={"Set-Cookie": cookie_token})
+    cookies = [
+        f"a1_token=; Path=/; Max-Age=0; SameSite=Lax{domain}",
+        f"a1_user=; Path=/; Max-Age=0; SameSite=Lax{domain}",
+        "a1_token=; Path=/; Max-Age=0; SameSite=Lax",
+        "a1_user=; Path=/; Max-Age=0; SameSite=Lax",
+    ]
+    cookie_header = ", ".join(cookies) if domain else "a1_token=; Path=/; Max-Age=0; SameSite=Lax, a1_user=; Path=/; Max-Age=0; SameSite=Lax"
+    resp_headers = {"Set-Cookie": cookie_header, **_cors_headers_for_req(req)}
+    return ok({"logged_out": True}, "Logged out successfully", headers=resp_headers)
 
 
 async def api_me(req, env):
@@ -1963,6 +1981,9 @@ async def api_me(req, env):
     if not user:
         return err("Not authenticated", 401)
     user_id = user["id"]
+    user_row = await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(user_id).first()
+    if not user_row:
+        return err("Account not found", 401)
     profile_row = await env.DB.prepare(
         "SELECT avatar_url FROM user_profiles WHERE user_id=?"
     ).bind(user_id).first()
@@ -1972,7 +1993,7 @@ async def api_me(req, env):
         "username": user.get("username", ""),
         "role": user.get("role", "member"),
         "avatar_url": avatar_url,
-    })
+    }, headers=_cors_headers_for_req(req))
 
 
 async def api_verify_email(req, env):
@@ -3444,7 +3465,7 @@ async def api_join(req, env):
 
     return ok(None, "Joined activity successfully")
 async def api_dashboard(req, env):
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    user = verify_token(req, env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
 
@@ -3460,7 +3481,7 @@ async def api_dashboard(req, env):
 
     hosted = []
     for r in res.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -3491,7 +3512,7 @@ async def api_dashboard(req, env):
 
     joined = []
     for r in res2.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -3515,7 +3536,8 @@ async def api_dashboard(req, env):
 
 
 async def api_profile(req, env):
-    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    auth_source = req if req.method.upper() == "GET" else req.headers.get("Authorization")
+    user = verify_token(auth_source, env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
 
@@ -9014,7 +9036,9 @@ async def _dispatch(request, env):
     admin_api_counts_path = admin_path.rstrip("/") + "/api/table-counts"
 
     if method == "OPTIONS":
-        return Response("", status=204, headers=_CORS)
+        cors_headers = dict(_CORS)
+        cors_headers.update(_cors_headers_for_req(request))
+        return Response("", status=204, headers=cors_headers)
 
     language_target = _language_prefixed_target(path)
     if method == "GET" and language_target is not None:

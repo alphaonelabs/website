@@ -1,10 +1,60 @@
 // ── Authentication utilities ──────────────────────────────────────────
 function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[1]) : null;
+    try {
+        const prefix = name + '=';
+        const cookies = document.cookie ? document.cookie.split('; ') : [];
+        for (let i = 0; i < cookies.length; i++) {
+            const c = cookies[i];
+            if (c.indexOf(prefix) === 0) {
+                return decodeURIComponent(c.substring(prefix.length));
+            }
+        }
+    } catch (_) {}
+    return null;
+}
+
+function isTokenExpired(token) {
+    try {
+        const parts = String(token || '').split('.');
+        if (parts.length !== 3) return true;
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload && typeof payload.exp === 'number') {
+            return (Date.now() / 1000) >= payload.exp;
+        }
+        return false;
+    } catch (_) {
+        return true;
+    }
 }
 
 function getAuth() {
+    const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
+    const cToken = getCookie('a1_token');
+    const cUserRaw = getCookie('a1_user');
+
+    if (cToken && cUserRaw) {
+        if (isTokenExpired(cToken)) {
+            logoutCookiesOnly();
+            return { token: null, user: null };
+        }
+        try {
+            const user = JSON.parse(cUserRaw);
+            try {
+                localStorage.setItem('edu_token', cToken);
+                localStorage.setItem('edu_user', JSON.stringify(user));
+            } catch (_) {}
+            return { token: cToken, user: user };
+        } catch (_) {}
+    }
+
+    if (isAlphaOne) {
+        try {
+            localStorage.removeItem('edu_token');
+            localStorage.removeItem('edu_user');
+        } catch (_) {}
+        return { token: null, user: null };
+    }
+
     let token = null;
     let user = null;
     try {
@@ -12,26 +62,12 @@ function getAuth() {
         user = JSON.parse(localStorage.getItem('edu_user') || 'null');
     } catch (_) {}
 
-    if (!token || !user) {
-        const cToken = getCookie('a1_token');
-        const cUser = getCookie('a1_user');
-        if (cToken && cUser) {
-            try {
-                token = cToken;
-                user = JSON.parse(cUser);
-                localStorage.setItem('edu_token', token);
-                localStorage.setItem('edu_user', JSON.stringify(user));
-            } catch (_) {}
-        }
-    } else if (!getCookie('a1_token') || !getCookie('a1_user')) {
+    if (token && isTokenExpired(token)) {
         try {
-            const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
-            const domain = isAlphaOne ? '; domain=.alphaonelabs.com' : '';
-            const secure = location.protocol === 'https:' ? '; Secure' : '';
-            const maxAge = 60 * 60 * 24 * 7;
-            document.cookie = `a1_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
-            document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+            localStorage.removeItem('edu_token');
+            localStorage.removeItem('edu_user');
         } catch (_) {}
+        return { token: null, user: null };
     }
 
     return {
@@ -40,12 +76,7 @@ function getAuth() {
     };
 }
 
-function isAuthenticated() {
-    const { token, user } = getAuth();
-    return token && user;
-}
-
-function logout() {
+function logoutCookiesOnly() {
     const isAlphaOne = location.hostname === 'alphaonelabs.com' || location.hostname.endsWith('.alphaonelabs.com');
     const domain = isAlphaOne ? '; domain=.alphaonelabs.com' : '';
     document.cookie = `a1_token=; path=/; max-age=0; SameSite=Lax${domain}`;
@@ -57,6 +88,15 @@ function logout() {
         localStorage.removeItem('edu_user');
         sessionStorage.clear();
     } catch (_) {}
+}
+
+function isAuthenticated() {
+    const { token, user } = getAuth();
+    return token && user;
+}
+
+function logout() {
+    logoutCookiesOnly();
     document.dispatchEvent(new CustomEvent('a1-authchange', { detail: { user: null, token: null } }));
     window.location.href = '/login';
 }

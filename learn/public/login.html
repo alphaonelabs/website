@@ -279,9 +279,20 @@ function storeAuth(data) {
         const domain = isAlphaOne ? '; domain=.alphaonelabs.com' : '';
         const secure = location.protocol === 'https:' ? '; Secure' : '';
         const maxAge = 60 * 60 * 24 * 7;
+        const u = data.user || {};
+        const avatar = (u.avatar_url && !u.avatar_url.startsWith('data:') && u.avatar_url.length < 500)
+            ? u.avatar_url
+            : '';
+        const cookieUser = {
+            id: u.id,
+            username: u.username || '',
+            name: u.name || u.username || '',
+            role: u.role || 'member',
+            avatar_url: avatar
+        };
         document.cookie = `a1_token=${encodeURIComponent(data.token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
-        document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
-        document.dispatchEvent(new CustomEvent('a1-authchange', { detail: { user: data.user, token: data.token } }));
+        document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(cookieUser))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+        document.dispatchEvent(new CustomEvent('a1-authchange', { detail: { user: cookieUser, token: data.token } }));
     } catch (_) {}
 
     // Show success toast

@@ -87,39 +87,44 @@
 
   // ---- cross-site authentication -----------------------------------------
   const getCookie = (name) => {
-    const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]+)"));
-    return match ? decodeURIComponent(match[1]) : null;
-  };
-
-  const getAuthToken = () => {
-    const token = getCookie("a1_token");
-    if (token) return token;
-    try { return localStorage.getItem("edu_token"); } catch (_) { return null; }
-  };
-
-  const getAuthUser = () => {
-    const raw = getCookie("a1_user");
-    if (raw) {
-      try { return JSON.parse(raw); } catch (_) {}
-    }
     try {
-      const local = localStorage.getItem("edu_user");
-      if (local) return JSON.parse(local);
+      const prefix = name + "=";
+      const cookies = document.cookie ? document.cookie.split("; ") : [];
+      for (const c of cookies) {
+        if (c.startsWith(prefix)) {
+          return decodeURIComponent(c.substring(prefix.length));
+        }
+      }
     } catch (_) {}
     return null;
   };
 
-  const setAuthCookies = (token, user) => {
-    const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
-    const secure = location.protocol === "https:" ? "; Secure" : "";
-    const maxAge = 60 * 60 * 24 * 7;
-    document.cookie = `a1_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
-    document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+  const isTokenExpired = (token) => {
     try {
-      localStorage.setItem("edu_token", token);
-      localStorage.setItem("edu_user", JSON.stringify(user));
-    } catch (_) {}
-    document.dispatchEvent(new CustomEvent("a1-authchange", { detail: { user, token } }));
+      const parts = String(token || "").split(".");
+      if (parts.length !== 3) return true;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (payload && typeof payload.exp === "number") {
+        return (Date.now() / 1000) >= payload.exp;
+      }
+      return false;
+    } catch (_) {
+      return true;
+    }
+  };
+
+  const sanitizeUserForCookie = (user) => {
+    if (!user || typeof user !== "object") return null;
+    const avatar = (user.avatar_url && !user.avatar_url.startsWith("data:") && user.avatar_url.length < 500)
+      ? user.avatar_url
+      : "";
+    return {
+      id: user.id,
+      username: user.username || "",
+      name: user.name || user.username || "",
+      role: user.role || "member",
+      avatar_url: avatar,
+    };
   };
 
   const clearAuthCookies = () => {
@@ -136,14 +141,61 @@
     document.dispatchEvent(new CustomEvent("a1-authchange", { detail: { user: null, token: null } }));
   };
 
-  // Two-way sync: if localStorage has auth but cookies don't, set cookies
-  try {
-    const lToken = localStorage.getItem("edu_token");
-    const lUser = localStorage.getItem("edu_user");
-    if (lToken && lUser && (!getCookie("a1_token") || !getCookie("a1_user"))) {
-      setAuthCookies(lToken, JSON.parse(lUser));
+  const getAuthToken = () => {
+    const token = getCookie("a1_token");
+    if (token) {
+      if (isTokenExpired(token)) {
+        clearAuthCookies();
+        return null;
+      }
+      return token;
     }
-  } catch (_) {}
+    // Stale local storage should not restore session on production domain if cookies are gone
+    if (isAlphaOneDomain()) {
+      try {
+        localStorage.removeItem("edu_token");
+        localStorage.removeItem("edu_user");
+      } catch (_) {}
+      return null;
+    }
+    try {
+      const local = localStorage.getItem("edu_token");
+      if (local && !isTokenExpired(local)) return local;
+    } catch (_) {}
+    return null;
+  };
+
+  const getAuthUser = () => {
+    const token = getAuthToken();
+    if (!token) return null;
+    const raw = getCookie("a1_user");
+    if (raw) {
+      try { return JSON.parse(raw); } catch (_) {}
+    }
+    if (!isAlphaOneDomain()) {
+      try {
+        const local = localStorage.getItem("edu_user");
+        if (local) return JSON.parse(local);
+      } catch (_) {}
+    }
+    return null;
+  };
+
+  const setAuthCookies = (token, user) => {
+    const cleanUser = sanitizeUserForCookie(user) || user;
+    const domain = isAlphaOneDomain() ? "; domain=.alphaonelabs.com" : "";
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    const maxAge = 60 * 60 * 24 * 7;
+    try {
+      document.cookie = `a1_token=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+      document.cookie = `a1_user=${encodeURIComponent(JSON.stringify(cleanUser))}; path=/; max-age=${maxAge}; SameSite=Lax${domain}${secure}`;
+    } catch (_) {}
+    try {
+      localStorage.setItem("edu_token", token);
+      localStorage.setItem("edu_user", JSON.stringify(cleanUser));
+    } catch (_) {}
+    document.dispatchEvent(new CustomEvent("a1-authchange", { detail: { user: cleanUser, token } }));
+  };
 
   window.A1Auth = {
     getToken: getAuthToken,
@@ -195,17 +247,54 @@
       }
       followTheme(this);
       this._onAuthChange = () => this.render();
+      this._onSyncFocus = () => {
+        const cur = window.A1Auth.getToken();
+        if (cur !== this._lastToken) {
+          this._lastToken = cur;
+          this.render();
+        }
+      };
+      this._onDocClick = (e) => {
+        const root = this.shadowRoot;
+        if (!root) return;
+        const details = root.querySelector("details.sites");
+        const userMenu = root.querySelector("details.user-menu");
+        if (details && !e.composedPath().includes(details)) details.open = false;
+        if (userMenu && !e.composedPath().includes(userMenu)) userMenu.open = false;
+      };
+      this._onDocKeydown = (e) => {
+        if (e.key === "Escape") {
+          const root = this.shadowRoot;
+          if (!root) return;
+          const details = root.querySelector("details.sites");
+          const userMenu = root.querySelector("details.user-menu");
+          const header = root.querySelector("header");
+          if (details) details.open = false;
+          if (userMenu) userMenu.open = false;
+          if (header) header.classList.remove("open");
+        }
+      };
+
       document.addEventListener("a1-authchange", this._onAuthChange);
+      window.addEventListener("focus", this._onSyncFocus);
+      document.addEventListener("visibilitychange", this._onSyncFocus);
+      document.addEventListener("click", this._onDocClick);
+      document.addEventListener("keydown", this._onDocKeydown);
       this.render();
     }
 
     disconnectedCallback() {
-      if (this._onAuthChange) {
-        document.removeEventListener("a1-authchange", this._onAuthChange);
+      if (this._onAuthChange) document.removeEventListener("a1-authchange", this._onAuthChange);
+      if (this._onSyncFocus) {
+        window.removeEventListener("focus", this._onSyncFocus);
+        document.removeEventListener("visibilitychange", this._onSyncFocus);
       }
+      if (this._onDocClick) document.removeEventListener("click", this._onDocClick);
+      if (this._onDocKeydown) document.removeEventListener("keydown", this._onDocKeydown);
     }
 
     render() {
+      this._lastToken = window.A1Auth.getToken();
       const site = this.getAttribute("site");
       const siteHref = this.getAttribute("site-href") || "/";
       const showToggle = !this.hasAttribute("theme") && !this.hasAttribute("no-theme-toggle");
@@ -218,8 +307,10 @@
       const isAuthed = !!(user && window.A1Auth.getToken());
       const displayName = user ? (user.name || user.username || "Account") : "";
       const initials = user ? (user.name || user.username || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() : "?";
-      const avatarMarkup = user && user.avatar_url
-        ? `<img src="${esc(user.avatar_url)}" alt="" class="u-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="u-initials" style="display:none">${esc(initials)}</span>`
+      const rawAvatar = user && user.avatar_url ? user.avatar_url : "";
+      const avatarSrc = rawAvatar.startsWith("/") ? `${LEARN}${rawAvatar}` : rawAvatar;
+      const avatarMarkup = avatarSrc
+        ? `<img src="${esc(avatarSrc)}" alt="" class="u-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="u-initials" style="display:none">${esc(initials)}</span>`
         : `<span class="u-initials">${esc(initials)}</span>`;
 
       const authDesktop = isAuthed ? `
@@ -351,19 +442,6 @@
       });
       root.querySelectorAll(".logout-btn").forEach((btn) => {
         btn.addEventListener("click", () => window.A1Auth.logout());
-      });
-      const details = root.querySelector("details.sites");
-      const userMenu = root.querySelector("details.user-menu");
-      document.addEventListener("click", (e) => {
-        if (details && !e.composedPath().includes(details)) details.open = false;
-        if (userMenu && !e.composedPath().includes(userMenu)) userMenu.open = false;
-      });
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          if (details) details.open = false;
-          if (userMenu) userMenu.open = false;
-          header.classList.remove("open");
-        }
       });
     }
   }
