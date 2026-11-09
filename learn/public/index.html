@@ -147,6 +147,37 @@
     .a1h-cta svg { width: 36px; height: 36px; }
   }
   @media (prefers-reduced-motion: reduce) { .a1h-card, .a1h-btn, .a1h-cta { transition: none; } .a1h-card:hover { transform: none; } }
+
+  /* AI chat assistant */
+  .a1h-chat-toggle { position: fixed; right: 16px; bottom: 16px; z-index: 40; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 1px solid var(--h-gold); border-radius: 999px; background: var(--h-gold); color: #080808; font: 800 15px/1 var(--h-body); cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.18); transition: background .15s; }
+  .a1h-chat-toggle:hover { background: var(--h-gold-hi); border-color: var(--h-gold-hi); }
+  .a1h-chat-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .a1h-chat { position: fixed; right: 16px; bottom: 76px; z-index: 40; display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); height: min(540px, calc(100dvh - 77px - 76px - 16px)); background: var(--h-bg); color: var(--h-fg); border: 1px solid var(--h-hard); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.25); overflow: hidden; }
+  .a1h-chat[hidden] { display: none; }
+  .a1h-chat__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--h-soft); }
+  .a1h-chat__title { margin: 0; font: 800 15px/1.2 var(--h-body); }
+  .a1h-chat__sub { margin: 2px 0 0; font: 600 11px/1.3 var(--h-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--h-muted); }
+  .a1h-chat__close { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--h-soft); border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+  .a1h-chat__close:hover { background: var(--h-raised); }
+  .a1h-chat__close svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .a1h-chat__log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+  .a1h-chat__msg { max-width: 85%; padding: 10px 12px; border-radius: 8px; font: 400 14px/1.45 var(--h-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .a1h-chat__msg--bot { align-self: flex-start; background: var(--h-raised); border: 1px solid var(--h-soft); }
+  .a1h .a1h-chat__msg a { color: var(--h-gold-ink); text-decoration: underline; text-underline-offset: 2px; }
+  .a1h-chat__msg--user { align-self: flex-end; background: var(--h-gold); color: #080808; }
+  .a1h-chat__msg--error { align-self: stretch; max-width: none; background: transparent; border: 1px dashed var(--h-hard); }
+  .a1h-chat__msg--typing { color: var(--h-muted); font-style: italic; }
+  .a1h-chat__form { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px; border-top: 1px solid var(--h-soft); }
+  .a1h-chat__input { flex: 1; min-height: 42px; max-height: 120px; padding: 10px 12px; resize: none; border: 1px solid var(--h-hard); border-radius: 4px; background: var(--h-bg); color: var(--h-fg); font: 400 14px/1.4 var(--h-body); }
+  .a1h-chat__send { min-height: 42px; padding: 0 14px; border: 1px solid var(--h-gold); border-radius: 4px; background: var(--h-gold); color: #080808; font: 800 14px/1 var(--h-body); cursor: pointer; }
+  .a1h-chat__send:hover { background: var(--h-gold-hi); }
+  .a1h-chat__send:disabled { opacity: .55; cursor: not-allowed; }
+  .a1h-chat__note { margin: 0; padding: 0 12px 10px; font-size: 11px; color: var(--h-muted); }
+  @media (max-width: 639px) {
+    .a1h-chat-toggle__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .a1h-chat-toggle { padding: 0; width: 52px; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { .a1h-chat-toggle { transition: none; } }
 </style>
 {% endblock %}
 {% block content %}
@@ -259,7 +290,197 @@
       </div>
     </div>
   </section>
+
+  <!-- ===== AI CHAT ASSISTANT ===== -->
+  <button type="button" class="a1h-chat-toggle" id="a1h-chat-toggle" aria-controls="a1h-chat" aria-expanded="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg>
+    <span class="a1h-chat-toggle__label">Ask us anything</span>
+  </button>
+  <section class="a1h-chat" id="a1h-chat" role="dialog" aria-labelledby="a1h-chat-title" hidden>
+    <div class="a1h-chat__head">
+      <div>
+        <h2 class="a1h-chat__title" id="a1h-chat-title">Alpha One Labs assistant</h2>
+        <p class="a1h-chat__sub">AI · Powered by Cloudflare</p>
+      </div>
+      <button type="button" class="a1h-chat__close" id="a1h-chat-close" aria-label="Close chat">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      </button>
+    </div>
+    <div class="a1h-chat__log" id="a1h-chat-log" role="log" aria-live="polite"></div>
+    <form class="a1h-chat__form" id="a1h-chat-form">
+      <label for="a1h-chat-input" class="sr-only">Your message</label>
+      <textarea class="a1h-chat__input" id="a1h-chat-input" rows="1" maxlength="1000" placeholder="Ask about classes, study groups…" required></textarea>
+      <button type="submit" class="a1h-chat__send" id="a1h-chat-send">Send</button>
+    </form>
+    <p class="a1h-chat__note">AI answers can be wrong. Don't share personal information.</p>
+  </section>
 </main>
+
+<script>
+(function () {
+  var toggle = document.getElementById('a1h-chat-toggle');
+  var panel = document.getElementById('a1h-chat');
+  if (!toggle || !panel) return;
+  var closeBtn = document.getElementById('a1h-chat-close');
+  var log = document.getElementById('a1h-chat-log');
+  var form = document.getElementById('a1h-chat-form');
+  var input = document.getElementById('a1h-chat-input');
+  var send = document.getElementById('a1h-chat-send');
+  var MAX_HISTORY = 6;
+  var REQUEST_TIMEOUT_MS = 30000;
+  var history = [];
+  var busy = false;
+  var movedAway = false; // did the visitor click or focus outside the chat form while a reply was pending?
+  function noteMovedAway(e) { if (busy && !form.contains(e.target)) movedAway = true; }
+  document.addEventListener('pointerdown', noteMovedAway, true);
+  document.addEventListener('focusin', noteMovedAway, true);
+
+  // Full https URLs, or site paths like /activity or /activity/abc-123 (after a space, bracket or line start).
+  var LINK_RE = /(https?:\/\/[^\s<>"')\]]+|(?:^|(?<=[\s(\[]))\/[a-z0-9][a-z0-9\-\/?=&%_.]*)/gi;
+
+  // External links are only made clickable for our own sites and the few services we point people to.
+  // Anything else the model writes stays plain text, so a reply can never carry an untrusted clickable link.
+  var LINK_HOSTS = /^(?:(?:[a-z0-9-]+\.)*alphaonelabs\.com|github\.com|summerofcode\.withgoogle\.com)$/i;
+  var SLACK_INVITE = 'https://t.co/Uskb6jkZKz'; // t.co is a shortener, so only this exact link is allowed
+
+  // Returns a safe absolute href (same-site path or allowlisted https site), or null.
+  function safeHref(url) {
+    var parsed;
+    try { parsed = new URL(url, window.location.origin); } catch (e) { return null; }
+    // Same-site paths are always fine (they use this page's own protocol).
+    if (parsed.origin === window.location.origin) return parsed.href;
+    // External links must be HTTPS and on the allowlist.
+    if (parsed.protocol !== 'https:') return null;
+    if (LINK_HOSTS.test(parsed.hostname) || parsed.href === SLACK_INVITE) return parsed.href;
+    return null;
+  }
+
+  // Builds text and <a> nodes with the DOM, never innerHTML: replies are untrusted model output.
+  function appendLinkified(el, text) {
+    var last = 0;
+    text.replace(LINK_RE, function (match, _g, offset) {
+      var url = match.replace(/[.,;:!?]+$/, '');
+      var href = safeHref(url);
+      if (!href) return match; // leave it in the surrounding plain text
+      if (offset > last) el.appendChild(document.createTextNode(text.slice(last, offset)));
+      var a = document.createElement('a');
+      a.href = href;
+      a.textContent = url;
+      if (new URL(href).origin !== window.location.origin) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      el.appendChild(a);
+      last = offset + url.length;
+      return match;
+    });
+    if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function addMessage(text, kind) {
+    var el = document.createElement('div');
+    el.className = 'a1h-chat__msg a1h-chat__msg--' + kind;
+    if (kind === 'bot') appendLinkified(el, text); else el.textContent = text;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  function open() {
+    panel.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    if (!log.childElementCount) {
+      addMessage("Hi! I can help you find classes, study groups and more on Alpha One Labs. What would you like to know?", 'bot');
+    }
+    input.focus();
+  }
+  function close() {
+    panel.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.focus();
+  }
+
+  toggle.addEventListener('click', function () { panel.hidden ? open() : close(); });
+  closeBtn.addEventListener('click', close);
+  panel.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+  input.addEventListener('input', function () {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    }
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text || busy) return;
+    busy = true;
+    movedAway = false;
+    send.disabled = true;
+    addMessage(text, 'user');
+    input.value = '';
+    input.style.height = 'auto';
+    var typing = addMessage('Thinking…', 'bot a1h-chat__msg--typing');
+
+    // One deadline covers both the request and reading the response body.
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer;
+    var deadline = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        if (controller) controller.abort();
+        reject({ timeout: true });
+      }, REQUEST_TIMEOUT_MS);
+    });
+    var request = fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ message: text, history: history.slice(-MAX_HISTORY) }),
+      signal: controller ? controller.signal : undefined
+    })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (data) { return { status: r.status, data: data }; });
+      });
+
+    Promise.race([request, deadline])
+      .then(function (res) {
+        typing.remove();
+        var reply = res.data && res.data.data && res.data.data.reply;
+        if (res.status === 200 && reply) {
+          addMessage(reply, 'bot');
+          // Keep the model's own words ("context", with the [[ACTIVITIES]] placeholder) as history, not the
+          // expanded list, so host-written listing text is never sent back to the model.
+          var context = res.data.data.context;
+          history.push({ role: 'user', content: text }, { role: 'assistant', content: typeof context === 'string' ? context : reply });
+          if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
+        } else if (res.status === 429) {
+          addMessage("You're sending messages quickly. Please wait a few minutes and try again.", 'error');
+        } else {
+          addMessage((res.data && res.data.error) || 'Something went wrong. Please try again.', 'error');
+        }
+      })
+      .catch(function (e) {
+        typing.remove();
+        if (e && (e.timeout || e.name === 'AbortError')) {
+          addMessage('The assistant is taking too long to answer. Please try again.', 'error');
+        } else {
+          addMessage("Couldn't reach the assistant. Check your connection and try again.", 'error');
+        }
+      })
+      .then(function () {
+        clearTimeout(timer);
+        busy = false;
+        send.disabled = false;
+        // Only pull focus back if the visitor stayed in the chat form while waiting.
+        var active = document.activeElement;
+        if (!movedAway && !panel.hidden && (!active || active === document.body || active === input || active === send)) {
+          input.focus();
+        }
+      });
+  });
+})();
+</script>
 
 <script>
 (function () {

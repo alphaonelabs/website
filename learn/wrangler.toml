@@ -19,6 +19,14 @@ database_id = "a0021f2e-a8cc-4e20-8910-3c7290ba47a6"
 migrations_dir = "migrations"
 
 
+# Homepage chat assistant (POST /api/chat) uses Cloudflare Workers AI through this binding.
+# Workers AI has no local emulator, so `wrangler dev` needs `wrangler login` (a free Cloudflare
+# account is enough). If you can't log in, comment out these two lines locally: the rest of the
+# site works and the chat widget shows "not available".
+[ai]
+binding = "AI"
+
+
 # To enable R2 avatar storage:
 #   1. Create the bucket:  wrangler r2 bucket create learn-avatars
 #   2. Enable public access in the Cloudflare dashboard for the bucket
