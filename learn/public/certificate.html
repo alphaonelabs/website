@@ -128,7 +128,7 @@
           </div>
           <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-8 border-t border-gray-200 dark:border-gray-700 pt-8">
             <div>
-              <p class="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Issued on</p>
+              <p class="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">completed on</p>
               <p id="issued-at" class="text-xl font-semibold text-gray-900 dark:text-white">—</p>
               <p id="cert-id" class="mt-4 text-xs md:text-sm font-mono text-gray-500 dark:text-gray-400 break-all">Certificate ID: —</p>
             </div>
@@ -178,7 +178,7 @@
 
       <div style="display:flex; justify-content:space-between; align-items:flex-end; width:100%; margin-top:12px;">
         <div>
-          <p style="font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#737373; margin:0 0 4px;">Issued on</p>
+          <p style="font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#737373; margin:0 0 4px;">Completed on</p>
           <p id="print-issued-at" style="font-size:18px; font-weight:600; margin:0 0 10px;">—</p>
           <p id="print-cert-id" style="font-size:10px; font-family:monospace; color:#737373; margin:0; word-break:break-all; max-width:420px;">Certificate ID: —</p>
         </div>
@@ -193,9 +193,23 @@
   <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
   <script>
     function formatDate(value) {
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return value;
-      return date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+      if (!value) return '—';
+
+      const raw = String(value).trim();
+
+      // SQLite returns "YYYY-MM-DD HH:MM:SS" in UTC; older Safari can't parse the space form.
+      const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
+        ? raw.replace(' ', 'T') + 'Z'
+        : raw;
+
+      const date = new Date(normalized);
+      if (Number.isNaN(date.getTime())) return '—';
+
+      return date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: '2-digit',
+        year: 'numeric',
+      });
     }
 
     function showError(message) {
@@ -240,7 +254,7 @@
 
         const data          = payload.data;
         const verifyUrl     = `${window.location.origin}/certificate.html?uuid=${encodeURIComponent(data.uuid)}`;
-        const formattedDate = formatDate(data.issued_at);
+        const formattedDate = formatDate(data.completed_at);
         const shareText     = `🎓 I just earned a certificate for "${data.activity_title}" on Alpha One Labs! Check it out:`;
 
         document.title = `Certificate – ${data.activity_title} – Alpha One Labs`;
@@ -252,9 +266,13 @@
         document.getElementById('cert-id').textContent        = `Certificate ID: ${data.uuid}`;
 
         // Single QR instance (screen only; cloned to print slot via beforeprint)
-        new QRCode(document.getElementById('qr-code'), {
-          text: verifyUrl, width: 128, height: 128,
-        });
+        const qrEl = document.getElementById('qr-code');
+        try {
+          new QRCode(qrEl, { text: verifyUrl, width: 128, height: 128 });
+        } catch (_) {
+          qrEl.innerHTML = '';              // drop any partial image so print omits it
+          qrEl.classList.add('hidden');
+        }
 
         // Share buttons
         const linkedInUrl = 'https://www.linkedin.com/shareArticle?mini=true'

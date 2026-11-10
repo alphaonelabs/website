@@ -3200,11 +3200,7 @@ async def api_generate_certificate(request, env, target_id):
         comp = await env.DB.prepare(
             "SELECT id FROM activity_completions WHERE activity_id=? AND user_id=? LIMIT 1"
         ).bind(enrollment.activity_id, enrollment.user_id).first()
-        if comp:
-            await env.DB.prepare(
-                "UPDATE enrollments SET status='completed' WHERE id=?"
-            ).bind(enrollment_id).run()
-        else:
+        if not comp:
             return err(
                 "Enrollment is not completed yet. Finish all sessions to earn your certificate.",
                 400,
@@ -3252,29 +3248,65 @@ async def api_generate_certificate(request, env, target_id):
         "url": "/certificate.html?uuid=" + cert_uuid,
     })
 
-
+_CERT_COMPLETED_AT_SQL = (
+    "(SELECT MAX(ac.completed_at) FROM activity_completions ac"
+    " WHERE ac.activity_id = e.activity_id AND ac.user_id = e.user_id)"
+)
 async def api_get_certificate(request, env, cert_uuid):
     row = await env.DB.prepare(
-        "SELECT c.id, c.issued_at, c.enrollment_id, "
-        "u.name as student_name_enc, "
-        "a.title as activity_title "
-        "FROM certificates c "
-        "JOIN enrollments e ON c.enrollment_id = e.id "
-        "JOIN users u ON e.user_id = u.id "
-        "JOIN activities a ON e.activity_id = a.id "
-        "WHERE c.id = ?"
+        "SELECT c.id, c.issued_at, u.name AS student_name_enc, a.title AS activity_title,"
+        " " + _CERT_COMPLETED_AT_SQL + " AS completed_at"
+        " FROM certificates c"
+        " JOIN enrollments e ON c.enrollment_id = e.id"
+        " JOIN users u ON e.user_id = u.id"
+        " JOIN activities a ON e.activity_id = a.id"
+        " WHERE c.id = ?"
     ).bind(cert_uuid).first()
     if not row:
         return err("Certificate not found", 404)
 
     student_name = await decrypt_aes(row.student_name_enc, env.ENCRYPTION_KEY)
+    if not student_name or student_name == "[decryption error]":
+        student_name = "Alpha One Labs learner"
     return ok({
         "uuid": cert_uuid,
         "student_name": student_name,
         "activity_title": row.activity_title,
         "issued_at": row.issued_at,
-        "enrollment_id": row.enrollment_id,
+        "completed_at": getattr(row, "completed_at", None) or row.issued_at,
     })
+
+
+async def api_list_my_certificates(req, env):
+    """GET /api/certificates ΓÇö certificates earned by the signed-in user."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    res = await env.DB.prepare(
+        "SELECT c.id, c.issued_at,"
+        " " + _CERT_COMPLETED_AT_SQL + " AS completed_at,"
+        " a.id AS activity_id, a.slug AS activity_slug, a.title AS activity_title"
+        " FROM certificates c"
+        " JOIN enrollments e ON c.enrollment_id = e.id"
+        " JOIN activities a ON e.activity_id = a.id"
+        " WHERE e.user_id = ?"
+        " ORDER BY c.issued_at DESC"
+    ).bind(user["id"]).all()
+
+    certificates = [
+        {
+            "uuid":           r.id,
+            "activity_id":    r.activity_id,
+            "activity_slug":  getattr(r, "activity_slug", "") or "",
+            "activity_title": r.activity_title,
+            "issued_at":      r.issued_at,
+            "completed_at":   getattr(r, "completed_at", None) or r.issued_at,
+            "url":            "/certificate.html?uuid=" + r.id,
+        }
+    for r in (res.results or [])
+    ]
+    return ok({"certificates": certificates})
 
 
 async def api_join(req, env):
@@ -9062,6 +9094,9 @@ async def _dispatch(request, env):
 
         if path == "/api/activities" and method == "POST":
             return await api_create_activity(request, env)
+
+        if path == "/api/certificates" and method == "GET":
+            return await api_list_my_certificates(request, env)
 
         m_cert_gen = re.fullmatch(r"/api/certificates/generate/([A-Za-z0-9_-]+)", path)
         if m_cert_gen and method == "POST":

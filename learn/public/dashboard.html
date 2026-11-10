@@ -155,6 +155,19 @@
 
       <!-- JOINED ACTIVITIES SECTION -->
       <div id="joined-section"></div>
+      <section class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md overflow-hidden mt-8">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 flex items-center gap-3">
+                <i class="fas fa-certificate text-teal-600"></i>My Certificates
+             </h2>
+             <span id="cert-count" class="text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 rounded-full font-semibold">0</span>
+        </div>
+        <div id="cert-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+            <div class="p-6 text-sm text-gray-500 dark:text-gray-400">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Loading certificates...
+            </div>
+        </div>
+        </section>
 
     </div>
   </main>
@@ -440,6 +453,53 @@ function renderDashboard(data) {
     joinedHtml += '</section>';
     document.getElementById('joined-section').innerHTML = joinedHtml;
 }
+async function loadMyCertificates() {
+  const token = localStorage.getItem('edu_token');
+  if (!token) return;
+
+  const list = document.getElementById('cert-list');
+  const count = document.getElementById('cert-count');
+  const safe = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  try {
+    const res = await fetch('/api/certificates', { headers: { Authorization: 'Bearer ' + token } });
+    if (res.status === 401) {
+        if (localStorage.getItem('edu_token') === token) {   // only if it's still the token we sent
+            localStorage.removeItem('edu_token');
+            localStorage.removeItem('edu_user');
+            window.location.href = '/login';
+        } else {
+            window.location.reload();                           // another tab signed in; pick up the new session
+        }
+    return;
+    }
+    if (!res.ok) throw new Error('Could not load certificates');
+    const certs = ((await res.json()).data || {}).certificates || [];
+    count.textContent = certs.length;
+    if (!certs.length) {
+      list.innerHTML = '<div class="p-6 text-sm text-gray-500 dark:text-gray-400">No certificates yet. Complete an activity to earn one.</div>';
+      return;
+    }
+    list.innerHTML = certs.map(c => {
+      const d = new Date(String(c.completed_at || c.issued_at).replace(' ', 'T') + 'Z');
+      const when = isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+      return `
+        <div class="px-6 py-4 flex items-center justify-between gap-4">
+          <div class="min-w-0">
+            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm truncate">${safe(c.activity_title)}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Completed ${safe(when)}</p>
+          </div>
+          <a href="${safe(c.url)}" target="_blank" rel="noopener"
+             class="shrink-0 text-xs font-semibold text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20">
+            <i class="fas fa-eye mr-1"></i>View
+          </a>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="p-6 text-sm text-red-600 dark:text-red-400">' + safe(e.message) + '</div>';
+  }
+}
+document.addEventListener('DOMContentLoaded', loadMyCertificates);
+
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
