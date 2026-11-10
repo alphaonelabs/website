@@ -193,6 +193,41 @@ class TestApiListActivities:
         with pytest.raises(Exception, match="DB unavailable"):
             await worker.api_list_activities(self._req(), env)
 
+    async def test_draft_status_without_auth_returns_empty(self):
+        env = make_env(db=MockDB([]))
+        r = await worker.api_list_activities(self._req("status=draft"), env)
+        assert r.status == 200
+        data = _parse(r)
+        assert data["activities"] == []
+
+    async def test_archived_status_without_auth_returns_empty(self):
+        env = make_env(db=MockDB([]))
+        r = await worker.api_list_activities(self._req("status=archived"), env)
+        assert r.status == 200
+        assert _parse(r)["activities"] == []
+
+    async def test_all_status_without_auth_returns_empty(self):
+        env = make_env(db=MockDB([]))
+        r = await worker.api_list_activities(self._req("status=all"), env)
+        assert r.status == 200
+        assert _parse(r)["activities"] == []
+
+    async def test_draft_status_scopes_to_authenticated_host(self):
+        token = _make_host_token(uid="host-1")
+        row = self._activity_row()
+        env = make_env(db=MockDB([
+            make_stmt(all_results=[row]),
+            make_stmt(all_results=[]),
+        ]))
+        req = MockRequest(
+            method="GET",
+            url="http://localhost/api/activities?status=draft",
+            headers=_auth_header(token),
+        )
+        r = await worker.api_list_activities(req, env)
+        assert r.status == 200
+        assert len(_parse(r)["activities"]) == 1
+
 
 # ---------------------------------------------------------------------------
 # api_create_activity()
@@ -319,7 +354,7 @@ class TestApiGetActivity:
                            url=f"http://localhost/api/activities/{act_id}",
                            headers=headers)
 
-    def _activity_row(self, host_uid="host-1"):
+    def _activity_row(self, host_uid="host-1", status="published"):
         return MockRow(
             id="act-1",
             title="Python 101",
@@ -327,6 +362,7 @@ class TestApiGetActivity:
             type="course",
             format="self_paced",
             schedule_type="ongoing",
+            status=status,
             created_at="2024-01-01",
             host_name_enc=_enc("Alice"),
             host_uid=host_uid,
@@ -417,6 +453,7 @@ class TestApiGetActivity:
             make_stmt(all_results=[]),
             make_stmt(all_results=[]),
             make_stmt(first=count),
+            make_stmt(first=self._count_row(0)),
         ]))
         r = await worker.api_get_activity("act-1", self._req(), env)
         activity = _parse(r)["activity"]
@@ -424,6 +461,39 @@ class TestApiGetActivity:
                       "schedule_type", "host_name", "participant_count", "tags", "created_at"):
             assert field in activity
         assert activity["participant_count"] == 7
+
+    async def test_archived_activity_hidden_from_non_host(self):
+        act = self._activity_row(status="archived")
+        env = make_env(db=MockDB([make_stmt(first=act)]))
+        r = await worker.api_get_activity("act-1", self._req(), env)
+        assert r.status == 404
+
+    async def test_draft_activity_hidden_from_non_host(self):
+        token = _make_host_token(uid="other-user", role="member")
+        act = self._activity_row(host_uid="host-1", status="draft")
+        env = make_env(db=MockDB([make_stmt(first=act)]))
+        r = await worker.api_get_activity("act-1", self._req(token=token), env)
+        assert r.status == 404
+
+    async def test_archived_activity_visible_to_host(self):
+        token = _make_host_token(uid="host-1", role="host")
+        act = self._activity_row(host_uid="host-1", status="archived")
+        count = self._count_row()
+        env = make_env(db=MockDB([
+            make_stmt(first=act),
+            make_stmt(first=None),          # enrollment
+            make_stmt(first=None),          # completion
+            make_stmt(first=None),          # interest
+            make_stmt(all_results=[]),      # sessions
+            make_stmt(all_results=[]),      # tags
+            make_stmt(first=count),         # enrollment count
+            make_stmt(first=self._count_row(0)),  # interest count
+        ]))
+        r = await worker.api_get_activity("act-1", self._req(token=token), env)
+        assert r.status == 200
+        data = _parse(r)
+        assert data["is_host"] is True
+        assert data["activity"]["status"] == "archived"
 
 
 class TestApiCertificates:
