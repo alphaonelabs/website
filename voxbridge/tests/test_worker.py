@@ -412,14 +412,16 @@ class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
         env = _MockEnv()
         env.AI.run.return_value = {"text": "ok", "response": "ok", "description": "ok"}
         w = worker.VoxBridgeWorker()
-        return await w.fetch(req, env, _MockCtx())
+        w.env = env
+        return await w.fetch(req)
 
     async def test_options_returns_204(self):
         url = "https://voxbridge.example.com/api/health"
         req = _MockRequest(method="OPTIONS", url=url)
         env = _MockEnv()
         w = worker.VoxBridgeWorker()
-        resp = await w.fetch(req, env, _MockCtx())
+        w.env = env
+        resp = await w.fetch(req)
         self.assertEqual(resp.status, 204)
 
     async def test_health_route(self):
@@ -430,6 +432,15 @@ class TestVoxBridgeWorkerRouting(unittest.IsolatedAsyncioTestCase):
     async def test_unknown_route_returns_404(self):
         resp = await self._fetch("GET", "/api/nonexistent")
         self.assertEqual(resp.status, 404)
+
+    async def test_on_fetch_module_level_handler(self):
+        url = "https://voxbridge.example.com/api/health"
+        req = _MockRequest(method="GET", url=url)
+        env = _MockEnv()
+        resp = await worker.on_fetch(req, env, _MockCtx())
+        data = json.loads(resp.body)
+        self.assertEqual(resp.status, 200)
+        self.assertEqual(data["status"], "ok")
 
     async def test_worker_is_worker_entrypoint_subclass(self):
         from workers import WorkerEntrypoint
