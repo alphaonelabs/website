@@ -2152,6 +2152,25 @@ async def api_reset_password(req, env):
 
 
 _ACTIVITY_LIST_CACHE_SECONDS = 120
+_PUBLIC_ACTIVITY_STATUSES = frozenset({"published", "waitlist"})
+_HOST_SCOPED_LIST_STATUSES = frozenset({"draft", "archived", "all"})
+
+
+def _activity_status_is_public(status) -> bool:
+    """Catalog-visible statuses. draft/archived are host-only."""
+    return (status or "published") in _PUBLIC_ACTIVITY_STATUSES
+
+
+def _empty_activity_list_payload(page: int = 1, page_size=None) -> Dict[str, Any]:
+    return {
+        "activities": [],
+        "pagination": {
+            "page": page,
+            "page_size": page_size or 0,
+            "total": 0,
+            "total_pages": 1,
+        },
+    }
 
 
 async def api_list_activities_cached(req, env):
@@ -2211,6 +2230,14 @@ async def _activity_list_payload(req, env):
     except Exception:
         page_size = None
 
+    # draft/archived/all are host dashboards — never dump every host's private rows.
+    host_scope_id = None
+    if status in _HOST_SCOPED_LIST_STATUSES:
+        user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+        if not user:
+            return _empty_activity_list_payload(page, page_size)
+        host_scope_id = user["id"]
+
     base_q = (
         "SELECT a.id,a.title,a.description,a.type,a.format,a.schedule_type,"
         "a.created_at,a.status,a.slug,a.image_url,a.price_cents,a.price_currency,"
@@ -2227,6 +2254,9 @@ async def _activity_list_payload(req, env):
         join = ""
         clauses = []
         binds = []
+        if host_scope_id:
+            clauses.append("a.host_id=?")
+            binds.append(host_scope_id)
         if tag:
             tag_row = await env.DB.prepare(
                 "SELECT id FROM tags WHERE name=?"
@@ -2495,6 +2525,10 @@ async def api_get_activity(activity_ref: str, req, env):
         ).bind(activity_ref).first()
     if not act:
         return err("Activity not found", 404)
+
+    is_host = bool(user and act.host_uid == user["id"])
+    if not _activity_status_is_public(getattr(act, "status", "published")) and not is_host:
+        return err("Activity not found", 404)
     act_id = act.id
 
     enrollment  = None
@@ -2519,8 +2553,6 @@ async def api_get_activity(activity_ref: str, req, env):
             " WHERE activity_id=? AND user_id=?"
         ).bind(act_id, user["id"]).first()
         user_interested = interest is not None
-
-    is_host = bool(user and act.host_uid == user["id"])
 
     ses_res = await env.DB.prepare(
         "SELECT id,title,description,start_time,end_time,location,created_at"
@@ -2879,6 +2911,14 @@ async def api_activity_calendar_ics(activity_ref: str, req, env):
             headers={"Content-Type": "text/plain; charset=utf-8", **_CORS},
         )
 
+    is_host = bool(user and act.host_uid == user.get("id"))
+    if not _activity_status_is_public(getattr(act, "status", "published")) and not is_host:
+        return Response(
+            "Activity not found\r\n",
+            status=404,
+            headers={"Content-Type": "text/plain; charset=utf-8", **_CORS},
+        )
+
     act_id = act.id
     act_title = act.title or "Activity"
     act_desc = ""
@@ -2888,7 +2928,6 @@ async def api_activity_calendar_ics(activity_ref: str, req, env):
         except Exception:
             act_desc = act.description
 
-    is_host = bool(user and act.host_uid == user.get("id"))
     is_enrolled = False
     if user and user.get("id") and not is_host:
         enrollment = await env.DB.prepare(
@@ -2961,6 +3000,11 @@ async def api_activity_calendar_ics(activity_ref: str, req, env):
 
     clean_slug = re.sub(r"[^A-Za-z0-9_-]", "_", getattr(act, "slug", "") or act_id)
     filename = f"activity-{clean_slug}.ics"
+    cache_control = (
+        "public, max-age=60"
+        if _activity_status_is_public(getattr(act, "status", "published"))
+        else "private, no-store"
+    )
 
     return Response(
         vcal_text,
@@ -2968,7 +3012,7 @@ async def api_activity_calendar_ics(activity_ref: str, req, env):
         headers={
             "Content-Type": "text/calendar; charset=utf-8",
             "Content-Disposition": f'attachment; filename="{filename}"',
-            "Cache-Control": "public, max-age=60",
+            "Cache-Control": cache_control,
             **_CORS,
         },
     )
@@ -6870,10 +6914,13 @@ def _activity_score(activity: Dict[str, Any]) -> int:
     )
 
 
-async def _server_list_activities(env, *, limit: int = 1000, atype: str = "", fmt: str = "", search: str = "", tag: str = "", status: str = "catalog") -> Dict[str, Any]:
+async def _server_list_activities(env, *, limit: int = 1000, atype: str = "", fmt: str = "", search: str = "", tag: str = "", status: str = "catalog", host_id: str = "") -> Dict[str, Any]:
     limit = max(1, min(1000, int(limit or 1000)))
     if status not in {"catalog", "published", "waitlist", "draft", "archived", "all"}:
         status = "catalog"
+    # SSR has no host session for private statuses — never list them publicly.
+    if status in _HOST_SCOPED_LIST_STATUSES and not host_id:
+        return {"activities": [], "pagination": {"page": 1, "page_size": limit, "total": 0, "total_pages": 1}}
     enc = env.ENCRYPTION_KEY
     base_q = (
         "SELECT a.id,a.title,a.description,a.type,a.format,a.schedule_type,"
@@ -6890,6 +6937,9 @@ async def _server_list_activities(env, *, limit: int = 1000, atype: str = "", fm
         join = ""
         clauses = []
         binds = []
+        if host_id:
+            clauses.append("a.host_id=?")
+            binds.append(host_id)
         if tag:
             tag_row = await env.DB.prepare("SELECT id FROM tags WHERE name=?").bind(tag).first()
             if not tag_row:
@@ -7057,6 +7107,8 @@ async def _server_activity_detail_payload(env, activity_ref: str) -> Optional[Di
             return None
         raise
     if not act:
+        return None
+    if not _activity_status_is_public(getattr(act, "status", "published")):
         return None
 
     ses_res = await env.DB.prepare(
