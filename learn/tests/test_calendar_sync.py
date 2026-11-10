@@ -173,11 +173,37 @@ class TestActivityCalendarIcs:
         assert resp.status == 200
         assert "text/calendar" in resp.headers["Content-Type"]
         assert 'filename="activity-python-workshop.ics"' in resp.headers["Content-Disposition"]
+        assert resp.headers["Cache-Control"] == "public, max-age=60"
         assert "BEGIN:VCALENDAR" in resp.body
         assert "SUMMARY:Python Workshop: Session 1" in resp.body
         # Non-enrolled anonymous user: meeting link must be locked
         assert "Join activity to unlock meeting location/link" in resp.body
         assert "https://meet.google.com/abc-defg-hij" not in resp.body
+
+    async def test_draft_activity_calendar_is_private_no_store_for_host(self):
+        host_tok = _make_user_token(uid="host-1")
+        act_row = MockRow(
+            id="act-1",
+            slug="draft-workshop",
+            title="Draft Workshop",
+            description=_enc("Not public yet"),
+            status="draft",
+            host_id="host-1",
+            host_name_enc=_enc("Alice"),
+            host_uid="host-1",
+            created_at="2026-10-01 10:00:00",
+        )
+        env = make_env(db=MockDB([
+            make_stmt(first=act_row),
+            make_stmt(all_results=[]),
+        ]), enc_key=SECRET, jwt_secret=JWT)
+        req = MockRequest(
+            method="GET",
+            url=f"http://localhost/api/activities/draft-workshop/calendar.ics?token={host_tok}",
+        )
+        resp = await worker.api_activity_calendar_ics("draft-workshop", req, env)
+        assert resp.status == 200
+        assert resp.headers["Cache-Control"] == "private, no-store"
 
     async def test_activity_with_sessions_enrolled_user(self):
         user_tok = _make_user_token(uid="user-1")

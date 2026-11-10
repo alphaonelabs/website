@@ -3000,6 +3000,11 @@ async def api_activity_calendar_ics(activity_ref: str, req, env):
 
     clean_slug = re.sub(r"[^A-Za-z0-9_-]", "_", getattr(act, "slug", "") or act_id)
     filename = f"activity-{clean_slug}.ics"
+    cache_control = (
+        "public, max-age=60"
+        if _activity_status_is_public(getattr(act, "status", "published"))
+        else "private, no-store"
+    )
 
     return Response(
         vcal_text,
@@ -3007,7 +3012,7 @@ async def api_activity_calendar_ics(activity_ref: str, req, env):
         headers={
             "Content-Type": "text/calendar; charset=utf-8",
             "Content-Disposition": f'attachment; filename="{filename}"',
-            "Cache-Control": "public, max-age=60",
+            "Cache-Control": cache_control,
             **_CORS,
         },
     )
