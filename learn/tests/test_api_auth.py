@@ -78,7 +78,7 @@ class TestApiRegister:
         # DB: prepare().bind().run() succeeds (default mock)
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "alice@example.com", "password": "password123"}),
+            self._req({"username": "alice", "email": "alice@example.com", "password": "AlphaOne!2026Secure"}),
             env,
         )
         assert r.status == 200
@@ -91,7 +91,7 @@ class TestApiRegister:
     async def test_name_defaults_to_username(self):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "bob", "email": "bob@example.com", "password": "password123"}), env
+            self._req({"username": "bob", "email": "bob@example.com", "password": "AlphaOne!2026Secure"}), env
         )
         data = _parse(r)
         assert data["success"] is True  # name is stored in DB, not returned in response
@@ -99,7 +99,7 @@ class TestApiRegister:
     async def test_custom_name_preserved(self):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "bob", "email": "b@b.com", "password": "password123", "name": "Robert"}),
+            self._req({"username": "bob", "email": "b@b.com", "password": "AlphaOne!2026Secure", "name": "Robert"}),
             env,
         )
         data = _parse(r)
@@ -111,7 +111,7 @@ class TestApiRegister:
         stmt.bind.return_value.run.side_effect = Exception("UNIQUE constraint failed")
         env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "alice@example.com", "password": "password123"}),
+            self._req({"username": "alice", "email": "alice@example.com", "password": "AlphaOne!2026Secure"}),
             env,
         )
         assert r.status == 409
@@ -122,7 +122,7 @@ class TestApiRegister:
         stmt.bind.return_value.run.side_effect = Exception("some DB error")
         env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "a@b.com", "password": "password123"}), env
+            self._req({"username": "alice", "email": "a@b.com", "password": "AlphaOne!2026Secure"}), env
         )
         assert r.status == 500
 
@@ -130,7 +130,7 @@ class TestApiRegister:
         # Registration no longer issues a token; user must verify email first.
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "a@b.com", "password": "password123"}), env
+            self._req({"username": "alice", "email": "a@b.com", "password": "AlphaOne!2026Secure"}), env
         )
         assert r.status == 200
         data = _parse(r)
@@ -148,11 +148,11 @@ class TestApiRegister:
         env = self._rate_limited_env()
         ip = "203.0.113.10"
 
-        first_req = self._req({"username": "alice1", "email": "alice1@example.com", "password": "password123"})
+        first_req = self._req({"username": "alice1", "email": "alice1@example.com", "password": "AlphaOne!2026Secure"})
         first_req.headers["CF-Connecting-IP"] = ip
-        second_req = self._req({"username": "alice2", "email": "alice2@example.com", "password": "password123"})
+        second_req = self._req({"username": "alice2", "email": "alice2@example.com", "password": "AlphaOne!2026Secure"})
         second_req.headers["CF-Connecting-IP"] = ip
-        third_req = self._req({"username": "alice3", "email": "alice3@example.com", "password": "password123"})
+        third_req = self._req({"username": "alice3", "email": "alice3@example.com", "password": "AlphaOne!2026Secure"})
         third_req.headers["CF-Connecting-IP"] = ip
 
         first = await worker.api_register(first_req, env)

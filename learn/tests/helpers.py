@@ -124,6 +124,12 @@ def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret
     env.ADMIN_BASIC_PASS = admin_pass
     env.ADMIN_URL = admin_url
     env.DB = db if db is not None else MockDB()
+    env.SENDGRID_API_KEY = ""
+    env.MAILGUN_API_KEY = ""
+    env.MAILGUN_SENDING_KEY = ""
+    env.MAILGUN_DOMAIN = ""
+    env.MAILGUN_API_BASE = "https://api.mailgun.net/v3"
+    env.EMAIL_FROM = "info@alphaonelabs.com"
     # Use setattr to avoid Python name-mangling of __STATIC_CONTENT
     # when this function is called from inside a class method.
     sc = MagicMock()

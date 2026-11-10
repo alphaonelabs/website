@@ -819,22 +819,26 @@ async def _send_email_via_mailgun(to_email: str, subject: str, html: str, env) -
     Endpoint: https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages
     Body: application/x-www-form-urlencoded
     """
-    api_key   = (
+    api_key_raw = (
         getattr(env, "MAILGUN_SENDING_KEY", "")
         or getattr(env, "mailgun_sending_key", "")
         or getattr(env, "MAILGUN_API_KEY", "")
         or getattr(env, "mailgun_api_key", "")
         or ""
-    ).strip()
-    domain    = (getattr(env, "MAILGUN_DOMAIN", "") or getattr(env, "mailgun_domain", "") or "").strip()
-    api_base  = (getattr(env, "MAILGUN_API_BASE", "") or getattr(env, "mailgun_api_base", "") or "https://api.mailgun.net/v3").strip().rstrip("/")
+    )
+    api_key   = api_key_raw.strip() if isinstance(api_key_raw, str) else ""
+    domain_raw = getattr(env, "MAILGUN_DOMAIN", "") or getattr(env, "mailgun_domain", "") or ""
+    domain    = domain_raw.strip() if isinstance(domain_raw, str) else ""
+    api_base_raw = (getattr(env, "MAILGUN_API_BASE", "") or getattr(env, "mailgun_api_base", "") or "https://api.mailgun.net/v3")
+    api_base  = api_base_raw.strip().rstrip("/") if isinstance(api_base_raw, str) and api_base_raw else "https://api.mailgun.net/v3"
     if not re.search(r"/v\d+$", api_base):
         api_base += "/v3"
-    from_addr = (
+    from_addr_raw = (
         getattr(env, "EMAIL_FROM", "")
         or getattr(env, "DEFAULT_FROM_EMAIL", "")
         or "info@alphaonelabs.com"
-    ).strip()
+    )
+    from_addr = from_addr_raw.strip() if isinstance(from_addr_raw, str) else "info@alphaonelabs.com"
 
     if not api_key or not domain:
         print(json.dumps({"level": "warn", "where": "_send_email_via_mailgun",
@@ -881,16 +885,18 @@ async def _send_email(to_email: str, subject: str, html: str, env) -> bool:
     Prefer SendGrid because the legacy environment carries SENDGRID_API_KEY.
     Fall back to Mailgun only when Mailgun credentials are present.
     """
-    has_sendgrid = bool((getattr(env, "SENDGRID_API_KEY", "") or getattr(env, "sendgrid_api_key", "") or "").strip())
+    sendgrid_key = getattr(env, "SENDGRID_API_KEY", None) or getattr(env, "sendgrid_api_key", None)
+    has_sendgrid = bool(isinstance(sendgrid_key, str) and sendgrid_key.strip())
+    mailgun_key = (
+        getattr(env, "MAILGUN_SENDING_KEY", None)
+        or getattr(env, "mailgun_sending_key", None)
+        or getattr(env, "MAILGUN_API_KEY", None)
+        or getattr(env, "mailgun_api_key", None)
+    )
+    mailgun_domain = getattr(env, "MAILGUN_DOMAIN", None) or getattr(env, "mailgun_domain", None)
     has_mailgun = bool(
-        (
-            getattr(env, "MAILGUN_SENDING_KEY", "")
-            or getattr(env, "mailgun_sending_key", "")
-            or getattr(env, "MAILGUN_API_KEY", "")
-            or getattr(env, "mailgun_api_key", "")
-            or ""
-        ).strip()
-        and (getattr(env, "MAILGUN_DOMAIN", "") or getattr(env, "mailgun_domain", "") or "").strip()
+        isinstance(mailgun_key, str) and mailgun_key.strip()
+        and isinstance(mailgun_domain, str) and mailgun_domain.strip()
     )
 
     if has_mailgun:
