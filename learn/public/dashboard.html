@@ -463,10 +463,14 @@ async function loadMyCertificates() {
   try {
     const res = await fetch('/api/certificates', { headers: { Authorization: 'Bearer ' + token } });
     if (res.status === 401) {
-        localStorage.removeItem('edu_token');
-        localStorage.removeItem('edu_user');
-        window.location.href = '/login';
-        return;
+        if (localStorage.getItem('edu_token') === token) {   // only if it's still the token we sent
+            localStorage.removeItem('edu_token');
+            localStorage.removeItem('edu_user');
+            window.location.href = '/login';
+        } else {
+            window.location.reload();                           // another tab signed in; pick up the new session
+        }
+    return;
     }
     if (!res.ok) throw new Error('Could not load certificates');
     const certs = ((await res.json()).data || {}).certificates || [];

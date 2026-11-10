@@ -203,7 +203,7 @@
         : raw;
 
       const date = new Date(normalized);
-      if (Number.isNaN(date.getTime())) return raw;
+      if (Number.isNaN(date.getTime())) return '—';
 
       return date.toLocaleDateString('en-US', {
         month: 'long',
