@@ -203,8 +203,9 @@
           event.preventDefault();
           summary.focus();
         } else if (header.classList.contains("open")) {
-          event.preventDefault();
-          setDrawerOpen(false, true);
+          const headerHasFocus = header.contains(root.activeElement);
+          if (headerHasFocus) event.preventDefault();
+          setDrawerOpen(false, headerHasFocus);
         }
         if (details.open && !sitesHasFocus && !header.classList.contains("open")) {
           details.open = false;
