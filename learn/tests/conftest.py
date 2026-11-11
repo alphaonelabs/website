@@ -14,6 +14,7 @@ first by pytest) so that ``import worker`` succeeds in tests.
 
 import os
 import sys
+from unittest.mock import MagicMock
 
 # Mark test harness environment so fallback pepper is permitted in non-production tests
 os.environ.setdefault("IS_TEST_HARNESS", "1")

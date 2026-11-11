@@ -76,7 +76,7 @@ SENTRY_DSN=your-sentry-dsn
 ```
 
 - For Production
-Use Wrangler secrets:
+Use Wrangler secrets and configure production environment variables:
 
 ```bash
 wrangler secret put ENCRYPTION_KEY
@@ -84,6 +84,15 @@ wrangler secret put JWT_SECRET
 wrangler secret put PASSWORD_PEPPER
 wrangler secret put SENTRY_DSN
 ```
+
+Ensure `ENVIRONMENT=production` or `SENTRY_ENVIRONMENT=production` is configured in Worker variables so the service fails closed if secrets are missing instead of falling back to default pepper values.
+
+> [!WARNING]
+> **Password Pepper Rotation & Legacy Migration**
+> `PASSWORD_PEPPER` combines with per-user salt to hash credentials.
+> - `verify_password()` contains an automatic backward-compatible fallback against the legacy default pepper (`edu-platform-cf-pepper-2024`) so pre-existing accounts are not locked out upon pepper deployment.
+> - On successful login, legacy hashes are progressively re-hashed and updated to the active secret pepper.
+> - When rotating an existing `PASSWORD_PEPPER` in the future, plan a staged cut-over or update stored hashes to avoid authentication failures.
 
 Or upload all values from an env file after verifying the active Cloudflare account:
 

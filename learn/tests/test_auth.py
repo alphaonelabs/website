@@ -4,7 +4,8 @@ Tests for HTTP auth helpers: _is_basic_auth_valid(), parse_json_object().
 
 import base64
 import json
-from tests.helpers import load_worker, MockRequest, make_env, basic_auth_header
+
+from tests.helpers import MockRequest, basic_auth_header, load_worker, make_env
 
 worker = load_worker()
 
@@ -158,8 +159,10 @@ class TestDynamicPasswordPepper:
         h = worker.hash_password("SecretPass123!", "user1")
         assert worker.verify_password("SecretPass123!", h, "user1") is True
 
-    def test_production_fails_closed_when_pepper_missing(self):
+    def test_production_fails_closed_when_pepper_missing(self, monkeypatch):
         import pytest
+        monkeypatch.delenv("PASSWORD_PEPPER", raising=False)
+        monkeypatch.delenv("PEPPER", raising=False)
         env = make_env()
         env.ENVIRONMENT = "production"
         env.PASSWORD_PEPPER = None
@@ -168,16 +171,32 @@ class TestDynamicPasswordPepper:
         with pytest.raises(RuntimeError, match="Missing required environment secret: PASSWORD_PEPPER"):
             worker.get_pepper(env)
 
-    async def test_worker_startup_on_fetch_fails_closed_in_production_without_pepper(self):
-        import pytest
+    async def test_worker_startup_on_fetch_fails_closed_in_production_without_pepper(self, monkeypatch):
+        monkeypatch.delenv("PASSWORD_PEPPER", raising=False)
+        monkeypatch.delenv("PEPPER", raising=False)
+        monkeypatch.setattr(worker, "_SENTRY_INITIALIZED", False)
+        monkeypatch.setattr(worker, "_SENTRY_DSN", "")
         env = make_env()
+        env.SENTRY_DSN = ""
         env.ENVIRONMENT = "production"
         env.PASSWORD_PEPPER = None
         env.PEPPER = None
         req = MockRequest(method="GET", url="http://localhost/api/activities")
 
+        r = await worker.on_fetch(req, env)
+        assert r.status == 500
+
+    def test_unconfigured_deployment_fails_closed_without_dev_signal(self, monkeypatch):
+        import pytest
+        monkeypatch.delenv("PASSWORD_PEPPER", raising=False)
+        monkeypatch.delenv("PEPPER", raising=False)
+        monkeypatch.delenv("IS_TEST_HARNESS", raising=False)
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        env = make_env()
+        env.ENVIRONMENT = ""
+        env.SENTRY_ENVIRONMENT = ""
         with pytest.raises(RuntimeError, match="Missing required environment secret: PASSWORD_PEPPER"):
-            await worker.on_fetch(req, env)
+            worker.get_pepper(env)
 
     def test_production_succeeds_when_pepper_is_present(self):
         env = make_env()
@@ -186,8 +205,17 @@ class TestDynamicPasswordPepper:
         assert worker.get_pepper(env) == b"production-secure-pepper-abc"
 
     def test_init_pepper_caches_active_pepper(self):
-        env = make_env(password_pepper="cached-active-pepper")
+        test_pepper = "cached-active-pepper-val"
+        env = make_env(password_pepper=test_pepper)
         worker.init_pepper(env)
         h = worker.hash_password("SecretPass123!", "user1")
+        assert h == worker.hash_password("SecretPass123!", "user1", pepper=test_pepper.encode("utf-8"))
+        assert h != worker.hash_password("SecretPass123!", "user1", pepper=worker._DEFAULT_PEPPER)
         assert worker.verify_password("SecretPass123!", h, "user1") is True
+
+    def test_legacy_default_pepper_hash_verifies_with_custom_pepper(self):
+        legacy_hash = worker.hash_password("SecretPass123!", "user1", pepper=worker._DEFAULT_PEPPER)
+        custom_env = make_env(password_pepper="custom-active-pepper-987")
+        worker.init_pepper(custom_env)
+        assert worker.verify_password("SecretPass123!", legacy_hash, "user1", env=custom_env) is True
 

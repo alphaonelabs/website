@@ -6,8 +6,7 @@ import base64
 import importlib.util
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
-
+from unittest.mock import AsyncMock, MagicMock
 
 # ---------------------------------------------------------------------------
 # Worker module loader
