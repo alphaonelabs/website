@@ -1,15 +1,12 @@
-"""JWS (EdDSA) signing helpers for Open Badges 3.0 / VC-JWT credentials.
-
-Not wired into any route yet. Uses the same Web Crypto bridge as the AES helpers
-in worker.py.
-"""
 import base64
 import json
+import re
 
 import js
 from pyodide.ffi import to_js
 
 _ED25519_ALGO = {"name": "Ed25519"}
+_B64URL_RE = re.compile(r"[A-Za-z0-9_-]*")
 
 
 def b64url_encode(data: bytes) -> str:
@@ -17,7 +14,16 @@ def b64url_encode(data: bytes) -> str:
 
 
 def b64url_decode(text: str) -> bytes:
-    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    """Strict, canonical base64url (no padding). Raises ValueError on anything else."""
+    if not isinstance(text, str) or not _B64URL_RE.fullmatch(text):
+        raise ValueError("invalid base64url characters")
+    try:
+        raw = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    except Exception as exc:
+        raise ValueError("invalid base64url") from exc
+    if b64url_encode(raw) != text:      # rejects non-zero trailing bits (malleable encodings)
+        raise ValueError("non-canonical base64url")
+    return raw
 
 
 def _json_b64(obj) -> str:
@@ -46,7 +52,9 @@ async def verify_jws(token: str, public_raw: bytes):
     try:
         header_b64, payload_b64, sig_b64 = token.split(".")
         header = json.loads(b64url_decode(header_b64))
-        if header.get("alg") != "EdDSA":      # reject "none" and anything else
+        # Only EdDSA; reject "none", anything else, and any critical extension
+        # (we implement none, so RFC 7515 says to reject).
+        if not isinstance(header, dict) or header.get("alg") != "EdDSA" or "crit" in header:
             return None
         key = await js.crypto.subtle.importKey(
             "raw", to_js(public_raw, create_pyproxies=False), _algo(), False, to_js(["verify"])
@@ -58,6 +66,7 @@ async def verify_jws(token: str, public_raw: bytes):
         )
         if not valid:
             return None
-        return json.loads(b64url_decode(payload_b64))
+        payload = json.loads(b64url_decode(payload_b64))
+        return payload if isinstance(payload, dict) else None
     except Exception:
         return None
