@@ -12,6 +12,12 @@ not_found_handling = "none"
 
 
 # Run `wrangler d1 create education_db` and paste the returned UUID below.
+#
+# Required secrets configured via `wrangler secret put <KEY>`:
+# - ENCRYPTION_KEY
+# - JWT_SECRET
+# - PASSWORD_PEPPER
+# - SENTRY_DSN
 [[d1_databases]]
 binding = "DB"
 database_name = "education_db"
