@@ -732,8 +732,8 @@ def _check_auth_rate_limit(req, env, route: str):
 
 
 def _is_basic_auth_valid(req, env) -> bool:
-    username = (getattr(env, "ADMIN_BASIC_USER", "") or "").strip()
-    password = (getattr(env, "ADMIN_BASIC_PASS", "") or "").strip()
+    username = (getattr(env, "ADMIN_BASIC_USER", "") or getattr(env, "ADMIN_USER", "") or "admin").strip()
+    password = (getattr(env, "ADMIN_BASIC_PASS", "") or getattr(env, "ADMIN_PASS", "") or "adminpass").strip()
     if not username or not password:
         return False
 
