@@ -115,6 +115,44 @@
         </form>
       </section>
 
+      <!-- Buddy Requests -->
+      <section id="buddy-requests-card" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
+        <h2 class="text-base font-bold mb-2 flex items-center gap-2"><i class="fas fa-user-friends text-teal-500 text-sm"></i>Buddy Requests</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-5">Manage who can send you study buddy connection requests across your activities and via email.</p>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-gray-50 dark:bg-gray-700/60 rounded-xl border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-4">
+            <label for="allow_buddy_requests" class="text-sm font-semibold text-gray-900 dark:text-gray-100 cursor-pointer select-none pr-2">
+              Allow buddy reqs from the same activity peers
+            </label>
+            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 select-none">
+              <input type="checkbox" id="allow_buddy_requests" name="allow_buddy_requests" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-teal-600 transition-colors"></div>
+            </label>
+          </div>
+
+          <div class="p-4 bg-gray-50 dark:bg-gray-700/60 rounded-xl border border-gray-200 dark:border-gray-600 flex items-center justify-between gap-4">
+            <label for="allow_email_buddy_requests" class="text-sm font-semibold text-gray-900 dark:text-gray-100 cursor-pointer select-none pr-2">
+              Allow buddy requests if someone knows my email
+            </label>
+            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 select-none">
+              <input type="checkbox" id="allow_email_buddy_requests" name="allow_email_buddy_requests" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-teal-600 transition-colors"></div>
+            </label>
+          </div>
+        </div>
+        <p id="buddy-requests-status" class="text-xs text-gray-500 dark:text-gray-400 mt-2 min-h-[1rem]" role="status" aria-live="polite"></p>
+        <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200"><i class="fas fa-inbox text-indigo-500 mr-2"></i>Incoming requests</h3>
+            <a href="/dashboard" class="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">Open Dashboard</a>
+          </div>
+          <div id="incoming-buddy-requests" class="space-y-2">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Loading requests…</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Danger Zone -->
       <section id="delete-account-card" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-red-200 dark:border-red-900">
         <h2 class="text-xl font-bold text-red-700 dark:text-red-300 mb-2"><i class="fas fa-user-slash mr-2"></i>Delete Account</h2>
@@ -257,11 +295,118 @@ async function loadProfile(){
   document.getElementById('username-display').value = p.username || '';
   document.getElementById('is_teacher').checked = !!p.is_teacher;
   document.getElementById('is_profile_public').checked = !!p.is_profile_public;
+  const allowBuddyEl = document.getElementById('allow_buddy_requests');
+  if (allowBuddyEl) allowBuddyEl.checked = !!p.allow_buddy_requests;
+  const allowEmailBuddyEl = document.getElementById('allow_email_buddy_requests');
+  if (allowEmailBuddyEl) allowEmailBuddyEl.checked = !!p.allow_email_buddy_requests;
   document.getElementById('bio-count').textContent = (p.bio || '').length;
   document.getElementById('hero-name').textContent = p.name || p.username || 'My Profile';
   document.getElementById('hero-username').textContent = `@${p.username || ''}`;
   setAvatarDisplay(p.avatar_url, p.name, p.username);
   updatePublicLink();
+}
+
+async function loadIncomingBuddyRequests() {
+  const holder = document.getElementById('incoming-buddy-requests');
+  if (!holder) return;
+  try {
+    const res = await fetch('/api/peers', { headers: { Authorization: 'Bearer ' + token } });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Could not load requests');
+    const pending = (body.data && body.data.pending) || [];
+    if (!pending.length) {
+      holder.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">No pending buddy requests.</p>';
+      return;
+    }
+    holder.innerHTML = pending.map(p =>
+      '<div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">' +
+      '<div><p class="text-sm font-semibold text-gray-800 dark:text-gray-200">' + esc(p.sender_name) + '</p>' +
+      '<p class="text-xs text-gray-500 dark:text-gray-400">' + esc(p.activity_title || 'Direct connection') + '</p></div>' +
+      '<div class="flex gap-1.5"><button type="button" data-buddy-id="' + esc(p.id) + '" data-buddy-action="accept" class="incoming-buddy-btn px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold">Accept</button>' +
+      '<button type="button" data-buddy-id="' + esc(p.id) + '" data-buddy-action="decline" class="incoming-buddy-btn px-2.5 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-semibold">Decline</button></div></div>'
+    ).join('');
+    holder.querySelectorAll('.incoming-buddy-btn').forEach(btn => btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        const response = await fetch('/api/peers/' + encodeURIComponent(btn.dataset.buddyId) + '/respond', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ action: btn.dataset.buddyAction })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not update request');
+        await loadIncomingBuddyRequests();
+      } catch (error) {
+        btn.disabled = false;
+        flash(error.message, 'error');
+      }
+    }));
+  } catch (error) {
+    holder.innerHTML = '<p class="text-xs text-red-600 dark:text-red-400">' + esc(error.message) + '</p>';
+  }
+}
+
+const buddyToggle = document.getElementById('allow_buddy_requests');
+if (buddyToggle) {
+  buddyToggle.addEventListener('change', async function () {
+    const status = document.getElementById('buddy-requests-status');
+    const checked = this.checked;
+    if (status) status.textContent = 'Saving preference...';
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ allow_buddy_requests: checked })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update preference');
+      if (status) status.textContent = checked ? 'Activity buddy requests enabled.' : 'Activity buddy requests disabled.';
+      flash(checked ? 'Activity buddy requests enabled.' : 'Activity buddy requests disabled.');
+      setTimeout(() => {
+        if (status && (status.textContent.includes('requests enabled.') || status.textContent.includes('requests disabled.'))) {
+          status.textContent = '';
+        }
+      }, 3000);
+    } catch (err) {
+      this.checked = !checked;
+      if (status) status.textContent = err.message;
+      flash(err.message, 'error');
+    }
+  });
+}
+
+const emailBuddyToggle = document.getElementById('allow_email_buddy_requests');
+if (emailBuddyToggle) {
+  emailBuddyToggle.addEventListener('change', async function () {
+    const status = document.getElementById('buddy-requests-status');
+    const checked = this.checked;
+    if (status) status.textContent = 'Saving preference...';
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ allow_email_buddy_requests: checked })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update preference');
+      if (status) status.textContent = checked ? 'Email buddy requests enabled.' : 'Email buddy requests disabled.';
+      flash(checked ? 'Email buddy requests enabled.' : 'Email buddy requests disabled.');
+      setTimeout(() => {
+        if (status && (status.textContent.includes('requests enabled.') || status.textContent.includes('requests disabled.'))) {
+          status.textContent = '';
+        }
+      }, 3000);
+    } catch (err) {
+      this.checked = !checked;
+      if (status) status.textContent = err.message;
+      flash(err.message, 'error');
+    }
+  });
 }
 
 document.getElementById('profile-form').addEventListener('submit', async e => {
@@ -271,6 +416,8 @@ document.getElementById('profile-form').addEventListener('submit', async e => {
   const body = Object.fromEntries(new FormData(e.currentTarget).entries());
   body.is_teacher = document.getElementById('is_teacher').checked;
   body.is_profile_public = document.getElementById('is_profile_public').checked;
+  const buddyInput = document.getElementById('allow_buddy_requests');
+  if (buddyInput) body.allow_buddy_requests = buddyInput.checked;
   try {
     const res = await fetch('/api/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+token }, body: JSON.stringify(body) });
     const data = await res.json();
@@ -582,6 +729,7 @@ document.getElementById('bio').addEventListener('input', function () {
 });
 
 loadProfile().catch(err => { document.getElementById('profile-status').textContent = err.message; flash(err.message, 'error'); });
+loadIncomingBuddyRequests();
 loadDashboardStats();
 </script>
 {% endblock %}

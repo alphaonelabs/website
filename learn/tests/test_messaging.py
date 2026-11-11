@@ -80,8 +80,10 @@ class TestMessagingEndpoints:
         token = _make_token(uid="usr-1")
         threads_rows = [MockRow(id="th-1", from_user_id="usr-1", to_user_id="usr-2", created_at="2026-01-01", source="email", activity_id=None)]
         other_user = MockRow(id="usr-2", name="Bob Martinez", username="bob")
+        buddy_row = MockRow(sender_id="usr-1", recipient_id="usr-2")
         env = make_env(db=MockDB([
             make_stmt(all_results=threads_rows),
+            make_stmt(all_results=[buddy_row]), # peer_connections query
             make_stmt(all_results=[other_user]),
             make_stmt(first=None),  # unread check
         ]))
@@ -94,9 +96,12 @@ class TestMessagingEndpoints:
     async def test_send_thread_message(self):
         token = _make_token(uid="usr-1")
         thread_row = MockRow(id="th-1", from_user_id="usr-1", to_user_id="usr-2", status="accepted")
+        buddy_row = MockRow(id="conn-1")
         env = make_env(db=MockDB([
             make_stmt(first=thread_row),  # SELECT thread
+            make_stmt(first=buddy_row),   # SELECT peer_connections check
             make_stmt(),                   # INSERT legacy_records
+            make_stmt(first=None),         # SELECT sender display name
             make_stmt(),                   # notification
         ]))
         r = await worker.api_send_thread_message(
@@ -106,4 +111,38 @@ class TestMessagingEndpoints:
         assert r.status == 200
         data = _parse(r)
         assert data["data"]["content"] == "Hello!"
+
+    async def test_send_thread_message_blocked_when_not_buddies(self):
+        token = _make_token(uid="usr-1")
+        thread_row = MockRow(id="th-1", from_user_id="usr-1", to_user_id="usr-2", status="accepted")
+        env = make_env(db=MockDB([
+            make_stmt(first=thread_row),  # SELECT thread
+            make_stmt(first=None),        # SELECT peer_connections check (not buddies)
+        ]))
+        r = await worker.api_send_thread_message(
+            self._req("POST", "/api/messages/threads/th-1/send", {"message": "Hello!"}, token=token),
+            env, "th-1"
+        )
+        assert r.status == 403
+        data = _parse(r)
+        assert "study buddies" in data["error"]
+
+    async def test_activity_message_blocked_when_not_buddies(self):
+        token = _make_token(uid="usr-1")
+        act_row = MockRow(id="act-1", host_id="usr-host")
+        enroll_row = MockRow(id="enr-1")
+        env = make_env(db=MockDB([
+            make_stmt(first=act_row),       # act lookup
+            make_stmt(first=enroll_row),   # sender enrolled
+            make_stmt(first=enroll_row),   # target enrolled
+            make_stmt(first=None),         # peer_connections check (not buddies)
+        ]))
+        r = await worker.api_send_activity_message_request(
+            self._req("POST", "/api/activities/act-1/message/usr-2", token=token),
+            env, "act-1", "usr-2"
+        )
+        assert r.status == 403
+        data = _parse(r)
+        assert "study buddies" in data["error"]
+
 
