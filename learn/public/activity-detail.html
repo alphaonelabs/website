@@ -143,12 +143,31 @@
 
         <!-- Activity Messaging & Participant Contacts -->
         <section id="activity-contacts-card" class="hidden a1s-panel p-5 md:p-6">
-          <h2 class="a1s-h2 mb-2">Participant messaging</h2>
+          <h2 class="a1s-h2 mb-2 flex items-center">
+            <i class="fa-solid fa-comments text-teal-500 mr-2"></i>Participant messaging
+          </h2>
           <p class="text-sm a1s-muted mb-4">
             Connect directly with the creator and fellow participants of this activity.
           </p>
           <div id="activity-contacts-list" class="space-y-3">
             <div class="text-sm a1s-muted italic">Loading contacts...</div>
+          </div>
+          <!-- Add Buddy by Email -->
+          <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-2">
+              <i class="fa-solid fa-envelope text-teal-500"></i>Add Buddy by Email
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Know someone's email? Send them a buddy request directly.</p>
+            <form id="add-peer-email-form" class="space-y-1">
+              <label for="peer-email-input" class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Friend's email address</label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input type="email" id="peer-email-input" required placeholder="Enter exact email address..." class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                <button type="submit" id="peer-email-submit-btn" class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition shadow-sm">
+                  <i class="fa-solid fa-paper-plane text-xs"></i><span>Send</span>
+                </button>
+              </div>
+            </form>
+            <p id="peer-email-feedback" class="text-xs text-gray-500 dark:text-gray-400 mt-1.5 min-h-[1rem]" role="status" aria-live="polite"></p>
           </div>
         </section>
 
@@ -707,23 +726,104 @@
         return;
       }
 
+      const activityId = data.activity.id;
+      const peerStatuses = {};
+      for (const c of contacts) {
+        try {
+          const ps = await fetch('/api/peers/status/' + encodeURIComponent(c.user_id), {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const psBody = await ps.json();
+          if (ps.ok && psBody.data) peerStatuses[c.user_id] = psBody.data;
+        } catch (_) {}
+      }
+
       list.innerHTML = contacts.map(c => {
+        const ps = peerStatuses[c.user_id];
+        const isBuddy = ps && ps.status === 'accepted';
+
         let actionBtn = '';
-        if (c.thread_status === 'accepted') {
-          actionBtn = '<a href="/messages" class="a1-btn a1-btn--sm"><i class="fa-solid fa-comments" aria-hidden="true"></i>View conversation</a>';
-        } else if (c.thread_status === 'pending') {
-          actionBtn = '<span class="a1-tag"><i class="fa-solid fa-clock" aria-hidden="true"></i>Request pending</span>';
+        if (isBuddy) {
+          if (c.thread_status === 'accepted') {
+            actionBtn = '<a href="/messages" class="a1-btn a1-btn--sm"><i class="fa-solid fa-comments" aria-hidden="true"></i>View conversation</a>';
+          } else if (c.thread_status === 'pending') {
+            actionBtn = '<span class="a1-tag"><i class="fa-solid fa-clock" aria-hidden="true"></i>Request pending</span>';
+          } else {
+            actionBtn = '<button type="button" data-user-id="' + esc(c.user_id) + '" class="act-msg-btn a1-btn a1-btn--sm a1-btn--primary"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>Message</button>';
+          }
+        }
+
+        let peerBtn = '';
+        const allowsBuddy = (ps && typeof ps.allow_buddy_requests === 'boolean')
+          ? ps.allow_buddy_requests
+          : (typeof c.allow_buddy_requests === 'boolean' ? c.allow_buddy_requests : false);
+
+        if (isBuddy) {
+          peerBtn = '<span class="a1-tag" style="background-color: #d1fae5; color: #065f46;"><i class="fa-solid fa-user-group mr-1.5" aria-hidden="true"></i>Connected</span>';
+        } else if (ps && ps.status === 'pending') {
+          if (ps.is_sender) {
+            peerBtn = '<span class="a1-tag"><i class="fa-solid fa-clock mr-1.5" aria-hidden="true"></i>Pending</span>';
+          } else {
+            peerBtn = '<button type="button" data-conn-id="' + esc(ps.connection_id) + '" data-action="accept" class="peer-detail-respond-btn a1-btn a1-btn--sm a1-btn--primary mr-1"><i class="fa-solid fa-check mr-1"></i>Accept</button>' +
+                      '<button type="button" data-conn-id="' + esc(ps.connection_id) + '" data-action="decline" class="peer-detail-respond-btn a1-btn a1-btn--sm"><i class="fa-solid fa-times mr-1"></i>Decline</button>';
+          }
+        } else if (allowsBuddy) {
+          peerBtn = '<button type="button" data-user-id="' + esc(c.user_id) + '" class="peer-connect-btn a1-btn a1-btn--sm a1-btn--primary"><i class="fa-solid fa-user-plus mr-1.5"></i>Study Buddy</button>';
         } else {
-          actionBtn = '<button type="button" data-user-id="' + esc(c.user_id) + '" class="act-msg-btn a1-btn a1-btn--sm a1-btn--primary"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>Message</button>';
+          peerBtn = '';
         }
 
         return '<div class="flex items-center justify-between gap-3 p-3 a1s-panel">' +
           '<div><div class="text-sm font-bold">' + esc(c.display_name) + '</div></div>' +
-          '<div>' + actionBtn + '</div>' +
+          '<div class="flex items-center gap-2">' + peerBtn + actionBtn + '</div>' +
           '</div>';
       }).join('');
 
       card.classList.remove('hidden');
+
+      list.querySelectorAll('.peer-detail-respond-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const connId = btn.getAttribute('data-conn-id');
+          const action = btn.getAttribute('data-action');
+          btn.disabled = true;
+          try {
+            const r = await fetch('/api/peers/' + encodeURIComponent(connId) + '/respond', {
+              method: 'PATCH',
+              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action })
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || 'Failed');
+            loadActivityContacts(data);
+          } catch (e) {
+            alert(e.message);
+            btn.disabled = false;
+          }
+        });
+      });
+
+      list.querySelectorAll('.peer-connect-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const targetId = btn.getAttribute('data-user-id');
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Sending...';
+          try {
+            const pRes = await fetch('/api/peers/request', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ recipient_id: targetId, activity_id: activityId })
+            });
+            const pData = await pRes.json();
+            if (!pRes.ok) throw new Error(pData.error || 'Could not send request');
+            btn.innerHTML = '<i class="fa-solid fa-clock mr-1.5"></i>Pending';
+            btn.className = 'inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200';
+          } catch (e) {
+            alert(e.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-user-plus mr-1.5"></i>Study Buddy';
+          }
+        });
+      });
 
       list.querySelectorAll('.act-msg-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -752,6 +852,51 @@
           }
         });
       });
+
+      // Email buddy request form handler
+      const emailForm = document.getElementById('add-peer-email-form');
+      if (emailForm) {
+        emailForm.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const input = document.getElementById('peer-email-input');
+          const feedback = document.getElementById('peer-email-feedback');
+          const btn = document.getElementById('peer-email-submit-btn');
+          const email = (input ? input.value : '').trim();
+          if (!email) return;
+
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Sending...';
+          if (feedback) feedback.textContent = 'Sending request...';
+
+          try {
+            const r = await fetch('/api/peers/request', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+            });
+            const d = await r.json();
+            if (!r.ok) {
+              throw new Error(d.error || d.message || 'Failed to send buddy request');
+            }
+            const msg = d.data && d.data.sent
+              ? 'Buddy request sent. Recipient can accept it from Dashboard or Profile.'
+              : (d.message || 'We will send a request if that user exists');
+            if (feedback) {
+              feedback.className = 'text-xs text-teal-600 dark:text-teal-400 mt-1.5 font-medium';
+              feedback.textContent = msg;
+            }
+            if (input) input.value = '';
+          } catch (fetchErr) {
+            if (feedback) {
+              feedback.className = 'text-xs text-red-600 dark:text-red-400 mt-1.5 font-medium';
+              feedback.textContent = fetchErr.message || 'We will send a request if that user exists';
+            }
+          } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i><span>Send</span>';
+          }
+        });
+      }
     } catch (err) {
       card.classList.add('hidden');
     }

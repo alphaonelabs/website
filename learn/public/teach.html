@@ -256,6 +256,7 @@
                     </h2>
                     <span id="hosted-count" class="text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 rounded-full font-semibold">0 activities</span>
                 </div>
+                <div id="hosted-act-err" role="alert" aria-live="assertive" class="hidden p-3 mx-6 mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm"></div>
                 <div id="hosted-list" class="divide-y divide-gray-200 dark:divide-gray-700">
                     <div class="p-8 text-center text-gray-500 dark:text-gray-400">
                         <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
@@ -276,7 +277,9 @@ function esc(s) {
     return String(s || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function logout() {
@@ -314,6 +317,16 @@ function showMsg(id, msg, isErr) {
     el.textContent = msg;
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+function showHostedMsg(msg, isErr = false) {
+    const el = document.getElementById('hosted-act-err');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = isErr
+        ? 'p-3 mx-6 mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm'
+        : 'p-3 mx-6 mt-4 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800 rounded-lg text-teal-700 dark:text-teal-300 text-sm';
+    el.classList.remove('hidden');
 }
 
 function activityUrl(a) {
@@ -360,9 +373,11 @@ async function loadHostedActivities() {
             const opt = sel.querySelector(`option[value="${esc(preselect)}"]`);
             if (opt) opt.selected = true;
         }
+        return true;
     } catch (err) {
         console.error('Error loading activities:', err);
         showMsg('act-err', 'Failed to load your activities', true);
+        return false;
     }
 }
 
@@ -421,10 +436,45 @@ function renderActivityList() {
                     <a href="/teach?activity_id=${esc(a.id)}" class="text-xs font-semibold text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors">
                         <i class="fas fa-sliders-h mr-1"></i>Manage
                     </a>
+                    <button type="button" data-delete-activity-id="${esc(a.id)}" data-delete-activity-title="${esc(a.title)}" class="delete-activity-btn text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <i class="fas fa-trash-alt mr-1"></i>Delete
+                    </button>
                 </div>
             </div>
         `;
     }).join('');
+
+    list.querySelectorAll('.delete-activity-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const activityId = btn.dataset.deleteActivityId;
+            const title = btn.dataset.deleteActivityTitle || 'this activity';
+            if (!confirm(`Delete "${title}"? This removes its sessions, enrollments, participant certificates, activity materials, and buddy records. Conversations will become inaccessible.`)) return;
+
+            const errContainer = document.getElementById('hosted-act-err');
+            if (errContainer) errContainer.classList.add('hidden');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Deleting...';
+            try {
+                const res = await fetch(`${API}/api/activities/${encodeURIComponent(activityId)}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Could not delete activity');
+                const refreshed = await loadHostedActivities();
+                if (refreshed === false) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash-alt mr-1"></i>Delete';
+                    showHostedMsg('Activity was deleted, but the list could not be refreshed. Please reload the page.', true);
+                }
+            } catch (err) {
+                showHostedMsg(err.message, true);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash-alt mr-1"></i>Delete';
+            }
+        });
+    });
 }
 
 // Form: Create Activity

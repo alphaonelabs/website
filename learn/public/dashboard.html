@@ -156,6 +156,9 @@
       <!-- JOINED ACTIVITIES SECTION -->
       <div id="joined-section"></div>
 
+      <!-- STUDY BUDDY CONNECTIONS SECTION -->
+      <div id="peers-section"></div>
+
     </div>
   </main>
 <script>
@@ -441,9 +444,145 @@ function renderDashboard(data) {
     document.getElementById('joined-section').innerHTML = joinedHtml;
 }
 
+async function loadPeerConnections() {
+    if (!token) return;
+    const container = document.getElementById('peers-section');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/peers', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const body = await res.json();
+        if (!res.ok) return;
+
+        const conns = (body.data && body.data.connections) || [];
+        const pending = (body.data && body.data.pending) || [];
+
+        if (!conns.length && !pending.length) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = `
+        <section class="mb-14">
+            <div class="relative flex py-5 items-center mb-6">
+                <div class="flex-grow border-t-2 border-indigo-200 dark:border-indigo-800"></div>
+                <div class="flex-shrink mx-4 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 dark:from-indigo-500 dark:to-purple-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-user-group text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">Study Buddies</span>
+                </div>
+                <div class="flex-grow border-t-2 border-indigo-200 dark:border-indigo-800"></div>
+            </div>
+`;
+
+
+        if (pending.length) {
+            html += '<div class="mb-6"><h3 class="text-sm font-bold text-yellow-700 dark:text-yellow-300 mb-3"><i class="fas fa-bell mr-2"></i>Pending Requests</h3><div class="space-y-3">';
+            pending.forEach(p => {
+                html += `
+                <div class="flex items-center justify-between p-4 rounded-xl border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
+                    <div>
+                        <div class="font-bold text-gray-800 dark:text-gray-200">${esc(p.sender_name)}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">via ${esc(p.activity_title)}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button data-conn-id="${esc(p.id)}" data-action="accept" class="peer-action-btn inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"><i class="fas fa-check mr-1"></i>Accept</button>
+                        <button data-conn-id="${esc(p.id)}" data-action="decline" class="peer-action-btn inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-200 hover:bg-gray-400 transition"><i class="fas fa-times mr-1"></i>Decline</button>
+                    </div>
+                </div>`;
+            });
+            html += '</div></div>';
+        }
+
+        if (conns.length) {
+            html += '<div class="activity-grid">';
+            conns.forEach(c => {
+                html += `
+                <div class="rounded-2xl p-5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md card-hover flex flex-col justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${esc(c.display_name.charAt(0).toUpperCase())}</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-gray-800 dark:text-gray-200 truncate">${esc(c.display_name)}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">via ${esc(c.activity_title)}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 w-fit"><i class="fas fa-link mr-1.5"></i>Connected</span>
+                        <div class="flex items-center gap-2">
+                            <a href="${c.thread_id ? `/messages?thread_id=${encodeURIComponent(c.thread_id)}` : '/messages'}" class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-900/20 border border-transparent hover:border-teal-200 dark:hover:border-teal-800 transition" title="Chat with study buddy">
+                                <i class="fas fa-comment-dots text-xs"></i><span>Chat</span>
+                            </a>
+                            <button type="button" data-conn-id="${esc(c.id)}" data-peer-name="${esc(c.display_name)}" class="peer-delete-btn inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition" title="Delete study buddy">
+                                <i class="fas fa-trash-alt text-xs"></i><span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        html += '</section>';
+        container.innerHTML = html;
+
+
+
+
+        container.querySelectorAll('.peer-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const connId = btn.getAttribute('data-conn-id');
+                const name = btn.getAttribute('data-peer-name') || 'this buddy';
+                if (!confirm(`Delete ${name} from your study buddies?`)) return;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Deleting...';
+                try {
+                    const r = await fetch('/api/peers/' + encodeURIComponent(connId), {
+                        method: 'DELETE',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const d = await r.json();
+                    if (!r.ok) throw new Error(d.error || 'Failed to delete study buddy');
+                    loadPeerConnections();
+                } catch (e) {
+                    alert(e.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash-alt text-xs"></i> Delete';
+                }
+            });
+        });
+
+        container.querySelectorAll('.peer-action-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const connId = btn.getAttribute('data-conn-id');
+                const action = btn.getAttribute('data-action');
+                btn.disabled = true;
+                btn.textContent = action === 'accept' ? 'Accepting...' : 'Declining...';
+                try {
+                    const r = await fetch('/api/peers/' + encodeURIComponent(connId) + '/respond', {
+                        method: 'PATCH',
+                        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action })
+                    });
+                    const d = await r.json();
+                    if (!r.ok) throw new Error(d.error || 'Failed');
+                    loadPeerConnections();
+                } catch (e) {
+                    alert(e.message);
+                    btn.disabled = false;
+                    btn.textContent = action === 'accept' ? 'Accept' : 'Decline';
+                }
+            });
+        });
+    } catch (_) {}
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
+    loadPeerConnections();
 });
   </script>
 {% endblock %}

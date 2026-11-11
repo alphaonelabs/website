@@ -146,6 +146,15 @@
           openChat(threadId, name);
         });
       });
+
+      const qParams = new URLSearchParams(window.location.search);
+      const targetThreadId = qParams.get('thread_id');
+      if (targetThreadId && !activeThreadId) {
+        const found = threads.find(function (t) { return t.id === targetThreadId; });
+        if (found) {
+          openChat(found.id, found.other_user_name);
+        }
+      }
     } catch (err) {
       listEl.innerHTML = '<div class="text-xs text-red-500">' + esc(err.message) + '</div>';
     }

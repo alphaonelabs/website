@@ -108,6 +108,14 @@ class TestGetProfile:
         assert d["github_username"] == "alice-gh"
         assert d["is_teacher"]      is False
         assert d["is_profile_public"] is False
+        assert d["allow_buddy_requests"] is False
+
+    async def test_returns_allow_buddy_requests_true(self):
+        row = _profile_row(allow_buddy_requests=1)
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt(first=row)]))
+        r   = await worker.api_profile(self._req(), env)
+        d   = _parse(r)["profile"]
+        assert d["allow_buddy_requests"] is True
 
     async def test_null_optional_fields_return_empty_string(self):
         row = _profile_row()
@@ -156,6 +164,12 @@ class TestPatchProfile:
             self._req({"is_teacher": True, "is_profile_public": False}), env
         )
         assert r.status == 200
+
+    async def test_patch_allow_buddy_requests_standalone(self):
+        env = make_env(db=MockDB([*_ensure_profile_stmts(), make_stmt()]))
+        r   = await worker.api_profile(self._req({"allow_buddy_requests": True}), env)
+        assert r.status == 200
+        assert _parse(r)["success"] is True
 
 
 # ---------------------------------------------------------------------------

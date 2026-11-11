@@ -216,6 +216,7 @@ class TestApiCreateActivity:
         r = await worker.api_create_activity(self._req({"description": "no title"}, token), env)
         assert r.status == 400
 
+
     async def test_successful_creation(self):
         token = _make_host_token()
         env = make_env(db=MockDB([make_stmt()]))  # INSERT run()
@@ -304,6 +305,37 @@ class TestApiCreateActivity:
                           body="not-json")
         r = await worker.api_create_activity(req, make_env())
         assert r.status == 400
+
+
+class TestApiDeleteActivity:
+    def _req(self, activity_id="act-1", token=None):
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return MockRequest(method="DELETE", url=f"http://localhost/api/activities/{activity_id}", headers=headers)
+
+    async def test_delete_requires_host(self):
+        token = _make_host_token(uid="member-1")
+        env = make_env(db=MockDB([make_stmt(first=MockRow(id="act-1", host_id="host-1"))]))
+        r = await worker.api_delete_activity("act-1", self._req(token=token), env)
+        assert r.status == 403
+
+    async def test_delete_host_cleans_activity(self):
+        token = _make_host_token(uid="host-1")
+        cleanup_stmts = [make_stmt() for _ in range(12)]
+        db = MockDB([
+            make_stmt(first=MockRow(id="act-1", host_id="host-1")),
+            *cleanup_stmts,
+        ])
+        env = make_env(db=db)
+        r = await worker.api_delete_activity("act-1", self._req(token=token), env)
+        assert r.status == 200
+        assert _parse(r)["data"]["deleted"] is True
+        for s in cleanup_stmts[:-1]:
+            s.bind.assert_called_with("act-1")
+            s.bind.return_value.run.assert_awaited_once()
+        cleanup_stmts[-1].bind.assert_called_with("act-1", "host-1")
+        cleanup_stmts[-1].bind.return_value.run.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

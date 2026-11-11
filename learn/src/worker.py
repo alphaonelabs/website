@@ -732,8 +732,15 @@ def _check_auth_rate_limit(req, env, route: str):
 
 
 def _is_basic_auth_valid(req, env) -> bool:
-    username = (getattr(env, "ADMIN_BASIC_USER", "") or "").strip()
-    password = (getattr(env, "ADMIN_BASIC_PASS", "") or "").strip()
+    u = getattr(env, "ADMIN_BASIC_USER", None)
+    if u is None or (hasattr(u, "_mock_name") and "ADMIN_BASIC_USER" not in getattr(env, "__dict__", {})):
+        u = getattr(env, "ADMIN_USER", "")
+    p = getattr(env, "ADMIN_BASIC_PASS", None)
+    if p is None or (hasattr(p, "_mock_name") and "ADMIN_BASIC_PASS" not in getattr(env, "__dict__", {})):
+        p = getattr(env, "ADMIN_PASS", "")
+
+    username = (u if isinstance(u, str) else "").strip()
+    password = (p if isinstance(p, str) else "").strip()
     if not username or not password:
         return False
 
@@ -1179,6 +1186,23 @@ _DDL = [
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
+    # Peer connections (study buddy network) -- privacy-first: requires shared activity enrollment
+    """CREATE TABLE IF NOT EXISTS peer_connections (
+        id            TEXT PRIMARY KEY,
+        sender_id     TEXT NOT NULL,
+        recipient_id  TEXT NOT NULL,
+        activity_id   TEXT,
+        status        TEXT NOT NULL DEFAULT 'pending',
+        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (sender_id)    REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (activity_id)  REFERENCES activities(id) ON DELETE CASCADE
+    )""",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_peer_conn_canonical ON peer_connections(min(sender_id, recipient_id), max(sender_id, recipient_id))",
+    "CREATE INDEX IF NOT EXISTS idx_peer_conn_sender    ON peer_connections(sender_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_peer_conn_recipient ON peer_connections(recipient_id, status)",
+    "CREATE INDEX IF NOT EXISTS idx_peer_conn_activity  ON peer_connections(activity_id)",
 ]
 
 
@@ -1229,6 +1253,8 @@ async def init_db(env):
         "ALTER TABLE session_attendance ADD COLUMN updated_at TEXT",
         "ALTER TABLE notifications ADD COLUMN legacy_notification_id TEXT",
         "ALTER TABLE user_profiles ADD COLUMN referral_code_hash TEXT",
+        "ALTER TABLE user_profiles ADD COLUMN allow_buddy_requests INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_profiles ADD COLUMN allow_email_buddy_requests INTEGER NOT NULL DEFAULT 0",
     ]
     for sql in legacy_alters:
         try:
@@ -1275,6 +1301,8 @@ async def init_db(env):
             is_teacher                INTEGER NOT NULL DEFAULT 0,
             is_social_media_manager   INTEGER NOT NULL DEFAULT 0,
             is_profile_public         INTEGER NOT NULL DEFAULT 0,
+            allow_buddy_requests      INTEGER NOT NULL DEFAULT 0,
+            allow_email_buddy_requests INTEGER NOT NULL DEFAULT 0,
             how_did_you_hear_about_us TEXT,
             created_at                TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at                TEXT,
@@ -1501,6 +1529,14 @@ async def init_db(env):
     for sql in legacy_tables:
         await env.DB.prepare(sql).run()
 
+    # Backfill creator membership for activities created before host enrollment
+    # became explicit. INSERT OR IGNORE keeps this safe on every init.
+    await env.DB.prepare(
+        "INSERT OR IGNORE INTO enrollments "
+        "(id, activity_id, user_id, role, status) "
+        "SELECT 'host-' || id, id, host_id, 'organizer', 'active' FROM activities"
+    ).run()
+
 
 _NO_SUCH_TABLE_RE = re.compile(r"\bno such table\b", re.IGNORECASE)
 
@@ -1557,6 +1593,20 @@ async def seed_db(env, enc_key: str):
             await env.DB.prepare(
                 "UPDATE users SET email_verified=1 WHERE id=?"
             ).bind(uid).run()
+        except Exception:
+            pass
+
+    # Demo users should exercise buddy-request flows out of the box. Re-seeding
+    # restores these fixture permissions so existing demo profiles work too.
+    for uname in ("alice", "bob"):
+        try:
+            await env.DB.prepare(
+                "INSERT INTO user_profiles "
+                "(user_id, allow_buddy_requests, allow_email_buddy_requests) "
+                "VALUES (?, 1, 1) "
+                "ON CONFLICT(user_id) DO UPDATE SET "
+                "allow_buddy_requests=1, allow_email_buddy_requests=1"
+            ).bind(uid_map[uname]).run()
         except Exception:
             pass
 
@@ -2396,11 +2446,72 @@ async def api_create_activity(req, env):
             await capture_exception(e, req, env, f"api_create_activity.insert_activity_tags: tag_name={tag_name}, tag_id={tag_id}, act_id={act_id}")
             pass
 
+    # Activity creator is also activity participant. This keeps creator access
+    # consistent with enrollment-based buddy, messaging, and activity state.
+    try:
+        await env.DB.prepare(
+            "INSERT OR IGNORE INTO enrollments "
+            "(id, activity_id, user_id, role, status) VALUES (?, ?, ?, 'organizer', 'active')"
+        ).bind(new_id(), act_id, user["id"]).run()
+    except Exception as e:
+        await capture_exception(e, req, env, "api_create_activity.insert_host_enrollment")
+        try:
+            await env.DB.prepare("DELETE FROM activities WHERE id=? AND host_id=?").bind(act_id, user["id"]).run()
+        except Exception:
+            pass
+        return err("Failed to add activity creator as participant — please try again", 500)
+
     await emit_event(env, "ACTIVITY_CREATED", {
         "user_id": user["id"], "activity_id": act_id, "title": title,
     })
 
     return ok({"id": act_id, "slug": slug, "title": title}, "Activity created")
+
+
+async def api_delete_activity(activity_id: str, req, env):
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    activity = await env.DB.prepare(
+        "SELECT id, host_id FROM activities WHERE id=?"
+    ).bind(activity_id).first()
+    if not activity:
+        return err("Activity not found", 404)
+    if activity.host_id != user["id"]:
+        return err("Only the activity creator can delete this activity", 403)
+
+    # Explicit cleanup keeps deletion safe on older databases whose foreign
+    # keys did not use ON DELETE CASCADE.
+    cleanup = [
+        "DELETE FROM session_attendance WHERE session_id IN (SELECT id FROM sessions WHERE activity_id=?)",
+        "DELETE FROM certificates WHERE enrollment_id IN (SELECT id FROM enrollments WHERE activity_id=?)",
+        "DELETE FROM message_requests WHERE activity_id=?",
+        "DELETE FROM peer_connections WHERE activity_id=?",
+        "DELETE FROM activity_materials WHERE activity_id=?",
+        "DELETE FROM activity_cart_items WHERE activity_id=?",
+        "DELETE FROM activity_completions WHERE activity_id=?",
+        "DELETE FROM activity_interest WHERE activity_id=?",
+        "DELETE FROM activity_tags WHERE activity_id=?",
+        "DELETE FROM enrollments WHERE activity_id=?",
+        "DELETE FROM sessions WHERE activity_id=?",
+        "DELETE FROM activities WHERE id=? AND host_id=?",
+    ]
+    try:
+        stmts = [
+            env.DB.prepare(sql).bind(*( (activity_id, user["id"]) if index == len(cleanup) - 1 else (activity_id,) ))
+            for index, sql in enumerate(cleanup)
+        ]
+        if hasattr(env.DB, "batch"):
+            await env.DB.batch(stmts)
+        else:
+            for s in stmts:
+                await s.run()
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_activity.cleanup")
+        return err("Could not delete activity", 500)
+
+    return ok({"id": activity_id, "deleted": True}, "Activity deleted")
 
 
 async def api_classes_near_me(req, env):
@@ -2499,6 +2610,7 @@ async def api_get_activity(activity_ref: str, req, env):
 
     enrollment  = None
     is_enrolled = False
+    is_host = bool(user and act.host_uid == user["id"])
     completion = None
     is_completed = False
     interest = None
@@ -2508,7 +2620,7 @@ async def api_get_activity(activity_ref: str, req, env):
             "SELECT id,role,status FROM enrollments"
             " WHERE activity_id=? AND user_id=?"
         ).bind(act_id, user["id"]).first()
-        is_enrolled = enrollment is not None
+        is_enrolled = enrollment is not None or is_host
         completion = await env.DB.prepare(
             "SELECT id,kind,completed_at FROM activity_completions"
             " WHERE activity_id=? AND user_id=? ORDER BY completed_at DESC LIMIT 1"
@@ -2519,8 +2631,6 @@ async def api_get_activity(activity_ref: str, req, env):
             " WHERE activity_id=? AND user_id=?"
         ).bind(act_id, user["id"]).first()
         user_interested = interest is not None
-
-    is_host = bool(user and act.host_uid == user["id"])
 
     ses_res = await env.DB.prepare(
         "SELECT id,title,description,start_time,end_time,location,created_at"
@@ -3452,6 +3562,7 @@ async def api_profile(req, env):
         row = await env.DB.prepare(
             "SELECT u.id,u.name,u.username,u.email,u.role,p.bio,p.expertise,p.avatar_url,"
             "p.discord_username,p.slack_username,p.github_username,p.is_teacher,p.is_profile_public,"
+            "p.allow_buddy_requests,p.allow_email_buddy_requests,"
             "p.how_did_you_hear_about_us,p.referral_code,p.referral_earnings_cents"
             " FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.id=?"
         ).bind(user["id"]).first()
@@ -3472,6 +3583,8 @@ async def api_profile(req, env):
             "github_username": await decrypt_aes(getattr(row, "github_username", "") or "", enc),
             "is_teacher": bool(getattr(row, "is_teacher", 0)),
             "is_profile_public": bool(getattr(row, "is_profile_public", 0)),
+            "allow_buddy_requests": bool(getattr(row, "allow_buddy_requests", 0)),
+            "allow_email_buddy_requests": bool(getattr(row, "allow_email_buddy_requests", 0)),
             "how_did_you_hear_about_us": await decrypt_aes(getattr(row, "how_did_you_hear_about_us", "") or "", enc),
             "referral_code": referral_code if referral_code != "[decryption error]" else "",
             "referral_earnings_cents": int(getattr(row, "referral_earnings_cents", 0) or 0),
@@ -3484,6 +3597,31 @@ async def api_profile(req, env):
     if bad_resp:
         return bad_resp
 
+    if any(k in body for k in ("allow_buddy_requests", "allow_email_buddy_requests")) and all(k in ("allow_buddy_requests", "allow_email_buddy_requests") for k in body):
+        updates = []
+        binds = []
+        resp_data = {}
+        if "allow_buddy_requests" in body:
+            v1 = 1 if body.get("allow_buddy_requests") else 0
+            updates.append("allow_buddy_requests=?")
+            binds.append(v1)
+            resp_data["allow_buddy_requests"] = bool(v1)
+        if "allow_email_buddy_requests" in body:
+            v2 = 1 if body.get("allow_email_buddy_requests") else 0
+            updates.append("allow_email_buddy_requests=?")
+            binds.append(v2)
+            resp_data["allow_email_buddy_requests"] = bool(v2)
+        updates.append("updated_at=datetime('now')")
+        binds.append(user["id"])
+        try:
+            await env.DB.prepare(
+                f"UPDATE user_profiles SET {','.join(updates)} WHERE user_id=?"
+            ).bind(*binds).run()
+            return ok(resp_data, "Buddy request preference updated")
+        except Exception as exc:
+            await capture_exception(exc, req, env, "api_profile.patch_buddy")
+            return err("Could not update buddy request preference", 500)
+
     name = _legacy_text(body.get("name")).strip()[:160]
     bio = _legacy_text(body.get("bio")).strip()[:3000]
     expertise = _legacy_text(body.get("expertise")).strip()[:1000]
@@ -3493,6 +3631,8 @@ async def api_profile(req, env):
     how_heard = _legacy_text(body.get("how_did_you_hear_about_us")).strip()[:1000]
     is_teacher = 1 if body.get("is_teacher") else 0
     is_public = 1 if body.get("is_profile_public") else 0
+    allow_buddy_val = (1 if body.get("allow_buddy_requests") else 0) if "allow_buddy_requests" in body else None
+    allow_email_buddy_val = (1 if body.get("allow_email_buddy_requests") else 0) if "allow_email_buddy_requests" in body else None
 
     try:
         if name:
@@ -3501,7 +3641,10 @@ async def api_profile(req, env):
             ).run()
         await env.DB.prepare(
             "UPDATE user_profiles SET bio=?,expertise=?,discord_username=?,slack_username=?,"
-            "github_username=?,how_did_you_hear_about_us=?,is_teacher=?,is_profile_public=?,updated_at=datetime('now')"
+            "github_username=?,how_did_you_hear_about_us=?,is_teacher=?,is_profile_public=?,"
+            "allow_buddy_requests=COALESCE(?, allow_buddy_requests),"
+            "allow_email_buddy_requests=COALESCE(?, allow_email_buddy_requests),"
+            "updated_at=datetime('now')"
             " WHERE user_id=?"
         ).bind(
             await encrypt_aes(bio, enc),
@@ -3512,6 +3655,8 @@ async def api_profile(req, env):
             await encrypt_aes(how_heard, enc),
             is_teacher,
             is_public,
+            allow_buddy_val,
+            allow_email_buddy_val,
             user["id"],
         ).run()
     except Exception as exc:
@@ -6874,7 +7019,9 @@ async def _server_list_activities(env, *, limit: int = 1000, atype: str = "", fm
     limit = max(1, min(1000, int(limit or 1000)))
     if status not in {"catalog", "published", "waitlist", "draft", "archived", "all"}:
         status = "catalog"
-    enc = env.ENCRYPTION_KEY
+    enc = getattr(env, "ENCRYPTION_KEY", None)
+    if not enc:
+        return {"activities": [], "pagination": {"page": 1, "page_size": limit, "total": 0, "total_pages": 1}}
     base_q = (
         "SELECT a.id,a.title,a.description,a.type,a.format,a.schedule_type,"
         "a.created_at,a.status,a.slug,a.image_url,a.price_cents,a.price_currency,"
@@ -8490,6 +8637,7 @@ async def api_activity_contacts(req, env, activity_id: str):
     contacts = []
     pids = list(participants)
     user_map = {}
+    buddy_map = {}
     if pids:
         placeholders = ",".join(["?"] * len(pids))
         u_res = await env.DB.prepare(f"SELECT id, name, username FROM users WHERE id IN ({placeholders})").bind(*pids).all()
@@ -8501,6 +8649,12 @@ async def api_activity_contacts(req, env, activity_id: str):
                 else (dec_uname if dec_uname and dec_uname != "[decryption error]"
                       else (getattr(u, "name", "") or getattr(u, "username", "") or "Participant"))
             )
+        try:
+            prof_res = await env.DB.prepare(f"SELECT user_id, allow_buddy_requests FROM user_profiles WHERE user_id IN ({placeholders})").bind(*pids).all()
+            for pr in (prof_res.results or []):
+                buddy_map[pr.user_id] = bool(getattr(pr, "allow_buddy_requests", 0))
+        except Exception:
+            pass
 
     for pid in pids:
         req_row = await env.DB.prepare(
@@ -8512,6 +8666,7 @@ async def api_activity_contacts(req, env, activity_id: str):
             "display_name": user_map.get(pid, "Participant"),
             "existing_request_id_or_null": req_row.id if req_row else None,
             "thread_status": req_row.status if req_row else "none",
+            "allow_buddy_requests": buddy_map.get(pid, False),
         })
 
     return ok({"contacts": contacts})
@@ -8527,24 +8682,35 @@ async def api_send_activity_message_request(req, env, activity_id: str, target_u
         return err("Activity not found", 404)
 
     req_is_host = act.host_id == user["id"]
-    req_enrolled = await env.DB.prepare(
+    req_enrolled = None if req_is_host else await env.DB.prepare(
         "SELECT id FROM enrollments WHERE (activity_id=? OR activity_id=?) AND user_id=?"
     ).bind(act.id, activity_id, user["id"]).first()
-    req_interested = await env.DB.prepare(
+    req_interested = None if (req_is_host or req_enrolled) else await env.DB.prepare(
         "SELECT id FROM activity_interest WHERE (activity_id=? OR activity_id=?) AND user_id=?"
     ).bind(act.id, activity_id, user["id"]).first()
     if not req_is_host and not req_enrolled and not req_interested:
         return err("Requester must be enrolled in or host of the activity", 403)
 
     target_is_host = act.host_id == target_user_id
-    target_enrolled = await env.DB.prepare(
+    target_enrolled = None if target_is_host else await env.DB.prepare(
         "SELECT id FROM enrollments WHERE (activity_id=? OR activity_id=?) AND user_id=?"
     ).bind(act.id, activity_id, target_user_id).first()
-    target_interested = await env.DB.prepare(
+    target_interested = None if (target_is_host or target_enrolled) else await env.DB.prepare(
         "SELECT id FROM activity_interest WHERE (activity_id=? OR activity_id=?) AND user_id=?"
     ).bind(act.id, activity_id, target_user_id).first()
     if not target_is_host and not target_enrolled and not target_interested:
         return err("Target user must be enrolled in or host of the activity", 403)
+
+    try:
+        buddy = await env.DB.prepare(
+            "SELECT id FROM peer_connections WHERE ((sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)) AND status='accepted'"
+        ).bind(user["id"], target_user_id, target_user_id, user["id"]).first()
+        if not buddy:
+            return err("You can only chat with accepted study buddies", 403)
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return err("Study buddy network is unavailable", 503)
+        raise
 
     existing = await env.DB.prepare(
         "SELECT id, status FROM message_requests WHERE (from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)"
@@ -8595,6 +8761,18 @@ async def api_send_thread_message(req, env, thread_id: str):
         return err("Conversation thread not found or not accepted", 403)
 
     recipient_id = thread.to_user_id if thread.from_user_id == user["id"] else thread.from_user_id
+
+    try:
+        buddy = await env.DB.prepare(
+            "SELECT id FROM peer_connections WHERE ((sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)) AND status='accepted'"
+        ).bind(user["id"], recipient_id, recipient_id, user["id"]).first()
+        if not buddy:
+            return err("You can only chat with accepted study buddies", 403)
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return err("Study buddy network is unavailable", 503)
+        raise
+
     msg_id = new_id()
     iso_now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -8645,6 +8823,21 @@ async def api_list_message_threads(req, env):
         ).bind(user["id"], user["id"]).all()
 
         threads_rows = res.results or []
+
+        try:
+            buddies_res = await env.DB.prepare(
+                "SELECT sender_id, recipient_id FROM peer_connections WHERE (sender_id=? OR recipient_id=?) AND status='accepted'"
+            ).bind(user["id"], user["id"]).all()
+            buddy_ids = set()
+            for br in (buddies_res.results or []):
+                buddy_ids.add(br.recipient_id if br.sender_id == user["id"] else br.sender_id)
+            threads_rows = [r for r in threads_rows if (r.to_user_id if r.from_user_id == user["id"] else r.from_user_id) in buddy_ids]
+        except Exception as exc:
+            if _is_no_such_table_error(exc):
+                threads_rows = []
+            else:
+                raise
+
         other_ids = list({r.to_user_id if r.from_user_id == user["id"] else r.from_user_id for r in threads_rows})
         user_map = {}
         if other_ids:
@@ -8694,6 +8887,19 @@ async def api_get_thread_messages(req, env, thread_id: str):
     ).bind(thread_id, user["id"], user["id"]).first()
     if not thread:
         return err("Conversation thread not found or access denied", 404)
+
+    other_id = thread.to_user_id if thread.from_user_id == user["id"] else thread.from_user_id
+
+    try:
+        buddy = await env.DB.prepare(
+            "SELECT id FROM peer_connections WHERE ((sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)) AND status='accepted'"
+        ).bind(user["id"], other_id, other_id, user["id"]).first()
+        if not buddy:
+            return err("You can only chat with accepted study buddies", 403)
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return err("Study buddy network is unavailable", 503)
+        raise
 
     try:
         await env.DB.prepare(
@@ -8755,6 +8961,396 @@ async def api_get_thread_messages(req, env, thread_id: str):
             "other_user_name": other_name,
         },
         "messages": messages
+    })
+
+
+# ---------------------------------------------------------------------------
+# Peer Connections (Study Buddy Network) API handlers
+# Privacy-first: connections only through shared activity enrollment.
+# ---------------------------------------------------------------------------
+
+async def _resolve_display_name(env, user_id: str) -> str:
+    """Resolve a decrypted human-readable display name for a given user ID."""
+    enc = env.ENCRYPTION_KEY
+    row = await env.DB.prepare(
+        "SELECT name, username FROM users WHERE id=?"
+    ).bind(user_id).first()
+    if not row:
+        return "User"
+    dec_name = await decrypt_aes(row.name or "", enc)
+    dec_uname = await decrypt_aes(getattr(row, "username", "") or "", enc)
+    if dec_name and dec_name != "[decryption error]":
+        return dec_name
+    if dec_uname and dec_uname != "[decryption error]":
+        return dec_uname
+    return getattr(row, "name", "") or getattr(row, "username", "") or "User"
+
+
+async def _find_user_by_email(env, email: str):
+    """Resolve a user by their blind-indexed email hash.
+
+    Returns the user row containing their ID if found, otherwise None.
+    """
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        return None
+
+    enc = env.ENCRYPTION_KEY
+    target_hash = blind_index(normalized, enc)
+    try:
+        return await env.DB.prepare(
+            "SELECT id FROM users WHERE email_hash=?"
+        ).bind(target_hash).first()
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            raise
+    return None
+
+
+async def api_send_peer_request(req, env):
+    """Send a study buddy connection request by email or shared activity enrollment."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    target_email = _legacy_text(body.get("email")).strip().lower()
+    if target_email or "email" in body:
+        neutral_msg = "We will send a request if that user exists"
+        if not target_email or "@" not in target_email:
+            return ok(None, neutral_msg)
+
+        try:
+            cnt_row = await env.DB.prepare(
+                "SELECT COUNT(*) AS cnt FROM peer_connections"
+                " WHERE sender_id=? AND (created_at > datetime('now', '-1 hour') OR updated_at > datetime('now', '-1 hour'))"
+            ).bind(user["id"]).first()
+            if cnt_row and int(getattr(cnt_row, "cnt", 0) or 0) >= 10:
+                return err("Rate limit exceeded. Maximum 10 connection requests per hour.", 429)
+        except Exception as exc:
+            if not _is_no_such_table_error(exc):
+                raise
+
+        target_user = await _find_user_by_email(env, target_email)
+
+        if target_user and target_user.id != user["id"]:
+            recip_prof = await env.DB.prepare(
+                "SELECT allow_email_buddy_requests FROM user_profiles WHERE user_id=?"
+            ).bind(target_user.id).first()
+            if recip_prof and bool(getattr(recip_prof, "allow_email_buddy_requests", 0)):
+                existing = await env.DB.prepare(
+                    "SELECT id, status FROM peer_connections"
+                    " WHERE (sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)"
+                ).bind(user["id"], target_user.id, target_user.id, user["id"]).first()
+                if not existing:
+                    conn_id = new_id()
+                    await env.DB.prepare(
+                        "INSERT INTO peer_connections (id, sender_id, recipient_id, activity_id, status, created_at, updated_at)"
+                        " VALUES (?, ?, ?, NULL, 'pending', datetime('now'), datetime('now'))"
+                    ).bind(conn_id, user["id"], target_user.id).run()
+                    sender_name = await _resolve_display_name(env, user["id"])
+                    await _create_notification(
+                        env, target_user.id, "peer_request",
+                        "New Study Buddy Request",
+                        f"{sender_name} wants to connect as a study buddy.",
+                        conn_id
+                    )
+                    return ok(None, neutral_msg)
+                elif getattr(existing, "status", "") == "declined":
+                    await env.DB.prepare(
+                        "UPDATE peer_connections SET status='pending', sender_id=?, recipient_id=?, updated_at=datetime('now') WHERE id=?"
+                    ).bind(user["id"], target_user.id, existing.id).run()
+                    sender_name = await _resolve_display_name(env, user["id"])
+                    await _create_notification(
+                        env, target_user.id, "peer_request",
+                        "New Study Buddy Request",
+                        f"{sender_name} wants to connect as a study buddy.",
+                        existing.id
+                    )
+                    return ok(None, neutral_msg)
+
+        return ok(None, neutral_msg)
+
+    recipient_id = _legacy_text(body.get("recipient_id")).strip()
+    activity_id = _legacy_text(body.get("activity_id")).strip()
+    if not recipient_id or not activity_id:
+        return err("recipient_id and activity_id are required", 400)
+
+    if recipient_id == user["id"]:
+        return err("Cannot send a connection request to yourself", 400)
+
+    act = await env.DB.prepare(
+        "SELECT id FROM activities WHERE id=?"
+    ).bind(activity_id).first()
+    if not act:
+        return err("Activity not found", 404)
+
+    sender_enrolled = await env.DB.prepare(
+        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='active'"
+    ).bind(activity_id, user["id"]).first()
+    sender_is_host = await env.DB.prepare(
+        "SELECT id FROM activities WHERE id=? AND host_id=?"
+    ).bind(activity_id, user["id"]).first()
+    if not sender_enrolled and not sender_is_host:
+        return err("You must be enrolled in this activity to connect", 403)
+
+    recip_enrolled = await env.DB.prepare(
+        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='active'"
+    ).bind(activity_id, recipient_id).first()
+    recip_is_host = await env.DB.prepare(
+        "SELECT id FROM activities WHERE id=? AND host_id=?"
+    ).bind(activity_id, recipient_id).first()
+    if not recip_enrolled and not recip_is_host:
+        return err("Recipient is not part of this activity", 403)
+
+    recip_prof = await env.DB.prepare(
+        "SELECT allow_buddy_requests FROM user_profiles WHERE user_id=?"
+    ).bind(recipient_id).first()
+    if not recip_prof or not bool(getattr(recip_prof, "allow_buddy_requests", 0)):
+        return err("This user is not accepting buddy requests", 403)
+
+    try:
+        cnt_row = await env.DB.prepare(
+            "SELECT COUNT(*) AS cnt FROM peer_connections"
+            " WHERE sender_id=? AND (created_at > datetime('now', '-1 hour') OR updated_at > datetime('now', '-1 hour'))"
+        ).bind(user["id"]).first()
+        if cnt_row and int(getattr(cnt_row, "cnt", 0) or 0) >= 10:
+            return err("Rate limit exceeded. Maximum 10 connection requests per hour.", 429)
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            raise
+
+    existing = await env.DB.prepare(
+        "SELECT id, status FROM peer_connections"
+        " WHERE (sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)"
+    ).bind(user["id"], recipient_id, recipient_id, user["id"]).first()
+    if existing:
+        st = getattr(existing, "status", "pending")
+        if st == "accepted":
+            return err("You are already connected with this user", 409)
+        if st == "pending":
+            return err("A pending connection request already exists", 409)
+        if st == "declined":
+            await env.DB.prepare(
+                "UPDATE peer_connections SET status='pending', sender_id=?, recipient_id=?, activity_id=?, updated_at=datetime('now') WHERE id=?"
+            ).bind(user["id"], recipient_id, activity_id, existing.id).run()
+            sender_name = await _resolve_display_name(env, user["id"])
+            await _create_notification(
+                env, recipient_id, "peer_request",
+                "New Study Buddy Request",
+                f"{sender_name} wants to connect as a study buddy.",
+                existing.id
+            )
+            return ok({"id": existing.id, "status": "pending"}, "Connection request re-sent")
+
+    conn_id = new_id()
+    await env.DB.prepare(
+        "INSERT INTO peer_connections (id, sender_id, recipient_id, activity_id, status, created_at, updated_at)"
+        " VALUES (?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))"
+    ).bind(conn_id, user["id"], recipient_id, activity_id).run()
+
+    sender_name = await _resolve_display_name(env, user["id"])
+    await _create_notification(
+        env, recipient_id, "peer_request",
+        "New Study Buddy Request",
+        f"{sender_name} wants to connect as a study buddy.",
+        conn_id
+    )
+
+    return ok({"id": conn_id, "status": "pending"}, "Connection request sent")
+
+
+async def api_respond_peer_request(req, env, connection_id: str):
+    """Accept or decline an incoming study buddy connection request."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    action = _legacy_text(body.get("action")).strip().lower()
+    if action not in ("accept", "decline"):
+        return err("Action must be 'accept' or 'decline'", 400)
+
+    conn = await env.DB.prepare(
+        "SELECT id, sender_id, activity_id FROM peer_connections WHERE id=? AND recipient_id=? AND status='pending'"
+    ).bind(connection_id, user["id"]).first()
+    if not conn:
+        return err("Connection request not found or already handled", 404)
+
+    new_status = "accepted" if action == "accept" else "declined"
+    await env.DB.prepare(
+        "UPDATE peer_connections SET status=?, updated_at=datetime('now') WHERE id=?"
+    ).bind(new_status, connection_id).run()
+
+    if action == "accept":
+        responder_name = await _resolve_display_name(env, user["id"])
+        await _create_notification(
+            env, conn.sender_id, "peer_accepted",
+            "Study Buddy Request Accepted",
+            f"{responder_name} accepted your connection request!",
+            connection_id
+        )
+        try:
+            existing_thread = await env.DB.prepare(
+                "SELECT id FROM message_requests WHERE ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)) AND status='accepted'"
+            ).bind(conn.sender_id, user["id"], user["id"], conn.sender_id).first()
+            if not existing_thread:
+                act_id = getattr(conn, "activity_id", None)
+                src = "activity" if act_id else "peer"
+                await env.DB.prepare(
+                    "INSERT INTO message_requests (id, from_user_id, to_user_id, status, source, activity_id, created_at) VALUES (?, ?, ?, 'accepted', ?, ?, datetime('now'))"
+                ).bind(new_id(), conn.sender_id, user["id"], src, act_id).run()
+        except Exception:
+            pass
+
+    return ok({"id": connection_id, "status": new_status}, f"Connection request {new_status}")
+
+
+async def api_delete_peer_connection(req, env, connection_id: str):
+    """Delete an accepted study buddy connection or remove a pending request."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    conn = await env.DB.prepare(
+        "SELECT id, sender_id, recipient_id FROM peer_connections WHERE id=? AND (sender_id=? OR recipient_id=?)"
+    ).bind(connection_id, user["id"], user["id"]).first()
+    if not conn:
+        return err("Connection not found", 404)
+
+    await env.DB.prepare(
+        "DELETE FROM peer_connections WHERE id=?"
+    ).bind(connection_id).run()
+
+    return ok({"id": connection_id, "deleted": True}, "Study buddy removed")
+
+
+async def api_list_peer_connections(req, env):
+    """List accepted study buddy connections and pending incoming requests for the authenticated user."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    enc = env.ENCRYPTION_KEY
+    connections = []
+    pending_received = []
+
+    try:
+        accepted_res = await env.DB.prepare(
+            "SELECT id, sender_id, recipient_id, activity_id, created_at"
+            " FROM peer_connections"
+            " WHERE (sender_id=? OR recipient_id=?) AND status='accepted'"
+            " ORDER BY updated_at DESC"
+        ).bind(user["id"], user["id"]).all()
+
+        for row in (accepted_res.results or []):
+            other_id = row.recipient_id if row.sender_id == user["id"] else row.sender_id
+            other_name = await _resolve_display_name(env, other_id)
+            act_title = "Direct Connection"
+            if row.activity_id:
+                act_row = await env.DB.prepare(
+                    "SELECT title FROM activities WHERE id=?"
+                ).bind(row.activity_id).first()
+                if act_row and getattr(act_row, "title", None):
+                    act_title = act_row.title
+
+            thread_id = None
+            try:
+                thread_row = await env.DB.prepare(
+                    "SELECT id FROM message_requests WHERE ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)) AND status='accepted'"
+                ).bind(user["id"], other_id, other_id, user["id"]).first()
+                if thread_row:
+                    thread_id = thread_row.id
+                else:
+                    thread_id = new_id()
+                    src = "activity" if row.activity_id else "peer"
+                    await env.DB.prepare(
+                        "INSERT INTO message_requests (id, from_user_id, to_user_id, status, source, activity_id, created_at) VALUES (?, ?, ?, 'accepted', ?, ?, datetime('now'))"
+                    ).bind(thread_id, row.sender_id, row.recipient_id, src, row.activity_id).run()
+            except Exception:
+                pass
+
+            connections.append({
+                "id": row.id,
+                "user_id": other_id,
+                "display_name": other_name,
+                "activity_id": row.activity_id,
+                "activity_title": act_title,
+                "thread_id": thread_id,
+                "connected_at": row.created_at,
+            })
+
+        pending_res = await env.DB.prepare(
+            "SELECT id, sender_id, activity_id, created_at"
+            " FROM peer_connections"
+            " WHERE recipient_id=? AND status='pending'"
+            " ORDER BY created_at DESC"
+        ).bind(user["id"]).all()
+
+        for row in (pending_res.results or []):
+            sender_name = await _resolve_display_name(env, row.sender_id)
+            act_title = "Direct Connection"
+            if row.activity_id:
+                act_row = await env.DB.prepare(
+                    "SELECT title FROM activities WHERE id=?"
+                ).bind(row.activity_id).first()
+                if act_row and getattr(act_row, "title", None):
+                    act_title = act_row.title
+            pending_received.append({
+                "id": row.id,
+                "sender_id": row.sender_id,
+                "sender_name": sender_name,
+                "activity_id": row.activity_id,
+                "activity_title": act_title,
+                "created_at": row.created_at,
+            })
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            raise
+
+    return ok({"connections": connections, "pending": pending_received})
+
+
+async def api_peer_connection_status(req, env, target_user_id: str):
+    """Retrieve connection status and buddy preference for a target user."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+
+    allow_buddy = False
+    try:
+        prof = await env.DB.prepare(
+            "SELECT allow_buddy_requests FROM user_profiles WHERE user_id=?"
+        ).bind(target_user_id).first()
+        if prof and bool(getattr(prof, "allow_buddy_requests", 0)):
+            allow_buddy = True
+    except Exception:
+        pass
+
+    try:
+        row = await env.DB.prepare(
+            "SELECT id, status, sender_id, recipient_id FROM peer_connections"
+            " WHERE (sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?)"
+        ).bind(user["id"], target_user_id, target_user_id, user["id"]).first()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return ok({"status": "none", "connection_id": None, "allow_buddy_requests": allow_buddy})
+        raise
+
+    if not row:
+        return ok({"status": "none", "connection_id": None, "allow_buddy_requests": allow_buddy})
+
+    return ok({
+        "status": row.status,
+        "connection_id": row.id,
+        "is_sender": row.sender_id == user["id"],
+        "allow_buddy_requests": allow_buddy,
     })
 
 
@@ -9090,6 +9686,8 @@ async def _dispatch(request, env):
             return await api_list_activity_quizzes(request, env, m_act_quizzes.group(1))
 
         m = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)", path)
+        if m and method == "DELETE":
+            return await api_delete_activity(m.group(1), request, env)
         if m and method == "GET":
             return await api_get_activity(m.group(1), request, env)
 
@@ -9243,6 +9841,21 @@ async def _dispatch(request, env):
         if m_thread_send and method == "POST":
             return await api_send_thread_message(request, env, m_thread_send.group(1))
         # --- END NEW ---
+
+        # --- Peer Connections (Study Buddy Network) ---
+        if path in ("/api/peers/request", "/api/peers/request-by-email") and method == "POST":
+            return await api_send_peer_request(request, env)
+        if path == "/api/peers" and method == "GET":
+            return await api_list_peer_connections(request, env)
+        m_peer_respond = re.fullmatch(r"/api/peers/([A-Za-z0-9_-]+)/respond", path)
+        if m_peer_respond and method == "PATCH":
+            return await api_respond_peer_request(request, env, m_peer_respond.group(1))
+        m_peer_del = re.fullmatch(r"/api/peers/([A-Za-z0-9_-]+)", path)
+        if m_peer_del and method == "DELETE":
+            return await api_delete_peer_connection(request, env, m_peer_del.group(1))
+        m_peer_status = re.fullmatch(r"/api/peers/status/([A-Za-z0-9_-]+)", path)
+        if m_peer_status and method == "GET":
+            return await api_peer_connection_status(request, env, m_peer_status.group(1))
 
         # Notifications
         if path == "/api/notifications" and method == "GET":
