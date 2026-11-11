@@ -267,13 +267,62 @@ class TestOnFetch:
 
 class TestInitAndSeedRouting:
     async def test_post_init_calls_init_db(self):
+        """POST /api/init with admin credentials initialises the database."""
         # All DDL statements succeed silently
         stmts = [make_stmt() for _ in range(20)]
         env = make_env(db=MockDB(stmts))
-        req = MockRequest(method="POST", url="http://localhost/api/init")
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/init",
+            headers={"Authorization": basic_auth_header("admin", "adminpass")},
+        )
         r = await worker._dispatch(req, env)
         assert r.status == 200
         assert _parse(r)["success"] is True
+
+    async def test_post_init_without_auth_returns_401(self):
+        """Without credentials /api/init is refused and runs no SQL."""
+        env = make_env()
+        req = MockRequest(method="POST", url="http://localhost/api/init")
+        r = await worker._dispatch(req, env)
+        assert r.status == 401
+        assert env.DB._idx == 0
+
+    async def test_post_init_wrong_basic_auth_does_not_run(self):
+        """Wrong credentials are refused and run no SQL."""
+        env = make_env()
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/init",
+            headers={"Authorization": basic_auth_header("admin", "wrong")},
+        )
+        r = await worker._dispatch(req, env)
+        assert r.status == 401
+        assert env.DB._idx == 0
+
+    async def test_post_init_non_ascii_wrong_credentials_return_401(self):
+        """Non-ASCII credentials that don't match are refused normally (not a 500)."""
+        env = make_env()
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/init",
+            headers={"Authorization": basic_auth_header("ädmin", "pässwörd")},
+        )
+        r = await worker._dispatch(req, env)
+        assert r.status == 401
+        assert env.DB._idx == 0
+
+    async def test_post_init_non_ascii_admin_credentials_work(self):
+        """Valid non-ASCII admin credentials can initialise the database."""
+        stmts = [make_stmt() for _ in range(20)]
+        env = make_env(db=MockDB(stmts), admin_user="ädmin", admin_pass="pässwörd")
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/init",
+            headers={"Authorization": basic_auth_header("ädmin", "pässwörd")},
+        )
+        r = await worker._dispatch(req, env)
+        assert r.status == 200
 
     async def test_post_init_wrong_method_returns_404(self):
         env = make_env()

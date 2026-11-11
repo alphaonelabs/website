@@ -2,7 +2,7 @@
 Alpha One Labs – Cloudflare Python Worker (Activities Model)
 =========================================================
 API Routes
-  POST /api/init              – initialise DB schema
+  POST /api/init              – initialise DB schema        [admin]
   POST /api/seed              – seed sample data          [admin]
   POST /api/register          – register a new user
   POST /api/login             – authenticate -> signed token
@@ -732,6 +732,7 @@ def _check_auth_rate_limit(req, env, route: str):
 
 
 def _is_basic_auth_valid(req, env) -> bool:
+    """True when the request carries the admin basic-auth credentials (compared in constant time)."""
     username = (getattr(env, "ADMIN_BASIC_USER", "") or "").strip()
     password = (getattr(env, "ADMIN_BASIC_PASS", "") or "").strip()
     if not username or not password:
@@ -748,7 +749,9 @@ def _is_basic_auth_valid(req, env) -> bool:
     except Exception:
         return False
 
-    return _hmac.compare_digest(user, username) and _hmac.compare_digest(pwd, password)
+    # compare_digest only accepts ASCII str, so compare UTF-8 bytes (non-ASCII input would raise).
+    return (_hmac.compare_digest(user.encode("utf-8"), username.encode("utf-8"))
+            and _hmac.compare_digest(pwd.encode("utf-8"), password.encode("utf-8")))
 
 
 # ---------------------------------------------------------------------------
@@ -8933,6 +8936,7 @@ async def api_list_users(req, env):
 # ---------------------------------------------------------------------------
 
 async def _dispatch(request, env):
+    """Route a request to its API handler or page renderer."""
     path   = urlparse(request.url).path
     method = request.method.upper()
     admin_path = _clean_path(getattr(env, "ADMIN_URL", ""))
@@ -9030,6 +9034,8 @@ async def _dispatch(request, env):
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
+            if not _is_basic_auth_valid(request, env):
+                return _unauthorized_basic()
             try:
                 await init_db(env)
                 return ok(None, "Database initialised")
