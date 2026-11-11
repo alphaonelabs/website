@@ -2,7 +2,7 @@
 Alpha One Labs – Cloudflare Python Worker (Activities Model)
 =========================================================
 API Routes
-  POST /api/init              – initialise DB schema
+  POST /api/init              – initialise DB schema        [admin]
   POST /api/seed              – seed sample data          [admin]
   POST /api/register          – register a new user
   POST /api/login             – authenticate -> signed token
@@ -9030,6 +9030,8 @@ async def _dispatch(request, env):
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
+            if not _is_basic_auth_valid(request, env):
+                return _unauthorized_basic()
             try:
                 await init_db(env)
                 return ok(None, "Database initialised")

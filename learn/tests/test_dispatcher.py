@@ -270,10 +270,32 @@ class TestInitAndSeedRouting:
         # All DDL statements succeed silently
         stmts = [make_stmt() for _ in range(20)]
         env = make_env(db=MockDB(stmts))
-        req = MockRequest(method="POST", url="http://localhost/api/init")
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/init",
+            headers={"Authorization": basic_auth_header("admin", "adminpass")},
+        )
         r = await worker._dispatch(req, env)
         assert r.status == 200
         assert _parse(r)["success"] is True
+
+    async def test_post_init_without_auth_returns_401(self):
+        env = make_env()
+        req = MockRequest(method="POST", url="http://localhost/api/init")
+        r = await worker._dispatch(req, env)
+        assert r.status == 401
+        assert env.DB._idx == 0
+
+    async def test_post_init_wrong_basic_auth_does_not_run(self):
+        env = make_env()
+        req = MockRequest(
+            method="POST",
+            url="http://localhost/api/init",
+            headers={"Authorization": basic_auth_header("admin", "wrong")},
+        )
+        r = await worker._dispatch(req, env)
+        assert r.status == 401
+        assert env.DB._idx == 0
 
     async def test_post_init_wrong_method_returns_404(self):
         env = make_env()
