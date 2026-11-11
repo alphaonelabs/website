@@ -338,12 +338,13 @@ class TestPeerConnections:
         target_user = MockRow(id="usr-2")
         target_prof = MockRow(allow_email_buddy_requests=1)
         sender_row = MockRow(name="Alice", username="alice")
+        insert_stmt = make_stmt()
         env = make_env(db=MockDB([
             make_stmt(first=MockRow(cnt=0)),    # rate limit check
             make_stmt(first=target_user),       # lookup target user
             make_stmt(first=target_prof),       # lookup target profile
             make_stmt(first=None),              # check existing connection
-            make_stmt(),                        # insert peer connection
+            insert_stmt,                        # insert peer connection
             make_stmt(first=sender_row),        # resolve sender display name
             make_stmt(),                        # create notification
         ]))
@@ -354,6 +355,10 @@ class TestPeerConnections:
         assert r.status == 200
         data = _parse(r)
         assert data["message"] == "We will send a request if that user exists"
+        insert_args = insert_stmt.bind.call_args[0]
+        assert insert_args[1] == "usr-1"
+        assert insert_args[2] == "usr-2"
+        insert_stmt.bind.return_value.run.assert_awaited_once()
 
     async def test_send_peer_request_by_email_target_toggle_off(self):
         token = _make_token(uid="usr-1")

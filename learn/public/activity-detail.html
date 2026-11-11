@@ -158,11 +158,14 @@
               <i class="fa-solid fa-envelope text-teal-500"></i>Add Buddy by Email
             </h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Know someone's email? Send them a buddy request directly.</p>
-            <form id="add-peer-email-form" class="flex flex-col sm:flex-row gap-2">
-              <input type="email" id="peer-email-input" required placeholder="Enter exact email address..." class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:outline-none">
-              <button type="submit" id="peer-email-submit-btn" class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition shadow-sm">
-                <i class="fa-solid fa-paper-plane text-xs"></i><span>Send</span>
-              </button>
+            <form id="add-peer-email-form" class="space-y-1">
+              <label for="peer-email-input" class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Friend's email address</label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input type="email" id="peer-email-input" required placeholder="Enter exact email address..." class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                <button type="submit" id="peer-email-submit-btn" class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition shadow-sm">
+                  <i class="fa-solid fa-paper-plane text-xs"></i><span>Send</span>
+                </button>
+              </div>
             </form>
             <p id="peer-email-feedback" class="text-xs text-gray-500 dark:text-gray-400 mt-1.5 min-h-[1rem]" role="status" aria-live="polite"></p>
           </div>
@@ -872,6 +875,9 @@
               body: JSON.stringify({ email })
             });
             const d = await r.json();
+            if (!r.ok) {
+              throw new Error(d.error || d.message || 'Failed to send buddy request');
+            }
             const msg = d.data && d.data.sent
               ? 'Buddy request sent. Recipient can accept it from Dashboard or Profile.'
               : (d.message || 'We will send a request if that user exists');

@@ -322,13 +322,20 @@ class TestApiDeleteActivity:
 
     async def test_delete_host_cleans_activity(self):
         token = _make_host_token(uid="host-1")
-        env = make_env(db=MockDB([
+        cleanup_stmts = [make_stmt() for _ in range(12)]
+        db = MockDB([
             make_stmt(first=MockRow(id="act-1", host_id="host-1")),
-            *[make_stmt() for _ in range(12)],
-        ]))
+            *cleanup_stmts,
+        ])
+        env = make_env(db=db)
         r = await worker.api_delete_activity("act-1", self._req(token=token), env)
         assert r.status == 200
         assert _parse(r)["data"]["deleted"] is True
+        for s in cleanup_stmts[:-1]:
+            s.bind.assert_called_with("act-1")
+            s.bind.return_value.run.assert_awaited_once()
+        cleanup_stmts[-1].bind.assert_called_with("act-1", "host-1")
+        cleanup_stmts[-1].bind.return_value.run.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

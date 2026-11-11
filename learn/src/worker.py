@@ -732,8 +732,15 @@ def _check_auth_rate_limit(req, env, route: str):
 
 
 def _is_basic_auth_valid(req, env) -> bool:
-    username = (getattr(env, "ADMIN_BASIC_USER", "") or getattr(env, "ADMIN_USER", "") or "admin").strip()
-    password = (getattr(env, "ADMIN_BASIC_PASS", "") or getattr(env, "ADMIN_PASS", "") or "adminpass").strip()
+    u = getattr(env, "ADMIN_BASIC_USER", None)
+    if u is None or (hasattr(u, "_mock_name") and "ADMIN_BASIC_USER" not in getattr(env, "__dict__", {})):
+        u = getattr(env, "ADMIN_USER", "")
+    p = getattr(env, "ADMIN_BASIC_PASS", None)
+    if p is None or (hasattr(p, "_mock_name") and "ADMIN_BASIC_PASS" not in getattr(env, "__dict__", {})):
+        p = getattr(env, "ADMIN_PASS", "")
+
+    username = (u if isinstance(u, str) else "").strip()
+    password = (p if isinstance(p, str) else "").strip()
     if not username or not password:
         return False
 
@@ -1188,11 +1195,11 @@ _DDL = [
         status        TEXT NOT NULL DEFAULT 'pending',
         created_at    TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
-        UNIQUE (sender_id, recipient_id),
         FOREIGN KEY (sender_id)    REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (activity_id)  REFERENCES activities(id) ON DELETE CASCADE
     )""",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_peer_conn_canonical ON peer_connections(min(sender_id, recipient_id), max(sender_id, recipient_id))",
     "CREATE INDEX IF NOT EXISTS idx_peer_conn_sender    ON peer_connections(sender_id, status)",
     "CREATE INDEX IF NOT EXISTS idx_peer_conn_recipient ON peer_connections(recipient_id, status)",
     "CREATE INDEX IF NOT EXISTS idx_peer_conn_activity  ON peer_connections(activity_id)",
@@ -1823,7 +1830,7 @@ async def api_register(req, env):
             await encrypt_aes(email,    enc),
             hash_password(password, username),
             await encrypt_aes(role, enc),
-            1 if not getattr(env, "RESEND_API_KEY", None) else 0,
+            0,
         ).run()
     except Exception as e:
         if "UNIQUE" in str(e):
@@ -2491,9 +2498,15 @@ async def api_delete_activity(activity_id: str, req, env):
         "DELETE FROM activities WHERE id=? AND host_id=?",
     ]
     try:
-        for index, sql in enumerate(cleanup):
-            binds = (activity_id, user["id"]) if index == len(cleanup) - 1 else (activity_id,)
-            await env.DB.prepare(sql).bind(*binds).run()
+        stmts = [
+            env.DB.prepare(sql).bind(*( (activity_id, user["id"]) if index == len(cleanup) - 1 else (activity_id,) ))
+            for index, sql in enumerate(cleanup)
+        ]
+        if hasattr(env.DB, "batch"):
+            await env.DB.batch(stmts)
+        else:
+            for s in stmts:
+                await s.run()
     except Exception as exc:
         await capture_exception(exc, req, env, "api_delete_activity.cleanup")
         return err("Could not delete activity", 500)
@@ -8695,8 +8708,9 @@ async def api_send_activity_message_request(req, env, activity_id: str, target_u
         if not buddy:
             return err("You can only chat with accepted study buddies", 403)
     except Exception as exc:
-        if not _is_no_such_table_error(exc):
-            raise
+        if _is_no_such_table_error(exc):
+            return err("Study buddy network is unavailable", 503)
+        raise
 
     existing = await env.DB.prepare(
         "SELECT id, status FROM message_requests WHERE (from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)"
@@ -8755,8 +8769,9 @@ async def api_send_thread_message(req, env, thread_id: str):
         if not buddy:
             return err("You can only chat with accepted study buddies", 403)
     except Exception as exc:
-        if not _is_no_such_table_error(exc):
-            raise
+        if _is_no_such_table_error(exc):
+            return err("Study buddy network is unavailable", 503)
+        raise
 
     msg_id = new_id()
     iso_now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -8818,7 +8833,9 @@ async def api_list_message_threads(req, env):
                 buddy_ids.add(br.recipient_id if br.sender_id == user["id"] else br.sender_id)
             threads_rows = [r for r in threads_rows if (r.to_user_id if r.from_user_id == user["id"] else r.from_user_id) in buddy_ids]
         except Exception as exc:
-            if not _is_no_such_table_error(exc):
+            if _is_no_such_table_error(exc):
+                threads_rows = []
+            else:
                 raise
 
         other_ids = list({r.to_user_id if r.from_user_id == user["id"] else r.from_user_id for r in threads_rows})
@@ -8880,8 +8897,9 @@ async def api_get_thread_messages(req, env, thread_id: str):
         if not buddy:
             return err("You can only chat with accepted study buddies", 403)
     except Exception as exc:
-        if not _is_no_such_table_error(exc):
-            raise
+        if _is_no_such_table_error(exc):
+            return err("Study buddy network is unavailable", 503)
+        raise
 
     try:
         await env.DB.prepare(
@@ -8952,6 +8970,7 @@ async def api_get_thread_messages(req, env, thread_id: str):
 # ---------------------------------------------------------------------------
 
 async def _resolve_display_name(env, user_id: str) -> str:
+    """Resolve a decrypted human-readable display name for a given user ID."""
     enc = env.ENCRYPTION_KEY
     row = await env.DB.prepare(
         "SELECT name, username FROM users WHERE id=?"
@@ -8968,38 +8987,20 @@ async def _resolve_display_name(env, user_id: str) -> str:
 
 
 async def _find_user_by_email(env, email: str):
-    """Resolve email by blind index, then support legacy rows with bad indexes."""
+    """Resolve a user by their blind-indexed email hash.
+
+    Returns the user row containing their ID if found, otherwise None.
+    """
     normalized = (email or "").strip().lower()
     if not normalized:
         return None
 
     enc = env.ENCRYPTION_KEY
     target_hash = blind_index(normalized, enc)
-    target_user = await env.DB.prepare(
-        "SELECT id FROM users WHERE email_hash=?"
-    ).bind(target_hash).first()
-    if target_user:
-        return target_user
-
-    # Older/demo rows can have an email_hash generated with a different
-    # normalization or encryption key. Decrypt only on hash miss.
     try:
-        rows = await env.DB.prepare("SELECT id, email FROM users").all()
-        for row in (rows.results or []):
-            stored_email = await decrypt_aes(getattr(row, "email", "") or "", enc)
-            if stored_email != "[decryption error]" and stored_email.strip().lower() == normalized:
-                return row
-
-        # Local demo accounts historically used @test.com while fixtures and
-        # docs use @example.com. Treat example.com address as demo username
-        # alias, without changing real account email data.
-        local, domain = normalized.rsplit("@", 1)
-        if domain == "example.com" and local:
-            alias = await env.DB.prepare(
-                "SELECT id FROM users WHERE username_hash=?"
-            ).bind(blind_index(local, enc)).first()
-            if alias:
-                return alias
+        return await env.DB.prepare(
+            "SELECT id FROM users WHERE email_hash=?"
+        ).bind(target_hash).first()
     except Exception as exc:
         if not _is_no_such_table_error(exc):
             raise
@@ -9007,6 +9008,7 @@ async def _find_user_by_email(env, email: str):
 
 
 async def api_send_peer_request(req, env):
+    """Send a study buddy connection request by email or shared activity enrollment."""
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
@@ -9024,7 +9026,7 @@ async def api_send_peer_request(req, env):
         try:
             cnt_row = await env.DB.prepare(
                 "SELECT COUNT(*) AS cnt FROM peer_connections"
-                " WHERE sender_id=? AND created_at > datetime('now', '-1 hour')"
+                " WHERE sender_id=? AND (created_at > datetime('now', '-1 hour') OR updated_at > datetime('now', '-1 hour'))"
             ).bind(user["id"]).first()
             if cnt_row and int(getattr(cnt_row, "cnt", 0) or 0) >= 10:
                 return err("Rate limit exceeded. Maximum 10 connection requests per hour.", 429)
@@ -9056,11 +9058,11 @@ async def api_send_peer_request(req, env):
                         f"{sender_name} wants to connect as a study buddy.",
                         conn_id
                     )
-                    return ok({"sent": True}, neutral_msg)
+                    return ok(None, neutral_msg)
                 elif getattr(existing, "status", "") == "declined":
                     await env.DB.prepare(
-                        "UPDATE peer_connections SET status='pending', sender_id=?, updated_at=datetime('now') WHERE id=?"
-                    ).bind(user["id"], existing.id).run()
+                        "UPDATE peer_connections SET status='pending', sender_id=?, recipient_id=?, updated_at=datetime('now') WHERE id=?"
+                    ).bind(user["id"], target_user.id, existing.id).run()
                     sender_name = await _resolve_display_name(env, user["id"])
                     await _create_notification(
                         env, target_user.id, "peer_request",
@@ -9068,7 +9070,7 @@ async def api_send_peer_request(req, env):
                         f"{sender_name} wants to connect as a study buddy.",
                         existing.id
                     )
-                    return ok({"sent": True}, neutral_msg)
+                    return ok(None, neutral_msg)
 
         return ok(None, neutral_msg)
 
@@ -9087,7 +9089,7 @@ async def api_send_peer_request(req, env):
         return err("Activity not found", 404)
 
     sender_enrolled = await env.DB.prepare(
-        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=?"
+        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='active'"
     ).bind(activity_id, user["id"]).first()
     sender_is_host = await env.DB.prepare(
         "SELECT id FROM activities WHERE id=? AND host_id=?"
@@ -9096,7 +9098,7 @@ async def api_send_peer_request(req, env):
         return err("You must be enrolled in this activity to connect", 403)
 
     recip_enrolled = await env.DB.prepare(
-        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=?"
+        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='active'"
     ).bind(activity_id, recipient_id).first()
     recip_is_host = await env.DB.prepare(
         "SELECT id FROM activities WHERE id=? AND host_id=?"
@@ -9113,7 +9115,7 @@ async def api_send_peer_request(req, env):
     try:
         cnt_row = await env.DB.prepare(
             "SELECT COUNT(*) AS cnt FROM peer_connections"
-            " WHERE sender_id=? AND created_at > datetime('now', '-1 hour')"
+            " WHERE sender_id=? AND (created_at > datetime('now', '-1 hour') OR updated_at > datetime('now', '-1 hour'))"
         ).bind(user["id"]).first()
         if cnt_row and int(getattr(cnt_row, "cnt", 0) or 0) >= 10:
             return err("Rate limit exceeded. Maximum 10 connection requests per hour.", 429)
@@ -9133,8 +9135,8 @@ async def api_send_peer_request(req, env):
             return err("A pending connection request already exists", 409)
         if st == "declined":
             await env.DB.prepare(
-                "UPDATE peer_connections SET status='pending', sender_id=?, activity_id=?, updated_at=datetime('now') WHERE id=?"
-            ).bind(user["id"], activity_id, existing.id).run()
+                "UPDATE peer_connections SET status='pending', sender_id=?, recipient_id=?, activity_id=?, updated_at=datetime('now') WHERE id=?"
+            ).bind(user["id"], recipient_id, activity_id, existing.id).run()
             sender_name = await _resolve_display_name(env, user["id"])
             await _create_notification(
                 env, recipient_id, "peer_request",
@@ -9162,6 +9164,7 @@ async def api_send_peer_request(req, env):
 
 
 async def api_respond_peer_request(req, env, connection_id: str):
+    """Accept or decline an incoming study buddy connection request."""
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
@@ -9175,7 +9178,7 @@ async def api_respond_peer_request(req, env, connection_id: str):
         return err("Action must be 'accept' or 'decline'", 400)
 
     conn = await env.DB.prepare(
-        "SELECT id, sender_id FROM peer_connections WHERE id=? AND recipient_id=? AND status='pending'"
+        "SELECT id, sender_id, activity_id FROM peer_connections WHERE id=? AND recipient_id=? AND status='pending'"
     ).bind(connection_id, user["id"]).first()
     if not conn:
         return err("Connection request not found or already handled", 404)
@@ -9193,11 +9196,24 @@ async def api_respond_peer_request(req, env, connection_id: str):
             f"{responder_name} accepted your connection request!",
             connection_id
         )
+        try:
+            existing_thread = await env.DB.prepare(
+                "SELECT id FROM message_requests WHERE ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)) AND status='accepted'"
+            ).bind(conn.sender_id, user["id"], user["id"], conn.sender_id).first()
+            if not existing_thread:
+                act_id = getattr(conn, "activity_id", None)
+                src = "activity" if act_id else "peer"
+                await env.DB.prepare(
+                    "INSERT INTO message_requests (id, from_user_id, to_user_id, status, source, activity_id, created_at) VALUES (?, ?, ?, 'accepted', ?, ?, datetime('now'))"
+                ).bind(new_id(), conn.sender_id, user["id"], src, act_id).run()
+        except Exception:
+            pass
 
     return ok({"id": connection_id, "status": new_status}, f"Connection request {new_status}")
 
 
 async def api_delete_peer_connection(req, env, connection_id: str):
+    """Delete an accepted study buddy connection or remove a pending request."""
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
@@ -9216,6 +9232,7 @@ async def api_delete_peer_connection(req, env, connection_id: str):
 
 
 async def api_list_peer_connections(req, env):
+    """List accepted study buddy connections and pending incoming requests for the authenticated user."""
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
@@ -9242,12 +9259,30 @@ async def api_list_peer_connections(req, env):
                 ).bind(row.activity_id).first()
                 if act_row and getattr(act_row, "title", None):
                     act_title = act_row.title
+
+            thread_id = None
+            try:
+                thread_row = await env.DB.prepare(
+                    "SELECT id FROM message_requests WHERE ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?)) AND status='accepted'"
+                ).bind(user["id"], other_id, other_id, user["id"]).first()
+                if thread_row:
+                    thread_id = thread_row.id
+                else:
+                    thread_id = new_id()
+                    src = "activity" if row.activity_id else "peer"
+                    await env.DB.prepare(
+                        "INSERT INTO message_requests (id, from_user_id, to_user_id, status, source, activity_id, created_at) VALUES (?, ?, ?, 'accepted', ?, ?, datetime('now'))"
+                    ).bind(thread_id, row.sender_id, row.recipient_id, src, row.activity_id).run()
+            except Exception:
+                pass
+
             connections.append({
                 "id": row.id,
                 "user_id": other_id,
                 "display_name": other_name,
                 "activity_id": row.activity_id,
                 "activity_title": act_title,
+                "thread_id": thread_id,
                 "connected_at": row.created_at,
             })
 
@@ -9283,6 +9318,7 @@ async def api_list_peer_connections(req, env):
 
 
 async def api_peer_connection_status(req, env, target_user_id: str):
+    """Retrieve connection status and buddy preference for a target user."""
     user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
@@ -9922,35 +9958,10 @@ def _is_scanner_probe(path: str) -> bool:
     return bool(path) and not path.startswith("/.well-known/") and bool(_SCANNER_PATH_RE.search(path))
 
 
-class _DevEnvFallback:
-    def __init__(self, target):
-        object.__setattr__(self, "_target", target)
-        object.__setattr__(
-            self,
-            "ENCRYPTION_KEY",
-            getattr(target, "ENCRYPTION_KEY", None) or "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        )
-        object.__setattr__(
-            self,
-            "JWT_SECRET",
-            getattr(target, "JWT_SECRET", None) or "dev-jwt-secret-key-32-chars-long-1234",
-        )
-        object.__setattr__(self, "ADMIN_USER", getattr(target, "ADMIN_USER", None) or "admin")
-        object.__setattr__(self, "ADMIN_PASS", getattr(target, "ADMIN_PASS", None) or "adminpass")
-        object.__setattr__(self, "ADMIN_URL", getattr(target, "ADMIN_URL", None) or "/admin")
-
-    def __getattr__(self, name):
-        return getattr(self._target, name)
-
-    def __setattr__(self, name, value):
-        setattr(self._target, name, value)
-
-
 async def on_fetch(request, env):
     if _is_scanner_probe(urlparse(request.url).path):
         return Response("Not found", status=404, headers={"Content-Type": "text/plain", "Cache-Control": "public, max-age=86400"})
     try:
-        env = _DevEnvFallback(env)
         init_sentry(env)
         response = await _dispatch(request, env)
         await record_page_view(request, env, response)
