@@ -71,6 +71,7 @@ Create a `.dev.vars` file in the project root:
 ```
 ENCRYPTION_KEY=your-dev-encryption-key
 JWT_SECRET=your-dev-jwt-secret
+PASSWORD_PEPPER=your-dev-pepper
 SENTRY_DSN=your-sentry-dsn
 ```
 
@@ -80,6 +81,7 @@ Use Wrangler secrets:
 ```bash
 wrangler secret put ENCRYPTION_KEY
 wrangler secret put JWT_SECRET
+wrangler secret put PASSWORD_PEPPER
 wrangler secret put SENTRY_DSN
 ```
 

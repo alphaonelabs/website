@@ -115,3 +115,79 @@ class TestParseJsonObject:
         body, err = await worker.parse_json_object(req)
         assert err is None
         assert body == {}
+
+
+# ---------------------------------------------------------------------------
+# Dynamic password pepper injection (Issue #3)
+# ---------------------------------------------------------------------------
+
+class TestDynamicPasswordPepper:
+    def teardown_method(self):
+        worker.reset_pepper()
+
+    def test_explicit_pepper_alters_hash(self):
+        h_default = worker.hash_password("SecretPass123!", "user1")
+        h_pepper_a = worker.hash_password("SecretPass123!", "user1", pepper=b"custom-pepper-A")
+        h_pepper_b = worker.hash_password("SecretPass123!", "user1", pepper=b"custom-pepper-B")
+
+        assert h_pepper_a != h_pepper_b
+        assert h_pepper_a != h_default
+        assert h_pepper_b != h_default
+
+    def test_verify_password_with_matching_and_mismatched_pepper(self):
+        stored = worker.hash_password("SecretPass123!", "user1", pepper=b"test-pepper")
+        assert worker.verify_password("SecretPass123!", stored, "user1", pepper=b"test-pepper") is True
+        assert worker.verify_password("SecretPass123!", stored, "user1", pepper=b"wrong-pepper") is False
+        assert worker.verify_password("SecretPass123!", stored, "user1") is False
+
+    def test_pepper_injection_from_env_binding(self):
+        env = make_env(password_pepper="env-injected-pepper-12345")
+        h = worker.hash_password("SecretPass123!", "user1", env=env)
+        assert worker.verify_password("SecretPass123!", h, "user1", env=env) is True
+        assert worker.verify_password("SecretPass123!", h, "user1") is False
+
+    def test_pepper_alias_support(self):
+        env = make_env()
+        env.PASSWORD_PEPPER = None
+        env.PEPPER = "legacy-alias-pepper"
+        h = worker.hash_password("SecretPass123!", "user1", env=env)
+        assert worker.verify_password("SecretPass123!", h, "user1", env=env) is True
+
+    def test_pepper_injection_from_os_environ(self, monkeypatch):
+        monkeypatch.setenv("PASSWORD_PEPPER", "os-env-pepper-999")
+        h = worker.hash_password("SecretPass123!", "user1")
+        assert worker.verify_password("SecretPass123!", h, "user1") is True
+
+    def test_production_fails_closed_when_pepper_missing(self):
+        import pytest
+        env = make_env()
+        env.ENVIRONMENT = "production"
+        env.PASSWORD_PEPPER = None
+        env.PEPPER = None
+
+        with pytest.raises(RuntimeError, match="Missing required environment secret: PASSWORD_PEPPER"):
+            worker.get_pepper(env)
+
+    async def test_worker_startup_on_fetch_fails_closed_in_production_without_pepper(self):
+        import pytest
+        env = make_env()
+        env.ENVIRONMENT = "production"
+        env.PASSWORD_PEPPER = None
+        env.PEPPER = None
+        req = MockRequest(method="GET", url="http://localhost/api/activities")
+
+        with pytest.raises(RuntimeError, match="Missing required environment secret: PASSWORD_PEPPER"):
+            await worker.on_fetch(req, env)
+
+    def test_production_succeeds_when_pepper_is_present(self):
+        env = make_env()
+        env.ENVIRONMENT = "production"
+        env.PASSWORD_PEPPER = "production-secure-pepper-abc"
+        assert worker.get_pepper(env) == b"production-secure-pepper-abc"
+
+    def test_init_pepper_caches_active_pepper(self):
+        env = make_env(password_pepper="cached-active-pepper")
+        worker.init_pepper(env)
+        h = worker.hash_password("SecretPass123!", "user1")
+        assert worker.verify_password("SecretPass123!", h, "user1") is True
+

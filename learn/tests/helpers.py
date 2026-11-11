@@ -113,11 +113,14 @@ class MockDB:
 # ---------------------------------------------------------------------------
 
 def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret",
-             admin_user="admin", admin_pass="adminpass", admin_url="/admin"):
+             admin_user="admin", admin_pass="adminpass", admin_url="/admin",
+             password_pepper=None):
     """Return a minimal mock Cloudflare Worker environment binding."""
     env = MagicMock()
     env.ENCRYPTION_KEY = enc_key
     env.JWT_SECRET = jwt_secret
+    env.PASSWORD_PEPPER = password_pepper
+    env.PEPPER = ""
     env.AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
     env.AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
     env.ADMIN_BASIC_USER = admin_user
