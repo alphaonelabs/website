@@ -65,6 +65,11 @@ jobs:
       - name: Build GSoC ideas page
         if: matrix.project == 'gsoc'
         run: pip install markdown && python scripts/build_ideas.py
+      - name: Run unit tests
+        if: matrix.project == 'learn'
+        run: |
+          pip install pytest pytest-asyncio
+          pytest -q
       - name: Wrangler dry run
         run: npx --yes wrangler@4.40.0 deploy --dry-run --outdir /tmp/wrangler-dry-run
 

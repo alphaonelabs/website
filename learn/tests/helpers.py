@@ -124,12 +124,40 @@ def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret
     env.ADMIN_BASIC_PASS = admin_pass
     env.ADMIN_URL = admin_url
     env.DB = db if db is not None else MockDB()
+    # Mock email provider credentials to prevent mock objects leaking into string regex/parsers
+    env.MAILGUN_API_KEY = ""
+    env.MAILGUN_SENDING_KEY = ""
+    env.MAILGUN_DOMAIN = ""
+    env.MAILGUN_API_BASE = "https://api.mailgun.net/v3"
+    env.SENDGRID_API_KEY = ""
     # Use setattr to avoid Python name-mangling of __STATIC_CONTENT
     # when this function is called from inside a class method.
     sc = MagicMock()
     sc.get = AsyncMock(return_value=None)
     setattr(env, "__STATIC_CONTENT", sc)
     return env
+
+
+_CACHED_INIT_DB_COUNT = None
+
+
+async def make_init_db_stmts(worker_mod):
+    """Dynamically sample and return the exact list of mock statements needed by init_db(env)."""
+    global _CACHED_INIT_DB_COUNT
+    if _CACHED_INIT_DB_COUNT is None:
+        count = 0
+
+        class _CountingDB:
+            def prepare(self, _sql):
+                nonlocal count
+                count += 1
+                return make_stmt()
+
+        test_env = make_env(db=_CountingDB())
+        await worker_mod.init_db(test_env)
+        _CACHED_INIT_DB_COUNT = count
+
+    return [make_stmt() for _ in range(_CACHED_INIT_DB_COUNT)]
 
 
 def set_static_content(env, content):

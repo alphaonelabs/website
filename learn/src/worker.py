@@ -8060,13 +8060,14 @@ class PresenceDO(DurableObject):
         display_param = (qs.get("display_name") or [None])[0]
 
         authenticated_user = verify_token(token_param or "", self.env.JWT_SECRET) if token_param else None
-        can_interact = authenticated_user is not None
 
         if authenticated_user:
             user_id = str(authenticated_user.get("id", ""))
             display_name = str(authenticated_user.get("username") or user_id)
+            can_interact = True
         else:
-            if token_param or not user_param:
+            allow_anon = str(getattr(self.env, "ALLOW_ANON_PRESENCE", "true")).lower() in ("true", "1")
+            if not allow_anon or token_param or not user_param:
                 return Response(
                     json.dumps({"error": "Authentication required"}),
                     status=401,
@@ -8074,6 +8075,7 @@ class PresenceDO(DurableObject):
                 )
             user_id = str(user_param)
             display_name = str(display_param or user_id)
+            can_interact = True
 
         user_id = user_id[:64]
         display_name = display_name[:64]
