@@ -8073,6 +8073,7 @@ class PresenceDO(DurableObject):
                     status=401,
                     headers={"Content-Type": "application/json"},
                 )
+            # Anonymous sessions are read-only and namespace-isolated to prevent identity spoofing
             raw_user_id = str(user_param)
             user_id = raw_user_id if raw_user_id.startswith("anon:") else f"anon:{raw_user_id}"
             display_name = str(display_param or raw_user_id)
