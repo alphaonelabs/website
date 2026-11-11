@@ -143,28 +143,6 @@ def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret
     return env
 
 
-_CACHED_INIT_DB_COUNT = None
-
-
-async def make_init_db_stmts(worker_mod):
-    """Dynamically sample and return the exact list of mock statements needed by init_db(env)."""
-    global _CACHED_INIT_DB_COUNT
-    if _CACHED_INIT_DB_COUNT is None:
-        count = 0
-
-        class _CountingDB:
-            def prepare(self, _sql):
-                nonlocal count
-                count += 1
-                return make_stmt()
-
-        test_env = make_env(db=_CountingDB())
-        await worker_mod.init_db(test_env)
-        _CACHED_INIT_DB_COUNT = count
-
-    return [make_stmt() for _ in range(_CACHED_INIT_DB_COUNT)]
-
-
 def set_static_content(env, content):
     """
     Configure the mock ``__STATIC_CONTENT`` KV binding to return *content*.
