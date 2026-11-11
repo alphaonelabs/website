@@ -8073,9 +8073,10 @@ class PresenceDO(DurableObject):
                     status=401,
                     headers={"Content-Type": "application/json"},
                 )
-            user_id = str(user_param)
-            display_name = str(display_param or user_id)
-            can_interact = True
+            raw_user_id = str(user_param)
+            user_id = raw_user_id if raw_user_id.startswith("anon:") else f"anon:{raw_user_id}"
+            display_name = str(display_param or raw_user_id)
+            can_interact = False
 
         user_id = user_id[:64]
         display_name = display_name[:64]
@@ -8175,6 +8176,17 @@ class PresenceDO(DurableObject):
 
         if not info.get("can_interact", True):
             return
+
+        rate_limit = getattr(self.env, "PRESENCE_UPDATE_INTERVAL", 0.05)
+        try:
+            rate_limit = float(rate_limit)
+        except (ValueError, TypeError):
+            rate_limit = 0.05
+        now = time.time()
+        last_update = info.get("last_update", 0.0)
+        if rate_limit > 0 and (now - last_update) < rate_limit:
+            return
+        info["last_update"] = now
 
         current = self.presence.get(user_id)
         if current is None:

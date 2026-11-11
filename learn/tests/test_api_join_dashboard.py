@@ -202,7 +202,10 @@ class TestApiDashboard:
         r = await worker.api_dashboard(self._req(tok), env)
         data = _parse(r)
         assert len(data["hosted_activities"]) == 1
-        assert data["hosted_activities"][0]["title"] == "My Course"
+        hosted_act = data["hosted_activities"][0]
+        assert hosted_act["title"] == "My Course"
+        assert hosted_act["description"] == "A great course"
+        assert hosted_act["slug"] == "my-course"
 
     async def test_joined_activities_returned(self):
         tok = _token(uid="member-1")
@@ -224,5 +227,7 @@ class TestApiDashboard:
         assert len(data["joined_activities"]) == 1
         act = data["joined_activities"][0]
         assert act["title"] == "Python 101"
+        assert act["description"] == "Learn Python"
+        assert act["slug"] == "python-101"
         assert act["enr_role"] == "participant"
         assert act["host_name"] == "Alice"

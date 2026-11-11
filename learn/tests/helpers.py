@@ -126,10 +126,15 @@ def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret
     env.DB = db if db is not None else MockDB()
     # Mock email provider credentials to prevent mock objects leaking into string regex/parsers
     env.MAILGUN_API_KEY = ""
+    env.mailgun_api_key = ""
     env.MAILGUN_SENDING_KEY = ""
+    env.mailgun_sending_key = ""
     env.MAILGUN_DOMAIN = ""
+    env.mailgun_domain = ""
     env.MAILGUN_API_BASE = "https://api.mailgun.net/v3"
+    env.mailgun_api_base = "https://api.mailgun.net/v3"
     env.SENDGRID_API_KEY = ""
+    env.sendgrid_api_key = ""
     # Use setattr to avoid Python name-mangling of __STATIC_CONTENT
     # when this function is called from inside a class method.
     sc = MagicMock()
