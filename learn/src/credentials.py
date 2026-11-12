@@ -99,4 +99,12 @@ def load_public_jwks(raw: str) -> list:
         seen.add(kid)
         out.append({"kty": "OKP", "crv": "Ed25519", "x": jwk["x"],
                     "kid": kid, "use": "sig", "alg": "EdDSA"})
+        if "use" in jwk and jwk["use"] != "sig":
+            raise ValueError("key use must be 'sig'")
+        if "alg" in jwk and jwk["alg"] != "EdDSA":
+            raise ValueError("key alg must be 'EdDSA'")
+        if "key_ops" in jwk:
+            ops = jwk["key_ops"]
+            if not isinstance(ops, list) or any(op != "verify" for op in ops):
+                raise ValueError("key_ops may only contain 'verify'")
     return out

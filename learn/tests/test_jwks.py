@@ -41,3 +41,17 @@ async def test_jwks_endpoint_never_echoes_private_material():
     r = await _get(json.dumps([{**_jwk(), "d": "SECRET"}]))
     assert r.status == 500
     assert "SECRET" not in r.body
+
+
+async def test_jwks_endpoint_500_when_binding_is_not_a_string():
+    env = make_env()
+    env.CREDENTIAL_PUBLIC_JWKS = [{"kty": "OKP"}]       # a JSON value, not a string
+    r = await worker.api_jwks(MockRequest(method="GET", url=URL), env)
+    assert r.status == 500
+
+
+async def test_jwks_endpoint_empty_when_unset():
+    env = make_env()
+    env.CREDENTIAL_PUBLIC_JWKS = None
+    r = await worker.api_jwks(MockRequest(method="GET", url=URL), env)
+    assert r.status == 200 and json.loads(r.body) == {"keys": []}

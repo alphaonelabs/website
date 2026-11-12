@@ -3280,9 +3280,14 @@ async def api_get_certificate(request, env, cert_uuid):
 async def api_jwks(_req, env):
     """GET /.well-known/jwks.json - public keys for verifying credential signatures."""
     import credentials
-    raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", "")
+    raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
     try:
-        keys = credentials.load_public_jwks(raw if isinstance(raw, str) else "")
+        if raw is None:
+            keys = []                                    # not configured
+        elif isinstance(raw, str):
+            keys = credentials.load_public_jwks(raw)
+        else:
+            raise ValueError("CREDENTIAL_PUBLIC_JWKS must be a string")
     except Exception as exc:
         await capture_exception(exc, _req, env, "api_jwks.invalid_config")
         return err("Credential keys are misconfigured", 500)

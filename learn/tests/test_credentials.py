@@ -129,12 +129,32 @@ def test_load_public_jwks_valid_and_normalized():
                     "kid": "k1", "use": "sig", "alg": "EdDSA"}]
 
 
+def test_load_public_jwks_accepts_matching_metadata():
+    jwk = {
+        **_jwk("k1"),
+        "use": "sig",
+        "alg": "EdDSA",
+        "key_ops": ["verify"],
+    }
+
+    result = credentials.load_public_jwks(json.dumps([jwk]))
+
+    assert len(result) == 1
+    assert result[0]["kid"] == "k1"
+
+
 @pytest.mark.parametrize("mutate", [
     lambda j: {**j, "d": "secret"},                  # private key material
     lambda j: {**j, "kty": "RSA"},
     lambda j: {**j, "crv": "P-256"},
     lambda j: {**j, "kid": "bad#id"},
     lambda j: {**j, "x": "AAAA"},                    # wrong length
+    lambda j: {**j, "use": "enc"},
+    lambda j: {**j, "alg": "HS256"},
+    lambda j: {**j, "key_ops": ["sign"]},
+    lambda j: {**j, "key_ops": "verify"},
+    lambda j: {**j, "x": ["AAAA"]},
+
 ])
 def test_load_public_jwks_rejects_bad_keys(mutate):
     with pytest.raises(ValueError):

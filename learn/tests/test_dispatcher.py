@@ -214,6 +214,7 @@ class TestStaticFileServing:
     async def test_missing_file_renders_404_template_without_raw_tags(self):
         from unittest.mock import MagicMock
         env = make_env()
+
         async def mock_get(key, *args, **kwargs):
             if key == "404.html":
                 return "{% extends 'base.html' %}{% block content %}Path: {{ requested_path }}{% endblock %}"
@@ -318,6 +319,7 @@ class TestInitAndSeedRouting:
         assert r.status == 200
         assert _parse(r)["success"] is True
         assert seeded == {"init": True, "key": "test-encryption-key"}
+
 
 # Study groups redirection
 class TestStudyGroupRedirection:
