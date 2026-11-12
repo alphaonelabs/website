@@ -1,0 +1,9 @@
+# Test-only dependencies for the learn app.
+#   python -m pip install -r learn/requirements-test.txt
+#   python -m pytest learn
+#
+# The Worker runtime supplies Web Crypto; outside it, conftest.py backs the js
+# stub with the cryptography package so Ed25519 signatures are real.
+pytest>=7.4
+pytest-asyncio>=0.21
+cryptography>=41.0

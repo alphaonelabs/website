@@ -100,6 +100,8 @@ class _CryptoSubtle:
     """
 
     async def importKey(self, fmt, key_data, algo, extractable, usages):
+        if _algo_name(algo) == "Ed25519":
+            return _ed25519_import(fmt, key_data)
         return key_data  # return raw bytes as fake CryptoKey
 
     async def encrypt(self, algo, key, data):
@@ -111,6 +113,24 @@ class _CryptoSubtle:
         if isinstance(data, (bytes, bytearray)):
             return bytes(data)
         return b""
+
+    async def sign(self, algo, key, data):
+        if _algo_name(algo) == "Ed25519":
+            return _ed25519_sign(key, bytes(data))
+        raise NotImplementedError("sign is only mocked for Ed25519")
+
+    async def verify(self, algo, key, signature, data):
+        if _algo_name(algo) == "Ed25519":
+            return _ed25519_verify(key, bytes(signature), bytes(data))
+        raise NotImplementedError("verify is only mocked for Ed25519")
+
+    async def generateKey(self, algo, extractable, usages):
+        if _algo_name(algo) == "Ed25519":
+            return _ed25519_generate()
+        raise NotImplementedError("generateKey is only mocked for Ed25519")
+
+    async def exportKey(self, fmt, key):
+        return _ed25519_export(fmt, key)
 
 
 class _Crypto:
@@ -159,3 +179,122 @@ class _JsModule:
 
 
 sys.modules["js"] = _JsModule()
+
+# ---------------------------------------------------------------------------
+# Ed25519 support for the Web Crypto stub
+# ---------------------------------------------------------------------------
+#
+# The Worker runtime offers Ed25519 through Web Crypto. CPython does not, so the
+# stub delegates to the "cryptography" package, which keeps the tests honest:
+# signatures produced here are real Ed25519 signatures and verification really
+# fails for tampered input. cryptography is a test-only dependency, imported
+# lazily so unrelated test files keep working without it.
+
+
+def _algo_name(algo):
+    """Return the algorithm name from a dict or a JS-like object."""
+    if isinstance(algo, str):
+        return algo
+    try:
+        return algo.get("name")
+    except AttributeError:
+        return getattr(algo, "name", None)
+
+
+class _Ed25519PrivateHandle:
+    def __init__(self, key):
+        self.key = key
+
+
+class _Ed25519PublicHandle:
+    def __init__(self, key):
+        self.key = key
+
+
+def _require_cryptography():
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+            Ed25519PrivateKey,
+            Ed25519PublicKey,
+        )
+    except ImportError as exc:  # pragma: no cover - environment guard
+        raise RuntimeError(
+            "cryptography is required to exercise the Ed25519 Web Crypto stub"
+        ) from exc
+    return Ed25519PrivateKey, Ed25519PublicKey
+
+
+def _b64url_decode(text):
+    import base64
+
+    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+
+
+def _b64url_encode(data):
+    import base64
+
+    return base64.urlsafe_b64encode(bytes(data)).rstrip(b"=").decode("ascii")
+
+
+def _ed25519_generate():
+    from types import SimpleNamespace
+
+    Ed25519PrivateKey, _ = _require_cryptography()
+    private = Ed25519PrivateKey.generate()
+    return SimpleNamespace(
+        privateKey=_Ed25519PrivateHandle(private),
+        publicKey=_Ed25519PublicHandle(private.public_key()),
+    )
+
+
+def _ed25519_import(fmt, key_data):
+    Ed25519PrivateKey, Ed25519PublicKey = _require_cryptography()
+    from cryptography.hazmat.primitives import serialization
+
+    if fmt == "pkcs8":
+        key = serialization.load_der_private_key(bytes(key_data), password=None)
+        return _Ed25519PrivateHandle(key)
+    if fmt == "jwk":
+        raw = _b64url_decode(key_data["x"])
+        return _Ed25519PublicHandle(Ed25519PublicKey.from_public_bytes(raw))
+    if fmt == "raw":
+        return _Ed25519PublicHandle(Ed25519PublicKey.from_public_bytes(bytes(key_data)))
+    raise ValueError("unsupported key format: %s" % fmt)
+
+
+def _ed25519_sign(handle, data):
+    if not isinstance(handle, _Ed25519PrivateHandle):
+        raise TypeError("signing requires an Ed25519 private key")
+    return handle.key.sign(data)
+
+
+def _ed25519_verify(handle, signature, data):
+    from cryptography.exceptions import InvalidSignature
+
+    if not isinstance(handle, _Ed25519PublicHandle):
+        raise TypeError("verification requires an Ed25519 public key")
+    try:
+        handle.key.verify(signature, data)
+        return True
+    except InvalidSignature:
+        return False
+
+
+def _ed25519_export(fmt, handle):
+    from cryptography.hazmat.primitives import serialization
+
+    if fmt == "pkcs8":
+        if not isinstance(handle, _Ed25519PrivateHandle):
+            raise TypeError("pkcs8 export requires a private key")
+        return handle.key.private_bytes(
+            serialization.Encoding.DER,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    if fmt == "jwk":
+        public = handle.key if isinstance(handle, _Ed25519PublicHandle) else handle.key.public_key()
+        raw = public.public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw
+        )
+        return {"kty": "OKP", "crv": "Ed25519", "x": _b64url_encode(raw)}
+    raise ValueError("unsupported export format: %s" % fmt)
