@@ -70,3 +70,33 @@ async def verify_jws(token: str, public_raw: bytes):
         return payload if isinstance(payload, dict) else None
     except Exception:
         return None
+
+_SAFE_KID = re.compile(r"[A-Za-z0-9._:-]{1,64}")
+
+
+def load_public_jwks(raw: str) -> list:
+    """Parse and validate CREDENTIAL_PUBLIC_JWKS. Raises ValueError on bad input.
+
+    Returns only public Ed25519 keys; any private member ("d") is rejected, never echoed.
+    """
+    if not raw or not raw.strip():
+        return []
+    data = json.loads(raw)
+    keys = data.get("keys") if isinstance(data, dict) else data
+    if not isinstance(keys, list):
+        raise ValueError("CREDENTIAL_PUBLIC_JWKS must be a JSON array of keys")
+    out, seen = [], set()
+    for jwk in keys:
+        if not isinstance(jwk, dict) or "d" in jwk:
+            raise ValueError("invalid or private key in JWKS")
+        kid = jwk.get("kid", "")
+        if jwk.get("kty") != "OKP" or jwk.get("crv") != "Ed25519":
+            raise ValueError("only OKP/Ed25519 keys are supported")
+        if not isinstance(kid, str) or not _SAFE_KID.fullmatch(kid) or kid in seen:
+            raise ValueError("missing, unsafe or duplicate kid")
+        if len(b64url_decode(jwk.get("x", ""))) != 32:
+            raise ValueError("x must be a 32-byte Ed25519 public key")
+        seen.add(kid)
+        out.append({"kty": "OKP", "crv": "Ed25519", "x": jwk["x"],
+                    "kid": kid, "use": "sig", "alg": "EdDSA"})
+    return out

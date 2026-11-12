@@ -1,4 +1,5 @@
 import sys
+import json
 from pathlib import Path
 
 import pytest
@@ -105,3 +106,41 @@ async def test_trailing_garbage_on_signature_rejected():
 def test_b64url_decode_rejects_non_canonical_input(bad):
     with pytest.raises(ValueError):
         credentials.b64url_decode(bad)
+
+
+def _jwk(kid="k1"):
+    _, pub = _keypair()
+    return {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": credentials.b64url_encode(pub),
+        "kid": kid,
+    }
+
+
+def test_load_public_jwks_empty_when_unconfigured():
+    assert credentials.load_public_jwks("") == []
+
+
+def test_load_public_jwks_valid_and_normalized():
+    jwk = {**_jwk("k1"), "extra": "ignored"}
+    out = credentials.load_public_jwks(json.dumps([jwk]))
+    assert out == [{"kty": "OKP", "crv": "Ed25519", "x": jwk["x"],
+                    "kid": "k1", "use": "sig", "alg": "EdDSA"}]
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda j: {**j, "d": "secret"},                  # private key material
+    lambda j: {**j, "kty": "RSA"},
+    lambda j: {**j, "crv": "P-256"},
+    lambda j: {**j, "kid": "bad#id"},
+    lambda j: {**j, "x": "AAAA"},                    # wrong length
+])
+def test_load_public_jwks_rejects_bad_keys(mutate):
+    with pytest.raises(ValueError):
+        credentials.load_public_jwks(json.dumps([mutate(_jwk())]))
+
+
+def test_load_public_jwks_rejects_duplicate_kid():
+    with pytest.raises(ValueError):
+        credentials.load_public_jwks(json.dumps([_jwk("k1"), _jwk("k1")]))
