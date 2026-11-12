@@ -20,6 +20,7 @@ from tests.helpers import (
     make_init_db_stmts,
     make_stmt,
     json_request,
+    set_static_content,
 )
 
 worker = load_worker()
@@ -50,6 +51,11 @@ class RecordingDB:
         """Queue *stmts* to be returned by successive prepare() calls."""
         self._stmts = list(stmts or [])
         self.calls = []
+        self.batches = []
+
+    async def batch(self, bound_stmts):
+        """Record a D1 batch (one transaction) of bound statements."""
+        self.batches.append(list(bound_stmts))
 
     def prepare(self, sql):
         """Record *sql* and return the next queued statement (or a no-op one)."""
@@ -69,15 +75,25 @@ class RecordingDB:
         """Return True if a statement containing *fragment* was executed with .run()."""
         return any(fragment in sql and stmt.bind.return_value.run.await_count for sql, stmt in self.calls)
 
+    def batched(self, fragment):
+        """Return True if a statement containing *fragment* was executed inside a batch."""
+        in_batch = {id(b) for group in self.batches for b in group}
+        return any(fragment in sql and id(stmt.bind.return_value) in in_batch for sql, stmt in self.calls)
+
 
 def _verified(flag=1):
     """Statement returning a users row with the given email_verified flag."""
     return make_stmt(first=MockRow(email_verified=flag))
 
 
-def _count(n):
-    """Statement returning a COUNT(*) row with value *n*."""
-    return make_stmt(first=MockRow(n=n))
+def _inserted(ok=True):
+    """Statement for the post-insert lookup: a row if the conditional insert wrote one."""
+    return make_stmt(first=MockRow(id="inserted") if ok else None)
+
+
+async def _role(role):
+    """Statement returning a users row whose stored (encrypted) role is *role*."""
+    return make_stmt(first=MockRow(role=await worker.encrypt_aes(role, ENC_KEY)))
 
 
 def _topic_req(payload, headers=None):
@@ -125,22 +141,23 @@ class TestCreateTopic:
 
     async def test_creates_topic(self):
         """A verified user creates a topic and gets its id and URL back."""
-        db = RecordingDB([_verified(), _count(0)])
+        db = RecordingDB([_verified(), make_stmt(), _inserted()])
         r = await worker.api_forum_create_topic(_topic_req(VALID_TOPIC, _auth()), make_env(db=db))
         assert r.status == 201
         data = _parse(r)["data"]
         assert data["url"] == f"/forum/topic/{data['id']}"
         assert worker._is_forum_id(data["id"])
-        assert "INSERT INTO forum_topics" in db.sql(2)
-        assert db.binds(2) == (data["id"], USER_ID, VALID_TOPIC["title"], VALID_TOPIC["body"])
+        assert "INSERT INTO forum_topics" in db.sql(1)
+        assert db.binds(1)[:4] == (data["id"], USER_ID, VALID_TOPIC["title"], VALID_TOPIC["body"])
+        assert db.binds(2) == (data["id"],)
 
     async def test_normalises_text(self):
         """Titles collapse whitespace; bodies use LF newlines and drop control characters."""
-        db = RecordingDB([_verified(), _count(0)])
+        db = RecordingDB([_verified(), make_stmt(), _inserted()])
         payload = {"title": "  Line\nbreaks   in\ttitle ", "body": "  first\r\nsecond\x00\x07  "}
         r = await worker.api_forum_create_topic(_topic_req(payload, _auth()), make_env(db=db))
         assert r.status == 201
-        _, _, title, body = db.binds(2)
+        _, _, title, body = db.binds(1)[:4]
         assert title == "Line breaks in title"
         assert body == "first\nsecond"
 
@@ -183,22 +200,29 @@ class TestCreateTopic:
         r = await worker.api_forum_create_topic(req, make_env(db=RecordingDB([_verified()])))
         assert r.status == 400
 
-    async def test_rate_limited(self):
-        """Users at the hourly topic limit get 429 with Retry-After and nothing is inserted."""
+    async def test_limit_check_and_insert_are_one_statement(self):
+        """The per-user limit is enforced inside the INSERT so concurrent posts cannot both pass."""
         max_posts, window = worker.FORUM_TOPIC_RATE_LIMIT
-        db = RecordingDB([_verified(), _count(max_posts)])
+        db = RecordingDB([_verified(), make_stmt(), _inserted()])
+        await worker.api_forum_create_topic(_topic_req(VALID_TOPIC, _auth()), make_env(db=db))
+        sql = db.sql(1)
+        assert sql.startswith("INSERT INTO forum_topics") and "SELECT COUNT(*) FROM forum_topics" in sql
+        assert db.binds(1)[4:] == (USER_ID, f"-{window} seconds", max_posts)
+
+    async def test_rate_limited(self):
+        """When the conditional insert writes nothing, the user gets 429 with Retry-After."""
+        _, window = worker.FORUM_TOPIC_RATE_LIMIT
+        db = RecordingDB([_verified(), make_stmt(), _inserted(False)])
         r = await worker.api_forum_create_topic(_topic_req(VALID_TOPIC, _auth()), make_env(db=db))
         assert r.status == 429
         assert r.headers["Retry-After"] == str(window)
-        assert db.binds(1) == (USER_ID, f"-{window} seconds")
-        assert not db.ran("INSERT INTO forum_topics")
 
     async def test_creates_tables_when_missing(self):
         """A missing forum table triggers init_db and the post still succeeds."""
         missing = make_stmt()
-        missing.bind.return_value.first.side_effect = Exception("D1_ERROR: no such table: forum_topics")
+        missing.bind.return_value.run.side_effect = Exception("D1_ERROR: no such table: forum_topics")
         init_stmts = await make_init_db_stmts(worker)
-        db = RecordingDB([_verified(), missing, *init_stmts, _count(0)])
+        db = RecordingDB([_verified(), missing, *init_stmts, make_stmt(), _inserted()])
         r = await worker.api_forum_create_topic(_topic_req(VALID_TOPIC, _auth()), make_env(db=db))
         assert r.status == 201
         assert db.ran("INSERT INTO forum_topics")
@@ -230,13 +254,13 @@ class TestCreateReply:
 
     async def test_creates_reply(self):
         """A verified user replies to an existing topic."""
-        db = RecordingDB([_verified(), make_stmt(first=MockRow(id=TOPIC_ID)), _count(0)])
+        db = RecordingDB([_verified(), make_stmt(first=MockRow(id=TOPIC_ID)), make_stmt(), _inserted()])
         r = await worker.api_forum_create_reply(_reply_req(TOPIC_ID, {"body": "Try a small game."}, _auth()), make_env(db=db), TOPIC_ID)
         assert r.status == 201
         data = _parse(r)["data"]
         assert data["topic_id"] == TOPIC_ID
-        assert "INSERT INTO forum_replies" in db.sql(3)
-        assert db.binds(3) == (data["id"], TOPIC_ID, USER_ID, "Try a small game.")
+        assert "INSERT INTO forum_replies" in db.sql(2)
+        assert db.binds(2)[:4] == (data["id"], TOPIC_ID, USER_ID, "Try a small game.")
 
     async def test_unknown_topic_returns_404(self):
         """Replying to a topic that does not exist returns 404 and inserts nothing."""
@@ -261,13 +285,13 @@ class TestCreateReply:
             assert r.status == 400, body[:10]
 
     async def test_rate_limited(self):
-        """Users at the reply limit get 429 and nothing is inserted."""
-        max_posts, _ = worker.FORUM_REPLY_RATE_LIMIT
-        db = RecordingDB([_verified(), make_stmt(first=MockRow(id=TOPIC_ID)), _count(max_posts)])
+        """Users at the reply limit get 429; the limit is checked inside the INSERT."""
+        max_posts, window = worker.FORUM_REPLY_RATE_LIMIT
+        db = RecordingDB([_verified(), make_stmt(first=MockRow(id=TOPIC_ID)), make_stmt(), _inserted(False)])
         r = await worker.api_forum_create_reply(_reply_req(TOPIC_ID, {"body": "hi"}, _auth()), make_env(db=db), TOPIC_ID)
         assert r.status == 429
-        assert "FROM forum_replies" in db.sql(2)
-        assert not db.ran("INSERT INTO forum_replies")
+        assert "SELECT COUNT(*) FROM forum_replies" in db.sql(2)
+        assert db.binds(2)[4:] == (USER_ID, f"-{window} seconds", max_posts)
 
 
 # ---------------------------------------------------------------------------
@@ -288,28 +312,48 @@ class TestDeleteTopic:
         assert r.status == 401
 
     async def test_author_deletes_topic_and_replies(self):
-        """The author deletes the topic and its replies."""
+        """The author deletes the topic and its replies in a single transaction."""
         db = RecordingDB([make_stmt(first=MockRow(author_id=USER_ID))])
         r = await worker.api_forum_delete_topic(_delete_req(f"/api/forum/topics/{TOPIC_ID}", _auth()), make_env(db=db), TOPIC_ID)
         assert r.status == 200
-        assert db.ran("DELETE FROM forum_replies WHERE topic_id=?")
-        assert db.ran("DELETE FROM forum_topics WHERE id=?")
+        assert len(db.batches) == 1 and len(db.batches[0]) == 2
+        assert db.batched("DELETE FROM forum_replies WHERE topic_id=?")
+        assert db.batched("DELETE FROM forum_topics WHERE id=?")
 
     async def test_admin_can_delete_any_topic(self):
-        """An admin can delete a topic written by someone else."""
-        db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID))])
+        """An admin whose stored role is still admin can delete someone else's topic."""
+        db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID)), await _role("admin")])
         r = await worker.api_forum_delete_topic(
             _delete_req(f"/api/forum/topics/{TOPIC_ID}", _auth(role="admin")), make_env(db=db), TOPIC_ID
         )
         assert r.status == 200
-        assert db.ran("DELETE FROM forum_topics WHERE id=?")
+        assert "SELECT role FROM users" in db.sql(1)
+        assert db.batched("DELETE FROM forum_topics WHERE id=?")
+
+    async def test_stale_admin_token_is_rejected(self):
+        """A token claiming admin is refused once the stored role is no longer admin."""
+        db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID)), await _role("member")])
+        r = await worker.api_forum_delete_topic(
+            _delete_req(f"/api/forum/topics/{TOPIC_ID}", _auth(role="admin")), make_env(db=db), TOPIC_ID
+        )
+        assert r.status == 403
+        assert db.batches == []
+
+    async def test_admin_token_for_missing_account_is_rejected(self):
+        """A token claiming admin for an account that no longer exists is refused."""
+        db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID)), make_stmt(first=None)])
+        r = await worker.api_forum_delete_topic(
+            _delete_req(f"/api/forum/topics/{TOPIC_ID}", _auth(role="admin")), make_env(db=db), TOPIC_ID
+        )
+        assert r.status == 403
 
     async def test_other_user_cannot_delete(self):
         """A different member gets 403 and nothing is deleted."""
         db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID))])
         r = await worker.api_forum_delete_topic(_delete_req(f"/api/forum/topics/{TOPIC_ID}", _auth()), make_env(db=db), TOPIC_ID)
         assert r.status == 403
-        assert not db.ran("DELETE FROM")
+        assert db.batches == []
+        assert len(db.calls) == 1  # no role lookup for non-admin tokens
 
     async def test_host_role_is_not_admin(self):
         """Activity hosts have no special forum delete rights."""
@@ -344,12 +388,22 @@ class TestDeleteReply:
         assert db.ran("DELETE FROM forum_replies WHERE id=?")
 
     async def test_admin_can_delete_any_reply(self):
-        """An admin can delete a reply written by someone else."""
-        db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID))])
+        """An admin whose stored role is still admin can delete someone else's reply."""
+        db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID)), await _role("admin")])
         r = await worker.api_forum_delete_reply(
             _delete_req(f"/api/forum/replies/{REPLY_ID}", _auth(role="admin")), make_env(db=db), REPLY_ID
         )
         assert r.status == 200
+        assert db.ran("DELETE FROM forum_replies WHERE id=?")
+
+    async def test_stale_admin_token_is_rejected(self):
+        """A token claiming admin is refused once the stored role is no longer admin."""
+        db = RecordingDB([make_stmt(first=MockRow(author_id=OTHER_ID)), await _role("member")])
+        r = await worker.api_forum_delete_reply(
+            _delete_req(f"/api/forum/replies/{REPLY_ID}", _auth(role="admin")), make_env(db=db), REPLY_ID
+        )
+        assert r.status == 403
+        assert not db.ran("DELETE FROM")
 
     async def test_other_user_cannot_delete(self):
         """A different member gets 403 and nothing is deleted."""
@@ -414,19 +468,47 @@ class TestRendering:
         assert 'id="forum-reply-form"' in r.body
 
     async def test_listing_shows_new_topics_and_labels_archive(self):
-        """The /forum listing shows new topics, escaped, ahead of any archive."""
+        """New topics are listed first; legacy topics follow in the read-only archive section."""
+        legacy_payload = await worker.encrypt_aes(json.dumps({
+            "model": "web.ForumTopic", "pk": "7",
+            "fields": {"title": "Old Django thread", "content": "From the old site."},
+        }), ENC_KEY)
         db = RecordingDB([
             make_stmt(all_results=[MockRow(id=TOPIC_ID, title=XSS, body="Body text", created_at="2026-11-12 10:00:00",
                                            author_id=USER_ID, author_name_enc="", reply_count=1)]),
-            make_stmt(all_results=[]),  # legacy_records
+            make_stmt(all_results=[MockRow(legacy_model="web.ForumTopic", legacy_pk="7", payload=legacy_payload,
+                                           created_at="2020-01-01", updated_at="2020-01-01")]),
         ])
         html = await worker._server_forum_records_html(make_env(db=db))
         assert "Latest discussions" in html
-        assert f"/forum/topic/{TOPIC_ID}" in html
         assert "&lt;script&gt;" in html and XSS not in html
         assert "Community member" in html
         assert "1 reply" in html
-        assert "Archived discussions" not in html  # no legacy records
+        new_link = html.index(f"/forum/topic/{TOPIC_ID}")
+        archive = html.index("Archived discussions")
+        legacy_link = html.index("/forum/topic/7")
+        assert new_link < archive < legacy_link
+        assert "read-only" in html[archive:legacy_link]
+        assert "Old Django thread" in html[archive:]
+
+    async def test_listing_without_legacy_records_has_no_archive(self):
+        """The archive heading only appears when legacy records exist."""
+        db = RecordingDB([
+            make_stmt(all_results=[MockRow(id=TOPIC_ID, title="New", body="b", created_at="2026-11-12 10:00:00",
+                                           author_id=USER_ID, author_name_enc="", reply_count=0)]),
+            make_stmt(all_results=[]),
+        ])
+        html = await worker._server_forum_records_html(make_env(db=db))
+        assert "Archived discussions" not in html
+
+    async def test_forum_page_is_revalidated(self):
+        """/forum is served with a revalidating cache policy; other pages keep the public one."""
+        env = make_env()
+        set_static_content(env, "<html><body>page</body></html>")
+        forum = await worker.serve_static("/forum.html", env, MockRequest(url="http://localhost/forum"))
+        about = await worker.serve_static("/about.html", env, MockRequest(url="http://localhost/about"))
+        assert forum.headers["Cache-Control"] == "private, no-cache"
+        assert about.headers["Cache-Control"].startswith("public")
 
     async def test_listing_empty_state(self):
         """With no topics at all the listing shows an empty state."""

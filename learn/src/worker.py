@@ -5646,7 +5646,10 @@ FORUM_TOPIC_RATE_LIMIT = (5, 3600)
 FORUM_REPLY_RATE_LIMIT = (20, 600)
 FORUM_LIST_LIMIT = 100
 FORUM_REPLY_LIST_LIMIT = 500
-_FORUM_RATE_TABLES = {"forum_topics", "forum_replies"}
+_FORUM_INSERT_COLUMNS = {
+    "forum_topics": "id,author_id,title,body",
+    "forum_replies": "id,topic_id,author_id,body",
+}
 _FORUM_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _FORUM_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
@@ -5695,17 +5698,28 @@ async def _forum_poster(req, env):
     return user, None
 
 
-async def _forum_rate_limit(env, table: str, user_id: str, limit) -> Optional[Any]:
-    """Return a 429 response if the user has posted too often in this table, else None."""
-    if table not in _FORUM_RATE_TABLES:
+async def _forum_insert_within_limit(env, table: str, values: tuple, user_id: str, limit) -> Optional[Any]:
+    """Insert a post only if its author is under the rate limit, else return a 429.
+
+    The limit check and the insert are one SQL statement, so concurrent requests
+    cannot both pass the check. *values* are the table's columns except created_at,
+    with the new row's id first.
+    """
+    columns = _FORUM_INSERT_COLUMNS.get(table)
+    if not columns:
         raise ValueError(f"unexpected forum table: {table}")
     max_posts, window_seconds = limit
-    row = await env.DB.prepare(
-        f"SELECT COUNT(*) AS n FROM {table}"
-        " WHERE author_id=? AND created_at > datetime('now', ?)"
-    ).bind(user_id, f"-{int(window_seconds)} seconds").first()
-    count = int(getattr(row, "n", 0) or 0) if row else 0
-    if count < max_posts:
+    placeholders = ",".join(["?"] * len(values))
+    await env.DB.prepare(
+        f"INSERT INTO {table} ({columns},created_at)"
+        f" SELECT {placeholders},datetime('now')"
+        f" WHERE (SELECT COUNT(*) FROM {table}"
+        " WHERE author_id=? AND created_at > datetime('now', ?)) < ?"
+    ).bind(*values, user_id, f"-{int(window_seconds)} seconds", int(max_posts)).run()
+    inserted = await env.DB.prepare(
+        f"SELECT id FROM {table} WHERE id=?"
+    ).bind(values[0]).first()
+    if inserted:
         return None
     return Response(
         json.dumps({"error": "You're posting too quickly. Please wait a few minutes and try again."}),
@@ -5737,14 +5751,9 @@ async def api_forum_create_topic(req, env):
     topic_id = new_id()
 
     async def run():
-        limited = await _forum_rate_limit(env, "forum_topics", user["id"], FORUM_TOPIC_RATE_LIMIT)
-        if limited:
-            return limited
-        await env.DB.prepare(
-            "INSERT INTO forum_topics (id,author_id,title,body,created_at)"
-            " VALUES (?,?,?,?,datetime('now'))"
-        ).bind(topic_id, user["id"], title, text).run()
-        return None
+        return await _forum_insert_within_limit(
+            env, "forum_topics", (topic_id, user["id"], title, text), user["id"], FORUM_TOPIC_RATE_LIMIT
+        )
 
     limited = await _forum_db(env, run)
     if limited:
@@ -5782,14 +5791,9 @@ async def api_forum_create_reply(req, env, topic_id: str):
         ).bind(topic_id).first()
         if not topic:
             return err("Topic not found", 404)
-        limited = await _forum_rate_limit(env, "forum_replies", user["id"], FORUM_REPLY_RATE_LIMIT)
-        if limited:
-            return limited
-        await env.DB.prepare(
-            "INSERT INTO forum_replies (id,topic_id,author_id,body,created_at)"
-            " VALUES (?,?,?,?,datetime('now'))"
-        ).bind(reply_id, topic_id, user["id"], text).run()
-        return None
+        return await _forum_insert_within_limit(
+            env, "forum_replies", (reply_id, topic_id, user["id"], text), user["id"], FORUM_REPLY_RATE_LIMIT
+        )
 
     failure = await _forum_db(env, run)
     if failure:
@@ -5801,8 +5805,22 @@ async def api_forum_create_reply(req, env, topic_id: str):
     )
 
 
-def _forum_can_delete(user: Dict[str, Any], author_id: str) -> bool:
-    return bool(user) and (user.get("id") == author_id or user.get("role") == "admin")
+async def _forum_can_delete(env, user: Dict[str, Any], author_id: str) -> bool:
+    """Authors can delete their own posts; admins can delete any post.
+
+    The admin path re-reads the stored role so a demoted or deleted account
+    loses delete rights immediately rather than when its token expires.
+    """
+    if not user:
+        return False
+    if user.get("id") == author_id:
+        return True
+    if user.get("role") != "admin":
+        return False
+    row = await env.DB.prepare("SELECT role FROM users WHERE id=?").bind(user.get("id")).first()
+    if not row:
+        return False
+    return await decrypt_aes(getattr(row, "role", "") or "", env.ENCRYPTION_KEY) == "admin"
 
 
 async def api_forum_delete_topic(req, env, topic_id: str):
@@ -5819,10 +5837,13 @@ async def api_forum_delete_topic(req, env, topic_id: str):
         ).bind(topic_id).first()
         if not row:
             return err("Topic not found", 404)
-        if not _forum_can_delete(user, row.author_id):
+        if not await _forum_can_delete(env, user, row.author_id):
             return err("You can only delete your own posts", 403)
-        await env.DB.prepare("DELETE FROM forum_replies WHERE topic_id=?").bind(topic_id).run()
-        await env.DB.prepare("DELETE FROM forum_topics WHERE id=?").bind(topic_id).run()
+        # One transaction: a failure cannot leave the topic without its replies.
+        await env.DB.batch([
+            env.DB.prepare("DELETE FROM forum_replies WHERE topic_id=?").bind(topic_id),
+            env.DB.prepare("DELETE FROM forum_topics WHERE id=?").bind(topic_id),
+        ])
         return ok(None, "Topic deleted")
 
     return await _forum_db(env, run)
@@ -5842,7 +5863,7 @@ async def api_forum_delete_reply(req, env, reply_id: str):
         ).bind(reply_id).first()
         if not row:
             return err("Reply not found", 404)
-        if not _forum_can_delete(user, row.author_id):
+        if not await _forum_can_delete(env, user, row.author_id):
             return err("You can only delete your own posts", 403)
         await env.DB.prepare("DELETE FROM forum_replies WHERE id=?").bind(reply_id).run()
         return ok(None, "Reply deleted")
@@ -7939,7 +7960,8 @@ async def serve_static(path: str, env, req=None):
         content,
         headers={
             "Content-Type": mime,
-            "Cache-Control": _static_cache_control(ext),
+            # The forum listing changes whenever someone posts; revalidate it like topic pages.
+            "Cache-Control": "private, no-cache" if key == "forum.html" else _static_cache_control(ext),
             **_SECURITY_HEADERS,
             **_CORS,
         },
