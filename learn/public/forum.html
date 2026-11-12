@@ -32,6 +32,31 @@
             <span id="records-count" class="text-2xl font-black text-teal-600 dark:text-teal-300">{% records_count models="web.ForumCategory,web.ForumTopic,web.ForumReply,web.ForumVote" auth_required="false" %}  topics
           </div>
         </div>
+        <section id="forum-compose" class="mb-8 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5" aria-labelledby="forum-compose-heading">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 id="forum-compose-heading" class="text-lg font-black text-gray-900 dark:text-white">Start a discussion</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Ask a question or share something with the community.</p>
+            </div>
+            <button type="button" id="forum-compose-toggle" class="hidden inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold" aria-expanded="false" aria-controls="forum-topic-form"><i class="fa-solid fa-plus mr-2" aria-hidden="true"></i>New topic</button>
+            <a id="forum-compose-signin" href="/login" class="inline-flex items-center px-4 py-2 rounded-lg border border-teal-600 text-teal-700 dark:text-teal-300 font-bold hover:bg-teal-50 dark:hover:bg-teal-900/30"><i class="fa-solid fa-right-to-bracket mr-2" aria-hidden="true"></i>Sign in to post</a>
+          </div>
+          <form id="forum-topic-form" class="hidden mt-5 space-y-3">
+            <div>
+              <label for="forum-topic-title" class="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">Title</label>
+              <input id="forum-topic-title" name="title" type="text" required minlength="3" maxlength="200" autocomplete="off" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+              <label for="forum-topic-body" class="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">Details</label>
+              <textarea id="forum-topic-body" name="body" rows="6" required maxlength="10000" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"></textarea>
+            </div>
+            <div id="forum-topic-status" class="hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></div>
+            <div class="flex flex-wrap gap-2">
+              <button type="submit" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold disabled:opacity-60"><i class="fa-solid fa-paper-plane mr-2" aria-hidden="true"></i>Post topic</button>
+              <button type="button" id="forum-topic-cancel" class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>
+            </div>
+          </form>
+        </section>
         <div id="records-status" class="hidden mb-4"></div>
         <div id="records-list" class="space-y-4">
           {% records_list models="web.ForumCategory,web.ForumTopic,web.ForumReply,web.ForumVote" noun="topics" auth_required="false" %}
@@ -40,4 +65,5 @@
     </div>
   </main>
 <script src="/js/current-records.js" defer></script>
+<script src="/js/forum.js" defer></script>
 {% endblock %}

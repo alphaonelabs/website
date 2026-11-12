@@ -1179,6 +1179,31 @@ _DDL = [
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
+    # Forum topics and replies written on the current site (legacy forum
+    # records stay in legacy_records and render as a read-only archive).
+    """CREATE TABLE IF NOT EXISTS forum_topics (
+        id         TEXT PRIMARY KEY,
+        author_id  TEXT NOT NULL,
+        title      TEXT NOT NULL,
+        body       TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_forum_topics_created ON forum_topics(created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_forum_topics_author ON forum_topics(author_id, created_at)",
+    """CREATE TABLE IF NOT EXISTS forum_replies (
+        id         TEXT PRIMARY KEY,
+        topic_id   TEXT NOT NULL,
+        author_id  TEXT NOT NULL,
+        body       TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        FOREIGN KEY (topic_id) REFERENCES forum_topics(id) ON DELETE CASCADE,
+        FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_forum_replies_topic ON forum_replies(topic_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_forum_replies_author ON forum_replies(author_id, created_at)",
 ]
 
 
@@ -5605,6 +5630,430 @@ async def _private_records_signin_html() -> str:
     )
 
 
+# ---------------------------------------------------------------------------
+# Forum authoring: topics and replies written on the current site.
+# Legacy Django forum records remain in legacy_records and render below the
+# new discussions as a read-only archive.
+# ---------------------------------------------------------------------------
+
+FORUM_TITLE_MIN = 3
+FORUM_TITLE_MAX = 200
+FORUM_TOPIC_BODY_MAX = 10000
+FORUM_REPLY_BODY_MAX = 5000
+# (max posts, window in seconds) per user. Counted from the forum tables so the
+# limit holds across Worker isolates, unlike the in-memory auth limiter.
+FORUM_TOPIC_RATE_LIMIT = (5, 3600)
+FORUM_REPLY_RATE_LIMIT = (20, 600)
+FORUM_LIST_LIMIT = 100
+FORUM_REPLY_LIST_LIMIT = 500
+_FORUM_INSERT_COLUMNS = {
+    "forum_topics": "id,author_id,title,body",
+    "forum_replies": "id,topic_id,author_id,body",
+}
+_FORUM_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+_FORUM_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _forum_clean_text(value: Any) -> str:
+    """Normalise user-supplied forum text: strings only, LF newlines, no control characters."""
+    if not isinstance(value, str):
+        return ""
+    text = value.replace("\r\n", "\n").replace("\r", "\n")
+    return _FORUM_CONTROL_CHARS_RE.sub("", text).strip()
+
+
+def _is_forum_id(value: str) -> bool:
+    return bool(_FORUM_ID_RE.fullmatch(value or ""))
+
+
+async def _forum_db(env, fn):
+    """Run a forum DB operation, creating the tables via init_db if they are missing."""
+    try:
+        return await fn()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            await init_db(env)
+            return await fn()
+        raise
+
+
+async def _forum_poster(req, env):
+    """Return (user, None) for a signed-in user with a verified email, else (None, error)."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user or not user.get("id"):
+        return None, err("Authentication required", 401)
+    row = await env.DB.prepare(
+        "SELECT email_verified FROM users WHERE id=?"
+    ).bind(user["id"]).first()
+    if not row:
+        return None, err("Authentication required", 401)
+    if not getattr(row, "email_verified", 0):
+        return None, json_resp(
+            {
+                "error": "Please verify your email before posting in the forum.",
+                "code": "email_not_verified",
+            },
+            403,
+        )
+    return user, None
+
+
+async def _forum_insert_within_limit(env, table: str, values: tuple, user_id: str, limit) -> Optional[Any]:
+    """Insert a post only if its author is under the rate limit, else return a 429.
+
+    The limit check and the insert are one SQL statement, so concurrent requests
+    cannot both pass the check. *values* are the table's columns except created_at,
+    with the new row's id first.
+    """
+    columns = _FORUM_INSERT_COLUMNS.get(table)
+    if not columns:
+        raise ValueError(f"unexpected forum table: {table}")
+    max_posts, window_seconds = limit
+    placeholders = ",".join(["?"] * len(values))
+    await env.DB.prepare(
+        f"INSERT INTO {table} ({columns},created_at)"
+        f" SELECT {placeholders},datetime('now')"
+        f" WHERE (SELECT COUNT(*) FROM {table}"
+        " WHERE author_id=? AND created_at > datetime('now', ?)) < ?"
+    ).bind(*values, user_id, f"-{int(window_seconds)} seconds", int(max_posts)).run()
+    inserted = await env.DB.prepare(
+        f"SELECT id FROM {table} WHERE id=?"
+    ).bind(values[0]).first()
+    if inserted:
+        return None
+    return Response(
+        json.dumps({"error": "You're posting too quickly. Please wait a few minutes and try again."}),
+        status=429,
+        headers={"Content-Type": "application/json", **_CORS, "Retry-After": str(int(window_seconds))},
+    )
+
+
+async def api_forum_create_topic(req, env):
+    """POST /api/forum/topics — start a new discussion (verified users only)."""
+    user, auth_resp = await _forum_poster(req, env)
+    if auth_resp:
+        return auth_resp
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    title = " ".join(_forum_clean_text(body.get("title")).split())
+    text = _forum_clean_text(body.get("body"))
+    if len(title) < FORUM_TITLE_MIN:
+        return err(f"Title must be at least {FORUM_TITLE_MIN} characters")
+    if len(title) > FORUM_TITLE_MAX:
+        return err(f"Title must be at most {FORUM_TITLE_MAX} characters")
+    if not text:
+        return err("Post body is required")
+    if len(text) > FORUM_TOPIC_BODY_MAX:
+        return err(f"Post body must be at most {FORUM_TOPIC_BODY_MAX} characters")
+
+    topic_id = new_id()
+
+    async def run():
+        return await _forum_insert_within_limit(
+            env, "forum_topics", (topic_id, user["id"], title, text), user["id"], FORUM_TOPIC_RATE_LIMIT
+        )
+
+    limited = await _forum_db(env, run)
+    if limited:
+        return limited
+    return json_resp(
+        {"success": True, "message": "Topic created",
+         "data": {"id": topic_id, "url": f"/forum/topic/{topic_id}"}},
+        201,
+    )
+
+
+async def api_forum_create_reply(req, env, topic_id: str):
+    """POST /api/forum/topics/:id/replies — reply to a discussion (verified users only)."""
+    user, auth_resp = await _forum_poster(req, env)
+    if auth_resp:
+        return auth_resp
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    text = _forum_clean_text(body.get("body"))
+    if not text:
+        return err("Reply body is required")
+    if len(text) > FORUM_REPLY_BODY_MAX:
+        return err(f"Reply must be at most {FORUM_REPLY_BODY_MAX} characters")
+    # Archived (legacy) topics use numeric ids and are read-only.
+    if not _is_forum_id(topic_id):
+        return err("Topic not found", 404)
+
+    reply_id = new_id()
+
+    async def run():
+        topic = await env.DB.prepare(
+            "SELECT id FROM forum_topics WHERE id=?"
+        ).bind(topic_id).first()
+        if not topic:
+            return err("Topic not found", 404)
+        return await _forum_insert_within_limit(
+            env, "forum_replies", (reply_id, topic_id, user["id"], text), user["id"], FORUM_REPLY_RATE_LIMIT
+        )
+
+    failure = await _forum_db(env, run)
+    if failure:
+        return failure
+    return json_resp(
+        {"success": True, "message": "Reply posted",
+         "data": {"id": reply_id, "topic_id": topic_id}},
+        201,
+    )
+
+
+async def _forum_can_delete(env, user: Dict[str, Any], author_id: str) -> bool:
+    """Authors can delete their own posts; admins can delete any post.
+
+    The admin path re-reads the stored role so a demoted or deleted account
+    loses delete rights immediately rather than when its token expires.
+    """
+    if not user:
+        return False
+    if user.get("id") == author_id:
+        return True
+    if user.get("role") != "admin":
+        return False
+    row = await env.DB.prepare("SELECT role FROM users WHERE id=?").bind(user.get("id")).first()
+    if not row:
+        return False
+    return await decrypt_aes(getattr(row, "role", "") or "", env.ENCRYPTION_KEY) == "admin"
+
+
+async def api_forum_delete_topic(req, env, topic_id: str):
+    """DELETE /api/forum/topics/:id — the author or an admin removes a topic and its replies."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    if not _is_forum_id(topic_id):
+        return err("Topic not found", 404)
+
+    async def run():
+        row = await env.DB.prepare(
+            "SELECT author_id FROM forum_topics WHERE id=?"
+        ).bind(topic_id).first()
+        if not row:
+            return err("Topic not found", 404)
+        if not await _forum_can_delete(env, user, row.author_id):
+            return err("You can only delete your own posts", 403)
+        # One transaction: a failure cannot leave the topic without its replies.
+        await env.DB.batch([
+            env.DB.prepare("DELETE FROM forum_replies WHERE topic_id=?").bind(topic_id),
+            env.DB.prepare("DELETE FROM forum_topics WHERE id=?").bind(topic_id),
+        ])
+        return ok(None, "Topic deleted")
+
+    return await _forum_db(env, run)
+
+
+async def api_forum_delete_reply(req, env, reply_id: str):
+    """DELETE /api/forum/replies/:id — the author or an admin removes a reply."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    if not _is_forum_id(reply_id):
+        return err("Reply not found", 404)
+
+    async def run():
+        row = await env.DB.prepare(
+            "SELECT author_id FROM forum_replies WHERE id=?"
+        ).bind(reply_id).first()
+        if not row:
+            return err("Reply not found", 404)
+        if not await _forum_can_delete(env, user, row.author_id):
+            return err("You can only delete your own posts", 403)
+        await env.DB.prepare("DELETE FROM forum_replies WHERE id=?").bind(reply_id).run()
+        return ok(None, "Reply deleted")
+
+    return await _forum_db(env, run)
+
+
+async def _forum_author_name(name_enc: str, enc: str, cache: Dict[str, str]) -> str:
+    key = name_enc or ""
+    if key not in cache:
+        name = await decrypt_aes(key, enc) if key else ""
+        cache[key] = name if name and name != "[decryption error]" else "Community member"
+    return cache[key]
+
+
+async def _forum_list_topics(env, limit: int = FORUM_LIST_LIMIT) -> list:
+    """Return new forum topics, most recently active first."""
+    try:
+        res = await env.DB.prepare(
+            "SELECT t.id,t.title,t.body,t.created_at,t.author_id,u.name AS author_name_enc,"
+            " (SELECT COUNT(*) FROM forum_replies r WHERE r.topic_id=t.id) AS reply_count,"
+            " COALESCE((SELECT MAX(r.created_at) FROM forum_replies r WHERE r.topic_id=t.id), t.created_at)"
+            " AS last_activity_at"
+            " FROM forum_topics t LEFT JOIN users u ON u.id=t.author_id"
+            " ORDER BY last_activity_at DESC LIMIT ?"
+        ).bind(int(limit)).all()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return []
+        raise
+    names: Dict[str, str] = {}
+    topics = []
+    for row in res.results or []:
+        topics.append({
+            "id": row.id,
+            "title": row.title or "",
+            "body": row.body or "",
+            "created_at": row.created_at or "",
+            "author_id": row.author_id or "",
+            "author_name": await _forum_author_name(getattr(row, "author_name_enc", "") or "", env.ENCRYPTION_KEY, names),
+            "reply_count": int(getattr(row, "reply_count", 0) or 0),
+        })
+    return topics
+
+
+async def _forum_topic_count(env) -> int:
+    try:
+        row = await env.DB.prepare("SELECT COUNT(*) AS n FROM forum_topics").first()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return 0
+        raise
+    return int(getattr(row, "n", 0) or 0) if row else 0
+
+
+async def _forum_get_topic(env, topic_id: str) -> Optional[Dict[str, Any]]:
+    """Return a new forum topic with its replies, or None."""
+    if not _is_forum_id(topic_id):
+        return None
+    try:
+        row = await env.DB.prepare(
+            "SELECT t.id,t.title,t.body,t.created_at,t.author_id,u.name AS author_name_enc"
+            " FROM forum_topics t LEFT JOIN users u ON u.id=t.author_id WHERE t.id=?"
+        ).bind(topic_id).first()
+        if not row:
+            return None
+        res = await env.DB.prepare(
+            "SELECT r.id,r.body,r.created_at,r.author_id,u.name AS author_name_enc"
+            " FROM forum_replies r LEFT JOIN users u ON u.id=r.author_id"
+            " WHERE r.topic_id=? ORDER BY r.created_at ASC, r.id ASC LIMIT ?"
+        ).bind(topic_id, FORUM_REPLY_LIST_LIMIT).all()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return None
+        raise
+    enc = env.ENCRYPTION_KEY
+    names: Dict[str, str] = {}
+    replies = []
+    for r in res.results or []:
+        replies.append({
+            "id": r.id,
+            "body": r.body or "",
+            "created_at": r.created_at or "",
+            "author_id": r.author_id or "",
+            "author_name": await _forum_author_name(getattr(r, "author_name_enc", "") or "", enc, names),
+        })
+    return {
+        "id": row.id,
+        "title": row.title or "",
+        "body": row.body or "",
+        "created_at": row.created_at or "",
+        "author_id": row.author_id or "",
+        "author_name": await _forum_author_name(getattr(row, "author_name_enc", "") or "", enc, names),
+        "replies": replies,
+    }
+
+
+def _forum_timestamp(value: str) -> str:
+    """'YYYY-MM-DD HH:MM:SS' (UTC, as stored by D1) -> 'YYYY-MM-DD HH:MM UTC'."""
+    text = str(value or "")
+    return (text[:16] + " UTC") if len(text) >= 16 else text
+
+
+def _forum_delete_button(kind: str, item_id: str, author_id: str, label: str) -> str:
+    # Hidden until /js/forum.js confirms the viewer is the author or an admin;
+    # the API enforces the same rule.
+    return (
+        f'<button type="button" class="hidden mt-4 inline-flex items-center text-xs font-bold text-red-700 dark:text-red-300 hover:underline"'
+        f' data-forum-delete="{_html_escape(kind)}" data-forum-id="{_html_escape(item_id)}" data-forum-author="{_html_escape(author_id)}">'
+        f'<i class="fa-solid fa-trash mr-1" aria-hidden="true"></i>{_html_escape(label)}</button>'
+    )
+
+
+def _forum_topic_card_html(topic: Dict[str, Any]) -> str:
+    href = "/forum/topic/" + quote(topic["id"])
+    body = topic.get("body") or ""
+    excerpt = body if len(body) <= 280 else body[:277].rstrip() + "..."
+    replies = int(topic.get("reply_count") or 0)
+    return (
+        '<article class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">'
+        '<div class="flex flex-col md:flex-row md:items-start justify-between gap-4">'
+        '<div class="min-w-0 flex-1">'
+        '<div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">'
+        f'<span class="font-bold text-gray-700 dark:text-gray-200">{_html_escape(topic.get("author_name"))}</span>'
+        f'<span>{_html_escape((topic.get("created_at") or "")[:10])}</span></div>'
+        f'<h3 class="text-xl font-black text-gray-900 dark:text-white"><a href="{_html_escape(href)}" class="hover:text-teal-700 dark:hover:text-teal-300">{_html_escape(topic.get("title"))}</a></h3>'
+        + (f'<p class="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-words">{_html_escape(excerpt)}</p>' if excerpt else '') +
+        '</div><div class="flex md:flex-col gap-2 shrink-0 text-sm">'
+        f'<span class="rounded-xl bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 px-3 py-2 font-black"><i class="fa-solid fa-reply mr-1" aria-hidden="true"></i>{replies} {"reply" if replies == 1 else "replies"}</span>'
+        '</div></div></article>'
+    )
+
+
+def _forum_reply_html(reply: Dict[str, Any]) -> str:
+    return (
+        f'<article id="reply-{_html_escape(reply["id"])}" class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">'
+        '<div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">'
+        f'<span class="font-bold text-gray-700 dark:text-gray-200">{_html_escape(reply.get("author_name"))}</span>'
+        f'<span>{_html_escape(_forum_timestamp(reply.get("created_at")))}</span></div>'
+        f'<p class="text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words">{_html_escape(reply.get("body"))}</p>'
+        + _forum_delete_button("reply", reply["id"], reply.get("author_id") or "", "Delete reply") +
+        '</article>'
+    )
+
+
+def _render_forum_topic_page(topic: Dict[str, Any]):
+    topic_id = topic["id"]
+    title = _html_escape(topic.get("title") or "Forum topic")
+    replies = topic.get("replies") or []
+    replies_html = "".join(_forum_reply_html(r) for r in replies) or (
+        '<div id="forum-replies-empty" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-gray-500 dark:text-gray-400">No replies yet. Be the first to reply.</div>'
+    )
+    input_cls = (
+        "w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 "
+        "text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+    )
+    html = (
+        '<!DOCTYPE html><html lang="en" class="scroll-smooth"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        f'<title>{title} - Alpha One Labs Forum</title><link rel="icon" type="image/svg+xml" href="/images/logo.svg"><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">'
+        + _SSR_BRAND_HEAD + '</head>'
+        '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">' + _ssr_nav() +
+        '<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-10"><a href="/forum" class="inline-flex items-center text-sm font-bold text-teal-700 dark:text-teal-300 hover:underline mb-6"><i class="fa-solid fa-arrow-left mr-2" aria-hidden="true"></i>Back to forum</a>'
+        '<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm">'
+        '<div class="flex flex-wrap items-center gap-2 mb-4 text-xs text-gray-500 dark:text-gray-400">'
+        '<span class="rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 font-black">Discussion</span>'
+        f'<span class="font-bold text-gray-700 dark:text-gray-200">{_html_escape(topic.get("author_name"))}</span>'
+        f'<span>{_html_escape(_forum_timestamp(topic.get("created_at")))}</span></div>'
+        f'<h1 class="text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight break-words">{title}</h1>'
+        f'<div class="mt-8 text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words">{_html_escape(topic.get("body"))}</div>'
+        + _forum_delete_button("topic", topic_id, topic.get("author_id") or "", "Delete topic") +
+        '</article>'
+        f'<section class="mt-8" aria-labelledby="forum-replies-heading"><h2 id="forum-replies-heading" class="text-2xl font-black mb-4">Replies ({len(replies)})</h2>'
+        f'<div id="forum-replies" class="space-y-4">{replies_html}</div></section>'
+        '<section class="mt-8" aria-labelledby="forum-reply-heading">'
+        '<h2 id="forum-reply-heading" class="text-2xl font-black mb-4">Add a reply</h2>'
+        f'<form id="forum-reply-form" class="hidden space-y-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5" data-topic-id="{_html_escape(topic_id)}">'
+        '<label for="forum-reply-body" class="block text-sm font-bold text-gray-700 dark:text-gray-200">Your reply</label>'
+        f'<textarea id="forum-reply-body" name="body" rows="5" required maxlength="{FORUM_REPLY_BODY_MAX}" class="{input_cls}"></textarea>'
+        '<div id="forum-reply-status" class="hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></div>'
+        '<button type="submit" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold disabled:opacity-60"><i class="fa-solid fa-reply mr-2" aria-hidden="true"></i>Post reply</button>'
+        '</form>'
+        '<div id="forum-reply-signin" class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-gray-600 dark:text-gray-300">'
+        '<a href="/login" class="font-bold text-teal-700 dark:text-teal-300 hover:underline">Sign in</a> with a verified account to join the discussion.</div>'
+        '</section></main>' + _ssr_footer() +
+        '<script src="/js/forum.js" defer></script></body></html>'
+    )
+    # Replies change often; let the browser revalidate instead of showing a stale thread.
+    return Response(html, headers={"Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-cache", **_CORS})
+
+
 async def _server_forum_payload(env) -> Dict[str, Any]:
     records = await _server_records_for_models(env, list(FORUM_RECORD_MODELS), limit=500)
     categories = [r for r in records if r.get("model") == "web.ForumCategory"]
@@ -5624,14 +6073,34 @@ async def _server_forum_payload(env) -> Dict[str, Any]:
     return {"records": records, "categories": categories, "topics": topics, "replies": replies, "votes": votes, "reply_counts": reply_counts, "vote_scores": vote_scores}
 
 
+async def _server_forum_topic_count(env) -> int:
+    """New discussions plus archived legacy topics, for the /forum header count."""
+    legacy = len((await _server_forum_payload(env))["topics"])
+    return legacy + await _forum_topic_count(env)
+
+
 async def _server_forum_records_html(env) -> str:
+    new_topics = await _forum_list_topics(env)
+    rows = ['<section class="mb-10" aria-labelledby="forum-latest-heading">'
+            '<h3 id="forum-latest-heading" class="text-lg font-black text-gray-900 dark:text-white mb-4">Latest discussions</h3>']
+    if new_topics:
+        rows.append('<div class="space-y-4">' + "".join(_forum_topic_card_html(t) for t in new_topics) + '</div>')
+    else:
+        rows.append('<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">No discussions yet. Start the first one.</div>')
+    rows.append('</section>')
+
     payload = await _server_forum_payload(env)
     categories = payload["categories"]
     topics = payload["topics"]
     reply_counts = payload["reply_counts"]
     vote_scores = payload["vote_scores"]
     cat_by_pk = {str(c.get("legacy_pk") or ""): c for c in categories}
-    rows = []
+    if not categories and not topics:
+        return "".join(rows)
+    rows.append(
+        '<div class="mb-4"><h3 class="text-lg font-black text-gray-900 dark:text-white">Archived discussions</h3>'
+        '<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">From the previous Alpha One Labs site. These threads are read-only.</p></div>'
+    )
     if categories:
         rows.append('<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">')
         for cat in categories:
@@ -5709,6 +6178,10 @@ async def render_blog_detail(req, env, slug: str):
 
 
 async def render_forum_topic_detail(req, env, topic_ref: str):
+    if _is_forum_id(topic_ref):
+        new_topic = await _forum_get_topic(env, topic_ref)
+        if new_topic:
+            return _render_forum_topic_page(new_topic)
     payload = await _server_forum_payload(env)
     topic = next((t for t in payload["topics"] if str(t.get("legacy_pk") or "") == str(topic_ref)), None)
     if not topic:
@@ -5726,8 +6199,10 @@ async def render_forum_topic_detail(req, env, topic_ref: str):
         + _SSR_BRAND_HEAD + '</head>'
         '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">' + _ssr_nav() +
         '<main class="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-10"><a href="/forum" class="inline-flex items-center text-sm font-bold text-teal-700 dark:text-teal-300 hover:underline mb-6"><i class="fa-solid fa-arrow-left mr-2"></i>Back to forum</a>'
-        f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm"><div class="flex flex-wrap gap-2 mb-4"><span class="rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 text-xs font-black"><i class="fa-solid fa-arrow-up mr-1"></i>{votes} votes</span>' + (f'<span class="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">{date}</span>' if date else '') + f'</div><h1 class="text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1><div class="mt-8 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{desc}</div></article>'
-        '<section class="mt-8"><h2 class="text-2xl font-black mb-4">Replies</h2><div class="space-y-4">' + replies_html + '</div></section></main>' + _ssr_footer() + '</body></html>'
+        f'<article class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-10 shadow-sm"><div class="flex flex-wrap gap-2 mb-4"><span class="rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1 text-xs font-black"><i class="fa-solid fa-box-archive mr-1" aria-hidden="true"></i>Archived</span><span class="rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-3 py-1 text-xs font-black"><i class="fa-solid fa-arrow-up mr-1"></i>{votes} votes</span>' + (f'<span class="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">{date}</span>' if date else '') + f'</div><h1 class="text-4xl md:text-5xl font-black text-gray-950 dark:text-white leading-tight">{title}</h1><div class="mt-8 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{desc}</div></article>'
+        '<section class="mt-8"><h2 class="text-2xl font-black mb-4">Replies</h2><div class="space-y-4">' + replies_html + '</div></section>'
+        '<p class="mt-8 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-sm text-gray-600 dark:text-gray-300">This thread is from the previous Alpha One Labs site and is read-only. <a href="/forum" class="font-bold text-teal-700 dark:text-teal-300 hover:underline">Start a new discussion</a> to continue the conversation.</p>'
+        '</main>' + _ssr_footer() + '</body></html>'
     )
     return Response(html, headers={"Content-Type": "text/html; charset=utf-8", **_CORS})
 
@@ -5737,7 +6212,7 @@ async def render_ssr_record_page(req, env, clean_path: str, config: Dict[str, An
     records = []
     if clean_path == "/forum":
         body = await _server_forum_records_html(env)
-        count = str(len((await _server_forum_payload(env))["topics"]))
+        count = str(await _server_forum_topic_count(env))
     elif config.get("private") and not user:
         body = await _private_records_signin_html()
         count = "0"
@@ -7307,7 +7782,7 @@ async def _render_data_tag(name: str, attrs: Dict[str, str], env, req, context: 
         model_set = set(models)
         if model_set == FORUM_RECORD_MODELS:
             if name == "records_count":
-                return str(len((await _server_forum_payload(env))["topics"]))
+                return str(await _server_forum_topic_count(env))
             return await _server_forum_records_html(env)
         if model_set == {"web.Meme"}:
             records = await _template_records(context, env, models, owner_user_id=None)
@@ -7485,7 +7960,8 @@ async def serve_static(path: str, env, req=None):
         content,
         headers={
             "Content-Type": mime,
-            "Cache-Control": _static_cache_control(ext),
+            # The forum listing changes whenever someone posts; revalidate it like topic pages.
+            "Cache-Control": "private, no-cache" if key == "forum.html" else _static_cache_control(ext),
             **_SECURITY_HEADERS,
             **_CORS,
         },
@@ -9173,6 +9649,18 @@ async def _dispatch(request, env):
             return await api_get_quiz(request, env, m_quiz_item.group(1))
         if m_quiz_item and method == "DELETE":
             return await api_delete_quiz(request, env, m_quiz_item.group(1))
+
+        if path == "/api/forum/topics" and method == "POST":
+            return await api_forum_create_topic(request, env)
+        m_forum_replies = re.fullmatch(r"/api/forum/topics/([A-Za-z0-9_-]+)/replies", path)
+        if m_forum_replies and method == "POST":
+            return await api_forum_create_reply(request, env, m_forum_replies.group(1))
+        m_forum_topic_item = re.fullmatch(r"/api/forum/topics/([A-Za-z0-9_-]+)", path)
+        if m_forum_topic_item and method == "DELETE":
+            return await api_forum_delete_topic(request, env, m_forum_topic_item.group(1))
+        m_forum_reply_item = re.fullmatch(r"/api/forum/replies/([A-Za-z0-9_-]+)", path)
+        if m_forum_reply_item and method == "DELETE":
+            return await api_forum_delete_reply(request, env, m_forum_reply_item.group(1))
 
         if path == "/api/cart" and method == "GET":
             return await api_get_cart(request, env)
