@@ -156,7 +156,7 @@ These are not just migration cleanup items. They need product-level implementati
 
 - Full quiz authoring, taking, grading, analytics, and attempts UI.
 - Full survey authoring, response collection, and results UI.
-- Forum authoring and thread/reply management.
+- Forum authoring and thread/reply management. First step done: verified users can start topics, reply, and delete their own posts (admins can delete any); legacy threads render as a read-only archive. Still open: voting, editing, categories, reply notifications, and moderation tools.
 - Blog authoring and comments.
 - Study-group tools around activity-type study groups.
 - Grade-link submission and grading workflow.
