@@ -59,6 +59,7 @@ __all__ = [
     "JwsError",
     "JwsMalformedError",
     "JwsUnsupportedAlgorithmError",
+    "JwsUnsupportedCriticalHeaderError",
     "JwsVerificationError",
     "b64url_encode",
     "b64url_decode",
@@ -83,6 +84,10 @@ class JwsUnsupportedAlgorithmError(JwsError):
 
 class JwsVerificationError(JwsError):
     """The signature did not verify against the supplied public key."""
+
+
+class JwsUnsupportedCriticalHeaderError(JwsError):
+    """A protected header lists a RFC 7515 'crit' extension we do not implement."""
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +195,14 @@ def _normalise_public_jwk(public_key_jwk: Mapping[str, Any]) -> Dict[str, Any]:
     x = public_key_jwk.get("x")
     if not isinstance(x, str) or not x:
         raise JwsVerificationError("public JWK is missing the x coordinate")
-    if len(b64url_decode(x)) != 32:
+    try:
+        coordinate = b64url_decode(x)
+    except JwsError as exc:
+        # The offending value came from the caller's key, not from the token.
+        raise JwsVerificationError(
+            "public JWK x coordinate is not valid Base64URL"
+        ) from exc
+    if len(coordinate) != 32:
         raise JwsVerificationError("public JWK x coordinate is not 32 bytes")
     return {"kty": "OKP", "crv": ED25519_CURVE, "x": x}
 
@@ -230,10 +242,25 @@ async def sign_jws(
         for name, value in protected_headers.items():
             if name == "alg":
                 raise ValueError("alg is pinned to EdDSA and cannot be overridden")
+            if name in ("kid", "typ"):
+                raise ValueError(
+                    f"{name} must be passed as an explicit argument, not via protected_headers"
+                )
+            if name == "crit":
+                raise ValueError(
+                    "crit is not supported: this module implements no critical extensions"
+                )
             header[name] = value
 
     body = _payload_bytes(payload)
     signing_input = f"{b64url_encode(_header_bytes(header))}.{b64url_encode(body)}"
+    # verify_jws rejects anything longer than _MAX_TOKEN_LENGTH, so refuse to
+    # emit a token that this module would not accept back.
+    signature_segment_length = len(b64url_encode(b"\x00" * 64))
+    if len(signing_input) + 1 + signature_segment_length > _MAX_TOKEN_LENGTH:
+        raise ValueError(
+            "payload is too large: the resulting token would exceed the verifier limit"
+        )
 
     key = await _import_private_key(private_key_pkcs8)
     signature = await js.crypto.subtle.sign(
@@ -292,6 +319,13 @@ async def verify_jws(
     if algorithm != EdDSA_ALG:
         raise JwsUnsupportedAlgorithmError(
             f"unsupported algorithm {algorithm!r}; only {EdDSA_ALG!r} is accepted"
+        )
+    crit = header.get("crit")
+    if crit is not None:
+        # RFC 7515 section 4.1.11: a verifier must reject any critical header it
+        # does not understand, and this module implements none.
+        raise JwsUnsupportedCriticalHeaderError(
+            "token declares critical protected headers this verifier cannot honour"
         )
     if expected_kid is not None and header.get("kid") != expected_kid:
         raise JwsVerificationError("token was signed with an unexpected key id")
@@ -399,11 +433,16 @@ def _main(argv: list) -> int:  # pragma: no cover - CLI only
         sys.stderr.write("usage: python credential_signing.py generate [kid]\n")
         return 2
     kid = argv[1] if len(argv) > 1 else "dev-local"
+    if not isinstance(kid, str) or not kid.strip():
+        sys.stderr.write("kid must be a non-empty string\n")
+        return 2
     try:
         import asyncio
 
         result = asyncio.run(generate_key_pair(kid))
-    except Exception:
+    except RuntimeError:
+        # Only an unavailable Web Crypto runtime justifies the local fallback;
+        # validation failures must surface instead of producing a useless key.
         result = _generate_key_pair_locally(kid)
     sys.stdout.write(json.dumps(result, indent=2) + "\n")
     return 0

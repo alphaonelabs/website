@@ -139,7 +139,7 @@ async def test_verify_rejects_unexpected_kid(key_pair):
     ],
 )
 async def test_verify_rejects_malformed_tokens(token, key_pair):
-    with pytest.raises(cs.JwsError):
+    with pytest.raises(cs.JwsMalformedError):
         await cs.verify_jws(token, key_pair["public_jwk"])
 
 
@@ -217,3 +217,68 @@ def test_b64url_decode_rejects_invalid_input(bad):
 def test_b64url_rejects_non_bytes():
     with pytest.raises(TypeError):
         cs.b64url_encode("text")
+
+
+
+# ---------------------------------------------------------------------------
+# Protected-header overrides and unsupported critical headers
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("header_name", ["kid", "typ"])
+async def test_sign_rejects_protected_header_overrides(key_pair, header_name):
+    with pytest.raises(ValueError):
+        await cs.sign_jws(
+            PAYLOAD,
+            key_pair["private_key_pkcs8"],
+            "test-key-1",
+            protected_headers={header_name: "spoofed"},
+        )
+
+
+async def test_sign_rejects_critical_header(key_pair):
+    with pytest.raises(ValueError):
+        await cs.sign_jws(
+            PAYLOAD,
+            key_pair["private_key_pkcs8"],
+            "test-key-1",
+            protected_headers={"crit": ["b64"], "b64": False},
+        )
+
+
+async def test_sign_rejects_payload_that_would_exceed_verifier_limit(key_pair):
+    oversized = b"x" * 49152
+    with pytest.raises(ValueError):
+        await cs.sign_jws(oversized, key_pair["private_key_pkcs8"], "test-key-1")
+
+
+async def _sign_raw(signing_input, private_key_pkcs8):
+    key = await cs._import_private_key(private_key_pkcs8)
+    signature = await cs.js.crypto.subtle.sign(
+        cs._algo(cs.ED25519_CURVE), key, cs._to_buffer(signing_input.encode("ascii"))
+    )
+    return signing_input + "." + cs.b64url_encode(cs._buffer_bytes(signature))
+
+
+async def test_verify_rejects_unsupported_critical_header(key_pair):
+    header = {
+        "alg": "EdDSA",
+        "typ": "JWT",
+        "kid": "test-key-1",
+        "crit": ["b64"],
+        "b64": False,
+    }
+    signing_input = (
+        cs.b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+        + "."
+        + cs.b64url_encode(b"{}")
+    )
+    token = await _sign_raw(signing_input, key_pair["private_key_pkcs8"])
+    with pytest.raises(cs.JwsUnsupportedCriticalHeaderError):
+        await cs.verify_jws(token, key_pair["public_jwk"])
+
+
+async def test_invalid_jwk_coordinate_is_a_key_error(key_pair):
+    token = await cs.sign_jws(PAYLOAD, key_pair["private_key_pkcs8"], "test-key-1")
+    with pytest.raises(cs.JwsVerificationError):
+        await cs.verify_jws(token, dict(key_pair["public_jwk"], x="%%"))
