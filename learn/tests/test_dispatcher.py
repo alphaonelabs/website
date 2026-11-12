@@ -8,10 +8,8 @@ unknown API paths (404), and static-file serving.
 import json
 from unittest.mock import AsyncMock
 
-import pytest
-
 from tests.helpers import (
-    MockRequest, MockRow, MockDB, make_env, make_stmt,
+    MockRequest,MockDB, make_env, make_stmt,
     json_request, basic_auth_header, set_static_content, load_worker,
 )
 
@@ -216,6 +214,7 @@ class TestStaticFileServing:
     async def test_missing_file_renders_404_template_without_raw_tags(self):
         from unittest.mock import MagicMock
         env = make_env()
+
         async def mock_get(key, *args, **kwargs):
             if key == "404.html":
                 return "{% extends 'base.html' %}{% block content %}Path: {{ requested_path }}{% endblock %}"
@@ -321,6 +320,7 @@ class TestInitAndSeedRouting:
         assert _parse(r)["success"] is True
         assert seeded == {"init": True, "key": "test-encryption-key"}
 
+
 # Study groups redirection
 class TestStudyGroupRedirection:
     async def test_study_groups_serves_static_page(self):
@@ -350,3 +350,18 @@ class TestStudyGroupRedirection:
         r = await worker._dispatch(req, env)
         assert r.status == 302
         assert r.headers.get("Location") == "http://localhost/activity/my-awesome-group"
+
+
+async def test_jwks_route_dispatches_correctly():
+    req = MockRequest(
+        method="GET",
+        url="http://localhost/.well-known/jwks.json",
+    )
+
+    env = make_env()
+    env.CREDENTIAL_PUBLIC_JWKS = ""
+
+    response = await worker._dispatch(req, env)
+
+    assert response.status == 200
+    assert json.loads(response.body) == {"keys": []}

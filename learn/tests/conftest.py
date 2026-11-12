@@ -13,11 +13,12 @@ first by pytest) so that ``import worker`` succeeds in tests.
 """
 
 import sys
-
+from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # workers stub
 # ---------------------------------------------------------------------------
+
 
 class _Response:
     """Minimal stub for workers.Response."""
@@ -91,16 +92,46 @@ class _Uint8Array:
         return bytes(buf)
 
 
+class _Ed25519Key:
+    def __init__(self, fmt, data):
+        self.fmt = fmt
+        self.data = bytes(data)
+
+
 class _CryptoSubtle:
     """
-    Stub for ``js.crypto.subtle``.
+    Stub for js.crypto.subtle.
 
-    ``encrypt`` and ``decrypt`` are *identity* operations so that
-    ``encrypt_aes`` / ``decrypt_aes`` round-trip correctly in tests.
+    Supports Ed25519 signing and verification for credential tests.
+    AES encrypt/decrypt remain identity operations.
     """
 
     async def importKey(self, fmt, key_data, algo, extractable, usages):
-        return key_data  # return raw bytes as fake CryptoKey
+        if isinstance(algo, dict) and algo.get("name") == "Ed25519":
+            return _Ed25519Key(fmt, key_data)
+        return key_data
+
+    async def sign(self, algo, key, data):
+        from cryptography.hazmat.primitives import serialization
+
+        private = serialization.load_der_private_key(
+            key.data, password=None
+        )
+        return private.sign(bytes(data))
+
+    async def verify(self, algo, key, signature, data):
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+            Ed25519PublicKey,
+        )
+
+        try:
+            Ed25519PublicKey.from_public_bytes(key.data).verify(
+                bytes(signature), bytes(data)
+            )
+            return True
+        except InvalidSignature:
+            return False
 
     async def encrypt(self, algo, key, data):
         if isinstance(data, (bytes, bytearray)):
@@ -127,11 +158,10 @@ class _WebSocketPair:
 
     @staticmethod
     def new() -> "MagicMock":
-        from unittest.mock import MagicMock
+
         client, server = MagicMock(name="ws_client"), MagicMock(name="ws_server")
         pair = MagicMock(name="ws_pair")
         pair.object_values.return_value = (client, server)
-        # Expose for tests that want to assert on server.send(...) etc.
         pair.client = client
         pair.server = server
         return pair
@@ -142,7 +172,6 @@ class _WebSocketRequestResponsePair:
 
     @staticmethod
     def new(request, response):
-        from unittest.mock import MagicMock
         return MagicMock()
 
 

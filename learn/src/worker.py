@@ -3277,6 +3277,27 @@ async def api_get_certificate(request, env, cert_uuid):
     })
 
 
+async def api_jwks(_req, env):
+    """GET /.well-known/jwks.json - public keys for verifying credential signatures."""
+    import credentials
+    raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
+    try:
+        if raw is None:
+            keys = []                                    # not configured
+        elif isinstance(raw, str):
+            keys = credentials.load_public_jwks(raw)
+        else:
+            raise ValueError("CREDENTIAL_PUBLIC_JWKS must be a string")
+    except Exception as exc:
+        await capture_exception(exc, _req, env, "api_jwks.invalid_config")
+        return err("Credential keys are misconfigured", 500)
+    return Response(
+        json.dumps({"keys": keys}),
+        headers={"Content-Type": "application/json",
+                 "Cache-Control": "public, max-age=300", **_CORS},
+    )
+
+
 async def api_join(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
@@ -9027,6 +9048,9 @@ async def _dispatch(request, env):
         except Exception as e:
             await capture_exception(e, request, env, "presence_do_dispatch")
             return err("Failed to connect to presence channel", 500)
+
+    if path == "/.well-known/jwks.json" and method == "GET":
+        return await api_jwks(request, env)
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
