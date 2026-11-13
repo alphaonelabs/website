@@ -11,6 +11,7 @@ from workers import WorkerEntrypoint, Response
 
 from services.anomaly import detect_anomalies
 from services.trends import analyze_trends
+from services.device_auth import register_device, authenticate_device, check_rate_limit, update_device_last_seen
 from services.ai_service import (
 
     analyze_trends_with_ai,
@@ -73,7 +74,7 @@ class EarthMind(WorkerEntrypoint):
         # Data ingestion / retrieval
         if path == "/api/data":
             if method == "POST":
-                return await _ingest_reading(request, self.env)
+                return await _ingest_reading_authenticated(request, self.env)
             return await _query_readings(request, self.env, parsed)
 
         # Anomaly detection
@@ -110,6 +111,15 @@ class EarthMind(WorkerEntrypoint):
         # Geospatial GeoJSON endpoint
         if path == "/api/geo":
             return await _get_geojson(self.env, parsed)
+
+        # Device registration
+        if path == "/api/devices/register" and method == "POST":
+            return await _register_device_route(request, self.env)
+
+        # Device deactivation
+        if path.startswith("/api/devices/") and method == "DELETE":
+            device_id = path[len("/api/devices/"):]
+            return await _deactivate_device_route(self.env, device_id)
 
         return _error("Not found", 404)
 
@@ -535,6 +545,70 @@ def _serve_dashboard() -> Response:
         DASHBOARD_HTML,
         headers={**_CORS_HEADERS, "Content-Type": "text/html; charset=utf-8"},
     )
+
+
+# ---------------------------------------------------------------------------
+# Device authentication handlers
+# ---------------------------------------------------------------------------
+
+async def _register_device_route(request, env) -> Response:
+    try:
+        body = _py(await request.json())
+    except Exception:
+        return _error("Invalid JSON body")
+    device_id = body.get("device_id")
+    if not device_id:
+        return _error("'device_id' is required")
+    try:
+        result = await register_device(
+            env,
+            device_id,
+            owner_name=body.get("owner_name", ""),
+            location=body.get("location", ""),
+            latitude=body.get("latitude"),
+            longitude=body.get("longitude"),
+        )
+        return _json_response(result, 201)
+    except Exception as exc:
+        return _error(f"Device registration failed: {exc}", 409)
+
+
+async def _deactivate_device_route(env, device_id: str) -> Response:
+    if not device_id:
+        return _error("device_id is required", 400)
+    result = await env.DB.prepare(
+        "UPDATE device_keys SET is_active = 0 WHERE device_id = ?"
+    ).bind(device_id).run()
+    rows_written = result.meta.rows_written if hasattr(result, "meta") else None
+    if rows_written is not None and rows_written == 0:
+        return _error(f"Device '{device_id}' not found", 404)
+    return _json_response({"device_id": device_id, "status": "deactivated"})
+
+
+async def _ingest_reading_authenticated(request, env) -> Response:
+    device_id = request.headers.get("X-Device-ID")
+    api_key = request.headers.get("X-API-Key")
+
+    if device_id and api_key:
+        # Authenticated path
+        is_valid = await authenticate_device(env, device_id, api_key)
+        if not is_valid:
+            return _json_response({"error": "Invalid device credentials"}, 401)
+
+        allowed, rate_info = await check_rate_limit(env, device_id)
+        if not allowed:
+            return _json_response(
+                {"error": "Rate limit exceeded", "limit": 30, "window": "60s"},
+                429,
+            )
+
+        response = await _ingest_reading(request, env)
+        if response.status == 201:
+            await update_device_last_seen(env, device_id)
+        return response
+    else:
+        # Unauthenticated path — backward-compatible
+        return await _ingest_reading(request, env)
 
 
 # ---------------------------------------------------------------------------
