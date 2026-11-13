@@ -158,11 +158,97 @@ CORS headers are set for all responses.
 |---|---|---|
 | `GET` | `/api/geo` | GeoJSON FeatureCollection of sensor readings (`?parameter=pm2_5`) |
 
+### Device Management
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/devices/register` | Register a new device and receive its API key |
+| `DELETE` | `/api/devices/:device_id` | Deactivate a device (admin) |
+
 ### Health
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/health` | Returns `{"status":"ok"}` |
+
+---
+
+## Device Authentication
+
+EarthMind supports per-device API keys for authenticated sensor ingestion. Authenticated submissions are rate-limited to prevent abuse. Unauthenticated submissions continue to work for backward compatibility.
+
+### Register a device
+
+```http
+POST /api/devices/register
+Content-Type: application/json
+
+{
+  "device_id": "sensor-042",
+  "owner_name": "Alice Johnson",
+  "location": "Riverside Park",
+  "latitude": 40.7282,
+  "longitude": -73.9942
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "device_id": "sensor-042",
+  "api_key": "your-raw-api-key-shown-only-once",
+  "message": "Save this key — it will not be shown again."
+}
+```
+
+Store the returned `api_key` securely — it is shown only once and cannot be retrieved later.
+
+### Send an authenticated reading
+
+Include the `X-Device-ID` and `X-API-Key` headers with every POST to `/api/data`:
+
+```http
+POST /api/data
+Content-Type: application/json
+X-Device-ID: sensor-042
+X-API-Key: your-raw-api-key
+
+{
+  "source": "sensor-042",
+  "source_type": "iot_sensor",
+  "parameter": "pm2_5",
+  "value": 18.4,
+  "unit": "µg/m³",
+  "timestamp": "2024-09-01T12:00:00Z",
+  "location": "Riverside Park"
+}
+```
+
+If the credentials are invalid, the server responds with `401 Unauthorized`.
+
+### Rate limits
+
+Each device is limited to **30 requests per 60-second window**. When the limit is exceeded the server responds with `429 Too Many Requests`:
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "limit": 30,
+  "window": "60s"
+}
+```
+
+The window resets automatically at the start of the next 60-second period.
+
+**Known limitation — fixed-window boundary burst:** The rate-limit window is anchored to wall-clock minute boundaries (`HH:MM:00`). A device can send up to 30 requests just before `HH:MM:00` and another 30 immediately after, resulting in up to 60 requests passing through in under two seconds across a window boundary. For typical low-frequency IoT sensors this is acceptable; high-frequency deployments should be aware of this behaviour.
+
+**Known limitation — non-atomic check and increment:** The rate-limit check and the subsequent reading insert are two separate database round-trips. Under concurrent requests from the same device, both may pass the limit check before either increments the counter. For normal sensor ingest rates this race is negligible.
+
+### Backward compatibility
+
+Requests to `POST /api/data` that omit the `X-Device-ID` and `X-API-Key` headers are still accepted without authentication. Existing integrations continue to work without modification.
+
+**Note:** Because authentication is opt-in (enforced only when both headers are present), a device that has registered can still submit readings via the unauthenticated path by simply omitting the headers. The unauthenticated path carries no rate limiting. If your deployment requires that all registered devices authenticate, enforce this at the network or gateway level rather than relying on the headers alone.
 
 ---
 
