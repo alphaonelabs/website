@@ -1032,3 +1032,140 @@ a1-header {
 .drag-ghost .element-content {
   outline: 1px dashed var(--a1-gold-deep, #9a8236);
 }
+
+/* ============================================================
+   Template Gallery Modal
+   ============================================================ */
+
+.tg-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.5);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tg-backdrop[hidden] {
+  display: none;
+}
+
+.tg-modal {
+  background: var(--mk-panel);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--a1-radius, 2px);
+  width: min(680px, 95vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.25);
+  overflow: hidden;
+}
+
+.tg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 8px;
+  border-bottom: 2px solid var(--mk-fill);
+  flex-shrink: 0;
+}
+
+.tg-title {
+  margin: 0;
+  font: 900 1.3em/1 var(--a1-font-display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: var(--mk-text);
+}
+
+.tg-close {
+  padding: 4px 10px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tg-subtitle {
+  margin: 8px 20px;
+  font-size: 13px;
+  color: var(--mk-muted);
+  flex-shrink: 0;
+}
+
+.tg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 12px 20px 20px;
+  overflow-y: auto;
+}
+
+.tg-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px 12px;
+  background: var(--mk-raised);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--a1-radius, 2px);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--mk-text);
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.tg-card:hover,
+.tg-card:focus-visible {
+  border-color: var(--mk-strong);
+  background: var(--mk-hover);
+  outline: none;
+}
+
+.tg-card:focus-visible {
+  outline: 3px solid var(--mk-focus);
+  outline-offset: 2px;
+}
+
+.tg-thumb {
+  font-size: 36px;
+  line-height: 1;
+  display: block;
+}
+
+.tg-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--mk-text);
+}
+
+.tg-desc {
+  font-size: 11px;
+  color: var(--mk-muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .tg-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    padding: 8px 12px 12px;
+  }
+
+  .tg-modal {
+    width: 100vw;
+    max-height: 90vh;
+    border-radius: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .tg-backdrop {
+    align-items: flex-end;
+  }
+}
