@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block Coding Editor — BotLab</title>
+  <meta name="description" content="Visually program robot commands with drag-and-drop Blockly blocks in BotLab.">
+  <link rel="stylesheet" href="https://design.alphaonelabs.com/brand.css">
+  <script src="https://design.alphaonelabs.com/chrome.js" defer></script>
+
+  <!-- Blockly -->
+  <script src="https://unpkg.com/blockly/blockly_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+  <script src="https://unpkg.com/blockly/msg/en.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body, html {
+      height: 100%;
+      background: var(--a1-bg);
+      color: var(--a1-text);
+      font-family: var(--a1-font-body);
+    }
+
+    a1-header { display: block; min-height: var(--a1-header-height, 76px); }
+    a1-footer { display: block; }
+
+    .page-wrap {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Two-column editor layout ── */
+    .editor-layout {
+      display: flex;
+      flex: 1;
+      gap: 0;
+      min-height: 0;
+    }
+
+    .editor-left {
+      flex: 0 0 60%;
+      min-height: 500px;
+      border-right: 1px solid var(--a1-border);
+    }
+
+    #blocklyDiv {
+      width: 100%;
+      height: 100%;
+      min-height: 500px;
+    }
+
+    .editor-right {
+      flex: 0 0 40%;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    /* ── Typography ── */
+    .editor-right h1 {
+      font-family: var(--a1-font-display);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: -0.01em;
+      line-height: 0.95;
+      font-size: clamp(1.6rem, 3vw, 2.6rem);
+      color: var(--a1-text);
+    }
+
+    .editor-right .editor-desc {
+      font-family: var(--a1-font-body);
+      color: var(--a1-text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* ── Button group ── */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* ── Command log ── */
+    #command-log {
+      background: var(--a1-surface);
+      border: 1px solid var(--a1-border);
+      border-radius: var(--a1-radius);
+      padding: 12px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: var(--a1-font-mono);
+      font-size: 13px;
+      flex: 1;
+    }
+
+    .log-line {
+      color: var(--a1-text);
+      margin: 2px 0;
+      white-space: pre-wrap;
+    }
+
+    .log-label {
+      font-family: var(--a1-font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--a1-text-muted);
+      margin-bottom: 4px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .editor-layout {
+        flex-direction: column;
+      }
+      .editor-left {
+        flex: 0 0 auto;
+        min-height: 350px;
+        border-right: none;
+        border-bottom: 1px solid var(--a1-border);
+      }
+      .editor-right {
+        padding: 20px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <a1-header site="BotLab" site-href="/botlab/" sticky>
+      <a slot="actions" class="a1-slot-btn" href="/botlab/">← Back to BotLab</a>
+    </a1-header>
+
+    <main class="editor-layout">
+      <!-- LEFT: Blockly canvas -->
+      <div class="editor-left">
+        <div id="blocklyDiv"></div>
+      </div>
+
+      <!-- RIGHT: Controls & log -->
+      <div class="editor-right">
+        <h1>Block Coding Editor</h1>
+        <p class="editor-desc">
+          Drag blocks from the toolbox to build a robot program. Press <strong>Run</strong> to execute
+          your sequence and watch the command log for live output.
+        </p>
+
+        <div class="btn-group">
+          <button id="runBtn"
+            style="background: var(--a1-accent-fill); border: 1px solid var(--a1-accent-fill); color: var(--a1-on-accent); padding: 10px 20px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; border-radius: var(--a1-radius); font-family: var(--a1-font-body); font-size: 0.85rem;">
+            ▶ Run Program
+          </button>
+          <button id="copyBtn"
+            style="background: var(--a1-bg); border: 1px solid var(--a1-border-strong); color: var(--a1-text); padding: 10px 20px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; border-radius: var(--a1-radius); font-family: var(--a1-font-body); font-size: 0.85rem;">
+            📋 Copy Code
+          </button>
+          <button id="resetBtn"
+            style="background: var(--a1-bg); border: 1px solid var(--a1-border-strong); color: var(--a1-text); padding: 10px 20px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; border-radius: var(--a1-radius); font-family: var(--a1-font-body); font-size: 0.85rem;">
+            🔄 Reset
+          </button>
+        </div>
+
+        <div class="log-label">Command Output</div>
+        <div id="command-log">
+          <div class="log-placeholder" style="color: var(--a1-text-muted, #666); font-style: italic;">// Command output will appear here...</div>
+        </div>
+      </div>
+    </main>
+
+    <a1-footer source="botlab"></a1-footer>
+  </div>
+
+  <!-- Toolbox XML (hidden) -->
+  <xml id="toolbox" style="display: none">
+    <category name="Movement" colour="210">
+      <block type="robot_move_forward"></block>
+      <block type="robot_move_backward"></block>
+    </category>
+    <category name="Turning" colour="120">
+      <block type="robot_turn_left"></block>
+      <block type="robot_turn_right"></block>
+    </category>
+    <category name="Timing" colour="30">
+      <block type="robot_wait"></block>
+    </category>
+    <category name="Sensors" colour="260">
+      <block type="robot_scan"></block>
+    </category>
+  </xml>
+
+  <!-- Custom blocks & API (after Blockly is loaded) -->
+  <script src="./robot_blocks.js"></script>
+  <script src="./robot_api.js"></script>
+
+  <script>
+    // ── Initialise Blockly workspace ──────────────────────────────────
+    const workspace = Blockly.inject('blocklyDiv', {
+      toolbox: document.getElementById('toolbox'),
+      scrollbars: true,
+      trashcan: true,
+      theme: Blockly.Themes.Classic,
+    });
+
+    // Keep the workspace filling its container on resize
+    window.addEventListener('resize', function () {
+      Blockly.svgResize(workspace);
+    });
+
+    // ── Run button ────────────────────────────────────────────────────
+    document.getElementById('runBtn').addEventListener('click', function () {
+      const code = Blockly.JavaScript.workspaceToCode(workspace);
+      const logEl = document.getElementById('command-log');
+
+      // Echo generated code to log
+      const placeholder = logEl.querySelector('.log-placeholder');
+      if (placeholder) placeholder.remove();
+
+      const separator = document.createElement('div');
+      separator.className = 'log-line';
+      separator.style.color = 'var(--a1-accent)';
+      separator.style.borderTop = '1px solid var(--a1-border)';
+      separator.style.marginTop = '6px';
+      separator.style.paddingTop = '6px';
+      separator.textContent = '▶ Running program…';
+      logEl.appendChild(separator);
+
+      // Execute — wrap in async IIFE to support await RobotAPI.wait(...)
+      try {
+        (new Function('return (async () => {\n' + code + '\n})()'))()
+          .catch(function (err) {
+            const errLine = document.createElement('div');
+            errLine.className = 'log-line';
+            errLine.style.color = 'var(--a1-error, #e55)';
+            errLine.textContent = '✖ Error: ' + err.message;
+            logEl.appendChild(errLine);
+            logEl.scrollTop = logEl.scrollHeight;
+          });
+      } catch (err) {
+        const errLine = document.createElement('div');
+        errLine.className = 'log-line';
+        errLine.style.color = 'var(--a1-error, #e55)';
+        errLine.textContent = '✖ Error: ' + err.message;
+        logEl.appendChild(errLine);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+    });
+
+    // ── Copy button ───────────────────────────────────────────────────
+    document.getElementById('copyBtn').addEventListener('click', function () {
+      const code = Blockly.JavaScript.workspaceToCode(workspace);
+      if (!navigator.clipboard) return;
+      navigator.clipboard.writeText(code).then(function () {
+        const btn = document.getElementById('copyBtn');
+        const original = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(function () { btn.textContent = original; }, 2000);
+      });
+    });
+
+    // ── Reset button ──────────────────────────────────────────────────
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      RobotAPI.reset();
+    });
+  </script>
+</body>
+</html>
