@@ -36,6 +36,9 @@
                     <button class="btn" id="delete-btn" disabled>Delete</button>
                 </div>
                 <div class="toolbar-group">
+                    <button class="btn btn-primary" id="template-gallery-btn">⊞ Templates</button>
+                </div>
+                <div class="toolbar-group">
                     <button class="btn" id="export-png-btn">PNG</button>
                     <button class="btn" id="export-pdf-btn">PDF</button>
                     <button class="btn" id="export-json-btn">Export JSON</button>
@@ -143,6 +146,21 @@
     </div>
 
     <input type="file" id="json-file-input" accept=".json" style="display: none;" aria-label="Import JSON file">
+
+    <!-- Template Gallery Modal -->
+    <div class="tg-backdrop" id="tg-backdrop" role="dialog" aria-modal="true"
+         aria-labelledby="tg-title" hidden>
+        <div class="tg-modal">
+            <div class="tg-header">
+                <h2 class="tg-title" id="tg-title">Template Gallery</h2>
+                <button class="tg-close btn" id="tg-close-btn" aria-label="Close template gallery">✕</button>
+            </div>
+            <p class="tg-subtitle">Pick a template to load onto the current page. This replaces existing elements.</p>
+            <div class="tg-grid" id="tg-grid" role="list">
+                <!-- Cards injected by TemplateGalleryUI -->
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="js/app.js"></script>
 </body>

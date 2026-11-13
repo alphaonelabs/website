@@ -7,6 +7,8 @@ import StateManager from './modules/StateManager.js';
 import Canvas from './modules/Canvas.js';
 import UIController from './modules/UIController.js';
 import VersionManager from './modules/VersionManager.js';
+import TemplateManager from './modules/TemplateManager.js';
+import TemplateGalleryUI from './modules/TemplateGalleryUI.js';
 
 class WireframeApp {
     constructor() {
@@ -17,6 +19,8 @@ class WireframeApp {
             document.getElementById('canvas-content')
         );
         this.ui = new UIController(this.state);
+        this.templateManager = new TemplateManager();
+        this.templateGallery = new TemplateGalleryUI(this.templateManager, this.state);
         this.versionManager = new VersionManager();
         
         this.init();
