@@ -19,6 +19,22 @@
   .ad-prose p { color: var(--a1-text); line-height: 1.65; }
   .ad-session-meta { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--a1-text-muted); }
   .ad-joined { display: inline-flex; align-items: center; gap: 8px; font: 800 13px/1 var(--a1-font-body, sans-serif); text-transform: uppercase; letter-spacing: .04em; }
+   .rv-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--a1-border); }
+  @media (min-width: 640px) { .rv-summary { grid-template-columns: 180px minmax(0, 1fr); gap: 32px; } }
+  .rv-avg { font-family: var(--a1-font-display, sans-serif); font-weight: 900; font-size: 3.5rem; line-height: 1; }
+  .rv-stars { display: inline-flex; gap: 2px; color: #d4af37; }
+  .rv-stars .far { color: var(--a1-text-muted); }
+  .rv-dist-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 36px; align-items: center; gap: 10px; font-size: 13px; padding: 3px 0; }
+  .rv-bar { height: 8px; background: var(--a1-border); border-radius: 2px; overflow: hidden; }
+  .rv-bar > span { display: block; height: 100%; background: #d4af37; }
+  .rv-pick { display: inline-flex; gap: 4px; }
+  .rv-pick button { background: none; border: 0; padding: 4px; font-size: 26px; line-height: 1; cursor: pointer; color: var(--a1-text-muted); }
+  .rv-pick button.is-on { color: #d4af37; }
+  .rv-pick button:focus-visible { outline: 3px solid #d4af37; outline-offset: 2px; }
+  .rv-item { padding: 18px 0; border-bottom: 1px solid var(--a1-border); }
+  .rv-item:last-child { border-bottom: 0; }
+  .rv-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin: 8px 0 0; }
+  .rv-meta { font-size: 12px; color: var(--a1-text-muted); }
 </style>
 {% endblock %}
 {% block content %}
@@ -180,6 +196,41 @@
               <div id="act-tags" class="flex flex-wrap gap-2"></div>
             </div>
           </div>
+        </section>
+        <section id="reviews-section" class="a1s-panel p-5 md:p-6" aria-labelledby="reviews-heading">
+          <h2 id="reviews-heading" class="a1s-h2 mb-5">Ratings &amp; reviews</h2>
+
+          <div class="rv-summary">
+            <div>
+              <div id="rv-average" class="rv-avg">&ndash;</div>
+              <div id="rv-average-stars" class="mt-2"></div>
+              <p id="rv-count" class="a1s-muted text-sm m-0 mt-1">No reviews yet</p>
+            </div>
+            <div id="rv-distribution" aria-label="Rating distribution"></div>
+          </div>
+
+          <p id="rv-note" class="hidden text-sm a1s-muted mt-5 mb-0"></p>
+
+          <form id="rv-form" class="hidden mt-6 space-y-3" novalidate>
+            <h3 id="rv-form-title" class="a1s-h3 m-0">Write a review</h3>
+            <div>
+              <span id="rv-rating-label" class="a1s-eyebrow block mb-1">Your rating</span>
+              <div id="rv-pick" class="rv-pick" role="radiogroup" aria-labelledby="rv-rating-label"></div>
+            </div>
+            <div>
+              <label for="rv-text" class="a1s-eyebrow block mb-1">Your review</label>
+              <textarea id="rv-text" class="a1-input w-full" rows="4" maxlength="2000" placeholder="What did you learn? Who is this activity good for?"></textarea>
+              <p class="rv-meta mt-1 mb-0"><span id="rv-chars">0</span> / 2000</p>
+            </div>
+            <p id="rv-error" class="hidden text-sm text-red-600 dark:text-red-400 m-0" role="alert"></p>
+            <div class="flex flex-wrap gap-2">
+              <button id="rv-submit" type="submit" class="a1-btn a1-btn--primary">Post review</button>
+              <button id="rv-cancel" type="button" class="a1-btn hidden">Cancel</button>
+            </div>
+          </form>
+
+          <div id="rv-list" class="mt-6" aria-live="polite"></div>
+          <button id="rv-more" type="button" class="a1-btn hidden mt-4">Load more reviews</button>
         </section>
       </div>
     </div>
@@ -774,12 +825,202 @@
         data = normalizeActivityDetailPayload(body);
       }
       renderActivity(data);
+      initReviews(data.activity);
     } catch (err) {
       document.getElementById('activity-shell').classList.add('hidden');
       document.getElementById('not-found').classList.remove('hidden');
       setText('not-found-message', err.message || 'This activity could not be loaded.');
       setText('crumb-title', 'Not found');
     }
+  }
+  // --- Ratings & reviews ---
+  const RV = { ref: '', offset: 0, pageSize: 10, items: [], summary: null, viewer: {}, rating: 0, editing: false };
+
+  function rvStars(value, size) {
+    const full = Math.round(Number(value) || 0);
+    let html = '<span class="rv-stars" role="img" aria-label="' + full + ' out of 5 stars"' + (size ? ' style="font-size:' + size + 'px"' : '') + '>';
+    for (let i = 1; i <= 5; i++) html += '<i class="' + (i <= full ? 'fas' : 'far') + ' fa-star" aria-hidden="true"></i>';
+    return html + '</span>';
+  }
+
+  function rvHeaders(json) {
+    const h = {};
+    if (token) h.Authorization = 'Bearer ' + token;
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+  }
+
+  function rvUrl(query) {
+    return '/api/activities/' + encodeURIComponent(RV.ref) + '/reviews' + (query || '');
+  }
+
+  function rvDate(value) {
+    const d = new Date(String(value || '').replace(' ', 'T') + 'Z');
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function renderReviewSummary() {
+    const s = RV.summary || { average: 0, count: 0, distribution: {} };
+    document.getElementById('rv-average').textContent = s.count ? Number(s.average).toFixed(1) : '–';
+    document.getElementById('rv-average-stars').innerHTML = s.count ? rvStars(s.average, 18) : '';
+    document.getElementById('rv-count').textContent = s.count ? s.count + (s.count === 1 ? ' review' : ' reviews') : 'No reviews yet';
+    let rows = '';
+    for (let n = 5; n >= 1; n--) {
+      const c = Number((s.distribution || {})[n] || 0);
+      const pct = s.count ? Math.round((c / s.count) * 100) : 0;
+      rows += '<div class="rv-dist-row"><span>' + n + ' <i class="fas fa-star" style="color:#d4af37;font-size:11px" aria-hidden="true"></i></span>' +
+        '<div class="rv-bar" role="img" aria-label="' + c + ' reviews, ' + pct + ' percent"><span style="width:' + pct + '%"></span></div>' +
+        '<span class="a1s-muted text-right">' + c + '</span></div>';
+    }
+    document.getElementById('rv-distribution').innerHTML = rows;
+  }
+
+  function renderReviewList() {
+    const list = document.getElementById('rv-list');
+    if (!RV.items.length) {
+      list.innerHTML = '<p class="a1s-muted text-sm m-0">Be the first to share how this activity went.</p>';
+    } else {
+      list.innerHTML = RV.items.map(r =>
+        '<article class="rv-item">' +
+          '<div class="flex flex-wrap items-center justify-between gap-2">' +
+            '<div class="flex items-center gap-3"><span class="font-extrabold">' + esc(r.reviewer_name) + (r.is_own ? ' <span class="a1-tag">You</span>' : '') + '</span>' + rvStars(r.rating) + '</div>' +
+            '<span class="rv-meta">' + esc(rvDate(r.created_at)) + (r.edited ? ' · edited' : '') + '</span>' +
+          '</div>' +
+          '<p class="rv-text">' + esc(r.review) + '</p>' +
+          (r.is_own ? '<div class="flex gap-2 mt-3"><button type="button" class="a1-btn a1-btn--sm" data-rv-edit><i class="fas fa-pen" aria-hidden="true"></i>Edit</button>' +
+            '<button type="button" class="a1-btn a1-btn--sm" data-rv-delete><i class="fas fa-trash" aria-hidden="true"></i>Delete</button></div>' : '') +
+        '</article>').join('');
+    }
+    document.getElementById('rv-more').classList.toggle('hidden', !(RV.summary && RV.items.length < RV.summary.count));
+  }
+
+  function renderReviewPick() {
+    let html = '';
+    for (let n = 1; n <= 5; n++) {
+      html += '<button type="button" role="radio" aria-checked="' + (RV.rating === n) + '" aria-label="' + n + (n === 1 ? ' star' : ' stars') + '" data-rating="' + n + '" class="' + (n <= RV.rating ? 'is-on' : '') + '"><i class="fas fa-star" aria-hidden="true"></i></button>';
+    }
+    document.getElementById('rv-pick').innerHTML = html;
+  }
+
+  function renderReviewForm() {
+    const v = RV.viewer || {};
+    const form = document.getElementById('rv-form');
+    const note = document.getElementById('rv-note');
+    const showForm = RV.editing || v.can_review;
+    form.classList.toggle('hidden', !showForm);
+    document.getElementById('rv-cancel').classList.toggle('hidden', !RV.editing);
+    document.getElementById('rv-form-title').textContent = RV.editing ? 'Edit your review' : 'Write a review';
+    document.getElementById('rv-submit').textContent = RV.editing ? 'Save changes' : 'Post review';
+    let msg = '';
+    if (!v.signed_in) msg = 'Sign in to review this activity after you complete it.';
+    else if (v.is_host) msg = 'Learners who complete your activity can leave a review here.';
+    else if (!v.my_review && !v.can_review) msg = 'Complete this activity to leave a review.';
+    note.textContent = msg;
+    note.classList.toggle('hidden', !msg);
+    renderReviewPick();
+  }
+
+  async function loadReviews(reset) {
+    if (!RV.ref) return;
+    if (reset) { RV.offset = 0; RV.items = []; }
+    try {
+      const res = await fetch(rvUrl('?limit=' + RV.pageSize + '&offset=' + RV.offset), { headers: rvHeaders(false) });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not load reviews');
+      const d = body.data || {};
+      RV.summary = d.summary;
+      RV.viewer = d.viewer || {};
+      RV.items = RV.items.concat(d.reviews || []);
+      RV.offset = RV.items.length;
+      renderReviewSummary();
+      renderReviewList();
+      renderReviewForm();
+    } catch (e) {
+      document.getElementById('rv-list').innerHTML = '<p class="text-sm text-red-600 dark:text-red-400 m-0">' + esc(e.message) + '</p>';
+    }
+  }
+
+  function startReviewEdit() {
+    const mine = RV.viewer && RV.viewer.my_review;
+    if (!mine) return;
+    RV.editing = true;
+    RV.rating = mine.rating;
+    document.getElementById('rv-text').value = mine.review;
+    document.getElementById('rv-chars').textContent = mine.review.length;
+    renderReviewForm();
+    document.getElementById('rv-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function resetReviewForm() {
+    RV.editing = false;
+    RV.rating = 0;
+    document.getElementById('rv-text').value = '';
+    document.getElementById('rv-chars').textContent = '0';
+    document.getElementById('rv-error').classList.add('hidden');
+    renderReviewForm();
+  }
+
+  async function submitReview(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('rv-error');
+    const text = document.getElementById('rv-text').value.trim();
+    errEl.classList.add('hidden');
+    if (!RV.rating) { errEl.textContent = 'Please choose a star rating.'; errEl.classList.remove('hidden'); return; }
+    if (!text) { errEl.textContent = 'Please write a short review.'; errEl.classList.remove('hidden'); return; }
+    const btn = document.getElementById('rv-submit');
+    btn.disabled = true;
+    try {
+      const res = await fetch(rvUrl(), {
+        method: RV.editing ? 'PUT' : 'POST',
+        headers: rvHeaders(true),
+        body: JSON.stringify({ rating: RV.rating, review: text })
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not save your review');
+      resetReviewForm();
+      await loadReviews(true);
+    } catch (ex) {
+      errEl.textContent = ex.message;
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function deleteReview() {
+    if (!window.confirm('Delete your review? This cannot be undone.')) return;
+    try {
+      const res = await fetch(rvUrl(), { method: 'DELETE', headers: rvHeaders(false) });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not delete your review');
+      resetReviewForm();
+      await loadReviews(true);
+    } catch (ex) {
+      alert(ex.message);
+    }
+  }
+
+  function initReviews(activity) {
+    if (RV.ref) return;               // renderActivity can run more than once
+    RV.ref = activity.slug || activity.id;
+    document.getElementById('rv-pick').addEventListener('click', ev => {
+      const b = ev.target.closest('button[data-rating]');
+      if (!b) return;
+      RV.rating = Number(b.dataset.rating);
+      renderReviewPick();
+    });
+    document.getElementById('rv-text').addEventListener('input', ev => {
+      document.getElementById('rv-chars').textContent = ev.target.value.length;
+    });
+    document.getElementById('rv-form').addEventListener('submit', submitReview);
+    document.getElementById('rv-cancel').addEventListener('click', resetReviewForm);
+    document.getElementById('rv-more').addEventListener('click', () => loadReviews(false));
+    document.getElementById('rv-list').addEventListener('click', ev => {
+      if (ev.target.closest('[data-rv-edit]')) startReviewEdit();
+      else if (ev.target.closest('[data-rv-delete]')) deleteReview();
+    });
+    renderReviewPick();
+    loadReviews(true);
   }
 
   loadActivityDetail();
