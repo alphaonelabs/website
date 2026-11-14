@@ -1497,6 +1497,20 @@ async def init_db(env):
             views INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (day, path)
         )""",
+                """CREATE TABLE IF NOT EXISTS activity_reviews (
+            id          TEXT PRIMARY KEY,
+            activity_id TEXT NOT NULL,
+            user_id     TEXT NOT NULL,
+            rating      INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            review      TEXT NOT NULL DEFAULT '',
+            created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (activity_id, user_id),
+            FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_activity_reviews_activity ON activity_reviews(activity_id, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_activity_reviews_user ON activity_reviews(user_id)",
     ]
     for sql in legacy_tables:
         await env.DB.prepare(sql).run()
@@ -3664,20 +3678,38 @@ async def api_delete_account(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
+
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
+
     confirmation = _legacy_text(body.get("confirmation")).strip().upper()
     if confirmation != "DELETE":
         return err("Type DELETE to confirm account deletion", 400)
+
     enc = env.ENCRYPTION_KEY
     uid = user["id"]
     deleted_label = f"deleted-{uid[:8]}"
     deleted_email = f"deleted-{uid}@alphaonelabs.invalid"
+
     try:
-        cart_rows = await env.DB.prepare("SELECT id FROM activity_carts WHERE user_id=?").bind(uid).all()
+        # Delete reviews FIRST. If this fails, no other account data
+        # should have been deleted.
+        await _review_db(
+            env,
+            lambda: env.DB.prepare(
+                "DELETE FROM activity_reviews WHERE user_id=?"
+            ).bind(uid).run()
+        )
+
+        cart_rows = await env.DB.prepare(
+            "SELECT id FROM activity_carts WHERE user_id=?"
+        ).bind(uid).all()
+
         for cart in cart_rows.results or []:
-            await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
+            await env.DB.prepare(
+                "DELETE FROM activity_cart_items WHERE cart_id=?"
+            ).bind(cart.id).run()
 
         cleanup_sql = [
             "DELETE FROM notification_preferences WHERE user_id=?",
@@ -3695,11 +3727,14 @@ async def api_delete_account(req, env):
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
         ]
+
         for sql in cleanup_sql:
             try:
                 await env.DB.prepare(sql).bind(uid).run()
             except Exception as cleanup_exc:
-                await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
+                await capture_exception(
+                    cleanup_exc, req, env, "api_delete_account.cleanup"
+                )
                 continue
 
         try:
@@ -3721,6 +3756,7 @@ async def api_delete_account(req, env):
             "deleted",
             uid,
         ).run()
+
     except Exception as exc:
         await capture_exception(exc, req, env, "api_delete_account")
         return err("Could not delete account", 500)
@@ -4830,6 +4866,272 @@ async def api_delete_quiz(req, env, quiz_id: str):
 
     await _quiz_db(env, run)
     return ok(None, "Quiz deleted")
+# ---------------------------------------------------------------------------
+# Activity reviews & ratings
+# ---------------------------------------------------------------------------
+
+REVIEW_MAX_LENGTH = 2000
+
+
+async def _review_db(env, fn):
+    """Run a review DB operation, creating missing tables on first use."""
+    try:
+        return await fn()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            await init_db(env)
+            return await fn()
+        raise
+
+
+async def _review_activity(env, activity_ref: str):
+    return await env.DB.prepare(
+        "SELECT id,host_id FROM activities WHERE slug=? OR id=? LIMIT 1"
+    ).bind(activity_ref, activity_ref).first()
+
+
+async def _user_completed_activity(env, activity_id: str, user_id: str) -> bool:
+    """A learner has completed an activity if it was marked complete or the enrollment is completed."""
+    row = await env.DB.prepare(
+        "SELECT id FROM activity_completions WHERE activity_id=? AND user_id=? LIMIT 1"
+    ).bind(activity_id, user_id).first()
+    if row:
+        return True
+    row = await env.DB.prepare(
+        "SELECT id FROM enrollments WHERE activity_id=? AND user_id=? AND status='completed' LIMIT 1"
+    ).bind(activity_id, user_id).first()
+    return bool(row)
+
+
+def _validate_review_body(body: Dict[str, Any]):
+    """Return (rating, text, error_message)."""
+    rating = body.get("rating")
+
+    if (
+        isinstance(rating, bool)
+        or not isinstance(rating, (int, float))
+        or not 1 <= rating <= 5
+        or int(rating) != rating
+    ):
+        return None, None, "rating must be a whole number from 1 to 5"
+
+    text = body.get("review", "")
+    if not isinstance(text, str):
+        return None, None, "review must be text"
+
+    text = text.strip()
+
+    if not text:
+        return None, None, "review cannot be empty"
+
+    if len(text) > REVIEW_MAX_LENGTH:
+        return None, None, "review is too long"
+
+    return int(rating), text, None
+
+
+async def api_list_reviews(activity_ref: str, req, env):
+    """GET /api/activities/:id/reviews — summary, distribution, reviews and the viewer's review state."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    enc = env.ENCRYPTION_KEY
+    act = await _review_activity(env, activity_ref)
+    if not act:
+        return err("Activity not found", 404)
+
+    params = parse_qs(urlparse(req.url).query)
+    limit = _query_int(params, "limit", 10, 1, 50)
+    offset = _query_int(params, "offset", 0, 0, 10_000)
+    user_id = user["id"] if user else ""
+
+    async def run():
+        dist_res = await env.DB.prepare(
+            "SELECT rating, COUNT(*) AS cnt FROM activity_reviews WHERE activity_id=? GROUP BY rating"
+        ).bind(act.id).all()
+        distribution = {str(n): 0 for n in range(1, 6)}
+        for row in dist_res.results or []:
+            distribution[str(int(row.rating))] = int(row.cnt or 0)
+        count = sum(distribution.values())
+        total_stars = sum(int(k) * v for k, v in distribution.items())
+        average = round(total_stars / count, 1) if count else 0
+
+        rows = await env.DB.prepare(
+            "SELECT r.id,r.user_id,r.rating,r.review,r.created_at,r.updated_at,u.name AS name_enc"
+            " FROM activity_reviews r JOIN users u ON u.id=r.user_id"
+            " WHERE r.activity_id=? ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?"
+        ).bind(act.id, limit, offset).all()
+
+        reviews = []
+        for r in rows.results or []:
+            name = await decrypt_aes(r.name_enc or "", enc)
+            if not name or name == "[decryption error]":
+                name = "Learner"
+            text = await decrypt_aes(r.review or "", enc)
+            if text == "[decryption error]":
+                text = ""
+            reviews.append({
+                "id": r.id,
+                "reviewer_name": name,
+                "rating": int(r.rating),
+                "review": text,
+                "created_at": r.created_at,
+                "edited": bool(r.updated_at and r.updated_at != r.created_at),
+                "is_own": bool(user_id and r.user_id == user_id),
+            })
+
+        my_review = None
+        can_review = False
+        is_host = bool(user_id and act.host_id == user_id)
+        if user_id:
+            mine = await env.DB.prepare(
+                "SELECT id,rating,review,created_at,updated_at FROM activity_reviews"
+                " WHERE activity_id=? AND user_id=?"
+            ).bind(act.id, user_id).first()
+            if mine:
+                my_text = await decrypt_aes(mine.review or "", enc)
+                my_review = {
+                    "id": mine.id,
+                    "rating": int(mine.rating),
+                    "review": "" if my_text == "[decryption error]" else my_text,
+                }
+            elif not is_host:
+                can_review = await _user_completed_activity(env, act.id, user_id)
+
+        return {
+            "summary": {"average": average, "count": count, "distribution": distribution},
+            "reviews": reviews,
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + len(reviews) < count,
+            "viewer": {
+                "signed_in": bool(user_id),
+                "is_host": is_host,
+                "can_review": can_review,
+                "my_review": my_review,
+            },
+        }
+
+    return ok(await _review_db(env, run))
+
+
+async def api_create_review(activity_ref: str, req, env):
+    """POST /api/activities/:id/reviews — learners who completed the activity can review it once."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+    rating, text, problem = _validate_review_body(body)
+    if problem:
+        return err(problem)
+
+    act = await _review_activity(env, activity_ref)
+    if not act:
+        return err("Activity not found", 404)
+    if act.host_id == user["id"]:
+        return err("You can't review an activity you host", 403)
+
+    async def run():
+        if not await _user_completed_activity(env, act.id, user["id"]):
+            return "not_completed"
+        existing = await env.DB.prepare(
+            "SELECT id FROM activity_reviews WHERE activity_id=? AND user_id=?"
+        ).bind(act.id, user["id"]).first()
+        if existing:
+            return "exists"
+        try:
+            await env.DB.prepare(
+                "INSERT INTO activity_reviews (id,activity_id,user_id,rating,review) VALUES (?,?,?,?,?)"
+            ).bind(
+                new_id(), act.id, user["id"], rating,
+                await encrypt_aes(text, env.ENCRYPTION_KEY),
+            ).run()
+        except Exception as exc:
+            if "UNIQUE" in str(exc).upper():
+                return "exists"  # concurrent double-submit
+            raise
+        return "ok"
+
+    try:
+        result = await _review_db(env, run)
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_create_review")
+        return err("Could not save your review — please try again", 500)
+    if result == "not_completed":
+        return err("Complete this activity before reviewing it", 403)
+    if result == "exists":
+        return err("You have already reviewed this activity. Edit your review instead.", 409)
+    return ok({"activity_id": act.id, "rating": rating}, "Review posted")
+
+
+async def api_update_review(activity_ref: str, req, env):
+    """PUT /api/activities/:id/reviews — edit the caller's own review."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+    rating, text, problem = _validate_review_body(body)
+    if problem:
+        return err(problem)
+
+    act = await _review_activity(env, activity_ref)
+    if not act:
+        return err("Activity not found", 404)
+
+    async def run():
+        existing = await env.DB.prepare(
+            "SELECT id FROM activity_reviews WHERE activity_id=? AND user_id=?"
+        ).bind(act.id, user["id"]).first()
+        if not existing:
+            return "missing"
+        await env.DB.prepare(
+            "UPDATE activity_reviews SET rating=?,review=?,updated_at=datetime('now')"
+            " WHERE activity_id=? AND user_id=?"
+        ).bind(rating, await encrypt_aes(text, env.ENCRYPTION_KEY), act.id, user["id"]).run()
+        return "ok"
+
+    try:
+        result = await _review_db(env, run)
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_update_review")
+        return err("Could not update your review — please try again", 500)
+    if result == "missing":
+        return err("You haven't reviewed this activity yet", 404)
+    return ok({"activity_id": act.id, "rating": rating}, "Review updated")
+
+
+async def api_delete_review(activity_ref: str, req, env):
+    """DELETE /api/activities/:id/reviews — delete the caller's own review."""
+    user = verify_token(req.headers.get("Authorization") or "", env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    act = await _review_activity(env, activity_ref)
+    if not act:
+        return err("Activity not found", 404)
+
+    async def run():
+        existing = await env.DB.prepare(
+            "SELECT id FROM activity_reviews WHERE activity_id=? AND user_id=?"
+        ).bind(act.id, user["id"]).first()
+        if not existing:
+            return "missing"
+        await env.DB.prepare(
+            "DELETE FROM activity_reviews WHERE activity_id=? AND user_id=?"
+        ).bind(act.id, user["id"]).run()
+        return "ok"
+
+    try:
+        result = await _review_db(env, run)
+    except Exception as exc:
+        await capture_exception(exc, req, env, "api_delete_review")
+        return err("Could not delete your review — please try again", 500)
+    if result == "missing":
+        return err("You haven't reviewed this activity yet", 404)
+    return ok(None, "Review deleted")
+
+
 
 
 LEGACY_FEATURE_GROUPS = {
@@ -9082,6 +9384,18 @@ async def _dispatch(request, env):
         m_act_cal = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/calendar\.ics", path)
         if m_act_cal and method == "GET":
             return await api_activity_calendar_ics(m_act_cal.group(1), request, env)
+
+        m_act_reviews = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/reviews", path)
+        if m_act_reviews:
+            ref = m_act_reviews.group(1)
+            if method == "GET":
+                return await api_list_reviews(ref, request, env)
+            if method == "POST":
+                return await api_create_review(ref, request, env)
+            if method == "PUT":
+                return await api_update_review(ref, request, env)
+            if method == "DELETE":
+                return await api_delete_review(ref, request, env)
 
         m_act_quizzes = re.fullmatch(r"/api/activities/([A-Za-z0-9_-]+)/quizzes", path)
         if m_act_quizzes and method == "POST":
