@@ -3678,20 +3678,38 @@ async def api_delete_account(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
     if not user:
         return err("Authentication required", 401)
+
     body, bad_resp = await parse_json_object(req)
     if bad_resp:
         return bad_resp
+
     confirmation = _legacy_text(body.get("confirmation")).strip().upper()
     if confirmation != "DELETE":
         return err("Type DELETE to confirm account deletion", 400)
+
     enc = env.ENCRYPTION_KEY
     uid = user["id"]
     deleted_label = f"deleted-{uid[:8]}"
     deleted_email = f"deleted-{uid}@alphaonelabs.invalid"
+
     try:
-        cart_rows = await env.DB.prepare("SELECT id FROM activity_carts WHERE user_id=?").bind(uid).all()
+        # Delete reviews FIRST. If this fails, no other account data
+        # should have been deleted.
+        await _review_db(
+            env,
+            lambda: env.DB.prepare(
+                "DELETE FROM activity_reviews WHERE user_id=?"
+            ).bind(uid).run()
+        )
+
+        cart_rows = await env.DB.prepare(
+            "SELECT id FROM activity_carts WHERE user_id=?"
+        ).bind(uid).all()
+
         for cart in cart_rows.results or []:
-            await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
+            await env.DB.prepare(
+                "DELETE FROM activity_cart_items WHERE cart_id=?"
+            ).bind(cart.id).run()
 
         cleanup_sql = [
             "DELETE FROM notification_preferences WHERE user_id=?",
@@ -3709,6 +3727,7 @@ async def api_delete_account(req, env):
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
         ]
+
         for sql in cleanup_sql:
             try:
                 await env.DB.prepare(sql).bind(uid).run()
@@ -3717,14 +3736,6 @@ async def api_delete_account(req, env):
                     cleanup_exc, req, env, "api_delete_account.cleanup"
                 )
                 continue
-
-        # Delete public review text before anonymizing the account.
-        await _review_db(
-            env,
-            lambda: env.DB.prepare(
-                "DELETE FROM activity_reviews WHERE user_id=?"
-            ).bind(uid).run()
-        )
 
         try:
             await env.DB.prepare(
@@ -3745,6 +3756,7 @@ async def api_delete_account(req, env):
             "deleted",
             uid,
         ).run()
+
     except Exception as exc:
         await capture_exception(exc, req, env, "api_delete_account")
         return err("Could not delete account", 500)

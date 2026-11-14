@@ -230,6 +230,10 @@ def test_edit_own_review(world):
 def test_cannot_edit_someone_elses_review(world):
     create(world, "u1", 5, "mine")
     # u2 has no review: PUT must 404 and must not touch u1's row.
+    sql(
+        world,
+        "INSERT INTO enrollments (id,activity_id,user_id,status) VALUES ('e1','a1','u1','completed')"
+    )
     r = call(worker.api_update_review, world, method="PUT", user="u2", body={"rating": 1, "review": "hijack"})
     assert r.status == 404
     d = body_of(call(worker.api_list_reviews, world))["data"]["reviews"][0]
@@ -364,6 +368,12 @@ def test_non_finite_ratings_get_400_not_a_server_error(world, raw_rating):
 def test_account_deletion_fails_closed_when_review_cleanup_fails(world):
     create(world, "u1", 5, "mine")
 
+    sql(
+        world,
+        "INSERT INTO enrollments (id,activity_id,user_id,status) "
+        "VALUES ('e1','a1','u1','completed')"
+    )
+
     class FailingReviewDelete:
         def prepare(self, q):
             if q.startswith("DELETE FROM activity_reviews"):
@@ -375,6 +385,12 @@ def test_account_deletion_fails_closed_when_review_cleanup_fails(world):
     assert resp.status == 500
     assert world.DB.conn.execute("SELECT name FROM users WHERE id='u1'").fetchone()[0] == "enc:Name u1"
     assert count(world) == 1
+    # Nothing irreversible may have happened: learning records survive the failed request.
+    mine = lambda t: world.DB.conn.execute(
+        f"SELECT COUNT(*) FROM {t} WHERE user_id='u1'"
+    ).fetchone()[0]
+    assert mine("enrollments") == 1
+    assert mine("activity_completions") == 1
     resp = run(worker.api_delete_account(FakeReq(method="POST", user="u1", body={"confirmation": "DELETE"}), world))
     assert resp.status == 200 and count(world) == 0
 
