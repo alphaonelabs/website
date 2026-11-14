@@ -3708,14 +3708,23 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
-            "DELETE FROM activity_reviews WHERE user_id=?",
         ]
         for sql in cleanup_sql:
             try:
                 await env.DB.prepare(sql).bind(uid).run()
             except Exception as cleanup_exc:
-                await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
+                await capture_exception(
+                    cleanup_exc, req, env, "api_delete_account.cleanup"
+                )
                 continue
+
+        # Delete public review text before anonymizing the account.
+        await _review_db(
+            env,
+            lambda: env.DB.prepare(
+                "DELETE FROM activity_reviews WHERE user_id=?"
+            ).bind(uid).run()
+        )
 
         try:
             await env.DB.prepare(
@@ -4885,18 +4894,27 @@ async def _user_completed_activity(env, activity_id: str, user_id: str) -> bool:
 def _validate_review_body(body: Dict[str, Any]):
     """Return (rating, text, error_message)."""
     rating = body.get("rating")
+
     if (
         isinstance(rating, bool)
         or not isinstance(rating, (int, float))
+        or not 1 <= rating <= 5
         or int(rating) != rating
-        or not 1 <= int(rating) <= 5
     ):
         return None, None, "rating must be a whole number from 1 to 5"
-    text = _legacy_text(body.get("review")).strip()
+
+    text = body.get("review", "")
+    if not isinstance(text, str):
+        return None, None, "review must be text"
+
+    text = text.strip()
+
     if not text:
-        return None, None, "Please write a short review"
+        return None, None, "review cannot be empty"
+
     if len(text) > REVIEW_MAX_LENGTH:
-        return None, None, f"Review must be at most {REVIEW_MAX_LENGTH} characters"
+        return None, None, "review is too long"
+
     return int(rating), text, None
 
 

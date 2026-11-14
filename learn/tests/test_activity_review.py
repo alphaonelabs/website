@@ -11,7 +11,12 @@ from types import SimpleNamespace
 
 import pytest
 
-import worker  # adjust to the Worker module name in the repo
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+import worker
 
 
 # --------------------------------------------------------------------------- fakes
@@ -345,3 +350,36 @@ def test_rating_check_constraint_and_cascade(world):
     sql(world, "DELETE FROM enrollments")  # enrollments FK has no cascade in the existing schema
     sql(world, "DELETE FROM activities WHERE id='a1'")
     assert count(world) == 0
+
+@pytest.mark.parametrize("raw_rating", ["1e309", "-1e309", "1e400", "NaN", "Infinity", "-Infinity"])
+def test_non_finite_ratings_get_400_not_a_server_error(world, raw_rating):
+    payload = '{"rating": %s, "review": "text"}' % raw_rating
+    r = call(worker.api_create_review, world, method="POST", user="u1", raw=payload)
+    assert r.status == 400 and count(world) == 0
+    create(world, "u1", 4, "ok")
+    r = call(worker.api_update_review, world, method="PUT", user="u1", raw=payload)
+    assert r.status == 400
+
+
+def test_account_deletion_fails_closed_when_review_cleanup_fails(world):
+    create(world, "u1", 5, "mine")
+
+    class FailingReviewDelete:
+        def prepare(self, q):
+            if q.startswith("DELETE FROM activity_reviews"):
+                raise RuntimeError("D1 unavailable")
+            return world.DB.prepare(q)
+
+    broken = SimpleNamespace(DB=FailingReviewDelete(), JWT_SECRET="s", ENCRYPTION_KEY="k")
+    resp = run(worker.api_delete_account(FakeReq(method="POST", user="u1", body={"confirmation": "DELETE"}), broken))
+    assert resp.status == 500
+    assert world.DB.conn.execute("SELECT name FROM users WHERE id='u1'").fetchone()[0] == "enc:Name u1"
+    assert count(world) == 1
+    resp = run(worker.api_delete_account(FakeReq(method="POST", user="u1", body={"confirmation": "DELETE"}), world))
+    assert resp.status == 200 and count(world) == 0
+
+
+def test_account_deletion_works_when_review_table_does_not_exist(world):
+    sql(world, "DROP TABLE IF EXISTS activity_reviews")
+    resp = run(worker.api_delete_account(FakeReq(method="POST", user="u1", body={"confirmation": "DELETE"}), world))
+    assert resp.status == 200
