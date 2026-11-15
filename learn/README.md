@@ -170,3 +170,10 @@ http://localhost:3000
 | Method | Endpoint | Description |
 |----------|----------|-------------|
 | GET | /api/dashboard | User dashboard |
+### Progress Trackers
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| POST | /api/trackers | Create a progress tracker (login required) |
+| GET | /api/trackers | List your own trackers |
+| GET | /api/trackers/:id | Get one of your trackers |
