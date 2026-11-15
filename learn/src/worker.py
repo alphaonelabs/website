@@ -3386,7 +3386,7 @@ async def api_dashboard(req, env):
 
     hosted = []
     for r in res.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
@@ -3417,7 +3417,7 @@ async def api_dashboard(req, env):
 
     joined = []
     for r in res2.results or []:
-        desc = await decrypt_aes(r.description or "", enc)
+        desc = await decrypt_aes(getattr(r, "description", "") or "", enc)
         t_res = await env.DB.prepare(
             "SELECT t.name FROM tags t JOIN activity_tags at2 ON at2.tag_id=t.id"
             " WHERE at2.activity_id=?"
