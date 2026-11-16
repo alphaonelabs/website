@@ -62,33 +62,31 @@
           <div class="a1s-panel__head"><h2 class="a1s-h3">Activity creator</h2></div>
           <div id="host-info" class="a1s-panel__body flex items-center gap-4"></div>
         </div>
-
         <div id="certificate-card" class="hidden a1s-panel">
           <div class="a1s-panel__head">
             <h2 class="a1s-h3">Certificate</h2>
             <i class="fas fa-certificate" aria-hidden="true"></i>
           </div>
-
           <div class="a1s-panel__body space-y-3">
-            <label for="credential-name-consent" class="flex items-start gap-2 text-sm">
+            <div class="flex items-start gap-2 text-sm">
               <input
                 id="credential-name-consent"
                 type="checkbox"
                 class="mt-1"
+                aria-describedby="credential-consent-notice"
               >
-              <p class="text-sm a1s-muted">
-                Credentials are public and portable, and can be copied or kept by others.
-                Deleting your account does not invalidate a credential, and revocation is
-                not currently supported. The name used is the one on your profile
-                (self-entered, not verified).
-              </p>
-            </label>
-            <p class="text-sm a1s-muted">
+              <label for="credential-name-consent">
+                Add my profile name to my public digital credential
+              </label>
+            </div>
+            <p id="credential-consent-notice" class="text-sm a1s-muted">
+              If unchecked, a pseudonymous identifier is used instead. This choice applies
+              only when the credential is first issued and can't be changed afterward.
               Credentials are public and portable, and can be copied or kept by others.
-              A credential stays valid even if you delete your account, unless you ask us
-              to revoke it. The name used is the one on your profile.
+              Deleting your account does not invalidate a credential, and revocation is
+              not currently supported. The name used is the one on your profile
+              (self-entered, not verified).
             </p>
-
             <button id="btn-certificate" type="button" class="a1-btn w-full"></button>
             <p id="certificate-note" class="text-sm a1s-muted"></p>
             <p id="certificate-error" class="hidden text-sm text-red-600 dark:text-red-400"></p>

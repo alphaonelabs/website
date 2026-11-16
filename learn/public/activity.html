@@ -174,25 +174,25 @@
               <i class="fas fa-certificate mr-2 text-teal-600 dark:text-teal-400"></i>
                Certificate
             </h2>
-
             <div class="space-y-3">
-              <label for="credential-name-consent" class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <div class="flex items-start gap-2 text-sm">
                 <input
                   id="credential-name-consent"
                   type="checkbox"
                   class="mt-1"
+                  aria-describedby="credential-consent-notice"
                 >
-                <p class="text-sm a1s-muted">
-                  Credentials are public and portable, and can be copied or kept by others.
-                  Deleting your account does not invalidate a credential, and revocation is
-                  not currently supported. The name used is the one on your profile
-                  (self-entered, not verified).
-                </p>
-              </label>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
+                <label for="credential-name-consent">
+                  Add my profile name to my public digital credential
+                </label>
+              </div>
+              <p id="credential-consent-notice" class="text-sm a1s-muted">
+                If unchecked, a pseudonymous identifier is used instead. This choice applies
+                only when the credential is first issued and can't be changed afterward.
                 Credentials are public and portable, and can be copied or kept by others.
-                A credential stays valid even if you delete your account, unless you ask us
-                to revoke it.
+                Deleting your account does not invalidate a credential, and revocation is
+                not currently supported. The name used is the one on your profile
+                (self-entered, not verified).
               </p>
 
               <button
