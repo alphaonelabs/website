@@ -12,7 +12,8 @@ That way the referral queries themselves are exercised, not just mocked.
 import json
 import sqlite3
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from typing import Any, Iterator, Optional
+from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -33,36 +34,36 @@ STRONG_PASSWORD = "Str0ng!Passw0rd#2026"
 class _SqliteStatement:
     """A D1-style prepared statement that runs against a sqlite3 connection."""
 
-    def __init__(self, conn, sql, args=()):
+    def __init__(self, conn: sqlite3.Connection, sql: str, args: tuple[Any, ...] = ()) -> None:
         """Store the connection, SQL text and bound arguments."""
         self._conn = conn
         self._sql = sql
         self._args = tuple(args)
 
-    def bind(self, *args):
+    def bind(self, *args: Any) -> "_SqliteStatement":
         """Return a new statement with *args* bound, like D1's ``bind``."""
         return _SqliteStatement(self._conn, self._sql, args)
 
-    def _execute(self):
+    def _execute(self) -> sqlite3.Cursor:
         """Run the statement, commit, and return the cursor."""
         cur = self._conn.execute(self._sql, self._args)
         self._conn.commit()
         return cur
 
     @staticmethod
-    def _row(row):
+    def _row(row: Optional[sqlite3.Row]) -> Optional[SimpleNamespace]:
         """Convert a sqlite3.Row into an object with attribute access."""
         return SimpleNamespace(**dict(row)) if row is not None else None
 
-    async def first(self):
+    async def first(self) -> Optional[SimpleNamespace]:
         """Return the first row, or ``None`` when there are no rows."""
         return self._row(self._execute().fetchone())
 
-    async def all(self):
+    async def all(self) -> SimpleNamespace:
         """Return an object whose ``results`` list holds every row."""
         return SimpleNamespace(results=[self._row(r) for r in self._execute().fetchall()])
 
-    async def run(self):
+    async def run(self) -> SimpleNamespace:
         """Execute the statement for its side effects."""
         self._execute()
         return SimpleNamespace(success=True)
@@ -71,16 +72,16 @@ class _SqliteStatement:
 class SqliteD1:
     """Minimal D1 binding backed by an in-memory SQLite database."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Open a fresh in-memory database."""
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
 
-    def prepare(self, sql):
+    def prepare(self, sql: str) -> _SqliteStatement:
         """Return a prepared statement for *sql*."""
         return _SqliteStatement(self.conn, sql)
 
-    def scalar(self, sql, *args):
+    def scalar(self, sql: str, *args: Any) -> Any:
         """Run *sql* directly and return the first column of the first row."""
         row = self.conn.execute(sql, args).fetchone()
         return row[0] if row else None
@@ -91,7 +92,7 @@ class SqliteD1:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
-def clear_auth_rate_limit_state():
+def clear_auth_rate_limit_state() -> Iterator[None]:
     """Reset the in-memory auth rate limiter so register tests don't interfere."""
     worker._AUTH_RATE_LIMIT_STATE.clear()
     yield
@@ -99,7 +100,7 @@ def clear_auth_rate_limit_state():
 
 
 @pytest.fixture
-async def db():
+async def db() -> SqliteD1:
     """Return a SqliteD1 with the full schema created by ``init_db``."""
     database = SqliteD1()
     await worker.init_db(make_env(db=database))
@@ -107,22 +108,22 @@ async def db():
 
 
 @pytest.fixture
-def env(db):
+def env(db: SqliteD1) -> MagicMock:
     """Return a mock Worker env bound to the SQLite database."""
     return make_env(db=db)
 
 
-def _parse(resp):
+def _parse(resp: Any) -> dict[str, Any]:
     """Decode a JSON response body."""
     return json.loads(resp.body)
 
 
-def _auth(uid, username="alice"):
+def _auth(uid: str, username: str = "alice") -> dict[str, str]:
     """Return an Authorization header for a member token."""
     return {"Authorization": "Bearer " + worker.create_token(uid, username, "member", JWT)}
 
 
-async def _add_user(db, uid, name="Alice"):
+async def _add_user(db: SqliteD1, uid: str, name: str = "Alice") -> None:
     """Insert a minimal verified user with an encrypted display name."""
     await db.prepare(
         "INSERT INTO users (id,username_hash,email_hash,name,username,email,password_hash,role,email_verified)"
@@ -139,7 +140,9 @@ async def _add_user(db, uid, name="Alice"):
     ).run()
 
 
-async def _add_profile(db, uid, code=None, referred_by="", earnings=0):
+async def _add_profile(
+    db: SqliteD1, uid: str, code: Optional[str] = None, referred_by: str = "", earnings: int = 0
+) -> None:
     """Insert a user_profiles row with a known referral code (or none)."""
     await db.prepare(
         "INSERT INTO user_profiles (user_id,referral_code,referral_code_hash,referred_by_user_id,referral_earnings_cents)"
@@ -153,27 +156,32 @@ async def _add_profile(db, uid, code=None, referred_by="", earnings=0):
     ).run()
 
 
-async def _add_member(db, uid, *, name="Member", code=None, referred_by="", earnings=0):
+async def _add_member(
+    db: SqliteD1, uid: str, *, name: str = "Member", code: Optional[str] = None,
+    referred_by: str = "", earnings: int = 0,
+) -> None:
     """Insert a user together with their profile."""
     await _add_user(db, uid, name)
     await _add_profile(db, uid, code=code, referred_by=referred_by, earnings=earnings)
 
 
-async def _enroll(db, uid, status, activity_id="act-1"):
+async def _enroll(db: SqliteD1, uid: str, status: str, activity_id: str = "act-1") -> None:
     """Insert an enrollment for *uid* with the given status."""
     await db.prepare(
         "INSERT INTO enrollments (id,activity_id,user_id,status) VALUES (?,?,?,?)"
     ).bind(f"enr-{uid}-{activity_id}-{status}", activity_id, uid, status).run()
 
 
-async def _get_referral(env, uid, url="http://localhost/api/referral"):
+async def _get_referral(
+    env: MagicMock, uid: str, url: str = "http://localhost/api/referral"
+) -> tuple[int, dict[str, Any]]:
     """Call ``api_get_referral`` as *uid* and return (status, body)."""
     req = MockRequest(method="GET", url=url, headers=_auth(uid))
     resp = await worker.api_get_referral(req, env)
     return resp.status, _parse(resp)
 
 
-async def _leaderboard(env, query=""):
+async def _leaderboard(env: MagicMock, query: str = "") -> list[dict[str, Any]]:
     """Call ``api_referral_leaderboard`` and return the list of leaders."""
     req = MockRequest(method="GET", url="http://localhost/api/referral/leaderboard" + query)
     resp = await worker.api_referral_leaderboard(req, env)
@@ -317,11 +325,12 @@ class TestLeaderboard:
         await _add_member(db, "e-kid", referred_by="more-enrollments")
         await _enroll(db, "e-kid", "active", "act-1")
         await _enroll(db, "e-kid", "completed", "act-2")
-        # richer / poorer: 1 referral, 0 enrollments, different earnings.
-        await _add_member(db, "richer", code="AAAA0003", earnings=900)
-        await _add_member(db, "r-kid", referred_by="richer")
+        # poorer / richer: 1 referral, 0 enrollments, different earnings.
+        # poorer is inserted first so only the earnings tie-break can put richer ahead.
         await _add_member(db, "poorer", code="AAAA0004", earnings=100)
         await _add_member(db, "p-kid", referred_by="poorer")
+        await _add_member(db, "richer", code="AAAA0003", earnings=900)
+        await _add_member(db, "r-kid", referred_by="richer")
 
         leaders = await _leaderboard(env)
         assert [l["user_id"] for l in leaders] == ["most-referrals", "more-enrollments", "richer", "poorer"]
@@ -413,11 +422,11 @@ class TestRegisterAttribution:
     """``api_register`` links a new account to the member whose code was used."""
 
     @pytest.fixture(autouse=True)
-    def no_email(self, monkeypatch):
+    def no_email(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Stop registration from sending a real verification email."""
         monkeypatch.setattr(worker, "send_verification_email", AsyncMock(return_value=True))
 
-    async def _register(self, env, username, referral_code=None):
+    async def _register(self, env: MagicMock, username: str, referral_code: Optional[str] = None) -> Any:
         """Register *username*, optionally with a referral code, and return the response."""
         payload = {"username": username, "email": f"{username}@example.com", "password": STRONG_PASSWORD}
         if referral_code is not None:
@@ -425,7 +434,7 @@ class TestRegisterAttribution:
         req = json_request("/api/register", payload, headers={"CF-Connecting-IP": "127.0.0.1"})
         return await worker.api_register(req, env)
 
-    def _new_user_id(self, db, username):
+    def _new_user_id(self, db: SqliteD1, username: str) -> Optional[str]:
         """Return the id of the user registered as *username*."""
         return db.scalar("SELECT id FROM users WHERE username_hash=?", worker.blind_index(username, ENC))
 
