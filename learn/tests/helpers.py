@@ -6,14 +6,14 @@ import base64
 import importlib.util
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 
 # ---------------------------------------------------------------------------
 # Worker module loader
 # ---------------------------------------------------------------------------
 
-_WORKER_PATH = Path(__file__).parent.parent / "src" / "worker.py"
+_WORKER_PATH = Path(__file__).resolve().parent.parent / "src" / "worker.py"
 
 
 def load_worker():
@@ -23,12 +23,12 @@ def load_worker():
     spec.loader.exec_module(mod)
     return mod
 
-
 # ---------------------------------------------------------------------------
 # Mock Request
 # ---------------------------------------------------------------------------
 
 class MockRequest:
+
     """Minimal HTTP request stub."""
 
     def __init__(self, method="GET", url="http://localhost/", headers=None, body=None):
@@ -202,4 +202,3 @@ async def make_init_db_stmts(worker_mod):
     """Return a list of dummy statements sized to match worker.init_db()."""
     cnt = await get_init_db_statement_count(worker_mod)
     return [make_stmt() for _ in range(cnt)]
-

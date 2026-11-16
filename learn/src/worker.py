@@ -37,6 +37,8 @@ Static HTML pages (public/) are served via Workers Sites (KV binding).
 import base64
 import html as _html
 import datetime
+import html as _html
+import datetime
 import hashlib
 import hmac as _hmac
 import json
@@ -54,6 +56,7 @@ import js
 from pyodide.ffi import to_js
 from js import WebSocketPair, WebSocketRequestResponsePair
 import uuid
+
 
 _SENTRY_INITIALIZED = False
 _SENTRY_DSN: str = ""
@@ -1062,6 +1065,28 @@ _DDL = [
         created_at    TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
     )""",
+        # Verifiable credentials (Open Badges 3.0)
+    """CREATE TABLE IF NOT EXISTS credentials (
+        id                TEXT PRIMARY KEY,
+        certificate_id    TEXT,
+        user_id           TEXT,
+        activity_id       TEXT NOT NULL,
+        subject_id        TEXT NOT NULL,
+        name_disclosed    INTEGER NOT NULL DEFAULT 0 CHECK (name_disclosed IN (0, 1)),
+        credential_jws    TEXT NOT NULL,
+        kid               TEXT NOT NULL,
+        status            TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+        status_list_index INTEGER,
+        issued_at         TEXT NOT NULL,
+        revoked_at        TEXT,
+        revoked_reason    TEXT,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (certificate_id) REFERENCES certificates(id) ON DELETE SET NULL
+    )""",
+    """CREATE UNIQUE INDEX IF NOT EXISTS uq_credentials_active_user_activity
+        ON credentials (user_id, activity_id)
+        WHERE user_id IS NOT NULL AND status = 'active'""",
     # Session attendance
     """CREATE TABLE IF NOT EXISTS session_attendance (
         id         TEXT PRIMARY KEY,
@@ -3166,21 +3191,133 @@ async def api_express_activity_interest(activity_ref: str, req, env):
         "interest_count": count_row.cnt if count_row else 1,
     }, "Interest recorded")
 
+async def _read_include_name(request) -> bool:
+    """Consent flag from the optional JSON body. Absent or invalid means False."""
+    try:
+        raw = await request.text()
+        body = json.loads(raw) if raw else {}
+    except Exception:
+        return False
+    return isinstance(body, dict) and body.get("include_name") is True
+
+
+def _certificate_payload(cert_uuid: str, credential_id: str = "") -> dict:
+    data = {"uuid": cert_uuid, "url": "/certificate.html?uuid=" + cert_uuid}
+    if credential_id:
+        data["credential_id"] = credential_id
+    return data
+
+def _env_str(env, name: str) -> str:
+    value = getattr(env, name, "")
+    return value.strip() if isinstance(value, str) else ""
+
+def _credential_issuer_url(env) -> str:
+    """Canonical public origin used inside credential ids. Empty means not configured."""
+    url = (getattr(env, "CREDENTIAL_ISSUER_URL", "") or "").strip().rstrip("/")
+    parsed = urlparse(url)
+    if parsed.path or parsed.query or parsed.fragment or not parsed.netloc:
+        return ""
+    if parsed.scheme == "https":
+        return url
+    if parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1"):
+        return url
+    return ""
+
+
+async def _issue_credential_for_certificate(env, request, enrollment, cert_uuid,
+                                            caller_id, include_name) -> str:
+    """Issue an Open Badges 3.0 credential next to the certificate row.
+
+    Best effort: never raises, so a credential problem cannot break certificate
+    generation. Returns the credential id, or "" when nothing was issued.
+    """
+    try:
+        # Only the learner can trigger issuance, because only the learner can
+        # consent to their name being public. A host-triggered call issues nothing.
+        if caller_id != enrollment.user_id:
+            return ""
+
+        import credentials
+        from open_badges import issue_open_badge
+
+        issuer_url = _credential_issuer_url(env)
+        kid = (getattr(env, "CREDENTIAL_SIGNING_KID", "") or "").strip()
+        key_b64 = (getattr(env, "CREDENTIAL_SIGNING_KEY", "") or "").strip()
+        public_raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
+        if not (issuer_url and kid and key_b64 and isinstance(public_raw, str)):
+            return ""  # credentials not configured on this deployment
+
+        # Never issue a credential nobody can verify.
+        if kid not in {k["kid"] for k in credentials.load_public_jwks(public_raw)}:
+            print(json.dumps({"level": "warn", "where": "issue_credential",
+                              "error": "signing kid is not in CREDENTIAL_PUBLIC_JWKS"}))
+            return ""
+        private_pkcs8 = base64.b64decode(key_b64)
+
+        act = await env.DB.prepare(
+            "SELECT id, title, description FROM activities WHERE id=?"
+        ).bind(enrollment.activity_id).first()
+        if not act:
+            return ""
+        description = await decrypt_aes(act.description or "", env.ENCRYPTION_KEY)
+        if not description or description == "[decryption error]":
+            description = act.title
+        description = re.sub(r"\s+", " ", description).strip()[:500]
+
+        learner_name = None
+        if include_name:
+            u_row = await env.DB.prepare(
+                "SELECT name FROM users WHERE id=?"
+            ).bind(enrollment.user_id).first()
+            if u_row:
+                name = await decrypt_aes(u_row.name or "", env.ENCRYPTION_KEY)
+                if name and name != "[decryption error]":
+                    learner_name = name[:160]
+
+        async def _sign(payload, signing_kid):
+            return await credentials.sign_jws(payload, private_pkcs8, signing_kid, typ="vc+jwt")
+
+        return await issue_open_badge(
+            db=env.DB,
+            sign_fn=_sign,
+            kid=kid,
+            base_url=issuer_url,
+            issuer_name="Alpha One Labs",
+            user_id=enrollment.user_id,
+            certificate_id=cert_uuid,
+            activity_id=enrollment.activity_id,
+            achievement_name=act.title,
+            achievement_description=description,
+            criteria_narrative="Completed all required parts of the activity.",
+            learner_name=learner_name,
+            include_name=learner_name is not None,
+        ) or ""
+    except Exception as exc:
+        await capture_exception(exc, request, env, "api_generate_certificate.issue_credential")
+        return ""
 
 async def api_generate_certificate(request, env, target_id):
-    user = verify_token(request.headers.get("Authorization"), env.JWT_SECRET)
+
+    user = verify_token(
+        request.headers.get("Authorization"),
+        env.JWT_SECRET,
+    )
     if not user:
         return err("Authentication required", 401)
 
     enrollment = await env.DB.prepare(
-        "SELECT e.*, a.host_id FROM enrollments e "
+        "SELECT e.*, a.host_id, a.title AS activity_title, "
+        "a.description AS activity_description "
+        "FROM enrollments e "
         "JOIN activities a ON e.activity_id = a.id "
         "WHERE e.id = ?"
     ).bind(target_id).first()
 
     if not enrollment:
         enrollment = await env.DB.prepare(
-            "SELECT e.*, a.host_id FROM enrollments e "
+            "SELECT e.*, a.host_id, a.title AS activity_title, "
+            "a.description AS activity_description "
+            "FROM enrollments e "
             "JOIN activities a ON e.activity_id = a.id "
             "WHERE (a.id = ? OR a.slug = ?) AND e.user_id = ?"
         ).bind(target_id, target_id, user["id"]).first()
@@ -3188,36 +3325,47 @@ async def api_generate_certificate(request, env, target_id):
     if not enrollment:
         return err("Enrollment not found", 404)
 
-    if enrollment.user_id != user["id"] and enrollment.host_id != user["id"]:
+    is_learner = str(enrollment.user_id) == str(user["id"])
+    is_host = str(enrollment.host_id) == str(user["id"])
+
+    if not is_learner and not is_host:
         return err("Forbidden", 403)
 
     enrollment_id = enrollment.id
+    include_name = is_learner and await _read_include_name(request)
 
     if enrollment.status == "cancelled":
         return err("Enrollment is cancelled", 400)
 
     if enrollment.status != "completed":
         comp = await env.DB.prepare(
-            "SELECT id FROM activity_completions WHERE activity_id=? AND user_id=? LIMIT 1"
-        ).bind(enrollment.activity_id, enrollment.user_id).first()
+            "SELECT id FROM activity_completions "
+            "WHERE activity_id = ? AND user_id = ? LIMIT 1"
+        ).bind(
+            enrollment.activity_id,
+            enrollment.user_id,
+        ).first()
+
         if comp:
             await env.DB.prepare(
-                "UPDATE enrollments SET status='completed' WHERE id=?"
+                "UPDATE enrollments SET status = 'completed' WHERE id = ?"
             ).bind(enrollment_id).run()
         else:
             return err(
-                "Enrollment is not completed yet. Finish all sessions to earn your certificate.",
+                "Enrollment is not completed yet. "
+                "Finish all sessions to earn your certificate.",
                 400,
             )
-
+    # Resolve existing certificate or create a new one.
     existing = await env.DB.prepare(
         "SELECT id FROM certificates WHERE enrollment_id = ?"
     ).bind(enrollment_id).first()
     if existing:
-        return ok({
-            "uuid": existing.id,
-            "url": "/certificate.html?uuid=" + existing.id,
-        })
+        # Also covers certificates issued before credentials existed.
+        credential_id = await _issue_credential_for_certificate(
+            env, request, enrollment, existing.id, user["id"], include_name
+        )
+        return ok(_certificate_payload(existing.id, credential_id))
 
     cert_uuid = new_id()
     try:
@@ -3230,12 +3378,16 @@ async def api_generate_certificate(request, env, target_id):
             "SELECT id FROM certificates WHERE enrollment_id = ?"
         ).bind(enrollment_id).first()
         if existing_after:
-            return ok({
-                "uuid": existing_after.id,
-                "url": "/certificate.html?uuid=" + existing_after.id,
-            })
+            credential_id = await _issue_credential_for_certificate(
+                env, request, enrollment, existing_after.id, user["id"], include_name
+            )
+            return ok(_certificate_payload(existing_after.id, credential_id))
         await capture_exception(exc, request, env, "api_generate_certificate.insert")
         return err("Failed to generate certificate", 500)
+
+    credential_id = await _issue_credential_for_certificate(
+        env, request, enrollment, cert_uuid, user["id"], include_name
+    )
 
     await _create_notification(
         env,
@@ -3247,11 +3399,7 @@ async def api_generate_certificate(request, env, target_id):
         category="system",
     )
 
-    return ok({
-        "uuid": cert_uuid,
-        "url": "/certificate.html?uuid=" + cert_uuid,
-    })
-
+    return ok(_certificate_payload(cert_uuid, credential_id))
 
 async def api_get_certificate(request, env, cert_uuid):
     row = await env.DB.prepare(
@@ -3275,6 +3423,27 @@ async def api_get_certificate(request, env, cert_uuid):
         "issued_at": row.issued_at,
         "enrollment_id": row.enrollment_id,
     })
+
+
+async def api_jwks(_req, env):
+    """GET /.well-known/jwks.json - public keys for verifying credential signatures."""
+    import credentials
+    raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
+    try:
+        if raw is None:
+            keys = []                                    # not configured
+        elif isinstance(raw, str):
+            keys = credentials.load_public_jwks(raw)
+        else:
+            raise ValueError("CREDENTIAL_PUBLIC_JWKS must be a string")
+    except Exception as exc:
+        await capture_exception(exc, _req, env, "api_jwks.invalid_config")
+        return err("Credential keys are misconfigured", 500)
+    return Response(
+        json.dumps({"keys": keys}),
+        headers={"Content-Type": "application/json",
+                 "Cache-Control": "public, max-age=300", **_CORS},
+    )
 
 
 async def api_join(req, env):
@@ -3701,7 +3870,6 @@ async def api_delete_account(req, env):
             except Exception as cleanup_exc:
                 await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
                 continue
-
         try:
             await env.DB.prepare(
                 "UPDATE activities SET status='archived' WHERE host_id=? AND status <> 'archived'"
@@ -3709,9 +3877,19 @@ async def api_delete_account(req, env):
         except Exception:
             pass
 
+        try:
+            await env.DB.prepare(
+                "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
+            ).bind(uid).run()
+        except Exception as cred_exc:
+            # Only a deployment that never ran /api/init lacks the table.
+            if not _is_no_such_table_error(cred_exc):
+                raise
+
         await env.DB.prepare(
             "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,password_hash=?,role=?,email_verified=0 WHERE id=?"
         ).bind(
+            # Keep your existing arguments unchanged.
             blind_index(deleted_label, enc),
             blind_index(deleted_email, enc),
             await encrypt_aes("Deleted user", enc),
@@ -9027,6 +9205,9 @@ async def _dispatch(request, env):
         except Exception as e:
             await capture_exception(e, request, env, "presence_do_dispatch")
             return err("Failed to connect to presence channel", 500)
+
+    if path == "/.well-known/jwks.json" and method == "GET":
+        return await api_jwks(request, env)
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
