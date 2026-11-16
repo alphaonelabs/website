@@ -3215,7 +3215,7 @@ def _credential_issuer_url(env) -> str:
     """Canonical public origin used inside credential ids. Empty means not configured."""
     url = (getattr(env, "CREDENTIAL_ISSUER_URL", "") or "").strip().rstrip("/")
     parsed = urlparse(url)
-    if parsed.path or not parsed.netloc:
+    if parsed.path or parsed.query or parsed.fragment or not parsed.netloc:
         return ""
     if parsed.scheme == "https":
         return url
@@ -3378,7 +3378,10 @@ async def api_generate_certificate(request, env, target_id):
             "SELECT id FROM certificates WHERE enrollment_id = ?"
         ).bind(enrollment_id).first()
         if existing_after:
-            return ok(_certificate_payload(existing_after.id))
+            credential_id = await _issue_credential_for_certificate(
+                env, request, enrollment, existing_after.id, user["id"], include_name
+            )
+            return ok(_certificate_payload(existing_after.id, credential_id))
         await capture_exception(exc, request, env, "api_generate_certificate.insert")
         return err("Failed to generate certificate", 500)
 
@@ -3860,7 +3863,6 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
-            "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?",
         ]
         for sql in cleanup_sql:
             try:
@@ -3868,7 +3870,6 @@ async def api_delete_account(req, env):
             except Exception as cleanup_exc:
                 await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
                 continue
-
         try:
             await env.DB.prepare(
                 "UPDATE activities SET status='archived' WHERE host_id=? AND status <> 'archived'"
@@ -3876,9 +3877,19 @@ async def api_delete_account(req, env):
         except Exception:
             pass
 
+        try:
+            await env.DB.prepare(
+                "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
+            ).bind(uid).run()
+        except Exception as cred_exc:
+            # Only a deployment that never ran /api/init lacks the table.
+            if not _is_no_such_table_error(cred_exc):
+                raise
+
         await env.DB.prepare(
             "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,password_hash=?,role=?,email_verified=0 WHERE id=?"
         ).bind(
+            # Keep your existing arguments unchanged.
             blind_index(deleted_label, enc),
             blind_index(deleted_email, enc),
             await encrypt_aes("Deleted user", enc),

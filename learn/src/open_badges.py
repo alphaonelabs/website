@@ -127,13 +127,29 @@ async def _find_active_credential(db, user_id, activity_id):
     )
 
 
+def _rows_changed(result):
+    meta = getattr(result, "meta", None)
+    if isinstance(meta, dict):
+        return meta.get("changes")
+    return getattr(meta, "changes", None)
+
+
 async def _insert_credential(db, row):
-    await (
+    """Insert only while the learner's certificate and enrollment still exist.
+
+    Account deletion removes the enrollment first, so a late insert after
+    signing matches nothing and is skipped. Returns True if a row was inserted.
+    """
+    result = await (
         db.prepare(
             "INSERT INTO credentials "
             "(id, certificate_id, user_id, activity_id, subject_id, name_disclosed, "
             " credential_jws, kid, status, issued_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)"
+            "SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'active', ? "
+            "WHERE EXISTS ("
+            "  SELECT 1 FROM certificates c "
+            "  JOIN enrollments e ON e.id = c.enrollment_id "
+            "  WHERE c.id = ? AND e.user_id = ?)"
         )
         .bind(
             row["id"],
@@ -145,10 +161,12 @@ async def _insert_credential(db, row):
             row["credential_jws"],
             row["kid"],
             row["issued_at"],
+            row["certificate_id"],
+            row["user_id"],
         )
         .run()
     )
-
+    return _rows_changed(result) != 0   # None (unknown) counts as inserted
 
 async def issue_open_badge(
     *,
@@ -197,7 +215,7 @@ async def issue_open_badge(
     jws = await sign_fn(credential, kid)
 
     try:
-        await _insert_credential(
+        inserted = await _insert_credential(
             db,
             {
                 "id": token,
@@ -212,11 +230,12 @@ async def issue_open_badge(
             },
         )
     except Exception:
-        # Lost a race against a concurrent issue for the same learner/activity:
-        # the unique index rejected us, so return the winner.
         winner = await _find_active_credential(db, user_id, activity_id)
         if winner is None:
             raise
         return winner.id  # ADAPT as above
+
+    if not inserted:
+        return None   # learner or certificate disappeared while signing
 
     return token

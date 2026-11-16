@@ -170,3 +170,94 @@ async def test_sign_failure_propagates_and_stores_nothing():
     with pytest.raises(RuntimeError):
         await _issue(db, sign_fn=boom)
     assert db.rows == []
+
+import sqlite3
+from types import SimpleNamespace
+
+_SCHEMA = """
+CREATE TABLE enrollments (id TEXT PRIMARY KEY, user_id TEXT);
+CREATE TABLE certificates (id TEXT PRIMARY KEY, enrollment_id TEXT);
+CREATE TABLE credentials (
+    id TEXT PRIMARY KEY, certificate_id TEXT, user_id TEXT, activity_id TEXT NOT NULL,
+    subject_id TEXT NOT NULL, name_disclosed INTEGER NOT NULL DEFAULT 0,
+    credential_jws TEXT NOT NULL, kid TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active', issued_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX uq_active ON credentials (user_id, activity_id)
+    WHERE user_id IS NOT NULL AND status = 'active';
+"""
+
+
+class _SqlStmt:
+    def __init__(self, conn, sql):
+        self.conn, self.sql, self.args = conn, sql, ()
+
+    def bind(self, *args):
+        self.args = args
+        return self
+
+    async def first(self):
+        row = self.conn.execute(self.sql, self.args).fetchone()
+        return SimpleNamespace(**dict(row)) if row else None
+
+    async def run(self):
+        cur = self.conn.execute(self.sql, self.args)
+        self.conn.commit()
+        return SimpleNamespace(meta={"changes": cur.rowcount})
+
+
+class SqliteD1:
+    def __init__(self, with_enrollment=True):
+        self.conn = sqlite3.connect(":memory:")
+        self.conn.row_factory = sqlite3.Row
+        self.conn.executescript(_SCHEMA)
+        if with_enrollment:
+            self.conn.execute("INSERT INTO enrollments VALUES ('e1', 'u1')")
+            self.conn.execute("INSERT INTO certificates VALUES ('c1', 'e1')")
+            self.conn.commit()
+
+    def prepare(self, sql):
+        return _SqlStmt(self.conn, sql)
+
+    def active_rows(self):
+        return self.conn.execute(
+            "SELECT id FROM credentials WHERE status='active'"
+        ).fetchall()
+
+
+@pytest.mark.asyncio
+async def test_insert_conflict_returns_winner_and_keeps_one_row(monkeypatch):
+    db = SqliteD1()
+    real = ob._find_active_credential
+    calls = {"n": 0}
+
+    async def lookup(d, user_id, activity_id):
+        calls["n"] += 1
+        # Both initial lookups miss; the recovery lookup (3rd call) is real.
+        return None if calls["n"] <= 2 else await real(d, user_id, activity_id)
+
+    monkeypatch.setattr(ob, "_find_active_credential", lookup)
+    first = await _issue(db)
+    second = await _issue(db)
+    assert first == second
+    assert len(db.active_rows()) == 1
+
+
+@pytest.mark.asyncio
+async def test_insert_error_propagates_when_no_winner(monkeypatch):
+    db = SqliteD1()
+    await _issue(db)                      # occupies the unique slot
+
+    async def never_found(*_a):
+        return None
+
+    monkeypatch.setattr(ob, "_find_active_credential", never_found)
+    with pytest.raises(sqlite3.IntegrityError):
+        await _issue(db)
+
+
+@pytest.mark.asyncio
+async def test_insert_skipped_when_enrollment_is_gone():
+    db = SqliteD1(with_enrollment=False)   # simulates account deletion mid-signing
+    assert await _issue(db) is None
+    assert db.active_rows() == []

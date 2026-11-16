@@ -248,3 +248,43 @@ async def test_generate_issues_credential_for_pre_existing_certificate():
 
     assert _data(resp)["uuid"] == "cert-0"
     assert _data(resp)["credential_id"] == insert.bind.call_args.args[0]
+
+@pytest.mark.parametrize("url", [
+    "https://learn.example.org?tenant=x",
+    "https://learn.example.org#frag",
+    "https://learn.example.org/sub",
+])
+def test_issuer_url_rejects_query_fragment_and_path(url):
+    env = make_env()
+    env.CREDENTIAL_ISSUER_URL = url
+    assert worker._credential_issuer_url(env) == ""
+
+
+def test_issuer_url_accepts_plain_origin():
+    env = make_env()
+    env.CREDENTIAL_ISSUER_URL = "https://learn.example.org/"
+    assert worker._credential_issuer_url(env) == "https://learn.example.org"
+
+
+async def test_generate_issues_credential_when_certificate_insert_races():
+    losing_insert = make_stmt()
+    losing_insert.bind.return_value.run.side_effect = Exception("UNIQUE constraint failed")
+    insert = make_stmt()
+    db = MockDB([
+        make_stmt(first=_enrollment()),
+        make_stmt(first=None),                    # no certificate yet
+        losing_insert,                            # host inserted it first
+        make_stmt(first=MockRow(id="cert-0")),    # existing_after
+        make_stmt(first=_activity()),
+        make_stmt(first=_learner_name()),
+        make_stmt(first=None),
+        insert,
+    ])
+    env, _ = _env(db)
+
+    resp = await worker.api_generate_certificate(
+        _generate_request("u1", {"include_name": True}), env, "enr-1"
+    )
+
+    assert _data(resp)["uuid"] == "cert-0"
+    assert _data(resp)["credential_id"] == insert.bind.call_args.args[0]
