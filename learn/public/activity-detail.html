@@ -64,8 +64,29 @@
         </div>
 
         <div id="certificate-card" class="hidden a1s-panel">
-          <div class="a1s-panel__head"><h2 class="a1s-h3">Certificate</h2><i class="fas fa-certificate" aria-hidden="true"></i></div>
+          <div class="a1s-panel__head">
+            <h2 class="a1s-h3">Certificate</h2>
+            <i class="fas fa-certificate" aria-hidden="true"></i>
+          </div>
+
           <div class="a1s-panel__body space-y-3">
+            <label for="credential-name-consent" class="flex items-start gap-2 text-sm">
+              <input
+                id="credential-name-consent"
+                type="checkbox"
+                class="mt-1"
+              >
+              <span>
+                Include my name in my publicly verifiable digital credential.
+                If unchecked, my credential will use a pseudonymous subject identifier.
+              </span>
+            </label>
+            <p class="text-sm a1s-muted">
+              Credentials are public and portable, and can be copied or kept by others.
+              A credential stays valid even if you delete your account, unless you ask us
+              to revoke it. The name used is the one on your profile.
+            </p>
+
             <button id="btn-certificate" type="button" class="a1-btn w-full"></button>
             <p id="certificate-note" class="text-sm a1s-muted"></p>
             <p id="certificate-error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
@@ -526,9 +547,16 @@
     const certWin = window.open('about:blank', '_blank');
 
     try {
+      const includeName = document.getElementById('credential-name-consent').checked;
       const res = await fetch(`/api/certificates/generate/${encodeURIComponent(targetId)}`, {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token }
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          include_name: includeName
+        })
       });
       const payload = await res.json();
 

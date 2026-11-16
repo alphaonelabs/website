@@ -168,6 +168,41 @@
               <!-- Populated by JS -->
             </div>
           </div>
+          <!-- Certificate Section -->
+          <div id="certificate-section" class="hidden rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md">
+            <h2 class="font-bold text-lg text-gray-800 dark:text-gray-200 mb-3 flex items-center">
+              <i class="fas fa-certificate mr-2 text-teal-600 dark:text-teal-400"></i>
+               Certificate
+            </h2>
+
+            <div class="space-y-3">
+              <label for="credential-name-consent" class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  id="credential-name-consent"
+                  type="checkbox"
+                  class="mt-1"
+                >
+                <span>
+                  Include my name in my publicly verifiable digital credential.
+                  If unchecked, the credential will use a pseudonymous subject identifier.
+                </span>
+              </label>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Credentials are public and portable, and can be copied or kept by others.
+                A credential stays valid even if you delete your account, unless you ask us
+                to revoke it.
+              </p>
+
+              <button
+                id="btn-certificate"
+                type="button"
+                class="w-full inline-flex items-center justify-center gap-2 font-bold px-5 py-3 rounded-xl transition-all">
+              </button>
+
+              <p id="certificate-note" class="text-sm text-gray-500 dark:text-gray-400"></p>
+              <p id="certificate-error" class="hidden text-sm text-red-600 dark:text-red-400"></p>
+            </div>
+          </div>
 
           <!-- Sessions Card -->
           <div id="sessions-card" class="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden shadow-md border border-gray-100 dark:border-gray-700">
@@ -745,10 +780,20 @@
       button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
 
       try {
-        const res = await fetch(`/api/certificates/generate/${encodeURIComponent(currentEnrollment.id)}`, {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + token }
-        });
+        const includeName = document.getElementById('credential-name-consent').checked;
+        const res = await fetch(
+          `/api/certificates/generate/${encodeURIComponent(currentEnrollment.id)}`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + token,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              include_name: includeName
+            })
+          }
+        );
         const payload = await res.json();
 
         if (res.ok) {

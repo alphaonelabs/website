@@ -33,10 +33,9 @@ def _json_b64(obj) -> str:
 def _algo():
     return to_js(_ED25519_ALGO, dict_converter=js.Object.fromEntries)
 
-
-async def sign_jws(payload: dict, private_pkcs8: bytes, kid: str) -> str:
+async def sign_jws(payload: dict, private_pkcs8: bytes, kid: str, typ: str = "JWT") -> str:
     """Return a compact JWS (header.payload.signature) signed with Ed25519."""
-    header = {"alg": "EdDSA", "typ": "JWT", "kid": kid}
+    header = {"alg": "EdDSA", "typ": typ, "kid": kid}
     signing_input = f"{_json_b64(header)}.{_json_b64(payload)}"
     key = await js.crypto.subtle.importKey(
         "pkcs8", to_js(private_pkcs8, create_pyproxies=False), _algo(), False, to_js(["sign"])

@@ -164,3 +164,11 @@ def test_load_public_jwks_rejects_bad_keys(mutate):
 def test_load_public_jwks_rejects_duplicate_kid():
     with pytest.raises(ValueError):
         credentials.load_public_jwks(json.dumps([_jwk("k1"), _jwk("k1")]))
+
+async def test_sign_jws_custom_typ():
+    pkcs8, pub = _keypair()
+    token = await credentials.sign_jws({"a": 1}, pkcs8, "k1", typ="vc+jwt")
+    header = json.loads(credentials.b64url_decode(token.split(".")[0]))
+    assert header["typ"] == "vc+jwt"
+    assert header["kid"] == "k1"
+    assert await credentials.verify_jws(token, pub) == {"a": 1}
