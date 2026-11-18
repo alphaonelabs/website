@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Slack Community
+    url: https://alphaonelabs.slack.com/archives/C043WTACK
+    about: Chat with contributors and mentors on Slack.
+  - name: Discord Server
+    url: https://discord.gg/2juDUGahZ
+    about: Join our Discord community for live chat and collaboration.
+  - name: Community Discussions & Support
+    url: https://github.com/orgs/alphaonelabs/discussions
+    about: Ask questions, discuss ideas, and get help from the community.
