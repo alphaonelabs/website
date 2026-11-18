@@ -1,0 +1,309 @@
+/* Canvas */
+#graph-canvas {
+  cursor: grab;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#graph-canvas:active,
+#graph-canvas.grabbing {
+  cursor: grabbing;
+}
+
+/* Equation rows */
+.eq-row {
+  transition: opacity 0.18s;
+}
+
+.eq-row.dimmed {
+  opacity: 0.38;
+}
+
+/* Color dot */
+.color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition: transform 0.12s;
+}
+
+.color-dot:hover {
+  transform: scale(1.25);
+}
+
+/* Panel section headers */
+.panel-section-header {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4a4a4a;
+  padding: 0.75rem 1rem 0.35rem;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dark .panel-section-header {
+  color: #9ca3af;
+  border-color: #121212;
+}
+
+/* Control grid buttons */
+.ctrl-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 50px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s, color 0.13s, transform 0.1s;
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  color: #4a4a4a;
+  user-select: none;
+  letter-spacing: 0.01em;
+}
+
+.dark .ctrl-btn {
+  background: #121212;
+  border-color: #333333;
+  color: #9ca3af;
+}
+
+.ctrl-btn:hover {
+  background: #fbf8ee;
+  border-color: #99f6e4;
+  color: #7a6418;
+}
+
+.dark .ctrl-btn:hover {
+  background: #0d3330;
+  border-color: #d4af37;
+  color: #e1b746;
+}
+
+.ctrl-btn:active {
+  transform: scale(0.91);
+}
+
+.ctrl-btn i {
+  font-size: 0.85rem;
+}
+
+/* Reset button subtle accent */
+.ctrl-btn.reset-btn {
+  background: #fbf8ee;
+  border-color: #ccfbf1;
+  color: #7a6418;
+}
+
+.dark .ctrl-btn.reset-btn {
+  background: #0d3330;
+  border-color: #115e59;
+  color: #e1b746;
+}
+
+.ctrl-btn.reset-btn:hover {
+  background: #ccfbf1;
+  border-color: #e1b746;
+}
+
+.dark .ctrl-btn.reset-btn:hover {
+  background: #3a3117;
+  border-color: #d4af37;
+}
+
+/* Inactive button state (e.g. when grid is toggled off) */
+.ctrl-btn.btn-inactive {
+  background: #f5f5f5;
+  border-color: #e1b746;
+  color: #7a6418;
+}
+
+.dark .ctrl-btn.btn-inactive {
+  background: #1a1a1a;
+  border-color: #e1b746;
+  color: #7a6418;
+}
+
+/* Direction pad subtle background */
+.dpad-wrap {
+  background: #fafafa;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.dark .dpad-wrap {
+  background: #0a0a0a;
+  border-color: #121212;
+}
+
+/* Left panel — full-height sticky sidebar */
+#left-panel {
+  width: 300px;
+  min-width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 70px; /* sit flush below the 70px navbar */
+  height: calc(100vh - 70px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid #e5e7eb;
+  border-radius: 0;
+}
+
+.dark #left-panel {
+  border-right-color: #121212;
+}
+
+/* Thin scrollbar on the sidebar itself */
+#left-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+#left-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#left-panel::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.dark #left-panel::-webkit-scrollbar-thumb {
+  background: #333333;
+}
+
+/* Functions list — sidebar handles scroll */
+#functions-list {
+  overflow: visible;
+}
+
+@media (max-width: 1023px) {
+  #left-panel {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .dark #left-panel {
+    border-bottom-color: #121212;
+  }
+}
+
+/* Examples 3×3 grid */
+.ex-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 12px 6px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fafafa;
+  color: #0a0a0a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.ex-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.ex-btn:active {
+  transform: scale(0.96);
+}
+
+.dark .ex-btn {
+  background: #121212;
+  border-color: #333333;
+  color: #fafafa;
+}
+
+.dark .ex-btn:hover {
+  background: #0a0a0a;
+  border-color: #4a4a4a;
+}
+
+.ex-btn .ex-math {
+  font-family: 'Georgia', serif;
+  font-size: 0.68rem;
+  color: #737373;
+  font-weight: 400;
+}
+
+.dark .ex-btn .ex-math {
+  color: #9ca3af;
+}
+
+/* Hero fade */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fadeUp 0.3s ease both;
+}
+
+/* Fullscreen overlay */
+#fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.dark #fs-overlay {
+  background: #0a0a0a;
+}
+
+#fs-overlay.hidden {
+  display: none;
+}
+
+#fs-canvas {
+  cursor: grab;
+  display: block;
+  flex: 1;
+  width: 100%;
+  touch-action: none;
+}
+
+#fs-canvas:active,
+#fs-canvas.grabbing {
+  cursor: grabbing;
+}
+
+/* Tooltip */
+[title] {
+  position: relative;
+}
