@@ -2,7 +2,7 @@
 name: Test Report / Test Failure
 about: Report a failing test, missing test coverage, or testing issue
 title: '[Test]: '
-labels: ['test', 'triage']
+labels: ['tests', 'triage']
 assignees: ''
 ---
 
