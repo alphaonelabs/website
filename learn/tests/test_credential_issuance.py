@@ -100,8 +100,15 @@ async def test_hook_issues_signed_credential_with_consented_name():
     header = json.loads(credentials.b64url_decode(args[6].split(".")[0]))
     assert header["typ"] == "vc+jwt" and header["kid"] == KID
     payload = await credentials.verify_jws(args[6], pub)
-    assert payload["id"] == f"{ISSUER}/credentials/{cred_id}"
-    assert "Jane Doe" in json.dumps(payload)
+    subject = payload["credentialSubject"]
+    assert subject["id"] == args[4]  # stored subject_id
+    assert subject["id"].startswith("urn:uuid:")
+    assert subject["identifier"] == [{
+    "type": "IdentityObject",
+    "identityType": "name",
+    "hashed": False,
+    "identityHash": "Jane Doe",
+}]
 
 
 async def test_hook_without_consent_signs_no_name():
@@ -192,7 +199,9 @@ async def test_generate_issues_named_credential_when_learner_consents():
     args = insert.bind.call_args.args
     assert _data(resp)["credential_id"] == args[0]
     assert args[5] == 1
-    assert "Jane Doe" in json.dumps(await credentials.verify_jws(args[6], pub))
+    verified = await credentials.verify_jws(args[6], pub)
+    assert verified["credentialSubject"]["id"] == args[4]
+    assert verified["credentialSubject"]["identifier"][0]["identityHash"] == "Jane Doe"
 
 
 @pytest.mark.parametrize("body", [None, {}, {"include_name": False},
@@ -214,7 +223,9 @@ async def test_generate_without_explicit_true_never_discloses_name(body):
     assert resp.status == 200
     args = insert.bind.call_args.args
     assert args[5] == 0
-    assert "Jane" not in json.dumps(await credentials.verify_jws(args[6], pub))
+    payload = await credentials.verify_jws(args[6], pub)
+    assert "identifier" not in payload["credentialSubject"]
+    assert payload["credentialSubject"]["id"] == args[4]
 
 
 async def test_generate_by_host_creates_certificate_but_no_credential():

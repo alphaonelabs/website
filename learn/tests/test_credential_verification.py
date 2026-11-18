@@ -109,12 +109,15 @@ async def test_unconfigured_issuer_is_404():
     r = await worker.api_get_credential(_req(), _env(_row(await _jws()), configured=False), TOKEN)
     assert r.status == 404
 
-
 async def test_tampered_signature_is_reported_invalid():
     jws = await _jws()
-    bad = jws[:-1] + ("A" if jws[-1] != "A" else "B")
+    head, payload, sig = jws.split(".")
+    raw = bytearray(credentials.b64url_decode(sig))
+    raw[0] ^= 0x01
+    bad = ".".join([head, payload, credentials.b64url_encode(bytes(raw))])
     page = await worker.api_get_credential(_req(), _env(_row(bad)), TOKEN)
     assert "could not be verified" in page.body
+    assert "signature does not match" in page.body
     machine = await worker.api_get_credential(_req(), _env(_row(bad)), TOKEN, ".json")
     assert machine.status == 500
 
@@ -137,3 +140,13 @@ def test_route_regex_only_accepts_22_char_tokens():
     assert worker._CREDENTIAL_PATH_RE.fullmatch(f"/credentials/{TOKEN}.json")
     assert not worker._CREDENTIAL_PATH_RE.fullmatch("/credentials/short")
     assert not worker._CREDENTIAL_PATH_RE.fullmatch(f"/credentials/{TOKEN}/extra")
+
+async def test_responses_are_not_cacheable_and_vary_on_accept():
+    jws = await _jws()
+    for suffix in (None, ".json", ".jwt"):
+        r = await worker.api_get_credential(_req(), _env(_row(jws)), TOKEN, suffix)
+        assert r.headers["Cache-Control"] == "no-store"
+        assert r.headers["Vary"] == "Accept"
+    revoked = await worker.api_get_credential(_req(), _env(_row(jws, "revoked")), TOKEN, ".json")
+    assert revoked.status == 410
+    assert revoked.headers["Cache-Control"] == "no-store"

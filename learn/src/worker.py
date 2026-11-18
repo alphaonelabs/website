@@ -3526,13 +3526,21 @@ async def api_get_credential(request, env, token: str, suffix=None):
     )
     revoked = row.status == "revoked"
     fmt = _credential_format(request, suffix)
-    cache = {"Cache-Control": "public, max-age=60"}
+    cache = {"Cache-Control": "no-store", "Vary": "Accept"}
 
     if fmt != "html":
         if revoked:
-            return err("Credential has been revoked", 410)
+            return Response(
+                json.dumps({"error": "Credential has been revoked"}),
+                status=410,
+                headers={"Content-Type": "application/json", **cache, **_CORS},
+            )
         if not check["valid"]:
-            return err("Credential could not be verified", 500)
+            return Response(
+                json.dumps({"error": "Credential could not be verified"}),
+                status=500,
+                headers={"Content-Type": "application/json", **cache, **_CORS},
+            )
         if fmt == "jwt":
             return Response(row.credential_jws, headers={
                 "Content-Type": "application/vc+jwt", **cache, **_CORS})
@@ -3951,7 +3959,18 @@ async def api_delete_account(req, env):
     uid = user["id"]
     deleted_label = f"deleted-{uid[:8]}"
     deleted_email = f"deleted-{uid}@alphaonelabs.invalid"
+
     try:
+        # Unlink credentials first: if this fails, nothing has been deleted yet.
+        try:
+            await env.DB.prepare(
+                "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
+            ).bind(uid).run()
+        except Exception as cred_exc:
+            # Only a deployment that never ran /api/init lacks the table.
+            if not _is_no_such_table_error(cred_exc):
+                raise
+
         cart_rows = await env.DB.prepare("SELECT id FROM activity_carts WHERE user_id=?").bind(uid).all()
         for cart in cart_rows.results or []:
             await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
@@ -3984,16 +4003,6 @@ async def api_delete_account(req, env):
             ).bind(uid).run()
         except Exception:
             pass
-
-        try:
-            await env.DB.prepare(
-                "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
-            ).bind(uid).run()
-        except Exception as cred_exc:
-            # Only a deployment that never ran /api/init lacks the table.
-            if not _is_no_such_table_error(cred_exc):
-                raise
-
         await env.DB.prepare(
             "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,password_hash=?,role=?,email_verified=0 WHERE id=?"
         ).bind(
