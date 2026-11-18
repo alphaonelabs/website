@@ -86,12 +86,13 @@ def make_stmt(*, first=None, all_results=None):
     return stmt
 
 
+
 class MockDB:
     """
     Mock D1 database.
 
     Pass a list of mock statements that will be returned in order for each
-    successive call to ``prepare()``.  If the list is exhausted a default
+    successive call to ``prepare()``. If the list is exhausted a default
     no-op statement is returned.
     """
 
@@ -106,6 +107,13 @@ class MockDB:
             stmt = make_stmt()
         self._idx += 1
         return stmt
+
+    async def batch(self, statements):
+        results = []
+        for stmt in statements:
+            results.append(await stmt.run())
+        return results
+
 
 
 # ---------------------------------------------------------------------------

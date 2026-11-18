@@ -3446,6 +3446,13 @@ async def api_jwks(_req, env):
     )
 
 _CREDENTIAL_PATH_RE = re.compile(r"/credentials/([A-Za-z0-9_-]{22})(\.json|\.jwt)?")
+_CREDENTIAL_NO_STORE = {"Cache-Control": "no-store", "Vary": "Accept"}
+def _credential_error(msg: str, status: int):
+    return Response(
+        json.dumps({"error": msg}),
+        status=status,
+        headers={"Content-Type": "application/json", **_CREDENTIAL_NO_STORE, **_CORS},
+    )
 
 
 def _credential_format(request, suffix) -> str:
@@ -3507,7 +3514,7 @@ async def api_get_credential(request, env, token: str, suffix=None):
     issuer_url = _credential_issuer_url(env)
     jwks_raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
     if not issuer_url or not isinstance(jwks_raw, str):
-        return err("Credential not found", 404)
+        return _credential_error("Credential not found", 404)
 
     try:
         row = await env.DB.prepare(
@@ -3515,37 +3522,28 @@ async def api_get_credential(request, env, token: str, suffix=None):
         ).bind(token).first()
     except Exception as exc:
         if _is_no_such_table_error(exc):
-            return err("Credential not found", 404)
+            return _credential_error("Credential not found", 404)
         await capture_exception(exc, request, env, "api_get_credential.lookup")
-        return err("Could not load credential", 500)
+        return _credential_error("Could not load credential", 500)
     if not row:
-        return err("Credential not found", 404)
+        return _credential_error("Credential not found", 404)
 
     check = await credential_verify.verify_credential_jws(
         row.credential_jws, f"{issuer_url}/credentials/{token}", row.kid, jwks_raw
     )
     revoked = row.status == "revoked"
     fmt = _credential_format(request, suffix)
-    cache = {"Cache-Control": "no-store", "Vary": "Accept"}
 
     if fmt != "html":
         if revoked:
-            return Response(
-                json.dumps({"error": "Credential has been revoked"}),
-                status=410,
-                headers={"Content-Type": "application/json", **cache, **_CORS},
-            )
+            return _credential_error("Credential has been revoked", 410)
         if not check["valid"]:
-            return Response(
-                json.dumps({"error": "Credential could not be verified"}),
-                status=500,
-                headers={"Content-Type": "application/json", **cache, **_CORS},
-            )
+            return _credential_error("Credential could not be verified", 500)
         if fmt == "jwt":
             return Response(row.credential_jws, headers={
-                "Content-Type": "application/vc+jwt", **cache, **_CORS})
+                "Content-Type": "application/vc+jwt", **_CREDENTIAL_NO_STORE, **_CORS})
         return Response(json.dumps(check["payload"]), headers={
-            "Content-Type": "application/ld+json", **cache, **_CORS})
+            "Content-Type": "application/ld+json", **_CREDENTIAL_NO_STORE, **_CORS})
 
     payload = check["payload"] or {}
     subject = payload.get("credentialSubject") or {}
@@ -3560,7 +3558,9 @@ async def api_get_credential(request, env, token: str, suffix=None):
         issued_at=row.issued_at, kid=row.kid, token=token,
     )
     return Response(page, headers={
-        "Content-Type": "text/html; charset=utf-8", **cache, **_SECURITY_HEADERS, **_CORS})
+        "Content-Type": "text/html; charset=utf-8",
+        **_CREDENTIAL_NO_STORE, **_SECURITY_HEADERS, **_CORS})
+
 
 async def api_join(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -3961,17 +3961,23 @@ async def api_delete_account(req, env):
     deleted_email = f"deleted-{uid}@alphaonelabs.invalid"
 
     try:
-        # Unlink credentials first: if this fails, nothing has been deleted yet.
-        try:
-            await env.DB.prepare(
-                "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
-            ).bind(uid).run()
-        except Exception as cred_exc:
-            # Only a deployment that never ran /api/init lacks the table.
-            if not _is_no_such_table_error(cred_exc):
-                raise
-
+        # Prerequisite reads first: a failure here changes nothing.
         cart_rows = await env.DB.prepare("SELECT id FROM activity_carts WHERE user_id=?").bind(uid).all()
+
+        # Atomic: unlink credentials AND remove the enrollments that the
+        # issuance guard checks. Either both happen or neither does.
+        unlink = env.DB.prepare(
+            "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
+        ).bind(uid)
+        drop_enrollments = env.DB.prepare("DELETE FROM enrollments WHERE user_id=?").bind(uid)
+        try:
+            await env.DB.batch([unlink, drop_enrollments])
+        except Exception as batch_exc:
+            # Only a deployment that never ran /api/init lacks the credentials table.
+            if not _is_no_such_table_error(batch_exc):
+                raise
+            await env.DB.batch([drop_enrollments])
+
         for cart in cart_rows.results or []:
             await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
 
@@ -3981,7 +3987,6 @@ async def api_delete_account(req, env):
             "DELETE FROM email_verification_tokens WHERE user_id=?",
             "DELETE FROM password_reset_tokens WHERE user_id=?",
             "DELETE FROM password_change_requests WHERE user_id=?",
-            "DELETE FROM enrollments WHERE user_id=?",
             "DELETE FROM session_attendance WHERE user_id=?",
             "DELETE FROM activity_completions WHERE user_id=?",
             "DELETE FROM activity_interest WHERE user_id=?",

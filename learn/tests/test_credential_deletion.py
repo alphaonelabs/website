@@ -1,23 +1,54 @@
 import json
+from types import SimpleNamespace
 
-from tests.helpers import MockRequest, load_worker, make_env, make_stmt
+from tests.helpers import MockRequest, load_worker, make_env
 
 worker = load_worker()
 
+UNLINK_SQL = "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
+ENROLLMENTS_SQL = "DELETE FROM enrollments WHERE user_id=?"
+
+
+class _Bound:
+    def __init__(self, db, sql, args):
+        self.db, self.sql, self.args = db, sql, args
+
+    async def run(self):
+        self.db.events.append(("run", self.sql, self.args))
+
+    async def all(self):
+        if self.db.fail_cart_lookup and self.sql.startswith("SELECT id FROM activity_carts"):
+            raise Exception("cart lookup failed")
+        self.db.events.append(("all", self.sql, self.args))
+        return SimpleNamespace(results=[])
+
+
+class _Stmt:
+    def __init__(self, db, sql):
+        self.db, self.sql = db, sql
+
+    def bind(self, *args):
+        return _Bound(self.db, self.sql, args)
+
 
 class _DB:
-    def __init__(self, credentials_error=None):
+    def __init__(self, credentials_error=None, fail_cart_lookup=False):
         self.credentials_error = credentials_error
-        self.sql = []
-        self.stmts = {}
+        self.fail_cart_lookup = fail_cart_lookup
+        self.events = []
+        self.batch_attempts = 0
 
     def prepare(self, sql):
-        self.sql.append(sql)
-        stmt = make_stmt()
-        if sql.startswith("UPDATE credentials") and self.credentials_error:
-            stmt.bind.return_value.run.side_effect = Exception(self.credentials_error)
-        self.stmts[sql] = stmt
-        return stmt
+        return _Stmt(self, sql)
+
+    async def batch(self, stmts):
+        self.batch_attempts += 1
+        if self.credentials_error and any(s.sql == UNLINK_SQL for s in stmts):
+            raise Exception(self.credentials_error)   # whole batch rolls back
+        self.events.append(("batch", [(s.sql, s.args) for s in stmts]))
+
+    def sqls_run(self):
+        return [e[1] for e in self.events if e[0] == "run"]
 
 
 def _delete_request():
@@ -30,34 +61,50 @@ def _delete_request():
     )
 
 
-async def test_credential_unlink_failure_aborts_deletion():
-    db = _DB(credentials_error="disk I/O error")
+def _env(db):
     env = make_env(db=db)
     env.SENTRY_DSN = ""
-    resp = await worker.api_delete_account(_delete_request(), env)
-    assert resp.status == 500
-    assert not any(s.startswith("UPDATE users SET username_hash") for s in db.sql)
-    assert not any(s.startswith("DELETE FROM") for s in db.sql)
+    return env
 
 
-async def test_missing_credentials_table_is_tolerated():
-    db = _DB(credentials_error="no such table: credentials")
-    env = make_env(db=db)
-    resp = await worker.api_delete_account(_delete_request(), env)
-    assert resp.status == 200
-
-async def test_credentials_unlinked_for_this_user_before_account_is_anonymized():
+async def test_unlink_and_enrollment_delete_are_one_atomic_batch_before_other_deletes():
     db = _DB()
-    env = make_env(db=db)
-    resp = await worker.api_delete_account(_delete_request(), env)
+    resp = await worker.api_delete_account(_delete_request(), _env(db))
     assert resp.status == 200
 
-    unlink_sql = "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
-    stmt = db.stmts[unlink_sql]
-    stmt.bind.assert_called_once_with("u1")
-    stmt.bind.return_value.run.assert_awaited_once()
+    batches = [e for e in db.events if e[0] == "batch"]
+    assert len(batches) == 1
+    assert batches[0][1] == [(UNLINK_SQL, ("u1",)), (ENROLLMENTS_SQL, ("u1",))]
 
-    unlink = db.sql.index(unlink_sql)
-    anonymize = next(i for i, s in enumerate(db.sql) if s.startswith("UPDATE users SET username_hash"))
-    first_delete = next(i for i, s in enumerate(db.sql) if s.startswith("DELETE FROM"))
-    assert unlink < first_delete < anonymize
+    batch_idx = db.events.index(batches[0])
+    first_delete = next(i for i, e in enumerate(db.events)
+                        if e[0] == "run" and e[1].startswith("DELETE FROM"))
+    anonymize = next(i for i, e in enumerate(db.events)
+                     if e[0] == "run" and e[1].startswith("UPDATE users SET username_hash"))
+    assert batch_idx < first_delete < anonymize
+
+
+async def test_unlink_failure_aborts_before_anything_is_changed():
+    db = _DB(credentials_error="disk I/O error")
+    resp = await worker.api_delete_account(_delete_request(), _env(db))
+    assert resp.status == 500
+    assert db.batch_attempts == 1                      # the injected error was actually hit
+    assert not any(e[0] == "batch" for e in db.events)  # nothing committed
+    assert db.sqls_run() == []                          # no deletes, no anonymization
+
+
+async def test_cart_lookup_failure_leaves_credential_link_intact():
+    db = _DB(fail_cart_lookup=True)
+    resp = await worker.api_delete_account(_delete_request(), _env(db))
+    assert resp.status == 500
+    assert db.batch_attempts == 0                       # unlink never attempted
+    assert db.sqls_run() == []
+
+
+async def test_missing_credentials_table_still_removes_enrollments():
+    db = _DB(credentials_error="no such table: credentials")
+    resp = await worker.api_delete_account(_delete_request(), _env(db))
+    assert resp.status == 200
+    assert db.batch_attempts == 2
+    batches = [e for e in db.events if e[0] == "batch"]
+    assert batches == [("batch", [(ENROLLMENTS_SQL, ("u1",))])]

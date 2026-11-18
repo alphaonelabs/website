@@ -109,6 +109,22 @@ async def test_unconfigured_issuer_is_404():
     r = await worker.api_get_credential(_req(), _env(_row(await _jws()), configured=False), TOKEN)
     assert r.status == 404
 
+async def test_early_error_responses_are_also_not_cacheable():
+    jws = await _jws()
+    _assert_no_store(await worker.api_get_credential(_req(), _env(None), TOKEN))                        # unknown token
+    _assert_no_store(await worker.api_get_credential(_req(), _env(_row(jws), configured=False), TOKEN)) # issuer unset
+
+    stmt = make_stmt()
+    stmt.bind.return_value.first.side_effect = Exception("boom")
+    env = make_env(db=MockDB([stmt]))
+    env.SENTRY_DSN = ""
+    env.CREDENTIAL_ISSUER_URL = ISSUER
+    env.CREDENTIAL_PUBLIC_JWKS = JWKS
+    failed = await worker.api_get_credential(_req(), env, TOKEN)
+    assert failed.status == 500
+    _assert_no_store(failed)
+
+
 async def test_tampered_signature_is_reported_invalid():
     jws = await _jws()
     head, payload, sig = jws.split(".")
@@ -118,8 +134,11 @@ async def test_tampered_signature_is_reported_invalid():
     page = await worker.api_get_credential(_req(), _env(_row(bad)), TOKEN)
     assert "could not be verified" in page.body
     assert "signature does not match" in page.body
-    machine = await worker.api_get_credential(_req(), _env(_row(bad)), TOKEN, ".json")
+    machine = await worker.api_get_credential(
+    _req(), _env(_row(bad)), TOKEN, ".json"
+    )
     assert machine.status == 500
+    _assert_no_store(machine)
 
 
 async def test_key_missing_from_jwks_is_invalid():
@@ -144,9 +163,15 @@ def test_route_regex_only_accepts_22_char_tokens():
 async def test_responses_are_not_cacheable_and_vary_on_accept():
     jws = await _jws()
     for suffix in (None, ".json", ".jwt"):
-        r = await worker.api_get_credential(_req(), _env(_row(jws)), TOKEN, suffix)
-        assert r.headers["Cache-Control"] == "no-store"
-        assert r.headers["Vary"] == "Accept"
+        _assert_no_store(await worker.api_get_credential(_req(), _env(_row(jws)), TOKEN, suffix))
     revoked = await worker.api_get_credential(_req(), _env(_row(jws, "revoked")), TOKEN, ".json")
     assert revoked.status == 410
-    assert revoked.headers["Cache-Control"] == "no-store"
+    _assert_no_store(revoked)
+
+def _req(accept=None):
+    return MockRequest(method="GET", url=f"http://localhost/credentials/{TOKEN}",
+                       headers={"Accept": accept} if accept else {})
+
+def _assert_no_store(r):
+    assert r.headers["Cache-Control"] == "no-store"
+    assert r.headers["Vary"] == "Accept"
