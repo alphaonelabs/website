@@ -3445,6 +3445,114 @@ async def api_jwks(_req, env):
                  "Cache-Control": "public, max-age=300", **_CORS},
     )
 
+_CREDENTIAL_PATH_RE = re.compile(r"/credentials/([A-Za-z0-9_-]{22})(\.json|\.jwt)?")
+
+
+def _credential_format(request, suffix) -> str:
+    if suffix == ".json":
+        return "json"
+    if suffix == ".jwt":
+        return "jwt"
+    accept = (request.headers.get("Accept") or "").lower()
+    if "application/vc+jwt" in accept:
+        return "jwt"
+    if "json" in accept:
+        return "json"
+    return "html"
+
+
+def _credential_page_html(*, valid, reason, revoked, name, achievement, description,
+                          issuer, issued_at, kid, token) -> str:
+    if revoked:
+        banner_cls, banner = "bg-red-100 text-red-800", "This credential has been revoked."
+    elif valid:
+        banner_cls, banner = "bg-green-100 text-green-800", "Signature valid. Issued by Alpha One Labs."
+    else:
+        banner_cls, banner = "bg-red-100 text-red-800", "This credential could not be verified."
+    detail = "" if valid else f'<p class="mt-2 text-sm">{_html_escape(reason)}</p>'
+    who = _html_escape(name) if name else "Name not disclosed by the holder"
+    t = _html_escape(token)
+    return (
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        '<meta name="robots" content="noindex">'
+        '<title>Verify credential - Alpha One Labs</title>'
+        '<link rel="icon" type="image/svg+xml" href="/images/logo.svg">'
+        '<script src="https://cdn.tailwindcss.com"></script>'
+        + _SSR_BRAND_HEAD + '</head>'
+        '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">'
+        + _ssr_nav() +
+        '<main class="flex-1 max-w-3xl mx-auto w-full px-4 py-10">'
+        f'<div class="rounded-lg p-4 font-bold {banner_cls}" role="status">{_html_escape(banner)}{detail}</div>'
+        '<article class="mt-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-6">'
+        f'<h1 class="text-3xl font-black">{_html_escape(achievement)}</h1>'
+        f'<p class="mt-3 text-gray-700 dark:text-gray-300">{_html_escape(description)}</p>'
+        '<dl class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">'
+        f'<div><dt class="font-bold">Awarded to</dt><dd>{who}</dd></div>'
+        f'<div><dt class="font-bold">Issuer</dt><dd>{_html_escape(issuer)}</dd></div>'
+        f'<div><dt class="font-bold">Issued</dt><dd>{_html_escape(issued_at)}</dd></div>'
+        f'<div><dt class="font-bold">Signing key</dt><dd>{_html_escape(kid)}</dd></div>'
+        '</dl>'
+        '<p class="mt-6 text-sm">Machine-readable: '
+        f'<a class="underline" href="/credentials/{t}.json">JSON-LD</a> · '
+        f'<a class="underline" href="/credentials/{t}.jwt">Signed JWT</a></p>'
+        '</article></main>' + _ssr_footer() + '</body></html>'
+    )
+
+
+async def api_get_credential(request, env, token: str, suffix=None):
+    """GET /credentials/<token>[.json|.jwt] - public credential and verification."""
+    import credential_verify
+
+    issuer_url = _credential_issuer_url(env)
+    jwks_raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
+    if not issuer_url or not isinstance(jwks_raw, str):
+        return err("Credential not found", 404)
+
+    try:
+        row = await env.DB.prepare(
+            "SELECT id, credential_jws, kid, status, issued_at FROM credentials WHERE id=?"
+        ).bind(token).first()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return err("Credential not found", 404)
+        await capture_exception(exc, request, env, "api_get_credential.lookup")
+        return err("Could not load credential", 500)
+    if not row:
+        return err("Credential not found", 404)
+
+    check = await credential_verify.verify_credential_jws(
+        row.credential_jws, f"{issuer_url}/credentials/{token}", row.kid, jwks_raw
+    )
+    revoked = row.status == "revoked"
+    fmt = _credential_format(request, suffix)
+    cache = {"Cache-Control": "public, max-age=60"}
+
+    if fmt != "html":
+        if revoked:
+            return err("Credential has been revoked", 410)
+        if not check["valid"]:
+            return err("Credential could not be verified", 500)
+        if fmt == "jwt":
+            return Response(row.credential_jws, headers={
+                "Content-Type": "application/vc+jwt", **cache, **_CORS})
+        return Response(json.dumps(check["payload"]), headers={
+            "Content-Type": "application/ld+json", **cache, **_CORS})
+
+    payload = check["payload"] or {}
+    subject = payload.get("credentialSubject") or {}
+    achievement = subject.get("achievement") or {}
+    identifiers = subject.get("identifier") or []
+    name = identifiers[0].get("identityHash", "") if identifiers and isinstance(identifiers[0], dict) else ""
+    issuer = (payload.get("issuer") or {}).get("name", "") if check["valid"] else ""
+    page = _credential_page_html(
+        valid=check["valid"], reason=check["reason"], revoked=revoked,
+        name=name, achievement=achievement.get("name", "Credential"),
+        description=achievement.get("description", ""), issuer=issuer,
+        issued_at=row.issued_at, kid=row.kid, token=token,
+    )
+    return Response(page, headers={
+        "Content-Type": "text/html; charset=utf-8", **cache, **_SECURITY_HEADERS, **_CORS})
 
 async def api_join(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -6811,7 +6919,7 @@ async def api_admin_table_counts(req, env):
 # Page views
 # ---------------------------------------------------------------------------
 
-_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/")
+_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/", "/credentials/")
 _VIEW_BOT_RE = re.compile(
     r"bot|crawl|spider|slurp|preview|monitor|uptime|curl|wget|python-|httpx|axios|headless|lighthouse|facebookexternalhit",
     re.IGNORECASE,
@@ -9208,6 +9316,10 @@ async def _dispatch(request, env):
 
     if path == "/.well-known/jwks.json" and method == "GET":
         return await api_jwks(request, env)
+
+    m_cred = _CREDENTIAL_PATH_RE.fullmatch(path)
+    if m_cred and method == "GET":
+        return await api_get_credential(request, env, m_cred.group(1), m_cred.group(2))
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
