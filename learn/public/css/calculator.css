@@ -185,9 +185,31 @@
   background: #333333;
 }
 
-/* Functions list — sidebar handles scroll */
+/* Functions list — scrollable and fixed height */
 #functions-list {
-  overflow: visible;
+  height: 8rem;
+  min-height: 8rem;
+  max-height: 8rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+}
+
+#functions-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+#functions-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#functions-list::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.dark #functions-list::-webkit-scrollbar-thumb {
+  background: #333333;
 }
 
 @media (max-width: 1023px) {
