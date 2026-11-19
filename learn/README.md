@@ -6,7 +6,7 @@ Alpha One Labs is an education platform designed to facilitate both learning and
 
 ## Tech Stack
 
-- Frontend: HTML,Tailwind CSS 
+- Frontend: HTML,Tailwind CSS
 - Backend: Python (Cloudflare Worker)
 - Database: Cloudflare D1 (SQLite)
 
