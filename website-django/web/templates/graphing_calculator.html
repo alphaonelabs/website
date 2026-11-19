@@ -341,9 +341,11 @@
 
       function plotExplicitOn(targetCanvas, targetCtx, equation, color) {
           let exprStr = equation.trim();
-          if (exprStr.startsWith("y=")) {
-              exprStr = exprStr.substring(2);
-          }
+          exprStr = exprStr.replace(/^[yfg]\s*\(?\s*x\s*\)?\s*=\s*/i, '').replace(/^y\s*=\s*/i, '');
+          exprStr = exprStr.replace(/(\d)([a-zA-Z\(])/g, '$1*$2');
+          exprStr = exprStr.replace(/\)([a-zA-Z\d\(])/g, ')*$1');
+          exprStr = exprStr.replace(/\b([a-zA-Z])(x\b)/g, '$1*$2');
+
           let compiled;
           try {
               compiled = math.compile(exprStr);
@@ -360,7 +362,7 @@
           for (let x = xMin; x <= xMax; x += step) {
               let y;
               try {
-                  y = compiled.evaluate({ x });
+                  y = compiled.evaluate({ x, m: 1, c: 0, a: 1, b: 0, k: 1, pi: Math.PI, e: Math.E });
                   if (!isFinite(y)) {
                       firstPoint = true;
                       continue;
@@ -383,8 +385,18 @@
       function plotImplicitOn(targetCanvas, targetCtx, equation, color) {
           const parts = equation.split("=");
           if (parts.length !== 2) return;
-          const lhs = parts[0].trim();
-          const rhs = parts[1].trim();
+          let lhs = parts[0].trim();
+          let rhs = parts[1].trim();
+
+          function prep(str) {
+              let e = str.replace(/(\d)([a-zA-Z\(])/g, '$1*$2');
+              e = e.replace(/\)([a-zA-Z\d\(])/g, ')*$1');
+              e = e.replace(/\b([a-zA-Z])(x\b)/g, '$1*$2');
+              return e;
+          }
+          lhs = prep(lhs);
+          rhs = prep(rhs);
+
           let lhsCompiled, rhsCompiled;
           try {
               lhsCompiled = math.compile(lhs);
@@ -395,7 +407,7 @@
 
           function f(x, y) {
               try {
-                  return lhsCompiled.evaluate({ x, y }) - rhsCompiled.evaluate({ x, y });
+                  return lhsCompiled.evaluate({ x, y, m: 1, c: 0, a: 1, b: 0, k: 1, pi: Math.PI, e: Math.E }) - rhsCompiled.evaluate({ x, y, m: 1, c: 0, a: 1, b: 0, k: 1, pi: Math.PI, e: Math.E });
               } catch (e) {
                   return NaN;
               }

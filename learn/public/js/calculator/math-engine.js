@@ -10,6 +10,9 @@
 export function normalizeExpr(raw) {
   let e = (raw || '').trim();
   e = e.replace(/^[yfg]\s*\(?\s*x\s*\)?\s*=\s*/i, '').replace(/^y\s*=\s*/i, '');
+  e = e.replace(/(\d)([a-zA-Z\(])/g, '$1*$2');
+  e = e.replace(/\)([a-zA-Z\d\(])/g, ')*$1');
+  e = e.replace(/\b([a-zA-Z])(x\b)/g, '$1*$2');
   return e;
 }
 
@@ -70,7 +73,7 @@ export function compileFn(exprStr) {
 
   const compiled = mathObj.compile(e);
   return function evaluateAt(x) {
-    const scope = { x, pi: Math.PI, e: Math.E, tau: 2 * Math.PI };
+    const scope = { x, m: 1, c: 0, a: 1, b: 0, k: 1, pi: Math.PI, e: Math.E, tau: 2 * Math.PI };
     const result = compiled.evaluate(scope);
     if (typeof result !== 'number') return NaN;
     return result;
