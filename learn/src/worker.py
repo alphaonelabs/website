@@ -3710,6 +3710,7 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
+            "DELETE FROM progress_trackers WHERE user_id=?",
         ]
         for sql in cleanup_sql:
             try:

@@ -13,14 +13,14 @@ from pathlib import Path
 
 import pytest
 from tests.helpers import (
-    load_worker,
+    MockDB,
     MockRequest,
     MockRow,
-    MockDB,
-    make_env,
-    make_stmt,
     json_request,
+    load_worker,
+    make_env,
     make_init_db_stmts,
+    make_stmt,
 )
 
 worker = load_worker()
@@ -199,3 +199,39 @@ class TestSchemaInSync:
         for text in (migration, schema, ddl):
             assert "progress_trackers" in text
             assert re.search(r"is_public\s+INTEGER NOT NULL DEFAULT 0", text)
+
+
+class SqlRecordingDB(MockDB):
+    """MockDB that also remembers the SQL it was asked to prepare."""
+
+    def __init__(self, stmts=None):
+        super().__init__(stmts)
+        self.sql = []
+
+    def prepare(self, sql):
+        self.sql.append(" ".join(sql.split()))
+        return super().prepare(sql)
+
+
+class TestOwnerFilterInSql:
+    async def test_list_query_filters_by_owner(self):
+        db = SqlRecordingDB([make_stmt(all_results=[])])
+        await worker.api_list_trackers(_get("/api/trackers", _token()), make_env(db=db))
+        assert "WHERE user_id = ?" in db.sql[0]
+
+    async def test_detail_query_requires_id_and_owner(self):
+        db = SqlRecordingDB([make_stmt(first=None)])
+        await worker.api_get_tracker(_get("/api/trackers/t-1", _token()), make_env(db=db), "t-1")
+        assert "WHERE id = ? AND user_id = ?" in db.sql[0]
+
+    async def test_create_query_stores_the_token_owner(self):
+        db = SqlRecordingDB([make_stmt()])
+        await worker.api_create_tracker(_create_req({"title": "x", "target_value": 5}), make_env(db=db))
+        assert "INSERT INTO progress_trackers" in db.sql[0]
+        assert "user_id" in db.sql[0]
+
+
+class TestAccountDeletion:
+    def test_account_cleanup_removes_trackers(self):
+        source = (LEARN_DIR / "src" / "worker.py").read_text(encoding="utf-8")
+        assert "DELETE FROM progress_trackers WHERE user_id=?" in source
