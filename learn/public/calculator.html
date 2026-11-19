@@ -33,7 +33,7 @@
 <main class="flex-1 w-full">
   <div class="max-w-[90rem] mx-auto">
 
-    <div class="flex flex-col lg:flex-row items-stretch">
+    <div class="flex flex-col lg:flex-row-reverse items-stretch">
 
       <aside id="left-panel" class="flex flex-col bg-transparent flex-shrink-0">
 
@@ -185,13 +185,14 @@
           <i class="fas fa-keyboard mr-1"></i>Arrow keys to pan · <kbd class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">+</kbd>/<kbd class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono">−</kbd> to zoom · Scroll wheel or pinch to zoom
         </p>
       </div>
+
     </div>
   </div>
 </main>
 
 <!-- Fullscreen overlay -->
 <div id="fs-overlay" class="hidden">
-  <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+  <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 z-30 relative">
     <span class="font-bold text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
       <i class="fas fa-calculator text-teal-500"></i>Graphing Calculator — Fullscreen
     </span>

@@ -2,9 +2,9 @@
 
 {% block title %}Graphing Calculator{% endblock %}
 {% block content %}
-  <div class="flex flex-col md:flex-row h-screen bg-gray-100 dark:bg-gray-900">
-    <!-- Sidebar -->
-    <div class="w-full md:w-80 bg-transparent shadow-lg p-4 overflow-y-auto">
+  <div class="flex flex-col md:flex-row-reverse h-screen bg-gray-100 dark:bg-gray-900">
+    <!-- Sidebar (will be on right due to flex-row-reverse) -->
+    <div id="calculator-sidebar" class="w-full md:w-80 bg-transparent shadow-none p-4 overflow-y-auto flex-shrink-0 border-0">
       <h1 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">Graphing Calculator</h1>
       <!-- Input and Add Function -->
       <div class="mb-6">
@@ -77,7 +77,7 @@
             Zoom Out
           </button>
         </div>
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-3 gap-2 mb-2">
           <button onclick="panLeft()"
                   class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
             ← Pan
@@ -92,46 +92,93 @@
           </button>
           <button onclick="toggleGridLines()"
                   class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
-            Toggle Grid
+            Grid
           </button>
           <button onclick="panDown()"
                   class="p-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white rounded hover:bg-gray-400 dark:hover:bg-gray-600 text-sm">
             ↓ Pan
           </button>
-          <button onclick="exportImage()"
-                  class="p-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Export</button>
+          <button onclick="toggleFullscreen()"
+                  class="p-2 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm" title="Fullscreen">
+            Full
+          </button>
+        </div>
+        <div class="grid grid-cols-1 gap-2">
+          <button onclick="exportImage(false)"
+                  class="p-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm">Export PNG</button>
         </div>
       </div>
     </div>
-    <!-- Main Graph Area -->
-    <div class="flex-grow p-4 flex items-center justify-center">
+
+    <!-- Main Graph Area (will be on left due to flex-row-reverse) -->
+    <div class="flex-grow p-4 flex items-center justify-center relative">
       <div class="relative w-full h-full max-w-4xl max-h-3xl">
         <canvas id="graphCanvas"
-                class="border rounded-lg shadow bg-white dark:bg-gray-700 w-full h-full"></canvas>
+                class="rounded-lg shadow bg-white dark:bg-gray-700 w-full h-full border-0"></canvas>
         <div id="coordinates"
              class="absolute bottom-2 right-2 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm text-gray-700 dark:text-gray-300">
         </div>
       </div>
     </div>
   </div>
+  </div>
+
+  <!-- Fullscreen overlay -->
+  <div id="fs-overlay" class="hidden fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900">
+    <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 z-30 relative">
+      <span class="font-bold text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+        <i class="fas fa-calculator text-teal-500"></i>Graphing Calculator — Fullscreen
+      </span>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          onclick="exportImage(true)"
+          class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
+        >
+          <i class="fas fa-download mr-1"></i>Export
+        </button>
+        <button
+          type="button"
+          onclick="toggleFullscreen()"
+          class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
+        >
+          <i class="fas fa-compress mr-1"></i>Exit Fullscreen
+        </button>
+      </div>
+    </div>
+    <canvas id="fs-canvas" role="img" aria-label="Fullscreen graph" class="w-full h-full"></canvas>
+  </div>
+
   <!-- Include math.js library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
   <script>
       // Canvas setup
       const canvas = document.getElementById('graphCanvas');
       const ctx = canvas.getContext('2d');
+      const fsCanvas = document.getElementById('fs-canvas');
+      const fsCtx = fsCanvas ? fsCanvas.getContext('2d') : null;
+      const fsOverlay = document.getElementById('fs-overlay');
+
+      let isFullscreenOpen = false;
+
       let equations = [];
       let colors = ["#3B82F6", "#EF4444", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"];
 
-      // Resize canvas to match container size
+      // Resize canvases to match container size
       function resizeCanvas() {
-          const container = canvas.parentElement;
-          canvas.width = container.clientWidth;
-          canvas.height = container.clientHeight;
-          // Reset origin to center if not already set
-          if (!origin.x || !origin.y) {
-              origin.x = canvas.width / 2;
-              origin.y = canvas.height / 2;
+          if (canvas) {
+              const container = canvas.parentElement;
+              canvas.width = container.clientWidth;
+              canvas.height = container.clientHeight;
+              if (!origin.x || !origin.y) {
+                  origin.x = canvas.width / 2;
+                  origin.y = canvas.height / 2;
+              }
+          }
+          if (isFullscreenOpen && fsCanvas) {
+              const fsContainer = fsCanvas.parentElement;
+              fsCanvas.width = fsContainer.clientWidth;
+              fsCanvas.height = fsContainer.clientHeight;
           }
           redraw();
       }
@@ -142,147 +189,142 @@
       // Coordinate system settings
       let scale = 40; // pixels per unit
       let origin = {
-          x: canvas.width / 2,
-          y: canvas.height / 2
+          x: 0,
+          y: 0
       };
       let showGrid = true;
 
-      // Function to check if dark mode is currently active
       function isDarkModeActive() {
           return document.documentElement.classList.contains('dark');
       }
 
       // Mouse interaction for dragging (panning)
       let isDragging = false;
-      let lastMousePos = {
-          x: 0,
-          y: 0
-      };
+      let lastMousePos = { x: 0, y: 0 };
 
-      canvas.addEventListener('mousedown', (e) => {
-          isDragging = true;
-          lastMousePos = {
-              x: e.clientX,
-              y: e.clientY
-          };
-      });
+      function setupCanvasInteractions(targetCanvas) {
+          if (!targetCanvas) return;
+          targetCanvas.addEventListener('mousedown', (e) => {
+              isDragging = true;
+              lastMousePos = { x: e.clientX, y: e.clientY };
+          });
 
-      canvas.addEventListener('mousemove', (e) => {
-          const rect = canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          const mathCoords = toMathCoords(x, y);
-          document.getElementById('coordinates').textContent = `x: ${mathCoords.x.toFixed(2)}, y: ${mathCoords.y.toFixed(2)}`;
+          targetCanvas.addEventListener('mousemove', (e) => {
+              const rect = targetCanvas.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const mathCoords = toMathCoords(x, y);
+              const coordsEl = document.getElementById('coordinates');
+              if (coordsEl) {
+                  coordsEl.textContent = `x: ${mathCoords.x.toFixed(2)}, y: ${mathCoords.y.toFixed(2)}`;
+              }
 
-          if (isDragging) {
-              const dx = e.clientX - lastMousePos.x;
-              const dy = e.clientY - lastMousePos.y;
-              origin.x += dx;
-              origin.y += dy;
-              lastMousePos = {
-                  x: e.clientX,
-                  y: e.clientY
-              };
+              if (isDragging) {
+                  const dx = e.clientX - lastMousePos.x;
+                  const dy = e.clientY - lastMousePos.y;
+                  origin.x += dx;
+                  origin.y += dy;
+                  lastMousePos = { x: e.clientX, y: e.clientY };
+                  redraw();
+              }
+          });
+
+          targetCanvas.addEventListener('mouseup', () => { isDragging = false; });
+          targetCanvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+          targetCanvas.addEventListener('wheel', (e) => {
+              e.preventDefault();
+              const rect = targetCanvas.getBoundingClientRect();
+              const mouseX = e.clientX - rect.left;
+              const mouseY = e.clientY - rect.top;
+              const mousePos = toMathCoords(mouseX, mouseY);
+              const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+              const newScale = scale * zoomFactor;
+              origin.x = mouseX - mousePos.x * newScale;
+              origin.y = mouseY + mousePos.y * newScale;
+              scale = newScale;
               redraw();
-          }
-      });
+          }, { passive: false });
+      }
 
-      canvas.addEventListener('mouseup', () => {
-          isDragging = false;
-      });
-      canvas.addEventListener('mouseleave', () => {
-          isDragging = false;
-      });
+      setupCanvasInteractions(canvas);
+      setupCanvasInteractions(fsCanvas);
 
-      // Zoom with mouse wheel
-      canvas.addEventListener('wheel', (e) => {
-          e.preventDefault();
-          const rect = canvas.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-          const mousePos = toMathCoords(mouseX, mouseY);
-          const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-          const newScale = scale * zoomFactor;
-          origin.x = mouseX - mousePos.x * newScale;
-          origin.y = mouseY + mousePos.y * newScale;
-          scale = newScale;
-          redraw();
-      });
-
-      // Draw grid, axes, and labels
-      function drawGrid() {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Draw grid, axes, and labels on a specific context & canvas
+      function drawGridOn(targetCanvas, targetCtx) {
+          if (!targetCanvas || !targetCtx) return;
+          targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
           const darkMode = isDarkModeActive();
           const backgroundColor = darkMode ? "#1F2937" : "#FFFFFF";
           const gridColor = darkMode ? "#4B5563" : "#E5E7EB";
           const axisColor = darkMode ? "#D1D5DB" : "#000000";
           const textColor = darkMode ? "#D1D5DB" : "#000000";
-          ctx.fillStyle = backgroundColor;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          targetCtx.fillStyle = backgroundColor;
+          targetCtx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
 
           const xStart = Math.floor((0 - origin.x) / scale);
-          const xEnd = Math.ceil((canvas.width - origin.x) / scale);
+          const xEnd = Math.ceil((targetCanvas.width - origin.x) / scale);
           const yStart = Math.floor((0 - origin.y) / scale);
-          const yEnd = Math.ceil((canvas.height - origin.y) / scale);
+          const yEnd = Math.ceil((targetCanvas.height - origin.y) / scale);
 
           if (showGrid) {
-              ctx.strokeStyle = gridColor;
-              ctx.lineWidth = 1;
+              targetCtx.strokeStyle = gridColor;
+              targetCtx.lineWidth = 1;
               for (let x = xStart; x <= xEnd; x++) {
                   const canvasX = origin.x + x * scale;
-                  ctx.beginPath();
-                  ctx.moveTo(canvasX, 0);
-                  ctx.lineTo(canvasX, canvas.height);
-                  ctx.stroke();
+                  targetCtx.beginPath();
+                  targetCtx.moveTo(canvasX, 0);
+                  targetCtx.lineTo(canvasX, targetCanvas.height);
+                  targetCtx.stroke();
               }
               for (let y = yStart; y <= yEnd; y++) {
                   const canvasY = origin.y - y * scale;
-                  ctx.beginPath();
-                  ctx.moveTo(0, canvasY);
-                  ctx.lineTo(canvas.width, canvasY);
-                  ctx.stroke();
+                  targetCtx.beginPath();
+                  targetCtx.moveTo(0, canvasY);
+                  targetCtx.lineTo(targetCanvas.width, canvasY);
+                  targetCtx.stroke();
               }
           }
 
           // Draw axes
-          ctx.strokeStyle = axisColor;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(0, origin.y);
-          ctx.lineTo(canvas.width, origin.y);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(origin.x, 0);
-          ctx.lineTo(origin.x, canvas.height);
-          ctx.stroke();
+          targetCtx.strokeStyle = axisColor;
+          targetCtx.lineWidth = 2;
+          targetCtx.beginPath();
+          targetCtx.moveTo(0, origin.y);
+          targetCtx.lineTo(targetCanvas.width, origin.y);
+          targetCtx.stroke();
+          targetCtx.beginPath();
+          targetCtx.moveTo(origin.x, 0);
+          targetCtx.lineTo(origin.x, targetCanvas.height);
+          targetCtx.stroke();
 
           // Draw labels on axes
-          ctx.fillStyle = textColor;
-          ctx.font = '12px Arial';
-          ctx.textAlign = 'center';
+          targetCtx.fillStyle = textColor;
+          targetCtx.font = '12px Arial';
+          targetCtx.textAlign = 'center';
           for (let x = xStart; x <= xEnd; x++) {
               if (x === 0) continue;
               const canvasX = origin.x + x * scale;
-              ctx.beginPath();
-              ctx.moveTo(canvasX, origin.y - 5);
-              ctx.lineTo(canvasX, origin.y + 5);
-              ctx.stroke();
-              ctx.fillText(x.toString(), canvasX, origin.y + 20);
+              targetCtx.beginPath();
+              targetCtx.moveTo(canvasX, origin.y - 5);
+              targetCtx.lineTo(canvasX, origin.y + 5);
+              targetCtx.stroke();
+              targetCtx.fillText(x.toString(), canvasX, origin.y + 20);
           }
-          ctx.textAlign = 'right';
+          targetCtx.textAlign = 'left';
           for (let y = yStart; y <= yEnd; y++) {
               if (y === 0) continue;
               const canvasY = origin.y - y * scale;
-              ctx.beginPath();
-              ctx.moveTo(origin.x - 5, canvasY);
-              ctx.lineTo(origin.x + 5, canvasY);
-              ctx.stroke();
-              ctx.fillText(y.toString(), origin.x - 10, canvasY + 4);
+              targetCtx.beginPath();
+              targetCtx.moveTo(origin.x - 5, canvasY);
+              targetCtx.lineTo(origin.x + 5, canvasY);
+              targetCtx.stroke();
+              targetCtx.fillText(y.toString(), origin.x + 12, canvasY + 4);
           }
-          ctx.fillText("0", origin.x - 10, origin.y + 20);
+          targetCtx.textAlign = 'right';
+          targetCtx.fillText("0", origin.x - 12, origin.y + 20);
       }
 
-      // Coordinate conversion functions
       function toCanvasCoords(x, y) {
           return {
               x: origin.x + x * scale,
@@ -297,8 +339,7 @@
           };
       }
 
-      // Plot explicit functions: y = f(x)
-      function plotExplicit(equation, color) {
+      function plotExplicitOn(targetCanvas, targetCtx, equation, color) {
           let exprStr = equation.trim();
           if (exprStr.startsWith("y=")) {
               exprStr = exprStr.substring(2);
@@ -307,22 +348,19 @@
           try {
               compiled = math.compile(exprStr);
           } catch (err) {
-              alert("Error in equation: " + err);
               return;
           }
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
+          targetCtx.strokeStyle = color;
+          targetCtx.lineWidth = 2;
+          targetCtx.beginPath();
           let firstPoint = true;
           const xMin = toMathCoords(0, 0).x;
-          const xMax = toMathCoords(canvas.width, 0).x;
-          const step = (xMax - xMin) / canvas.width;
+          const xMax = toMathCoords(targetCanvas.width, 0).x;
+          const step = (xMax - xMin) / targetCanvas.width;
           for (let x = xMin; x <= xMax; x += step) {
               let y;
               try {
-                  y = compiled.evaluate({
-                      x
-                  });
+                  y = compiled.evaluate({ x });
                   if (!isFinite(y)) {
                       firstPoint = true;
                       continue;
@@ -331,60 +369,43 @@
                   firstPoint = true;
                   continue;
               }
-              const {
-                  x: cx,
-                  y: cy
-              } = toCanvasCoords(x, y);
+              const { x: cx, y: cy } = toCanvasCoords(x, y);
               if (firstPoint) {
-                  ctx.moveTo(cx, cy);
+                  targetCtx.moveTo(cx, cy);
                   firstPoint = false;
               } else {
-                  ctx.lineTo(cx, cy);
+                  targetCtx.lineTo(cx, cy);
               }
           }
-          ctx.stroke();
+          targetCtx.stroke();
       }
 
-      // Linear interpolation helper for marching squares
-      function interpolate(p1, p2, v1, v2) {
-          let t = (0 - v1) / (v2 - v1);
-          return {
-              x: p1.x + t * (p2.x - p1.x),
-              y: p1.y + t * (p2.y - p1.y)
-          };
-      }
-
-      // Plot implicit functions using marching squares: f(x,y)=0
-      function plotImplicit(equation, color) {
+      function plotImplicitOn(targetCanvas, targetCtx, equation, color) {
           const parts = equation.split("=");
-          if (parts.length !== 2) {
-              alert("Invalid implicit equation format.");
-              return;
-          }
+          if (parts.length !== 2) return;
           const lhs = parts[0].trim();
           const rhs = parts[1].trim();
-          const lhsCompiled = math.compile(lhs);
-          const rhsCompiled = math.compile(rhs);
+          let lhsCompiled, rhsCompiled;
+          try {
+              lhsCompiled = math.compile(lhs);
+              rhsCompiled = math.compile(rhs);
+          } catch (e) {
+              return;
+          }
 
           function f(x, y) {
               try {
-                  return lhsCompiled.evaluate({
-                      x,
-                      y
-                  }) - rhsCompiled.evaluate({
-                      x,
-                      y
-                  });
+                  return lhsCompiled.evaluate({ x, y }) - rhsCompiled.evaluate({ x, y });
               } catch (e) {
                   return NaN;
               }
           }
           const gridStep = 10;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          for (let j = 0; j < canvas.height - gridStep; j += gridStep) {
-              for (let i = 0; i < canvas.width - gridStep; i += gridStep) {
+          targetCtx.strokeStyle = color;
+          targetCtx.lineWidth = 2;
+          targetCtx.beginPath();
+          for (let j = 0; j < targetCanvas.height - gridStep; j += gridStep) {
+              for (let i = 0; i < targetCanvas.width - gridStep; i += gridStep) {
                   const topLeft = toMathCoords(i, j);
                   const topRight = toMathCoords(i + gridStep, j);
                   const bottomRight = toMathCoords(i + gridStep, j + gridStep);
@@ -400,71 +421,67 @@
                   if (v4 > 0) index |= 8;
                   if (index === 0 || index === 15) continue;
                   let points = [];
+                  function interpolatePt(p1, p2, val1, val2) {
+                      let t = (0 - val1) / (val2 - val1);
+                      return { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+                  }
                   if ((index & 1) !== (index & 2)) {
-                      points.push(interpolate({
-                          x: i,
-                          y: j
-                      }, {
-                          x: i + gridStep,
-                          y: j
-                      }, v1, v2));
+                      points.push(interpolatePt({ x: i, y: j }, { x: i + gridStep, y: j }, v1, v2));
                   }
                   if ((index & 2) !== (index & 4)) {
-                      points.push(interpolate({
-                          x: i + gridStep,
-                          y: j
-                      }, {
-                          x: i + gridStep,
-                          y: j + gridStep
-                      }, v2, v3));
+                      points.push(interpolatePt({ x: i + gridStep, y: j }, { x: i + gridStep, y: j + gridStep }, v2, v3));
                   }
                   if ((index & 8) !== (index & 4)) {
-                      points.push(interpolate({
-                          x: i,
-                          y: j + gridStep
-                      }, {
-                          x: i + gridStep,
-                          y: j + gridStep
-                      }, v4, v3));
+                      points.push(interpolatePt({ x: i, y: j + gridStep }, { x: i + gridStep, y: j + gridStep }, v4, v3));
                   }
                   if ((index & 1) !== (index & 8)) {
-                      points.push(interpolate({
-                          x: i,
-                          y: j
-                      }, {
-                          x: i,
-                          y: j + gridStep
-                      }, v1, v4));
+                      points.push(interpolatePt({ x: i, y: j }, { x: i, y: j + gridStep }, v1, v4));
                   }
                   if (points.length === 2) {
-                      ctx.moveTo(points[0].x, points[0].y);
-                      ctx.lineTo(points[1].x, points[1].y);
+                      targetCtx.moveTo(points[0].x, points[0].y);
+                      targetCtx.lineTo(points[1].x, points[1].y);
                   } else if (points.length === 4) {
-                      ctx.moveTo(points[0].x, points[0].y);
-                      ctx.lineTo(points[1].x, points[1].y);
-                      ctx.moveTo(points[2].x, points[2].y);
-                      ctx.lineTo(points[3].x, points[3].y);
+                      targetCtx.moveTo(points[0].x, points[0].y);
+                      targetCtx.lineTo(points[1].x, points[1].y);
+                      targetCtx.moveTo(points[2].x, points[2].y);
+                      targetCtx.lineTo(points[3].x, points[3].y);
                   }
               }
           }
-          ctx.stroke();
+          targetCtx.stroke();
       }
 
-      // Determine whether to plot explicit or implicit based on input format
-      function plotEquation(equation, color) {
+      function plotEquationOn(targetCanvas, targetCtx, equation, color) {
           if (equation.trim().startsWith("y=")) {
-              plotExplicit(equation, color);
+              plotExplicitOn(targetCanvas, targetCtx, equation, color);
           } else if (equation.includes("=")) {
-              plotImplicit(equation, color);
+              plotImplicitOn(targetCanvas, targetCtx, equation, color);
           } else {
-              plotExplicit("y=" + equation, color);
+              plotExplicitOn(targetCanvas, targetCtx, "y=" + equation, color);
+          }
+      }
+
+      function renderCanvas(targetCanvas, targetCtx) {
+          if (!targetCanvas || !targetCtx) return;
+          drawGridOn(targetCanvas, targetCtx);
+          equations.forEach(eq => {
+              if (eq.visible) {
+                  plotEquationOn(targetCanvas, targetCtx, eq.text, eq.color);
+              }
+          });
+      }
+
+      function redraw() {
+          renderCanvas(canvas, ctx);
+          if (isFullscreenOpen && fsCanvas && fsCtx) {
+              renderCanvas(fsCanvas, fsCtx);
           }
       }
 
       // Equation list manipulation
       function addEquation() {
           const eqInput = document.getElementById('equationInput');
-          let equation = eqInput.value.trim();
+          let equation = eqInput ? eqInput.value.trim() : '';
           if (equation) {
               const colorIndex = equations.length % colors.length;
               equations.push({
@@ -474,7 +491,7 @@
               });
               updateFunctionList();
               redraw();
-              eqInput.value = '';
+              if (eqInput) eqInput.value = '';
           }
       }
 
@@ -497,12 +514,14 @@
       }
 
       function addExample(equation) {
-          document.getElementById('equationInput').value = equation;
+          const eqInput = document.getElementById('equationInput');
+          if (eqInput) eqInput.value = equation;
           addEquation();
       }
 
       function updateFunctionList() {
           const listContainer = document.getElementById('functionList');
+          if (!listContainer) return;
           listContainer.innerHTML = '';
           equations.forEach((eq, index) => {
               const item = document.createElement('div');
@@ -533,16 +552,6 @@
           });
       }
 
-      // Redraw everything
-      function redraw() {
-          drawGrid();
-          equations.forEach(eq => {
-              if (eq.visible) {
-                  plotEquation(eq.text, eq.color);
-              }
-          });
-      }
-
       // Pan/Zoom and Control functions
       function zoomIn() {
           scale *= 1.2;
@@ -556,8 +565,10 @@
 
       function resetView() {
           scale = 40;
-          origin.x = canvas.width / 2;
-          origin.y = canvas.height / 2;
+          if (canvas) {
+              origin.x = canvas.width / 2;
+              origin.y = canvas.height / 2;
+          }
           redraw();
       }
 
@@ -586,34 +597,49 @@
           redraw();
       }
 
-      function updateGridSize(value) {
-          scale = parseInt(value);
-          redraw();
-      }
-
-      function exportImage() {
+      function exportImage(isFs = false) {
+          const targetCanvas = isFs ? fsCanvas : canvas;
+          if (!targetCanvas) return;
           const link = document.createElement('a');
           link.download = 'graph.png';
-          link.href = canvas.toDataURL('image/png');
+          link.href = targetCanvas.toDataURL('image/png');
           link.click();
+      }
+
+      // Fullscreen handling
+      function toggleFullscreen() {
+          isFullscreenOpen = !isFullscreenOpen;
+          if (!fsOverlay) return;
+          if (isFullscreenOpen) {
+              fsOverlay.classList.remove('hidden');
+              document.body.style.overflow = 'hidden';
+              setTimeout(resizeCanvas, 50);
+          } else {
+              fsOverlay.classList.add('hidden');
+              document.body.style.overflow = '';
+              setTimeout(resizeCanvas, 50);
+          }
       }
 
       // Initialize on page load
       window.addEventListener('load', () => {
+          if (canvas) {
+              canvas.width = canvas.parentElement.clientWidth;
+              canvas.height = canvas.parentElement.clientHeight;
+              origin.x = canvas.width / 2;
+              origin.y = canvas.height / 2;
+          }
           resetView();
       });
 
-      // Listen for changes to the document's dark mode class
       const observer = new MutationObserver((mutations) => {
           mutations.forEach((mutation) => {
               if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                  // Redraw when dark mode class changes
                   redraw();
               }
           });
       });
 
-      // Start observing the document element for class changes
       observer.observe(document.documentElement, {
           attributes: true,
           attributeFilter: ['class']

@@ -159,13 +159,13 @@
   height: calc(100vh - 70px);
   overflow-y: auto;
   overflow-x: hidden;
-  border-right: 1px solid #e5e7eb;
+  border: none;
   border-radius: 0;
   background: transparent;
 }
 
 .dark #left-panel {
-  border-right-color: #121212;
+  border: none;
 }
 
 /* Thin scrollbar on the sidebar itself */
