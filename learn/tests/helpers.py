@@ -109,11 +109,12 @@ class MockDB:
         return stmt
 
     async def batch(self, statements):
+        """Ordered execution stub. It does NOT roll back earlier statements if a later
+        one raises, unlike D1. Do not use it to assert rollback behaviour."""
         results = []
         for stmt in statements:
             results.append(await stmt.run())
         return results
-
 
 
 # ---------------------------------------------------------------------------

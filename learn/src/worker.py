@@ -3223,6 +3223,17 @@ def _credential_issuer_url(env) -> str:
         return url
     return ""
 
+_JOIN_ENROLL_SQL = (
+    "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role)"
+    " SELECT ?,?,?,? WHERE EXISTS"
+    " (SELECT 1 FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%')"
+)
+
+_CHECKOUT_ENROLL_SQL = (
+    "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status)"
+    " SELECT ?,?,?,?,? WHERE EXISTS"
+    " (SELECT 1 FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%')"
+)
 
 async def _issue_credential_for_certificate(env, request, enrollment, cert_uuid,
                                             caller_id, include_name) -> str:
@@ -3446,7 +3457,7 @@ async def api_jwks(_req, env):
     )
 
 _CREDENTIAL_PATH_RE = re.compile(r"/credentials/([A-Za-z0-9_-]{22})(\.json|\.jwt)?")
-_CREDENTIAL_NO_STORE = {"Cache-Control": "no-store", "Vary": "Accept"}
+_CREDENTIAL_NO_STORE = {"Cache-Control": "no-store", "Vary": "Accept","X-Robots-Tag": "noindex",}
 def _credential_error(msg: str, status: int):
     return Response(
         json.dumps({"error": msg}),
@@ -3603,9 +3614,9 @@ async def api_join(req, env):
     # 2️⃣ Insert enrollment
     enr_id = new_id()
     try:
-        insert_res = await env.DB.prepare(
-            "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role) VALUES (?,?,?,?)"
-        ).bind(enr_id, act_id, user["id"], "participant").run()
+        insert_res = await env.DB.prepare(_JOIN_ENROLL_SQL).bind(
+            enr_id, act_id, user["id"], "participant", user["id"]
+        ).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
@@ -3622,6 +3633,13 @@ async def api_join(req, env):
         pass
 
     if changes == 0:
+        acct = await env.DB.prepare(
+            "SELECT 1 AS ok FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
+        ).bind(user["id"]).first()
+
+        if not acct:
+            return err("Account is not active", 401)
+
         return ok(None, "Already joined this activity")
 
     # 4️⃣ Participant name
@@ -3955,33 +3973,52 @@ async def api_delete_account(req, env):
     confirmation = _legacy_text(body.get("confirmation")).strip().upper()
     if confirmation != "DELETE":
         return err("Type DELETE to confirm account deletion", 400)
-    enc = env.ENCRYPTION_KEY
     uid = user["id"]
+    enc = env.ENCRYPTION_KEY
     deleted_label = f"deleted-{uid[:8]}"
     deleted_email = f"deleted-{uid}@alphaonelabs.invalid"
-
     try:
-        # Prerequisite reads first: a failure here changes nothing.
+        # 1. Reads and values first: a failure here changes nothing.
         cart_rows = await env.DB.prepare("SELECT id FROM activity_carts WHERE user_id=?").bind(uid).all()
-
-        # Atomic: unlink credentials AND remove the enrollments that the
-        # issuance guard checks. Either both happen or neither does.
+        anonymize = env.DB.prepare(
+            "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,"
+            "password_hash=?,role=?,email_verified=0 WHERE id=?"
+        ).bind(
+            blind_index(deleted_label, enc),
+            blind_index(deleted_email, enc),
+            await encrypt_aes("Deleted user", enc),
+            await encrypt_aes(deleted_label, enc),
+            await encrypt_aes(deleted_email, enc),
+            "deleted:" + os.urandom(24).hex(),
+            await encrypt_aes("deleted", enc),
+            uid,
+        )
         unlink = env.DB.prepare(
             "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
         ).bind(uid)
         drop_enrollments = env.DB.prepare("DELETE FROM enrollments WHERE user_id=?").bind(uid)
+
+        # 2. One transaction. Unlink and enrollment removal commit together with
+        #    the anonymization; an issuance that races in later fails the
+        #    enrollment guard in _insert_credential.
         try:
-            await env.DB.batch([unlink, drop_enrollments])
+            await env.DB.batch([unlink, drop_enrollments, anonymize])
         except Exception as batch_exc:
             # Only a deployment that never ran /api/init lacks the credentials table.
-            if not _is_no_such_table_error(batch_exc):
+            if not (_is_no_such_table_error(batch_exc) and "credentials" in str(batch_exc)):
                 raise
-            await env.DB.batch([drop_enrollments])
+            await env.DB.batch([drop_enrollments, anonymize])
+
+        # 3. Best-effort cleanup after the commit; failures are logged, never fatal.
+        async def best_effort(sql: str, *args) -> None:
+            try:
+                await env.DB.prepare(sql).bind(*args).run()
+            except Exception as cleanup_exc:
+                await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
 
         for cart in cart_rows.results or []:
-            await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
-
-        cleanup_sql = [
+            await best_effort("DELETE FROM activity_cart_items WHERE cart_id=?", cart.id)
+        for sql in (
             "DELETE FROM notification_preferences WHERE user_id=?",
             "DELETE FROM notifications WHERE user_id=?",
             "DELETE FROM email_verification_tokens WHERE user_id=?",
@@ -3995,38 +4032,14 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
-        ]
-        for sql in cleanup_sql:
-            try:
-                await env.DB.prepare(sql).bind(uid).run()
-            except Exception as cleanup_exc:
-                await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
-                continue
-        try:
-            await env.DB.prepare(
-                "UPDATE activities SET status='archived' WHERE host_id=? AND status <> 'archived'"
-            ).bind(uid).run()
-        except Exception:
-            pass
-        await env.DB.prepare(
-            "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,password_hash=?,role=?,email_verified=0 WHERE id=?"
-        ).bind(
-            # Keep your existing arguments unchanged.
-            blind_index(deleted_label, enc),
-            blind_index(deleted_email, enc),
-            await encrypt_aes("Deleted user", enc),
-            await encrypt_aes(deleted_label, enc),
-            await encrypt_aes(deleted_email, enc),
-            "deleted:" + os.urandom(24).hex(),
-            "deleted",
-            uid,
-        ).run()
+            "UPDATE activities SET status='archived' WHERE host_id=? AND status <> 'archived'",
+        ):
+            await best_effort(sql, uid)
     except Exception as exc:
         await capture_exception(exc, req, env, "api_delete_account")
         return err("Could not delete account", 500)
 
     return ok(None, "Account deleted")
-
 
 async def api_feedback(req, env):
     if req.method.upper() != "POST":
@@ -6639,9 +6652,14 @@ async def api_create_checkout(req, env):
         if owner["kind"] == "user":
             for item in items:
                 try:
-                    insert_res = await env.DB.prepare(
-                        "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status) VALUES (?,?,?,?,?)"
-                    ).bind(new_id(), item.get("activity_id", ""), owner["user_id"], "participant", "active").run()
+                    insert_res = await env.DB.prepare(_CHECKOUT_ENROLL_SQL).bind(
+                       new_id(),
+                       item.get("activity_id", ""),
+                       owner["user_id"],
+                       "participant",
+                       "active",
+                        owner["user_id"],
+                    ).run()
                     meta = getattr(insert_res, "meta", None)
                     changes = meta.get("changes") if isinstance(meta, dict) else getattr(meta, "changes", None)
                     if changes != 0:
@@ -6799,22 +6817,38 @@ async def api_complete_checkout(req, env):
                 if not is_free and row.activity_id not in paid_activity_ids:
                     continue
                 try:
-                    insert_res = await env.DB.prepare(
-                        "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status) VALUES (?,?,?,?,?)"
-                    ).bind(new_id(), row.activity_id, owner["user_id"], "participant", "active").run()
+                    insert_res = await env.DB.prepare(_CHECKOUT_ENROLL_SQL).bind(
+                        new_id(),
+                        row.activity_id,
+                        owner["user_id"],
+                        "participant",
+                        "active",
+                        owner["user_id"],
+                    ).run()
                     meta = getattr(insert_res, "meta", None)
                     changes = meta.get("changes") if isinstance(meta, dict) else getattr(meta, "changes", None)
                     if changes != 0:
                         enrolled += 1
                 except Exception as exc:
                     await capture_exception(exc, req, env, "api_complete_checkout.enroll")
+            account = await env.DB.prepare(
+                "SELECT id FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
+            ).bind(owner["user_id"]).first()
             await env.DB.prepare(
                 "UPDATE activity_carts SET status='checked_out', updated_at=datetime('now') WHERE id=? AND user_id=? AND owner_kind='user'"
             ).bind(cart_id, owner["user_id"]).run()
             await env.DB.prepare(
                 "UPDATE activity_checkout_sessions SET status='paid', completed_at=datetime('now'), amount_total=? WHERE stripe_session_id=? AND user_id=? AND owner_kind='user'"
             ).bind(int(session.get("amount_total") or 0), session_id, owner["user_id"]).run()
-            return ok({"enrolled": enrolled, "guest": False}, "Payment confirmed and activities unlocked")
+            if not account:
+                return err(
+                    "Payment was confirmed, but the account is no longer active. Please contact support.",
+                    401,
+                )
+            return ok(
+                {"enrolled": enrolled, "guest": False},
+                "Payment confirmed and activities unlocked",
+            )
 
         customer_details = session.get("customer_details") or {}
         guest_email = customer_details.get("email") or ""

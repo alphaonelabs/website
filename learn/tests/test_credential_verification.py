@@ -163,15 +163,14 @@ def test_route_regex_only_accepts_22_char_tokens():
 async def test_responses_are_not_cacheable_and_vary_on_accept():
     jws = await _jws()
     for suffix in (None, ".json", ".jwt"):
-        _assert_no_store(await worker.api_get_credential(_req(), _env(_row(jws)), TOKEN, suffix))
+        r = await worker.api_get_credential(_req(), _env(_row(jws)), TOKEN, suffix)
+        assert r.status == 200
+        _assert_no_store(r)
     revoked = await worker.api_get_credential(_req(), _env(_row(jws, "revoked")), TOKEN, ".json")
     assert revoked.status == 410
     _assert_no_store(revoked)
 
-def _req(accept=None):
-    return MockRequest(method="GET", url=f"http://localhost/credentials/{TOKEN}",
-                       headers={"Accept": accept} if accept else {})
-
 def _assert_no_store(r):
     assert r.headers["Cache-Control"] == "no-store"
     assert r.headers["Vary"] == "Accept"
+    assert r.headers["X-Robots-Tag"] == "noindex"

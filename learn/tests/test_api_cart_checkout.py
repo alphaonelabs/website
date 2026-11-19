@@ -399,7 +399,6 @@ class TestApiCreateCheckout:
             slug="free-meetup",
             image_url="",
         )
-
         mock_enroll_stmt = make_stmt()
         mock_enroll_stmt.bind.return_value.run = AsyncMock(
             return_value=MockRow(meta={"changes": 1})
@@ -408,12 +407,19 @@ class TestApiCreateCheckout:
         env = make_env(db=MockDB([
             make_stmt(first=cart_row),            # 1. _active_cart_id
             make_stmt(all_results=[free_item]),   # 2. _cart_payload items
-            mock_enroll_stmt,                     # 3. INSERT INTO enrollments
-            make_stmt(),                          # 4. INSERT INTO activity_checkout_sessions
-            make_stmt(),                          # 5. UPDATE activity_carts SET status='checked_out'
+            mock_enroll_stmt,                     # 3. guarded enrollment INSERT
+            make_stmt(),                          # 4. INSERT checkout session
+            make_stmt(),                          # 5. UPDATE activity cart
         ]))
 
         r = await worker.api_create_checkout(self._req(headers=_user_headers()), env)
+        assert mock_enroll_stmt.bind.called
+        bind_args = mock_enroll_stmt.bind.call_args.args
+        assert len(bind_args) == 6
+        assert bind_args[1] == "act-free-1"
+        assert bind_args[2] == "usr-1"
+        assert bind_args[3:5] == ("participant", "active")
+        assert bind_args[5] == "usr-1"
         assert r.status == 200
         data = _parse(r)
         assert data["success"] is True
@@ -594,6 +600,7 @@ class TestApiCompleteCheckout:
         env = make_env(db=MockDB([
             make_stmt(all_results=[item_row]),  # 1. SELECT activity_id FROM activity_cart_items
             mock_enroll_stmt,                   # 2. INSERT OR IGNORE INTO enrollments
+            make_stmt(first=MockRow(id="usr-1")),  # Active account check
             make_stmt(),                        # 3. UPDATE activity_carts SET status='checked_out'
             make_stmt(),                        # 4. UPDATE activity_checkout_sessions SET status='paid'
         ]))
@@ -630,6 +637,7 @@ class TestApiCompleteCheckout:
             make_stmt(all_results=rows),  # 1. SELECT activity_id,unit_price_cents FROM activity_cart_items
             enroll_stmt,                  # 2. INSERT OR IGNORE INTO enrollments (act-cheap)
             enroll_stmt,                  # 3. INSERT OR IGNORE INTO enrollments (act-free)
+            make_stmt(first=MockRow(id="usr-1")),
             make_stmt(),                  # 4. UPDATE activity_carts SET status='checked_out'
             make_stmt(),                  # 5. UPDATE activity_checkout_sessions SET status='paid'
         ]))
