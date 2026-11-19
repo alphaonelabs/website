@@ -1179,6 +1179,22 @@ _DDL = [
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
+    # Progress trackers
+    """CREATE TABLE IF NOT EXISTS progress_trackers (
+        id            TEXT PRIMARY KEY,
+        user_id       TEXT NOT NULL,
+        title         TEXT NOT NULL,
+        description   TEXT,
+        current_value INTEGER NOT NULL DEFAULT 0 CHECK (current_value >= 0),
+        target_value  INTEGER NOT NULL CHECK (target_value >= 1),
+        color         TEXT NOT NULL DEFAULT 'blue-600',
+        is_public     INTEGER NOT NULL DEFAULT 0,
+        embed_code    TEXT NOT NULL UNIQUE,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at    TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_progress_trackers_user ON progress_trackers(user_id)",
 ]
 
 
@@ -3694,6 +3710,7 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
+            "DELETE FROM progress_trackers WHERE user_id=?",
         ]
         for sql in cleanup_sql:
             try:
@@ -4830,6 +4847,159 @@ async def api_delete_quiz(req, env, quiz_id: str):
 
     await _quiz_db(env, run)
     return ok(None, "Quiz deleted")
+
+
+# ---------------------------------------------------------------------------
+# Progress trackers (ported from the Django site)
+# ---------------------------------------------------------------------------
+
+_TRACKER_COLORS = {"blue-600", "green-600", "yellow-600", "red-600", "gray-600"}
+_TRACKER_MAX_VALUE = 1_000_000_000
+_TRACKER_COLUMNS = (
+    "id, title, description, current_value, target_value, color, "
+    "is_public, embed_code, created_at, updated_at"
+)
+
+
+async def _tracker_db(env, fn):
+    """Run a tracker DB operation, retrying once after init_db if a table is missing."""
+    try:
+        return await fn()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            await init_db(env)
+            return await fn()
+        raise
+
+
+def _tracker_user_id(user):
+    return user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+
+
+def _tracker_int(value, name: str, minimum: int):
+    """Parse an integer field. Returns (number, None) or (None, error_message)."""
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return None, f"{name} must be an integer"
+    try:
+        number = int(value)
+    except ValueError:
+        return None, f"{name} must be an integer"
+    if number < minimum or number > _TRACKER_MAX_VALUE:
+        return None, f"{name} must be between {minimum} and {_TRACKER_MAX_VALUE}"
+    return number, None
+
+
+def _tracker_dict(tracker_id, title, description, current, target, color,
+                  is_public, embed_code, created_at=None, updated_at=None):
+    return {
+        "id": tracker_id,
+        "title": title,
+        "description": description or "",
+        "current_value": current,
+        "target_value": target,
+        "percentage": min(100, current * 100 // target),
+        "color": color,
+        "is_public": bool(is_public),
+        "embed_code": embed_code,
+        "created_at": created_at,
+        "updated_at": updated_at,
+    }
+
+
+def _tracker_json(row):
+    return _tracker_dict(
+        row.id, row.title, row.description, int(row.current_value or 0),
+        max(1, int(row.target_value or 1)), row.color, row.is_public,
+        row.embed_code, row.created_at, row.updated_at,
+    )
+
+
+async def api_create_tracker(req, env):
+    """POST /api/trackers - Create a progress tracker owned by the caller."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    user_id = _tracker_user_id(user)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    title = str(body.get("title") or "").strip()[:100]
+    if not title:
+        return err("Tracker title is required", 400)
+    description = str(body.get("description") or "").strip()[:2000]
+
+    target, msg = _tracker_int(body.get("target_value"), "target_value", 1)
+    if msg:
+        return err(msg, 400)
+    current, msg = _tracker_int(body.get("current_value", 0), "current_value", 0)
+    if msg:
+        return err(msg, 400)
+
+    color = str(body.get("color") or "blue-600").strip()
+    if color not in _TRACKER_COLORS:
+        return err("color must be one of: " + ", ".join(sorted(_TRACKER_COLORS)), 400)
+
+    is_public = body.get("is_public", False)
+    if not isinstance(is_public, bool):
+        return err("is_public must be true or false", 400)
+
+    tracker_id = new_id()
+    embed_code = new_id()
+
+    async def run():
+        await env.DB.prepare(
+            "INSERT INTO progress_trackers "
+            "(id, user_id, title, description, current_value, target_value, color, is_public, embed_code) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).bind(
+            tracker_id, user_id, title, description, current, target, color,
+            1 if is_public else 0, embed_code,
+        ).run()
+
+    await _tracker_db(env, run)
+    return ok(
+        _tracker_dict(tracker_id, title, description, current, target, color, is_public, embed_code),
+        "Tracker created",
+    )
+
+
+async def api_list_trackers(req, env):
+    """GET /api/trackers - List the caller's own progress trackers."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    user_id = _tracker_user_id(user)
+
+    async def run():
+        res = await env.DB.prepare(
+            f"SELECT {_TRACKER_COLUMNS} FROM progress_trackers "
+            "WHERE user_id = ? ORDER BY COALESCE(updated_at, created_at) DESC"
+        ).bind(user_id).all()
+        return [_tracker_json(r) for r in (res.results or [])]
+
+    trackers = await _tracker_db(env, run)
+    return json_resp({"trackers": trackers})
+
+
+async def api_get_tracker(req, env, tracker_id: str):
+    """GET /api/trackers/:id - Get one of the caller's own trackers."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    user_id = _tracker_user_id(user)
+
+    async def run():
+        return await env.DB.prepare(
+            f"SELECT {_TRACKER_COLUMNS} FROM progress_trackers WHERE id = ? AND user_id = ?"
+        ).bind(tracker_id, user_id).first()
+
+    row = await _tracker_db(env, run)
+    if not row:
+        # Same answer for "missing" and "someone else's": do not reveal existence.
+        return err("Tracker not found", 404)
+    return ok(_tracker_json(row), "Tracker retrieved")
 
 
 LEGACY_FEATURE_GROUPS = {
@@ -9173,6 +9343,14 @@ async def _dispatch(request, env):
             return await api_get_quiz(request, env, m_quiz_item.group(1))
         if m_quiz_item and method == "DELETE":
             return await api_delete_quiz(request, env, m_quiz_item.group(1))
+
+        if path == "/api/trackers" and method == "POST":
+            return await api_create_tracker(request, env)
+        if path == "/api/trackers" and method == "GET":
+            return await api_list_trackers(request, env)
+        m_tracker_item = re.fullmatch(r"/api/trackers/([A-Za-z0-9_-]+)", path)
+        if m_tracker_item and method == "GET":
+            return await api_get_tracker(request, env, m_tracker_item.group(1))
 
         if path == "/api/cart" and method == "GET":
             return await api_get_cart(request, env)

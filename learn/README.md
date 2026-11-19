@@ -6,7 +6,7 @@ Alpha One Labs is an education platform designed to facilitate both learning and
 
 ## Tech Stack
 
-- Frontend: HTML,Tailwind CSS 
+- Frontend: HTML,Tailwind CSS
 - Backend: Python (Cloudflare Worker)
 - Database: Cloudflare D1 (SQLite)
 
@@ -170,3 +170,10 @@ http://localhost:3000
 | Method | Endpoint | Description |
 |----------|----------|-------------|
 | GET | /api/dashboard | User dashboard |
+### Progress Trackers
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| POST | /api/trackers | Create a progress tracker (login required) |
+| GET | /api/trackers | List your own trackers |
+| GET | /api/trackers/:id | Get one of your trackers |
