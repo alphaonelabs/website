@@ -5002,6 +5002,99 @@ async def api_get_tracker(req, env, tracker_id: str):
     return ok(_tracker_json(row), "Tracker retrieved")
 
 
+_TRACKER_COLORS_MSG = "color must be one of: " + ", ".join(sorted(_TRACKER_COLORS))
+
+
+def _tracker_parse_update(body):
+    """Validate a partial update. Returns ({column: value}, None) or (None, error_message)."""
+    updates = {}
+    if "title" in body:
+        title = str(body.get("title") or "").strip()[:100]
+        if not title:
+            return None, "Tracker title is required"
+        updates["title"] = title
+    if "description" in body:
+        updates["description"] = str(body.get("description") or "").strip()[:2000]
+    if "target_value" in body:
+        value, msg = _tracker_int(body.get("target_value"), "target_value", 1)
+        if msg:
+            return None, msg
+        updates["target_value"] = value
+    if "current_value" in body:
+        value, msg = _tracker_int(body.get("current_value"), "current_value", 0)
+        if msg:
+            return None, msg
+        updates["current_value"] = value
+    if "color" in body:
+        color = str(body.get("color") or "").strip()
+        if color not in _TRACKER_COLORS:
+            return None, _TRACKER_COLORS_MSG
+        updates["color"] = color
+    if "is_public" in body:
+        if not isinstance(body.get("is_public"), bool):
+            return None, "is_public must be true or false"
+        updates["is_public"] = 1 if body["is_public"] else 0
+    if not updates:
+        return None, "Nothing to update"
+    return updates, None
+
+
+async def api_update_tracker(req, env, tracker_id: str):
+    """PATCH /api/trackers/:id - Update one of the caller's own trackers."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    user_id = _tracker_user_id(user)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+    updates, msg = _tracker_parse_update(body)
+    if msg:
+        return err(msg, 400)
+
+    # Column names come from the fixed list in _tracker_parse_update, never from the request.
+    assignments = ", ".join(f"{column} = ?" for column in updates)
+    select_sql = f"SELECT {_TRACKER_COLUMNS} FROM progress_trackers WHERE id = ? AND user_id = ?"
+
+    async def run():
+        if not await env.DB.prepare(select_sql).bind(tracker_id, user_id).first():
+            return None
+        await env.DB.prepare(
+            f"UPDATE progress_trackers SET {assignments}, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+        ).bind(*updates.values(), tracker_id, user_id).run()
+        return await env.DB.prepare(select_sql).bind(tracker_id, user_id).first()
+
+    row = await _tracker_db(env, run)
+    if not row:
+        # Same answer for "missing" and "someone else's": do not reveal existence.
+        return err("Tracker not found", 404)
+    return ok(_tracker_json(row), "Tracker updated")
+
+
+async def api_delete_tracker(req, env, tracker_id: str):
+    """DELETE /api/trackers/:id - Delete one of the caller's own trackers."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    user_id = _tracker_user_id(user)
+
+    async def run():
+        row = await env.DB.prepare(
+            "SELECT id FROM progress_trackers WHERE id = ? AND user_id = ?"
+        ).bind(tracker_id, user_id).first()
+        if not row:
+            return False
+        await env.DB.prepare(
+            "DELETE FROM progress_trackers WHERE id = ? AND user_id = ?"
+        ).bind(tracker_id, user_id).run()
+        return True
+
+    if not await _tracker_db(env, run):
+        return err("Tracker not found", 404)
+    return ok(None, "Tracker deleted")
+
+
 LEGACY_FEATURE_GROUPS = {
     "community": {
         "title": "Community",
@@ -9351,6 +9444,10 @@ async def _dispatch(request, env):
         m_tracker_item = re.fullmatch(r"/api/trackers/([A-Za-z0-9_-]+)", path)
         if m_tracker_item and method == "GET":
             return await api_get_tracker(request, env, m_tracker_item.group(1))
+        if m_tracker_item and method == "PATCH":
+            return await api_update_tracker(request, env, m_tracker_item.group(1))
+        if m_tracker_item and method == "DELETE":
+            return await api_delete_tracker(request, env, m_tracker_item.group(1))
 
         if path == "/api/cart" and method == "GET":
             return await api_get_cart(request, env)

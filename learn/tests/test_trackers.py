@@ -235,3 +235,91 @@ class TestAccountDeletion:
     def test_account_cleanup_removes_trackers(self):
         source = (LEARN_DIR / "src" / "worker.py").read_text(encoding="utf-8")
         assert "DELETE FROM progress_trackers WHERE user_id=?" in source
+
+
+def _tracker_req(body, token="default"):
+    tok = _token() if token == "default" else token
+    return json_request("/api/trackers/t-1", body, headers=_auth(tok))
+
+
+class TestUpdateTracker:
+    async def test_requires_auth(self):
+        r = await worker.api_update_tracker(_tracker_req({"title": "x"}, token=None), make_env(), "t-1")
+        assert r.status == 401
+
+    async def test_updates_only_the_given_fields(self):
+        update = make_stmt()
+        db = SqlRecordingDB([make_stmt(first=_row()), update, make_stmt(first=_row(current_value=7))])
+        r = await worker.api_update_tracker(_tracker_req({"current_value": 7}), make_env(db=db), "t-1")
+        assert r.status == 200
+        data = _parse(r)["data"]
+        assert data["current_value"] == 7
+        assert data["percentage"] == 70
+        assert update.bind.call_args.args == (7, "t-1", "user-1")
+        assert "SET current_value = ?, updated_at = datetime('now')" in db.sql[1]
+        assert "WHERE id = ? AND user_id = ?" in db.sql[1]
+
+    async def test_owner_comes_from_token_not_body(self):
+        update = make_stmt()
+        db = SqlRecordingDB([make_stmt(first=_row()), update, make_stmt(first=_row(title="New"))])
+        body = {"title": "New", "user_id": "someone-else"}
+        r = await worker.api_update_tracker(_tracker_req(body), make_env(db=db), "t-1")
+        assert r.status == 200
+        bound = update.bind.call_args.args
+        assert bound == ("New", "t-1", "user-1")
+        assert "someone-else" not in bound
+
+    async def test_unknown_keys_never_reach_the_sql(self):
+        db = SqlRecordingDB([make_stmt(first=_row()), make_stmt(), make_stmt(first=_row())])
+        body = {"title": "x", "evil = 1; --": 5}
+        r = await worker.api_update_tracker(_tracker_req(body), make_env(db=db), "t-1")
+        assert r.status == 200
+        assert "evil" not in db.sql[1]
+
+    async def test_missing_or_foreign_tracker_is_404_and_writes_nothing(self):
+        update = make_stmt()
+        db = SqlRecordingDB([make_stmt(first=None), update])
+        r = await worker.api_update_tracker(_tracker_req({"title": "x"}), make_env(db=db), "t-9")
+        assert r.status == 404
+        assert update.bind.call_count == 0
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {},
+            {"title": "   "},
+            {"target_value": 0},
+            {"target_value": "abc"},
+            {"target_value": 10**12},
+            {"current_value": -1},
+            {"current_value": True},
+            {"color": "hotpink"},
+            {"is_public": "yes"},
+        ],
+    )
+    async def test_invalid_input_returns_400_and_touches_nothing(self, body):
+        stmt = make_stmt()
+        r = await worker.api_update_tracker(_tracker_req(body), make_env(db=MockDB([stmt])), "t-1")
+        assert r.status == 400
+        assert stmt.bind.call_count == 0
+
+
+class TestDeleteTracker:
+    async def test_requires_auth(self):
+        r = await worker.api_delete_tracker(_get("/api/trackers/t-1"), make_env(), "t-1")
+        assert r.status == 401
+
+    async def test_deletes_own_tracker(self):
+        delete = make_stmt()
+        db = SqlRecordingDB([make_stmt(first=_row()), delete])
+        r = await worker.api_delete_tracker(_get("/api/trackers/t-1", _token()), make_env(db=db), "t-1")
+        assert r.status == 200
+        assert delete.bind.call_args.args == ("t-1", "user-1")
+        assert "DELETE FROM progress_trackers WHERE id = ? AND user_id = ?" in db.sql[1]
+
+    async def test_missing_or_foreign_tracker_is_404_and_deletes_nothing(self):
+        delete = make_stmt()
+        db = SqlRecordingDB([make_stmt(first=None), delete])
+        r = await worker.api_delete_tracker(_get("/api/trackers/t-9", _token()), make_env(db=db), "t-9")
+        assert r.status == 404
+        assert delete.bind.call_count == 0
