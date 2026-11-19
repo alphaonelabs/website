@@ -200,3 +200,14 @@ def test_checkout_insert_is_skipped_for_a_deleted_account() -> None:
             worker._CHECKOUT_ENROLL_SQL, ("e-" + uid, "a1", uid, "participant", "active", uid)
         )
         assert cur.rowcount == expected
+
+def test_password_updates_skip_deleted_accounts() -> None:
+    conn = sqlite3.connect(":memory:")
+    conn.executescript(
+        "CREATE TABLE users (id TEXT PRIMARY KEY, password_hash TEXT);"
+        "INSERT INTO users VALUES ('active','old'), ('gone','deleted:xyz');"
+    )
+    sql = "UPDATE users SET password_hash=? WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
+    assert conn.execute(sql, ("new", "active")).rowcount == 1
+    assert conn.execute(sql, ("new", "gone")).rowcount == 0
+    assert conn.execute("SELECT password_hash FROM users WHERE id='gone'").fetchone()[0] == "deleted:xyz"

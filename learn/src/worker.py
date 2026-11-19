@@ -2163,8 +2163,9 @@ async def api_reset_password(req, env):
     new_hash = hash_password(new_password, username)
 
     try:
-        await env.DB.prepare(
-            "UPDATE users SET password_hash=?, email_verified=1 WHERE id=?"
+        upd = await env.DB.prepare(
+            "UPDATE users SET password_hash=?, email_verified=1"
+            " WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
         ).bind(new_hash, row.user_id).run()
         await env.DB.prepare(
             "DELETE FROM password_reset_tokens WHERE id=?"
@@ -2173,8 +2174,10 @@ async def api_reset_password(req, env):
         await capture_exception(exc, req, env, "api_reset_password.update")
         return err("Password reset failed — please try again", 500)
 
-    return ok(None, "Password reset successfully. You can now sign in with your new password.")
+    if _rows_changed(upd) == 0:
+        return err("This reset link is invalid or has expired.", 400)
 
+    return ok(None, "Password reset successfully. You can now sign in with your new password.")
 
 _ACTIVITY_LIST_CACHE_SECONDS = 120
 
@@ -3235,6 +3238,16 @@ _CHECKOUT_ENROLL_SQL = (
     " (SELECT 1 FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%')"
 )
 
+def _rows_changed(result):
+    """D1 changed-row count, or None when the result carries no metadata."""
+    meta = getattr(result, "meta", None)
+    changes = (
+        meta.get("changes")
+        if isinstance(meta, dict)
+        else getattr(meta, "changes", None)
+    )
+    return changes
+
 async def _issue_credential_for_certificate(env, request, enrollment, cert_uuid,
                                             caller_id, include_name) -> str:
     """Issue an Open Badges 3.0 credential next to the certificate row.
@@ -3948,10 +3961,11 @@ async def api_confirm_password_change(req, env):
 
     if not row:
         return err("This confirmation link is invalid or has expired.", 400)
-
+    
     try:
-        await env.DB.prepare(
-            "UPDATE users SET password_hash=? WHERE id=?"
+        upd = await env.DB.prepare(
+            "UPDATE users SET password_hash=?"
+            " WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
         ).bind(row.new_password_hash, row.user_id).run()
         await env.DB.prepare(
             "DELETE FROM password_change_requests WHERE id=?"
@@ -3960,8 +3974,10 @@ async def api_confirm_password_change(req, env):
         await capture_exception(exc, req, env, "api_confirm_password_change.update")
         return err("Could not confirm the password change — please try again", 500)
 
-    return ok(None, "Your password has been changed. You can now sign in with your new password.")
+    if _rows_changed(upd) == 0:
+        return err("This confirmation link is invalid or has expired.", 400)
 
+    return ok(None, "Your password has been changed. You can now sign in with your new password.")
 
 async def api_delete_account(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
