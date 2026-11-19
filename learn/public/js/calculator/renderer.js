@@ -150,7 +150,7 @@ export class GraphRenderer {
 
     // Tick labels
     const origin = this.toPixel(0, 0, w, h, V);
-    const lx = Math.min(Math.max(origin.px + 12, 12), w - 36);
+    const lx = Math.min(Math.max(origin.px + 9, 9), w - 36);
     const ly = Math.min(Math.max(origin.py + 4, 4), h - 14);
 
     ctx.fillStyle = dark ? 'rgba(156,163,175,0.85)' : 'rgba(115,115,115,0.85)';

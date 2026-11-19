@@ -199,6 +199,15 @@
     <div class="flex gap-2">
       <button
         type="button"
+        id="fs-toggle-sidebar-btn"
+        class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors flex items-center gap-1"
+        aria-pressed="true"
+        title="Toggle Sidebar"
+      >
+        <i class="fas fa-bars"></i>Sidebar
+      </button>
+      <button
+        type="button"
         id="fs-export-btn"
         class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
       >
@@ -213,7 +222,10 @@
       </button>
     </div>
   </div>
-  <canvas id="fs-canvas" role="img" aria-label="Fullscreen graph"></canvas>
+  <div class="relative flex-1 w-full flex flex-col">
+    <canvas id="fs-canvas" role="img" aria-label="Fullscreen graph"></canvas>
+    <div id="fs-sidebar-container" class="absolute inset-0 pointer-events-none z-20"></div>
+  </div>
 </div>
 
 {% endblock %}

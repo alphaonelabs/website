@@ -4,7 +4,7 @@
 {% block content %}
   <div class="flex flex-col md:flex-row-reverse h-screen bg-gray-100 dark:bg-gray-900">
     <!-- Sidebar (will be on right due to flex-row-reverse) -->
-    <div id="calculator-sidebar" class="w-full md:w-80 bg-transparent shadow-none p-4 overflow-y-auto flex-shrink-0 border-0">
+    <div id="calculator-sidebar" class="w-full md:w-80 bg-white dark:bg-black shadow-none p-4 overflow-y-auto flex-shrink-0 border-l border-gray-200 dark:border-[#121212]">
       <h1 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">Graphing Calculator</h1>
       <!-- Input and Add Function -->
       <div class="mb-6">
@@ -132,6 +132,15 @@
       <div class="flex gap-2">
         <button
           type="button"
+          onclick="toggleFsSidebar()"
+          id="fs-toggle-sidebar-btn"
+          class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors flex items-center gap-1"
+          aria-pressed="true"
+        >
+          <i class="fas fa-bars"></i>Sidebar
+        </button>
+        <button
+          type="button"
           onclick="exportImage(true)"
           class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
         >
@@ -146,7 +155,10 @@
         </button>
       </div>
     </div>
-    <canvas id="fs-canvas" role="img" aria-label="Fullscreen graph" class="w-full h-full"></canvas>
+    <div class="relative flex-1 w-full flex flex-col overflow-hidden">
+      <canvas id="fs-canvas" role="img" aria-label="Fullscreen graph" class="w-full h-full"></canvas>
+      <div id="fs-sidebar-container" class="absolute inset-0 pointer-events-none z-40"></div>
+    </div>
   </div>
 
   <!-- Include math.js library -->
@@ -319,10 +331,10 @@
               targetCtx.moveTo(origin.x - 5, canvasY);
               targetCtx.lineTo(origin.x + 5, canvasY);
               targetCtx.stroke();
-              targetCtx.fillText(y.toString(), origin.x + 12, canvasY + 4);
+              targetCtx.fillText(y.toString(), origin.x + 9, canvasY + 4);
           }
           targetCtx.textAlign = 'right';
-          targetCtx.fillText("0", origin.x - 12, origin.y + 20);
+          targetCtx.fillText("0", origin.x - 9, origin.y + 20);
       }
 
       function toCanvasCoords(x, y) {
@@ -618,6 +630,13 @@
           link.click();
       }
 
+      const sidebarEl = document.getElementById('calculator-sidebar');
+      const fsSidebarContainer = document.getElementById('fs-sidebar-container');
+      const fsToggleSidebarBtn = document.getElementById('fs-toggle-sidebar-btn');
+      let sidebarParent = sidebarEl ? sidebarEl.parentElement : null;
+      let sidebarNextSibling = sidebarEl ? sidebarEl.nextElementSibling : null;
+      let isFsSidebarOpen = true;
+
       // Fullscreen handling
       function toggleFullscreen() {
           isFullscreenOpen = !isFullscreenOpen;
@@ -625,11 +644,59 @@
           if (isFullscreenOpen) {
               fsOverlay.classList.remove('hidden');
               document.body.style.overflow = 'hidden';
+              if (sidebarEl && fsSidebarContainer) {
+                  fsSidebarContainer.appendChild(sidebarEl);
+                  sidebarEl.classList.add(
+                      'absolute', 'top-0', 'right-0', 'bottom-0', 'w-80',
+                      'backdrop-blur-md', 'shadow-2xl', 'border-l', 'border-gray-200/80',
+                      'dark:border-gray-700/80', 'pointer-events-auto', 'z-40'
+                  );
+                  sidebarEl.style.height = '100%';
+                  sidebarEl.style.position = 'absolute';
+                  sidebarEl.style.top = '0';
+                  sidebarEl.style.right = '0';
+                  sidebarEl.style.bottom = '0';
+                  sidebarEl.style.left = '';
+                  sidebarEl.style.zIndex = '40';
+                  sidebarEl.style.background = document.documentElement.classList.contains('dark') ? '#000000' : '#ffffff';
+                  sidebarEl.style.borderLeft = document.documentElement.classList.contains('dark') ? '1px solid #121212' : '1px solid #e5e7eb';
+              }
               setTimeout(resizeCanvas, 50);
           } else {
               fsOverlay.classList.add('hidden');
               document.body.style.overflow = '';
+              if (sidebarEl && sidebarParent) {
+                  sidebarEl.classList.remove(
+                      'absolute', 'top-0', 'right-0', 'bottom-0', 'w-80',
+                      'backdrop-blur-md', 'shadow-2xl', 'border-l', 'border-gray-200/80',
+                      'dark:border-gray-700/80', 'pointer-events-auto', 'z-40'
+                  );
+                  sidebarEl.style.height = '';
+                  sidebarEl.style.position = '';
+                  sidebarEl.style.top = '';
+                  sidebarEl.style.right = '';
+                  sidebarEl.style.bottom = '';
+                  sidebarEl.style.left = '';
+                  sidebarEl.style.zIndex = '';
+                  sidebarEl.style.background = '';
+                  sidebarEl.style.borderLeft = '';
+                  if (sidebarNextSibling) {
+                      sidebarParent.insertBefore(sidebarEl, sidebarNextSibling);
+                  } else {
+                      sidebarParent.appendChild(sidebarEl);
+                  }
+              }
               setTimeout(resizeCanvas, 50);
+          }
+      }
+
+      function toggleFsSidebar() {
+          isFsSidebarOpen = !isFsSidebarOpen;
+          if (sidebarEl) {
+              sidebarEl.classList.toggle('hidden', !isFsSidebarOpen);
+          }
+          if (fsToggleSidebarBtn) {
+              fsToggleSidebarBtn.setAttribute('aria-pressed', String(isFsSidebarOpen));
           }
       }
 

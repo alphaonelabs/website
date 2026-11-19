@@ -176,6 +176,30 @@ import {
 
   // --- Fullscreen Handling ---
 
+  const leftPanel = document.getElementById('left-panel');
+  const fsSidebarContainer = document.getElementById('fs-sidebar-container');
+  const fsToggleSidebarBtn = document.getElementById('fs-toggle-sidebar-btn');
+  let leftPanelParent = null;
+  let leftPanelNextSibling = null;
+  let isFsSidebarOpen = true;
+
+  if (leftPanel) {
+    leftPanelParent = leftPanel.parentElement;
+    leftPanelNextSibling = leftPanel.nextElementSibling;
+  }
+
+  if (fsToggleSidebarBtn) {
+    fsToggleSidebarBtn.addEventListener('click', () => {
+      isFsSidebarOpen = !isFsSidebarOpen;
+      if (leftPanel) {
+        leftPanel.classList.toggle('hidden', !isFsSidebarOpen);
+      }
+      fsToggleSidebarBtn.setAttribute('aria-pressed', String(isFsSidebarOpen));
+      fsToggleSidebarBtn.classList.toggle('bg-teal-50', isFsSidebarOpen);
+      fsToggleSidebarBtn.classList.toggle('text-teal-600', isFsSidebarOpen);
+    });
+  }
+
   function setupFullscreen() {
     const w = window.innerWidth;
     const h = window.innerHeight - 44;
@@ -187,7 +211,44 @@ import {
     isFullscreenOpen = !isFullscreenOpen;
     toggleFullscreenOverlay(fsOverlay, isFullscreenOpen);
     if (isFullscreenOpen) {
+      if (leftPanel && fsSidebarContainer) {
+        fsSidebarContainer.appendChild(leftPanel);
+        leftPanel.classList.add(
+          'absolute', 'top-0', 'right-0', 'bottom-0', 'w-80',
+          'shadow-2xl', 'pointer-events-auto', 'z-40'
+        );
+        leftPanel.style.height = '100%';
+        leftPanel.style.position = 'absolute';
+        leftPanel.style.top = '0';
+        leftPanel.style.right = '0';
+        leftPanel.style.bottom = '0';
+        leftPanel.style.left = '';
+        leftPanel.style.zIndex = '40';
+        leftPanel.style.background = document.documentElement.classList.contains('dark') ? '#000000' : '#ffffff';
+        leftPanel.style.borderLeft = document.documentElement.classList.contains('dark') ? '1px solid #121212' : '1px solid #e5e7eb';
+      }
       setupFullscreen();
+    } else {
+      if (leftPanel && leftPanelParent) {
+        leftPanel.classList.remove(
+          'absolute', 'top-0', 'right-0', 'bottom-0', 'w-80',
+          'shadow-2xl', 'pointer-events-auto', 'z-40'
+        );
+        leftPanel.style.height = '';
+        leftPanel.style.position = '';
+        leftPanel.style.top = '';
+        leftPanel.style.right = '';
+        leftPanel.style.bottom = '';
+        leftPanel.style.left = '';
+        leftPanel.style.zIndex = '';
+        leftPanel.style.background = '';
+        leftPanel.style.borderLeft = '';
+        if (leftPanelNextSibling) {
+          leftPanelParent.insertBefore(leftPanel, leftPanelNextSibling);
+        } else {
+          leftPanelParent.appendChild(leftPanel);
+        }
+      }
     }
   }
 
