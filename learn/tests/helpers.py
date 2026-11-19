@@ -6,14 +6,14 @@ import base64
 import importlib.util
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 
 # ---------------------------------------------------------------------------
 # Worker module loader
 # ---------------------------------------------------------------------------
 
-_WORKER_PATH = Path(__file__).parent.parent / "src" / "worker.py"
+_WORKER_PATH = Path(__file__).resolve().parent.parent / "src" / "worker.py"
 
 
 def load_worker():
@@ -23,12 +23,12 @@ def load_worker():
     spec.loader.exec_module(mod)
     return mod
 
-
 # ---------------------------------------------------------------------------
 # Mock Request
 # ---------------------------------------------------------------------------
 
 class MockRequest:
+
     """Minimal HTTP request stub."""
 
     def __init__(self, method="GET", url="http://localhost/", headers=None, body=None):
@@ -86,12 +86,13 @@ def make_stmt(*, first=None, all_results=None):
     return stmt
 
 
+
 class MockDB:
     """
     Mock D1 database.
 
     Pass a list of mock statements that will be returned in order for each
-    successive call to ``prepare()``.  If the list is exhausted a default
+    successive call to ``prepare()``. If the list is exhausted a default
     no-op statement is returned.
     """
 
@@ -106,6 +107,14 @@ class MockDB:
             stmt = make_stmt()
         self._idx += 1
         return stmt
+
+    async def batch(self, statements):
+        """Ordered execution stub. It does NOT roll back earlier statements if a later
+        one raises, unlike D1. Do not use it to assert rollback behaviour."""
+        results = []
+        for stmt in statements:
+            results.append(await stmt.run())
+        return results
 
 
 # ---------------------------------------------------------------------------
@@ -202,4 +211,3 @@ async def make_init_db_stmts(worker_mod):
     """Return a list of dummy statements sized to match worker.init_db()."""
     cnt = await get_init_db_statement_count(worker_mod)
     return [make_stmt() for _ in range(cnt)]
-

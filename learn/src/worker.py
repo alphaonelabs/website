@@ -37,6 +37,8 @@ Static HTML pages (public/) are served via Workers Sites (KV binding).
 import base64
 import html as _html
 import datetime
+import html as _html
+import datetime
 import hashlib
 import hmac as _hmac
 import json
@@ -54,6 +56,7 @@ import js
 from pyodide.ffi import to_js
 from js import WebSocketPair, WebSocketRequestResponsePair
 import uuid
+
 
 _SENTRY_INITIALIZED = False
 _SENTRY_DSN: str = ""
@@ -1062,6 +1065,28 @@ _DDL = [
         created_at    TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE
     )""",
+        # Verifiable credentials (Open Badges 3.0)
+    """CREATE TABLE IF NOT EXISTS credentials (
+        id                TEXT PRIMARY KEY,
+        certificate_id    TEXT,
+        user_id           TEXT,
+        activity_id       TEXT NOT NULL,
+        subject_id        TEXT NOT NULL,
+        name_disclosed    INTEGER NOT NULL DEFAULT 0 CHECK (name_disclosed IN (0, 1)),
+        credential_jws    TEXT NOT NULL,
+        kid               TEXT NOT NULL,
+        status            TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+        status_list_index INTEGER,
+        issued_at         TEXT NOT NULL,
+        revoked_at        TEXT,
+        revoked_reason    TEXT,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (certificate_id) REFERENCES certificates(id) ON DELETE SET NULL
+    )""",
+    """CREATE UNIQUE INDEX IF NOT EXISTS uq_credentials_active_user_activity
+        ON credentials (user_id, activity_id)
+        WHERE user_id IS NOT NULL AND status = 'active'""",
     # Session attendance
     """CREATE TABLE IF NOT EXISTS session_attendance (
         id         TEXT PRIMARY KEY,
@@ -2138,8 +2163,9 @@ async def api_reset_password(req, env):
     new_hash = hash_password(new_password, username)
 
     try:
-        await env.DB.prepare(
-            "UPDATE users SET password_hash=?, email_verified=1 WHERE id=?"
+        upd = await env.DB.prepare(
+            "UPDATE users SET password_hash=?, email_verified=1"
+            " WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
         ).bind(new_hash, row.user_id).run()
         await env.DB.prepare(
             "DELETE FROM password_reset_tokens WHERE id=?"
@@ -2148,8 +2174,10 @@ async def api_reset_password(req, env):
         await capture_exception(exc, req, env, "api_reset_password.update")
         return err("Password reset failed — please try again", 500)
 
-    return ok(None, "Password reset successfully. You can now sign in with your new password.")
+    if _rows_changed(upd) == 0:
+        return err("This reset link is invalid or has expired.", 400)
 
+    return ok(None, "Password reset successfully. You can now sign in with your new password.")
 
 _ACTIVITY_LIST_CACHE_SECONDS = 120
 
@@ -3166,21 +3194,154 @@ async def api_express_activity_interest(activity_ref: str, req, env):
         "interest_count": count_row.cnt if count_row else 1,
     }, "Interest recorded")
 
+async def _read_include_name(request) -> bool:
+    """Consent flag from the optional JSON body. Absent or invalid means False."""
+    try:
+        raw = await request.text()
+        body = json.loads(raw) if raw else {}
+    except Exception:
+        return False
+    return isinstance(body, dict) and body.get("include_name") is True
+
+
+def _certificate_payload(cert_uuid: str, credential_id: str = "") -> dict:
+    data = {"uuid": cert_uuid, "url": "/certificate.html?uuid=" + cert_uuid}
+    if credential_id:
+        data["credential_id"] = credential_id
+    return data
+
+def _env_str(env, name: str) -> str:
+    value = getattr(env, name, "")
+    return value.strip() if isinstance(value, str) else ""
+
+def _credential_issuer_url(env) -> str:
+    """Canonical public origin used inside credential ids. Empty means not configured."""
+    url = (getattr(env, "CREDENTIAL_ISSUER_URL", "") or "").strip().rstrip("/")
+    parsed = urlparse(url)
+    if parsed.path or parsed.query or parsed.fragment or not parsed.netloc:
+        return ""
+    if parsed.scheme == "https":
+        return url
+    if parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1"):
+        return url
+    return ""
+
+_JOIN_ENROLL_SQL = (
+    "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role)"
+    " SELECT ?,?,?,? WHERE EXISTS"
+    " (SELECT 1 FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%')"
+)
+
+_CHECKOUT_ENROLL_SQL = (
+    "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status)"
+    " SELECT ?,?,?,?,? WHERE EXISTS"
+    " (SELECT 1 FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%')"
+)
+
+def _rows_changed(result):
+    """D1 changed-row count, or None when the result carries no metadata."""
+    meta = getattr(result, "meta", None)
+    changes = (
+        meta.get("changes")
+        if isinstance(meta, dict)
+        else getattr(meta, "changes", None)
+    )
+    return changes
+
+async def _issue_credential_for_certificate(env, request, enrollment, cert_uuid,
+                                            caller_id, include_name) -> str:
+    """Issue an Open Badges 3.0 credential next to the certificate row.
+
+    Best effort: never raises, so a credential problem cannot break certificate
+    generation. Returns the credential id, or "" when nothing was issued.
+    """
+    try:
+        # Only the learner can trigger issuance, because only the learner can
+        # consent to their name being public. A host-triggered call issues nothing.
+        if caller_id != enrollment.user_id:
+            return ""
+
+        import credentials
+        from open_badges import issue_open_badge
+
+        issuer_url = _credential_issuer_url(env)
+        kid = (getattr(env, "CREDENTIAL_SIGNING_KID", "") or "").strip()
+        key_b64 = (getattr(env, "CREDENTIAL_SIGNING_KEY", "") or "").strip()
+        public_raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
+        if not (issuer_url and kid and key_b64 and isinstance(public_raw, str)):
+            return ""  # credentials not configured on this deployment
+
+        # Never issue a credential nobody can verify.
+        if kid not in {k["kid"] for k in credentials.load_public_jwks(public_raw)}:
+            print(json.dumps({"level": "warn", "where": "issue_credential",
+                              "error": "signing kid is not in CREDENTIAL_PUBLIC_JWKS"}))
+            return ""
+        private_pkcs8 = base64.b64decode(key_b64)
+
+        act = await env.DB.prepare(
+            "SELECT id, title, description FROM activities WHERE id=?"
+        ).bind(enrollment.activity_id).first()
+        if not act:
+            return ""
+        description = await decrypt_aes(act.description or "", env.ENCRYPTION_KEY)
+        if not description or description == "[decryption error]":
+            description = act.title
+        description = re.sub(r"\s+", " ", description).strip()[:500]
+
+        learner_name = None
+        if include_name:
+            u_row = await env.DB.prepare(
+                "SELECT name FROM users WHERE id=?"
+            ).bind(enrollment.user_id).first()
+            if u_row:
+                name = await decrypt_aes(u_row.name or "", env.ENCRYPTION_KEY)
+                if name and name != "[decryption error]":
+                    learner_name = name[:160]
+
+        async def _sign(payload, signing_kid):
+            return await credentials.sign_jws(payload, private_pkcs8, signing_kid, typ="vc+jwt")
+
+        return await issue_open_badge(
+            db=env.DB,
+            sign_fn=_sign,
+            kid=kid,
+            base_url=issuer_url,
+            issuer_name="Alpha One Labs",
+            user_id=enrollment.user_id,
+            certificate_id=cert_uuid,
+            activity_id=enrollment.activity_id,
+            achievement_name=act.title,
+            achievement_description=description,
+            criteria_narrative="Completed all required parts of the activity.",
+            learner_name=learner_name,
+            include_name=learner_name is not None,
+        ) or ""
+    except Exception as exc:
+        await capture_exception(exc, request, env, "api_generate_certificate.issue_credential")
+        return ""
 
 async def api_generate_certificate(request, env, target_id):
-    user = verify_token(request.headers.get("Authorization"), env.JWT_SECRET)
+
+    user = verify_token(
+        request.headers.get("Authorization"),
+        env.JWT_SECRET,
+    )
     if not user:
         return err("Authentication required", 401)
 
     enrollment = await env.DB.prepare(
-        "SELECT e.*, a.host_id FROM enrollments e "
+        "SELECT e.*, a.host_id, a.title AS activity_title, "
+        "a.description AS activity_description "
+        "FROM enrollments e "
         "JOIN activities a ON e.activity_id = a.id "
         "WHERE e.id = ?"
     ).bind(target_id).first()
 
     if not enrollment:
         enrollment = await env.DB.prepare(
-            "SELECT e.*, a.host_id FROM enrollments e "
+            "SELECT e.*, a.host_id, a.title AS activity_title, "
+            "a.description AS activity_description "
+            "FROM enrollments e "
             "JOIN activities a ON e.activity_id = a.id "
             "WHERE (a.id = ? OR a.slug = ?) AND e.user_id = ?"
         ).bind(target_id, target_id, user["id"]).first()
@@ -3188,36 +3349,47 @@ async def api_generate_certificate(request, env, target_id):
     if not enrollment:
         return err("Enrollment not found", 404)
 
-    if enrollment.user_id != user["id"] and enrollment.host_id != user["id"]:
+    is_learner = str(enrollment.user_id) == str(user["id"])
+    is_host = str(enrollment.host_id) == str(user["id"])
+
+    if not is_learner and not is_host:
         return err("Forbidden", 403)
 
     enrollment_id = enrollment.id
+    include_name = is_learner and await _read_include_name(request)
 
     if enrollment.status == "cancelled":
         return err("Enrollment is cancelled", 400)
 
     if enrollment.status != "completed":
         comp = await env.DB.prepare(
-            "SELECT id FROM activity_completions WHERE activity_id=? AND user_id=? LIMIT 1"
-        ).bind(enrollment.activity_id, enrollment.user_id).first()
+            "SELECT id FROM activity_completions "
+            "WHERE activity_id = ? AND user_id = ? LIMIT 1"
+        ).bind(
+            enrollment.activity_id,
+            enrollment.user_id,
+        ).first()
+
         if comp:
             await env.DB.prepare(
-                "UPDATE enrollments SET status='completed' WHERE id=?"
+                "UPDATE enrollments SET status = 'completed' WHERE id = ?"
             ).bind(enrollment_id).run()
         else:
             return err(
-                "Enrollment is not completed yet. Finish all sessions to earn your certificate.",
+                "Enrollment is not completed yet. "
+                "Finish all sessions to earn your certificate.",
                 400,
             )
-
+    # Resolve existing certificate or create a new one.
     existing = await env.DB.prepare(
         "SELECT id FROM certificates WHERE enrollment_id = ?"
     ).bind(enrollment_id).first()
     if existing:
-        return ok({
-            "uuid": existing.id,
-            "url": "/certificate.html?uuid=" + existing.id,
-        })
+        # Also covers certificates issued before credentials existed.
+        credential_id = await _issue_credential_for_certificate(
+            env, request, enrollment, existing.id, user["id"], include_name
+        )
+        return ok(_certificate_payload(existing.id, credential_id))
 
     cert_uuid = new_id()
     try:
@@ -3230,12 +3402,16 @@ async def api_generate_certificate(request, env, target_id):
             "SELECT id FROM certificates WHERE enrollment_id = ?"
         ).bind(enrollment_id).first()
         if existing_after:
-            return ok({
-                "uuid": existing_after.id,
-                "url": "/certificate.html?uuid=" + existing_after.id,
-            })
+            credential_id = await _issue_credential_for_certificate(
+                env, request, enrollment, existing_after.id, user["id"], include_name
+            )
+            return ok(_certificate_payload(existing_after.id, credential_id))
         await capture_exception(exc, request, env, "api_generate_certificate.insert")
         return err("Failed to generate certificate", 500)
+
+    credential_id = await _issue_credential_for_certificate(
+        env, request, enrollment, cert_uuid, user["id"], include_name
+    )
 
     await _create_notification(
         env,
@@ -3247,11 +3423,7 @@ async def api_generate_certificate(request, env, target_id):
         category="system",
     )
 
-    return ok({
-        "uuid": cert_uuid,
-        "url": "/certificate.html?uuid=" + cert_uuid,
-    })
-
+    return ok(_certificate_payload(cert_uuid, credential_id))
 
 async def api_get_certificate(request, env, cert_uuid):
     row = await env.DB.prepare(
@@ -3275,6 +3447,143 @@ async def api_get_certificate(request, env, cert_uuid):
         "issued_at": row.issued_at,
         "enrollment_id": row.enrollment_id,
     })
+
+
+async def api_jwks(_req, env):
+    """GET /.well-known/jwks.json - public keys for verifying credential signatures."""
+    import credentials
+    raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
+    try:
+        if raw is None:
+            keys = []                                    # not configured
+        elif isinstance(raw, str):
+            keys = credentials.load_public_jwks(raw)
+        else:
+            raise ValueError("CREDENTIAL_PUBLIC_JWKS must be a string")
+    except Exception as exc:
+        await capture_exception(exc, _req, env, "api_jwks.invalid_config")
+        return err("Credential keys are misconfigured", 500)
+    return Response(
+        json.dumps({"keys": keys}),
+        headers={"Content-Type": "application/json",
+                 "Cache-Control": "public, max-age=300", **_CORS},
+    )
+
+_CREDENTIAL_PATH_RE = re.compile(r"/credentials/([A-Za-z0-9_-]{22})(\.json|\.jwt)?")
+_CREDENTIAL_NO_STORE = {"Cache-Control": "no-store", "Vary": "Accept","X-Robots-Tag": "noindex",}
+def _credential_error(msg: str, status: int):
+    return Response(
+        json.dumps({"error": msg}),
+        status=status,
+        headers={"Content-Type": "application/json", **_CREDENTIAL_NO_STORE, **_CORS},
+    )
+
+
+def _credential_format(request, suffix) -> str:
+    if suffix == ".json":
+        return "json"
+    if suffix == ".jwt":
+        return "jwt"
+    accept = (request.headers.get("Accept") or "").lower()
+    if "application/vc+jwt" in accept:
+        return "jwt"
+    if "json" in accept:
+        return "json"
+    return "html"
+
+
+def _credential_page_html(*, valid, reason, revoked, name, achievement, description,
+                          issuer, issued_at, kid, token) -> str:
+    if revoked:
+        banner_cls, banner = "bg-red-100 text-red-800", "This credential has been revoked."
+    elif valid:
+        banner_cls, banner = "bg-green-100 text-green-800", "Signature valid. Issued by Alpha One Labs."
+    else:
+        banner_cls, banner = "bg-red-100 text-red-800", "This credential could not be verified."
+    detail = "" if valid else f'<p class="mt-2 text-sm">{_html_escape(reason)}</p>'
+    who = _html_escape(name) if name else "Name not disclosed by the holder"
+    t = _html_escape(token)
+    return (
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        '<meta name="robots" content="noindex">'
+        '<title>Verify credential - Alpha One Labs</title>'
+        '<link rel="icon" type="image/svg+xml" href="/images/logo.svg">'
+        '<script src="https://cdn.tailwindcss.com"></script>'
+        + _SSR_BRAND_HEAD + '</head>'
+        '<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-black dark:text-gray-100">'
+        + _ssr_nav() +
+        '<main class="flex-1 max-w-3xl mx-auto w-full px-4 py-10">'
+        f'<div class="rounded-lg p-4 font-bold {banner_cls}" role="status">{_html_escape(banner)}{detail}</div>'
+        '<article class="mt-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-6">'
+        f'<h1 class="text-3xl font-black">{_html_escape(achievement)}</h1>'
+        f'<p class="mt-3 text-gray-700 dark:text-gray-300">{_html_escape(description)}</p>'
+        '<dl class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">'
+        f'<div><dt class="font-bold">Awarded to</dt><dd>{who}</dd></div>'
+        f'<div><dt class="font-bold">Issuer</dt><dd>{_html_escape(issuer)}</dd></div>'
+        f'<div><dt class="font-bold">Issued</dt><dd>{_html_escape(issued_at)}</dd></div>'
+        f'<div><dt class="font-bold">Signing key</dt><dd>{_html_escape(kid)}</dd></div>'
+        '</dl>'
+        '<p class="mt-6 text-sm">Machine-readable: '
+        f'<a class="underline" href="/credentials/{t}.json">JSON-LD</a> · '
+        f'<a class="underline" href="/credentials/{t}.jwt">Signed JWT</a></p>'
+        '</article></main>' + _ssr_footer() + '</body></html>'
+    )
+
+
+async def api_get_credential(request, env, token: str, suffix=None):
+    """GET /credentials/<token>[.json|.jwt] - public credential and verification."""
+    import credential_verify
+
+    issuer_url = _credential_issuer_url(env)
+    jwks_raw = getattr(env, "CREDENTIAL_PUBLIC_JWKS", None)
+    if not issuer_url or not isinstance(jwks_raw, str):
+        return _credential_error("Credential not found", 404)
+
+    try:
+        row = await env.DB.prepare(
+            "SELECT id, credential_jws, kid, status, issued_at FROM credentials WHERE id=?"
+        ).bind(token).first()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return _credential_error("Credential not found", 404)
+        await capture_exception(exc, request, env, "api_get_credential.lookup")
+        return _credential_error("Could not load credential", 500)
+    if not row:
+        return _credential_error("Credential not found", 404)
+
+    check = await credential_verify.verify_credential_jws(
+        row.credential_jws, f"{issuer_url}/credentials/{token}", row.kid, jwks_raw
+    )
+    revoked = row.status == "revoked"
+    fmt = _credential_format(request, suffix)
+
+    if fmt != "html":
+        if revoked:
+            return _credential_error("Credential has been revoked", 410)
+        if not check["valid"]:
+            return _credential_error("Credential could not be verified", 500)
+        if fmt == "jwt":
+            return Response(row.credential_jws, headers={
+                "Content-Type": "application/vc+jwt", **_CREDENTIAL_NO_STORE, **_CORS})
+        return Response(json.dumps(check["payload"]), headers={
+            "Content-Type": "application/ld+json", **_CREDENTIAL_NO_STORE, **_CORS})
+
+    payload = check["payload"] or {}
+    subject = payload.get("credentialSubject") or {}
+    achievement = subject.get("achievement") or {}
+    identifiers = subject.get("identifier") or []
+    name = identifiers[0].get("identityHash", "") if identifiers and isinstance(identifiers[0], dict) else ""
+    issuer = (payload.get("issuer") or {}).get("name", "") if check["valid"] else ""
+    page = _credential_page_html(
+        valid=check["valid"], reason=check["reason"], revoked=revoked,
+        name=name, achievement=achievement.get("name", "Credential"),
+        description=achievement.get("description", ""), issuer=issuer,
+        issued_at=row.issued_at, kid=row.kid, token=token,
+    )
+    return Response(page, headers={
+        "Content-Type": "text/html; charset=utf-8",
+        **_CREDENTIAL_NO_STORE, **_SECURITY_HEADERS, **_CORS})
 
 
 async def api_join(req, env):
@@ -3318,9 +3627,9 @@ async def api_join(req, env):
     # 2️⃣ Insert enrollment
     enr_id = new_id()
     try:
-        insert_res = await env.DB.prepare(
-            "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role) VALUES (?,?,?,?)"
-        ).bind(enr_id, act_id, user["id"], "participant").run()
+        insert_res = await env.DB.prepare(_JOIN_ENROLL_SQL).bind(
+            enr_id, act_id, user["id"], "participant", user["id"]
+        ).run()
     except Exception as e:
         await capture_exception(e, req, env, "api_join.insert_enrollment")
         return err("Failed to join activity — please try again", 500)
@@ -3337,6 +3646,13 @@ async def api_join(req, env):
         pass
 
     if changes == 0:
+        acct = await env.DB.prepare(
+            "SELECT 1 AS ok FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
+        ).bind(user["id"]).first()
+
+        if not acct:
+            return err("Account is not active", 401)
+
         return ok(None, "Already joined this activity")
 
     # 4️⃣ Participant name
@@ -3645,10 +3961,11 @@ async def api_confirm_password_change(req, env):
 
     if not row:
         return err("This confirmation link is invalid or has expired.", 400)
-
+    
     try:
-        await env.DB.prepare(
-            "UPDATE users SET password_hash=? WHERE id=?"
+        upd = await env.DB.prepare(
+            "UPDATE users SET password_hash=?"
+            " WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
         ).bind(row.new_password_hash, row.user_id).run()
         await env.DB.prepare(
             "DELETE FROM password_change_requests WHERE id=?"
@@ -3657,8 +3974,10 @@ async def api_confirm_password_change(req, env):
         await capture_exception(exc, req, env, "api_confirm_password_change.update")
         return err("Could not confirm the password change — please try again", 500)
 
-    return ok(None, "Your password has been changed. You can now sign in with your new password.")
+    if _rows_changed(upd) == 0:
+        return err("This confirmation link is invalid or has expired.", 400)
 
+    return ok(None, "Your password has been changed. You can now sign in with your new password.")
 
 async def api_delete_account(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -3670,22 +3989,57 @@ async def api_delete_account(req, env):
     confirmation = _legacy_text(body.get("confirmation")).strip().upper()
     if confirmation != "DELETE":
         return err("Type DELETE to confirm account deletion", 400)
-    enc = env.ENCRYPTION_KEY
     uid = user["id"]
+    enc = env.ENCRYPTION_KEY
     deleted_label = f"deleted-{uid[:8]}"
     deleted_email = f"deleted-{uid}@alphaonelabs.invalid"
     try:
+        # 1. Reads and values first: a failure here changes nothing.
         cart_rows = await env.DB.prepare("SELECT id FROM activity_carts WHERE user_id=?").bind(uid).all()
-        for cart in cart_rows.results or []:
-            await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
+        anonymize = env.DB.prepare(
+            "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,"
+            "password_hash=?,role=?,email_verified=0 WHERE id=?"
+        ).bind(
+            blind_index(deleted_label, enc),
+            blind_index(deleted_email, enc),
+            await encrypt_aes("Deleted user", enc),
+            await encrypt_aes(deleted_label, enc),
+            await encrypt_aes(deleted_email, enc),
+            "deleted:" + os.urandom(24).hex(),
+            await encrypt_aes("deleted", enc),
+            uid,
+        )
+        unlink = env.DB.prepare(
+            "UPDATE credentials SET user_id=NULL, certificate_id=NULL WHERE user_id=?"
+        ).bind(uid)
+        drop_enrollments = env.DB.prepare("DELETE FROM enrollments WHERE user_id=?").bind(uid)
 
-        cleanup_sql = [
+        # 2. One transaction. Unlink and enrollment removal commit together with
+        #    the anonymization; an issuance that races in later fails the
+        #    enrollment guard in _insert_credential.
+        try:
+            await env.DB.batch([unlink, drop_enrollments, anonymize])
+        except Exception as batch_exc:
+            # Only a deployment that never ran /api/init lacks the credentials table.
+            if not (_is_no_such_table_error(batch_exc) and "credentials" in str(batch_exc)):
+                raise
+            await env.DB.batch([drop_enrollments, anonymize])
+
+        # 3. Best-effort cleanup after the commit; failures are logged, never fatal.
+        async def best_effort(sql: str, *args) -> None:
+            try:
+                await env.DB.prepare(sql).bind(*args).run()
+            except Exception as cleanup_exc:
+                await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
+
+        for cart in cart_rows.results or []:
+            await best_effort("DELETE FROM activity_cart_items WHERE cart_id=?", cart.id)
+        for sql in (
             "DELETE FROM notification_preferences WHERE user_id=?",
             "DELETE FROM notifications WHERE user_id=?",
             "DELETE FROM email_verification_tokens WHERE user_id=?",
             "DELETE FROM password_reset_tokens WHERE user_id=?",
             "DELETE FROM password_change_requests WHERE user_id=?",
-            "DELETE FROM enrollments WHERE user_id=?",
             "DELETE FROM session_attendance WHERE user_id=?",
             "DELETE FROM activity_completions WHERE user_id=?",
             "DELETE FROM activity_interest WHERE user_id=?",
@@ -3694,39 +4048,14 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
-        ]
-        for sql in cleanup_sql:
-            try:
-                await env.DB.prepare(sql).bind(uid).run()
-            except Exception as cleanup_exc:
-                await capture_exception(cleanup_exc, req, env, "api_delete_account.cleanup")
-                continue
-
-        try:
-            await env.DB.prepare(
-                "UPDATE activities SET status='archived' WHERE host_id=? AND status <> 'archived'"
-            ).bind(uid).run()
-        except Exception:
-            pass
-
-        await env.DB.prepare(
-            "UPDATE users SET username_hash=?,email_hash=?,name=?,username=?,email=?,password_hash=?,role=?,email_verified=0 WHERE id=?"
-        ).bind(
-            blind_index(deleted_label, enc),
-            blind_index(deleted_email, enc),
-            await encrypt_aes("Deleted user", enc),
-            await encrypt_aes(deleted_label, enc),
-            await encrypt_aes(deleted_email, enc),
-            "deleted:" + os.urandom(24).hex(),
-            "deleted",
-            uid,
-        ).run()
+            "UPDATE activities SET status='archived' WHERE host_id=? AND status <> 'archived'",
+        ):
+            await best_effort(sql, uid)
     except Exception as exc:
         await capture_exception(exc, req, env, "api_delete_account")
         return err("Could not delete account", 500)
 
     return ok(None, "Account deleted")
-
 
 async def api_feedback(req, env):
     if req.method.upper() != "POST":
@@ -6339,9 +6668,14 @@ async def api_create_checkout(req, env):
         if owner["kind"] == "user":
             for item in items:
                 try:
-                    insert_res = await env.DB.prepare(
-                        "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status) VALUES (?,?,?,?,?)"
-                    ).bind(new_id(), item.get("activity_id", ""), owner["user_id"], "participant", "active").run()
+                    insert_res = await env.DB.prepare(_CHECKOUT_ENROLL_SQL).bind(
+                       new_id(),
+                       item.get("activity_id", ""),
+                       owner["user_id"],
+                       "participant",
+                       "active",
+                        owner["user_id"],
+                    ).run()
                     meta = getattr(insert_res, "meta", None)
                     changes = meta.get("changes") if isinstance(meta, dict) else getattr(meta, "changes", None)
                     if changes != 0:
@@ -6499,22 +6833,38 @@ async def api_complete_checkout(req, env):
                 if not is_free and row.activity_id not in paid_activity_ids:
                     continue
                 try:
-                    insert_res = await env.DB.prepare(
-                        "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status) VALUES (?,?,?,?,?)"
-                    ).bind(new_id(), row.activity_id, owner["user_id"], "participant", "active").run()
+                    insert_res = await env.DB.prepare(_CHECKOUT_ENROLL_SQL).bind(
+                        new_id(),
+                        row.activity_id,
+                        owner["user_id"],
+                        "participant",
+                        "active",
+                        owner["user_id"],
+                    ).run()
                     meta = getattr(insert_res, "meta", None)
                     changes = meta.get("changes") if isinstance(meta, dict) else getattr(meta, "changes", None)
                     if changes != 0:
                         enrolled += 1
                 except Exception as exc:
                     await capture_exception(exc, req, env, "api_complete_checkout.enroll")
+            account = await env.DB.prepare(
+                "SELECT id FROM users WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
+            ).bind(owner["user_id"]).first()
             await env.DB.prepare(
                 "UPDATE activity_carts SET status='checked_out', updated_at=datetime('now') WHERE id=? AND user_id=? AND owner_kind='user'"
             ).bind(cart_id, owner["user_id"]).run()
             await env.DB.prepare(
                 "UPDATE activity_checkout_sessions SET status='paid', completed_at=datetime('now'), amount_total=? WHERE stripe_session_id=? AND user_id=? AND owner_kind='user'"
             ).bind(int(session.get("amount_total") or 0), session_id, owner["user_id"]).run()
-            return ok({"enrolled": enrolled, "guest": False}, "Payment confirmed and activities unlocked")
+            if not account:
+                return err(
+                    "Payment was confirmed, but the account is no longer active. Please contact support.",
+                    401,
+                )
+            return ok(
+                {"enrolled": enrolled, "guest": False},
+                "Payment confirmed and activities unlocked",
+            )
 
         customer_details = session.get("customer_details") or {}
         guest_email = customer_details.get("email") or ""
@@ -6633,7 +6983,7 @@ async def api_admin_table_counts(req, env):
 # Page views
 # ---------------------------------------------------------------------------
 
-_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/")
+_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/", "/credentials/")
 _VIEW_BOT_RE = re.compile(
     r"bot|crawl|spider|slurp|preview|monitor|uptime|curl|wget|python-|httpx|axios|headless|lighthouse|facebookexternalhit",
     re.IGNORECASE,
@@ -9027,6 +9377,13 @@ async def _dispatch(request, env):
         except Exception as e:
             await capture_exception(e, request, env, "presence_do_dispatch")
             return err("Failed to connect to presence channel", 500)
+
+    if path == "/.well-known/jwks.json" and method == "GET":
+        return await api_jwks(request, env)
+
+    m_cred = _CREDENTIAL_PATH_RE.fullmatch(path)
+    if m_cred and method == "GET":
+        return await api_get_credential(request, env, m_cred.group(1), m_cred.group(2))
 
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":

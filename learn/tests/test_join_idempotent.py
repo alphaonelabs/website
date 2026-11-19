@@ -28,8 +28,12 @@ class TestJoinIdempotent:
         stmt_insert.bind.return_value.run = AsyncMock(
             return_value=MagicMock(meta=MagicMock(changes=0))
         )
+        stmt_account = make_stmt(first=MockRow(ok=1))
         stmt_unused = make_stmt()
-        env = make_env(db=MockDB([stmt_act, stmt_insert, stmt_unused]), jwt_secret=JWT)
+        env = make_env(
+            db=MockDB([stmt_act, stmt_insert, stmt_account, stmt_unused]),
+            jwt_secret=JWT,
+        )
         req = json_request(
             "/api/join",
             {"activity_id": "act-1", "role": "participant"},
@@ -38,5 +42,33 @@ class TestJoinIdempotent:
         resp = await worker.api_join(req, env)
         assert resp.status == 200
         assert _parse(resp)["message"] == "Already joined this activity"
-        assert env.DB._idx == 2
+        assert env.DB._idx == 3
         assert not stmt_unused.bind.called
+
+    async def test_join_inactive_account_returns_401(self):
+        act = MockRow(id="act-1", title="Activity", host_id="host-1")
+        stmt_act = make_stmt(first=act)
+
+        stmt_insert = make_stmt()
+        stmt_insert.bind.return_value.run = AsyncMock(
+            return_value=MagicMock(meta=MagicMock(changes=0))
+        )
+
+        # Simulate an account that is no longer active.
+        stmt_account = make_stmt(first=None)
+
+        env = make_env(
+            db=MockDB([stmt_act, stmt_insert, stmt_account]),
+            jwt_secret=JWT,
+        )
+
+        req = json_request(
+            "/api/join",
+            {"activity_id": "act-1", "role": "participant"},
+            headers=_auth_header(),
+        )
+
+        resp = await worker.api_join(req, env)
+
+        assert resp.status == 401
+        assert env.DB._idx == 3
