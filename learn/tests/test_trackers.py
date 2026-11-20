@@ -231,10 +231,34 @@ class TestOwnerFilterInSql:
         assert "user_id" in db.sql[0]
 
 
+class BindRecordingDB(MockDB):
+    """MockDB that remembers every (sql, bound values) pair the handler runs."""
+
+    def __init__(self):
+        super().__init__()
+        self.calls = []
+
+    def prepare(self, sql):
+        stmt = super().prepare(sql)
+        normalized = " ".join(sql.split())
+        original_bind = stmt.bind
+
+        def bind(*args):
+            self.calls.append((normalized, args))
+            return original_bind(*args)
+
+        stmt.bind = bind
+        return stmt
+
+
 class TestAccountDeletion:
-    def test_account_cleanup_removes_trackers(self):
-        source = (LEARN_DIR / "src" / "worker.py").read_text(encoding="utf-8")
-        assert "DELETE FROM progress_trackers WHERE user_id=?" in source
+    async def test_account_deletion_removes_the_users_trackers(self):
+        # Run the real handler and check what it asked the database to do.
+        db = BindRecordingDB()
+        req = json_request("/api/profile", {"confirmation": "DELETE"}, headers=_auth(_token()), method="DELETE")
+        r = await worker.api_delete_account(req, make_env(db=db))
+        assert r.status == 200
+        assert ("DELETE FROM progress_trackers WHERE user_id=?", ("user-1",)) in db.calls
 
 
 def _tracker_req(body, token="default"):
