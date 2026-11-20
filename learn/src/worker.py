@@ -5305,6 +5305,7 @@ STATIC_CLEAN_ROUTES = {
     "/surveys": "/surveys.html",
     "/challenges": "/challenges.html",
     "/progress": "/progress.html",
+    "/trackers": "/trackers.html",
     "/grade-links": "/grade-links.html",
     "/calendar": "/calendar.html",
     "/memes": "/memes.html",
