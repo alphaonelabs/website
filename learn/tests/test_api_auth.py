@@ -131,13 +131,14 @@ class TestApiRegister:
     async def test_registration_sends_verification_message(self):
         # Registration no longer issues a token; user must verify email first.
         env = make_env(db=MockDB([make_stmt()]))
-        r = await worker.api_register(
-            self._req({"username": "alice", "email": "a@b.com", "password": "Str0ng!Pass#9"}), env
-        )
+        req = self._req({"username": "alice", "email": "a@b.com", "password": "Str0ng!Pass#9"})
+        r = await worker.api_register(req, env)
         assert r.status == 200
         data = _parse(r)
         assert data["success"] is True
         assert "email" in data["message"].lower()
+        worker.send_verification_email.assert_awaited_once()
+        assert worker.send_verification_email.await_args.args[:2] == ("a@b.com", "alice")
 
     async def test_invalid_json_returns_400(self):
         req = MockRequest(method="POST", url="http://localhost/api/register",
