@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Progress Tracker - Alpha One Labs</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 12px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: transparent; color: #111827; }
+    @media (prefers-color-scheme: dark) { body { color: #f3f4f6; } .track { background: #374151; } .meta { color: #9ca3af; } }
+    .card { max-width: 420px; }
+    .title { margin: 0 0 8px; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+    .track { height: 12px; border-radius: 6px; background: #e5e7eb; overflow: hidden; }
+    .fill { height: 100%; width: 0; background: #2563eb; }
+    .meta { margin: 6px 0 0; font-size: 13px; color: #6b7280; display: flex; justify-content: space-between; gap: 8px; }
+    .meta a { color: inherit; }
+    .error { font-size: 14px; color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card"><p class="meta">Loading&hellip;</p></div>
+<script>
+(function () {
+  var card = document.getElementById('card');
+  var code = new URLSearchParams(location.search).get('code') || '';
+  // Same five colors the API accepts.
+  var COLORS = { 'blue-600': '#2563eb', 'green-600': '#16a34a', 'yellow-600': '#ca8a04', 'red-600': '#dc2626', 'gray-600': '#4b5563' };
+
+  function show(message) {
+    card.textContent = '';
+    var p = document.createElement('p');
+    p.className = 'error';
+    p.textContent = message;
+    card.appendChild(p);
+  }
+
+  if (!code) { show('This tracker link is incomplete.'); return; }
+
+  fetch('/api/trackers/embed/' + encodeURIComponent(code))
+    .then(function (res) {
+      return res.json().then(function (body) { return { ok: res.ok, body: body }; });
+    })
+    .then(function (result) {
+      if (!result.ok) { show('This tracker is not available.'); return; }
+      var t = result.body.data;
+      var percent = Math.max(0, Math.min(100, Math.round(Number(t.percentage) || 0)));
+
+      card.textContent = '';
+      var title = document.createElement('h1');
+      title.className = 'title';
+      title.textContent = t.title;
+
+      var track = document.createElement('div');
+      track.className = 'track';
+      track.setAttribute('role', 'progressbar');
+      track.setAttribute('aria-valuemin', '0');
+      track.setAttribute('aria-valuemax', '100');
+      track.setAttribute('aria-valuenow', String(percent));
+      track.setAttribute('aria-label', t.title + ' progress');
+      var fill = document.createElement('div');
+      fill.className = 'fill';
+      fill.style.width = percent + '%';
+      fill.style.background = COLORS[t.color] || COLORS['blue-600'];
+      track.appendChild(fill);
+
+      var meta = document.createElement('p');
+      meta.className = 'meta';
+      var count = document.createElement('span');
+      count.textContent = t.current_value + ' of ' + t.target_value + ' • ' + percent + '%';
+      var link = document.createElement('a');
+      link.href = '/';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'Alpha One Labs';
+      meta.appendChild(count);
+      meta.appendChild(link);
+
+      card.appendChild(title);
+      card.appendChild(track);
+      card.appendChild(meta);
+    })
+    .catch(function () { show('This tracker could not be loaded.'); });
+})();
+</script>
+</body>
+</html>

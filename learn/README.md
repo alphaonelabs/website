@@ -179,3 +179,4 @@ http://localhost:3000
 | GET | /api/trackers/:id | Get one of your trackers |
 | PATCH | /api/trackers/:id | Update one of your trackers (any of title, description, current_value, target_value, color, is_public) |
 | DELETE | /api/trackers/:id | Delete one of your trackers |
+| GET | /api/trackers/embed/:code | Public, read-only view of a tracker its owner made public (no login) |

@@ -5095,6 +5095,43 @@ async def api_delete_tracker(req, env, tracker_id: str):
     return ok(None, "Tracker deleted")
 
 
+_EMBED_CODE_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+async def api_get_tracker_embed(req, env, embed_code: str):
+    """GET /api/trackers/embed/:code - public, read-only view of a public tracker.
+
+    No login. Only trackers their owner made public can be read, and only the
+    fields needed to draw the progress bar are returned (never the owner or ids).
+    """
+    if not _EMBED_CODE_RE.fullmatch(embed_code or ""):
+        return err("Tracker not found", 404)
+
+    async def run():
+        return await env.DB.prepare(
+            "SELECT title, description, current_value, target_value, color "
+            "FROM progress_trackers WHERE embed_code = ? AND is_public = 1"
+        ).bind(embed_code).first()
+
+    row = await _tracker_db(env, run)
+    if not row:
+        # Same answer for "missing" and "private": do not reveal that a tracker exists.
+        return err("Tracker not found", 404)
+    current = int(row.current_value or 0)
+    target = max(1, int(row.target_value or 1))
+    return ok(
+        {
+            "title": row.title,
+            "description": row.description or "",
+            "current_value": current,
+            "target_value": target,
+            "percentage": min(100, current * 100 // target),
+            "color": row.color,
+        },
+        "Tracker retrieved",
+    )
+
+
 LEGACY_FEATURE_GROUPS = {
     "community": {
         "title": "Community",
@@ -5306,6 +5343,7 @@ STATIC_CLEAN_ROUTES = {
     "/challenges": "/challenges.html",
     "/progress": "/progress.html",
     "/trackers": "/trackers.html",
+    "/trackers/embed": "/tracker-embed.html",
     "/grade-links": "/grade-links.html",
     "/calendar": "/calendar.html",
     "/memes": "/memes.html",
@@ -7745,12 +7783,16 @@ async def serve_static(path: str, env, req=None):
                     )
         except Exception as exc:
             await capture_exception(exc, req, env, "serve_static.template")
+    security_headers = dict(_SECURITY_HEADERS)
+    if key == "tracker-embed.html":
+        # This page is meant to be shown inside other sites; every other page stays unframeable.
+        security_headers.pop("X-Frame-Options", None)
     return Response(
         content,
         headers={
             "Content-Type": mime,
             "Cache-Control": _static_cache_control(ext),
-            **_SECURITY_HEADERS,
+            **security_headers,
             **_CORS,
         },
     )
@@ -9442,6 +9484,9 @@ async def _dispatch(request, env):
             return await api_create_tracker(request, env)
         if path == "/api/trackers" and method == "GET":
             return await api_list_trackers(request, env)
+        m_tracker_embed = re.fullmatch(r"/api/trackers/embed/([A-Za-z0-9-]+)", path)
+        if m_tracker_embed and method == "GET":
+            return await api_get_tracker_embed(request, env, m_tracker_embed.group(1))
         m_tracker_item = re.fullmatch(r"/api/trackers/([A-Za-z0-9_-]+)", path)
         if m_tracker_item and method == "GET":
             return await api_get_tracker(request, env, m_tracker_item.group(1))
