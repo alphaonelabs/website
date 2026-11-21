@@ -1,7 +1,7 @@
 """
 Tests for api_register() and api_login() handlers.
 """
-
+import re
 import base64
 import json
 import pytest
@@ -42,6 +42,17 @@ def _enc(val: str) -> str:
 # ---------------------------------------------------------------------------
 
 class TestApiRegister:
+    @pytest.fixture(autouse=True)
+    def sent_emails(self, monkeypatch):
+        sent = []
+
+        async def _send_email(to_email, subject, html, env):
+            sent.append({"to": to_email, "subject": subject, "html": html})
+            return True
+
+        monkeypatch.setattr(worker, "_send_email", _send_email)
+        return sent
+
     def _req(self, payload):
         return json_request("/api/register", payload, headers={"CF-Connecting-IP": "127.0.0.1"})
 
@@ -78,7 +89,7 @@ class TestApiRegister:
         # DB: prepare().bind().run() succeeds (default mock)
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "alice@example.com", "password": "password123"}),
+            self._req({"username": "alice", "email": "alice@example.com", "password": "Str0ng-Pass!"}),
             env,
         )
         assert r.status == 200
@@ -91,7 +102,7 @@ class TestApiRegister:
     async def test_name_defaults_to_username(self):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "bob", "email": "bob@example.com", "password": "password123"}), env
+            self._req({"username": "bob", "email": "bob@example.com", "password": "Str0ng-Pass!"}), env
         )
         data = _parse(r)
         assert data["success"] is True  # name is stored in DB, not returned in response
@@ -99,43 +110,52 @@ class TestApiRegister:
     async def test_custom_name_preserved(self):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "bob", "email": "b@b.com", "password": "password123", "name": "Robert"}),
+            self._req({"username": "bob", "email": "b@b.com", "password": "Str0ng-Pass!", "name": "Robert"}),
             env,
         )
         data = _parse(r)
         assert data["success"] is True  # name is stored in DB, not returned in response
 
-    async def test_duplicate_user_returns_409(self):
+    async def test_duplicate_user_returns_409(self,sent_emails):
         # Simulate UNIQUE constraint violation from D1
         stmt = make_stmt()
         stmt.bind.return_value.run.side_effect = Exception("UNIQUE constraint failed")
         env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "alice@example.com", "password": "password123"}),
+            self._req({"username": "alice", "email": "alice@example.com", "password": "Str0ng-Pass!"}),
             env,
         )
         assert r.status == 409
+        assert sent_emails == []
         assert "already registered" in _parse(r).get("error", "")
 
-    async def test_db_error_returns_500(self):
+    async def test_db_error_returns_500(self, sent_emails):
         stmt = make_stmt()
         stmt.bind.return_value.run.side_effect = Exception("some DB error")
         env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "a@b.com", "password": "password123"}), env
+            self._req({"username": "alice", "email": "a@b.com", "password": "Str0ng-Pass!"}), env
         )
         assert r.status == 500
+        assert sent_emails == []
 
-    async def test_registration_sends_verification_message(self):
-        # Registration no longer issues a token; user must verify email first.
+    async def test_registration_sends_verification_message(self, sent_emails):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
-            self._req({"username": "alice", "email": "a@b.com", "password": "password123"}), env
+            self._req({"username": "alice", "email": "a@b.com", "password": "Str0ng-Pass!"}), env
         )
         assert r.status == 200
         data = _parse(r)
         assert data["success"] is True
         assert "email" in data["message"].lower()
+
+        assert len(sent_emails) == 1
+        mail = sent_emails[0]
+        assert mail["to"] == "a@b.com"
+        assert "Confirm" in mail["subject"]
+        link = re.search(r"http://localhost/verify-email\?token=([A-Za-z0-9_-]+)", mail["html"])
+        assert link is not None
+        assert len(link.group(1)) >= 32  # 256-bit urlsafe token
 
     async def test_invalid_json_returns_400(self):
         req = MockRequest(method="POST", url="http://localhost/api/register",
@@ -148,11 +168,11 @@ class TestApiRegister:
         env = self._rate_limited_env()
         ip = "203.0.113.10"
 
-        first_req = self._req({"username": "alice1", "email": "alice1@example.com", "password": "password123"})
+        first_req = self._req({"username": "alice1", "email": "alice1@example.com", "password": "Str0ng-Pass!"})
         first_req.headers["CF-Connecting-IP"] = ip
-        second_req = self._req({"username": "alice2", "email": "alice2@example.com", "password": "password123"})
+        second_req = self._req({"username": "alice2", "email": "alice2@example.com", "password": "Str0ng-Pass!"})
         second_req.headers["CF-Connecting-IP"] = ip
-        third_req = self._req({"username": "alice3", "email": "alice3@example.com", "password": "password123"})
+        third_req = self._req({"username": "alice3", "email": "alice3@example.com", "password": "Str0ng-Pass!"})
         third_req.headers["CF-Connecting-IP"] = ip
 
         first = await worker.api_register(first_req, env)
@@ -183,7 +203,7 @@ class TestApiLogin:
         env.AUTH_RATE_LIMIT_MAX_ATTEMPTS = 2
         return env
 
-    def _make_user_row(self, username="alice", password="password123", role="member", name="Alice"):
+    def _make_user_row(self, username="alice", password="Str0ng-Pass!", role="member", name="Alice"):
         pw_hash = worker.hash_password(password, username)
         return MockRow(
             id="uid-alice",
@@ -197,7 +217,7 @@ class TestApiLogin:
 
     async def test_missing_username_returns_400(self):
         env = make_env()
-        r = await worker.api_login(self._req({"password": "password123"}), env)
+        r = await worker.api_login(self._req({"password": "Str0ng-Pass!"}), env)
         assert r.status == 400
 
     async def test_missing_password_returns_400(self):
@@ -220,7 +240,7 @@ class TestApiLogin:
         row = self._make_user_row()
         env = make_env(db=MockDB([make_stmt(first=row)]))
         r = await worker.api_login(
-            self._req({"username": "alice", "password": "password123"}), env
+            self._req({"username": "alice", "password": "Str0ng-Pass!"}), env
         )
         assert r.status == 200
         data = _parse(r)
@@ -233,7 +253,7 @@ class TestApiLogin:
         row = self._make_user_row()
         env = make_env(db=MockDB([make_stmt(first=row)]))
         r = await worker.api_login(
-            self._req({"username": "alice", "password": "password123"}), env
+            self._req({"username": "alice", "password": "Str0ng-Pass!"}), env
         )
         token = _parse(r)["data"]["token"]
         payload = worker.verify_token(token, JWT)
@@ -253,11 +273,11 @@ class TestApiLogin:
             make_stmt(first=row),
         ])
 
-        req1 = self._req({"username": "alice", "password": "password123"})
+        req1 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req1.headers["CF-Connecting-IP"] = "203.0.113.10"
-        req2 = self._req({"username": "alice", "password": "password123"})
+        req2 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req2.headers["CF-Connecting-IP"] = "203.0.113.10"
-        req3 = self._req({"username": "alice", "password": "password123"})
+        req3 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req3.headers["CF-Connecting-IP"] = "203.0.113.10"
 
         first = await worker.api_login(req1, env)
@@ -283,24 +303,24 @@ class TestApiLogin:
         worker._AUTH_RATE_LIMIT_STATE.clear()
         monkeypatch.setattr(worker.time, "time", lambda: 1000)
 
-        req1 = self._req({"username": "alice", "password": "password123"})
+        req1 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req1.headers["CF-Connecting-IP"] = "198.51.100.10"
-        req2 = self._req({"username": "alice", "password": "password123"})
+        req2 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req2.headers["CF-Connecting-IP"] = "198.51.100.10"
 
         assert (await worker.api_login(req1, env)).status == 200
         assert (await worker.api_login(req2, env)).status == 200
 
         monkeypatch.setattr(worker.time, "time", lambda: 1000 + 61)
-        req3 = self._req({"username": "alice", "password": "password123"})
+        req3 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req3.headers["CF-Connecting-IP"] = "198.51.100.10"
         assert (await worker.api_login(req3, env)).status == 200
 
-        req4 = self._req({"username": "alice", "password": "password123"})
+        req4 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req4.headers["CF-Connecting-IP"] = "198.51.100.10"
         assert (await worker.api_login(req4, env)).status == 200
 
-        req5 = self._req({"username": "alice", "password": "password123"})
+        req5 = self._req({"username": "alice", "password": "Str0ng-Pass!"})
         req5.headers["CF-Connecting-IP"] = "198.51.100.10"
         limited = await worker.api_login(req5, env)
         assert limited.status == 429
