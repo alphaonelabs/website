@@ -93,21 +93,28 @@ class TestApiRegister:
         assert "email" in data["message"].lower()
 
     async def test_name_defaults_to_username(self):
-        env = make_env(db=MockDB([make_stmt()]))
+        stmt = make_stmt()
+        env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
             self._req({"username": "bob", "email": "bob@example.com", "password": STRONG_PASSWORD}), env
         )
         data = _parse(r)
-        assert data["success"] is True  # name is stored in DB, not returned in response
+        assert data["success"] is True
+        # The users INSERT binds (id, username_hash, email_hash, name, ...): index 3 is the name.
+        saved_name = stmt.bind.call_args.args[3]
+        assert saved_name == _enc("bob")
 
     async def test_custom_name_preserved(self):
-        env = make_env(db=MockDB([make_stmt()]))
+        stmt = make_stmt()
+        env = make_env(db=MockDB([stmt]))
         r = await worker.api_register(
             self._req({"username": "bob", "email": "b@b.com", "password": STRONG_PASSWORD, "name": "Robert"}),
             env,
         )
         data = _parse(r)
-        assert data["success"] is True  # name is stored in DB, not returned in response
+        assert data["success"] is True
+        saved_name = stmt.bind.call_args.args[3]
+        assert saved_name == _enc("Robert")
 
     async def test_duplicate_user_returns_409(self):
         # Simulate UNIQUE constraint violation from D1
