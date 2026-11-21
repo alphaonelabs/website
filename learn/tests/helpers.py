@@ -123,6 +123,15 @@ def make_env(db=None, enc_key="test-encryption-key", jwt_secret="test-jwt-secret
     env.ADMIN_BASIC_USER = admin_user
     env.ADMIN_BASIC_PASS = admin_pass
     env.ADMIN_URL = admin_url
+    # Email providers are not configured in tests. Without these a MagicMock
+    # would answer every lookup with a truthy mock, and the mail code would
+    # try to use it as a real API key or domain.
+    for name in (
+        "MAILGUN_SENDING_KEY", "mailgun_sending_key", "MAILGUN_API_KEY", "mailgun_api_key",
+        "MAILGUN_DOMAIN", "mailgun_domain", "MAILGUN_API_BASE", "mailgun_api_base",
+        "SENDGRID_API_KEY", "sendgrid_api_key", "EMAIL_FROM", "DEFAULT_FROM_EMAIL",
+    ):
+        setattr(env, name, "")
     env.DB = db if db is not None else MockDB()
     # Use setattr to avoid Python name-mangling of __STATIC_CONTENT
     # when this function is called from inside a class method.
