@@ -61,6 +61,13 @@
     return body;
   }
 
+  // Read a whole number from a number input. valueAsNumber understands forms
+  // such as "1e3" (1000); parseInt would stop at the "e" and return 1.
+  function wholeNumber(input) {
+    const n = input.valueAsNumber;
+    return Number.isInteger(n) ? n : NaN;
+  }
+
   function pct(t) {
     const n = Number(t.percentage);
     return Math.max(0, Math.min(100, isFinite(n) ? Math.round(n) : 0));
@@ -176,8 +183,8 @@
       const payload = {
         title: document.getElementById('tracker-title').value.trim(),
         description: document.getElementById('tracker-description').value.trim(),
-        target_value: parseInt(document.getElementById('tracker-target').value, 10),
-        current_value: parseInt(document.getElementById('tracker-current').value, 10),
+        target_value: wholeNumber(document.getElementById('tracker-target')),
+        current_value: wholeNumber(document.getElementById('tracker-current')),
         color: document.getElementById('tracker-color').value,
         is_public: document.getElementById('tracker-public').checked
       };
@@ -241,37 +248,57 @@
         : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300');
     }
 
-    async function save(changes, okText) {
+    // One save at a time: while a request is running every control is disabled,
+    // so an older response can never redraw the page over newer progress.
+    let saving = false;
+    function setBusy(busy) {
+      saving = busy;
+      app.querySelectorAll('button, input').forEach(function (el) { el.disabled = busy; });
+    }
+
+    // keepDraft keeps a number the person typed but has not saved yet (for
+    // example when only the public/private switch is saved).
+    async function save(changes, okText, keepDraft) {
+      if (saving) return false;
+      setBusy(true);
       try {
         const body = await api('/api/trackers/' + encodeURIComponent(t.id), { method: 'PATCH', body: JSON.stringify(changes) });
+        const draft = keepDraft ? valueInput.value : null;
         drawDetail(body.data);
+        if (draft !== null) document.getElementById('tracker-value').value = draft;
         const fresh = document.getElementById('tracker-message');
         fresh.textContent = okText;
         fresh.className = 'mt-4 p-3 rounded-md text-sm bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300';
+        return true;
       } catch (err) {
+        setBusy(false);
         show(err.message, false);
+        return false;
       }
     }
 
     const valueInput = document.getElementById('tracker-value');
     app.querySelectorAll('[data-step]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        const current = parseInt(valueInput.value, 10);
+        const current = wholeNumber(valueInput);
         const next = (isNaN(current) ? 0 : current) + parseInt(btn.getAttribute('data-step'), 10);
         valueInput.value = Math.max(0, Math.min(MAX_VALUE, next));
       });
     });
     document.getElementById('tracker-update-form').addEventListener('submit', function (e) {
       e.preventDefault();
-      const value = parseInt(valueInput.value, 10);
+      const value = wholeNumber(valueInput);
       if (isNaN(value) || value < 0 || value > MAX_VALUE) {
         show('Enter a whole number between 0 and ' + MAX_VALUE + '.', false);
         return;
       }
       save({ current_value: value }, 'Progress saved.');
     });
-    document.getElementById('tracker-visibility').addEventListener('change', function (e) {
-      save({ is_public: e.target.checked }, e.target.checked ? 'Tracker is now public.' : 'Tracker is now private.');
+    document.getElementById('tracker-visibility').addEventListener('change', async function (e) {
+      const box = e.target;
+      const wanted = box.checked;
+      const saved = await save({ is_public: wanted }, wanted ? 'Tracker is now public.' : 'Tracker is now private.', true);
+      if (!saved) box.checked = !wanted;
     });
     document.getElementById('tracker-delete').addEventListener('click', async function () {
       if (!confirm('Delete this tracker? This cannot be undone.')) return;

@@ -74,15 +74,39 @@ class TestTrackersPageFile:
         html = _page()
         for field in ("t.title", "t.description"):
             for match in re.finditer(re.escape(field), html):
-                before = html[max(0, match.start() - 4):match.start()]
-                after = html[match.end():match.end() + 3]
+                before = html[max(0, match.start() - 4) : match.start()]
+                after = html[match.end() : match.end() + 3]
                 is_escaped = before.endswith("esc(")
                 is_truthiness_check = before.endswith("(") and after.startswith(" ?")
-                assert is_escaped or is_truthiness_check, (
-                    f"{field} used without esc() near: {html[match.start() - 40:match.end() + 10]!r}"
-                )
+                assert (
+                    is_escaped or is_truthiness_check
+                ), f"{field} used without esc() near: {html[match.start() - 40:match.end() + 10]!r}"
 
     def test_page_uses_the_login_token_not_a_hardcoded_one(self):
         html = _page()
         assert "localStorage.getItem('edu_token')" in html
         assert "Bearer " in html
+
+
+class TestTrackersPageInputHandling:
+    def test_number_inputs_are_read_with_valueAsNumber(self):
+        # A number input accepts "1e3" as 1000, but parseInt("1e3", 10) is 1.
+        html = _page()
+        assert "input.valueAsNumber" in html
+        assert "parseInt(valueInput.value" not in html
+        assert "parseInt(document.getElementById('tracker-target')" not in html
+        assert "parseInt(document.getElementById('tracker-current')" not in html
+
+    def test_only_one_save_runs_at_a_time(self):
+        # Controls are disabled while a PATCH is pending, so a late response
+        # cannot redraw the page over newer progress.
+        html = _page()
+        assert "if (saving) return false;" in html
+        assert "setBusy(true);" in html
+        assert "setBusy(false);" in html
+
+    def test_visibility_change_keeps_unsaved_progress(self):
+        html = _page()
+        assert "async function save(changes, okText, keepDraft)" in html
+        assert "{ is_public: wanted }" in html
+        assert "if (!saved) box.checked = !wanted;" in html
