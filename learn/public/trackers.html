@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %}Progress Trackers - Alpha One Labs{% endblock %}
+{% block meta_description %}Create progress trackers and update them as you move toward a goal.{% endblock %}
+{% block body_class %}min-h-screen flex flex-col bg-white text-gray-900 dark:bg-black dark:text-gray-100{% endblock %}
+{% block content %}
+<main class="flex-1 w-full max-w-[90rem] mx-auto px-0 md:px-0">
+    <div class="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)]">
+      <aside class="w-full lg:w-64 xl:w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 lg:p-6">
+        <div class="mb-6">
+          <h1 class="text-xl font-bold flex items-center text-gray-800 dark:text-gray-100"><i class="fa-solid fa-layer-group text-teal-500 mr-2"></i>Trackers</h1>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Goals and progress</p>
+        </div>
+        <nav class="space-y-2 text-sm">
+          <a href="/forum" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-comments text-teal-500 mr-2"></i>Forum</a>
+          <a href="/blog" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-blog text-teal-500 mr-2"></i>Blog</a>
+          <a href="/study-groups" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-users text-teal-500 mr-2"></i>Study Groups</a>
+          <a href="/quizzes" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-circle-question text-teal-500 mr-2"></i>Quizzes</a>
+          <a href="/surveys" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-square-poll-vertical text-teal-500 mr-2"></i>Surveys</a>
+          <a href="/challenges" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-trophy text-teal-500 mr-2"></i>Challenges</a>
+          <a href="/progress" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-chart-line text-teal-500 mr-2"></i>Progress</a>
+          <a href="/trackers" class="flex items-center py-2 px-3 text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 rounded-lg font-semibold"><i class="fa-solid fa-bullseye text-teal-500 mr-2"></i>Trackers</a>
+          <a href="/calendar" class="flex items-center py-2 px-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><i class="fa-solid fa-calendar-days text-teal-500 mr-2"></i>Calendar</a>
+        </nav>
+      </aside>
+      <section class="flex-1 bg-white dark:bg-black p-4 lg:p-6">
+        <div id="tracker-app"><div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center text-gray-500 dark:text-gray-400">Loading trackers&hellip;</div></div>
+      </section>
+    </div>
+  </main>
+<script>
+(function () {
+  const app = document.getElementById('tracker-app');
+  const params = new URLSearchParams(location.search);
+  let token = null;
+  try { token = localStorage.getItem('edu_token'); } catch (e) { /* storage unavailable */ }
+  const authHeaders = token ? { Authorization: 'Bearer ' + token } : {};
+  const MAX_VALUE = 1000000000;
+
+  // The API only accepts these five colors. Class names are written out in
+  // full so the Tailwind CDN can see them.
+  const COLORS = {
+    'blue-600': { label: 'Blue', bar: 'bg-blue-600', dot: 'bg-blue-600' },
+    'green-600': { label: 'Green', bar: 'bg-green-600', dot: 'bg-green-600' },
+    'yellow-600': { label: 'Yellow', bar: 'bg-yellow-600', dot: 'bg-yellow-600' },
+    'red-600': { label: 'Red', bar: 'bg-red-600', dot: 'bg-red-600' },
+    'gray-600': { label: 'Gray', bar: 'bg-gray-600', dot: 'bg-gray-600' }
+  };
+
+  function esc(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    const headers = Object.assign({}, authHeaders, opts.body ? { 'Content-Type': 'application/json' } : {});
+    const res = await fetch(path, Object.assign({}, opts, { headers: headers }));
+    let body = {};
+    try { body = await res.json(); } catch (e) { /* no body */ }
+    if (!res.ok) throw new Error(body.error || 'Request failed');
+    return body;
+  }
+
+  // Read a whole number from a number input. valueAsNumber understands forms
+  // such as "1e3" (1000); parseInt would stop at the "e" and return 1.
+  function wholeNumber(input) {
+    const n = input.valueAsNumber;
+    return Number.isInteger(n) ? n : NaN;
+  }
+
+  function pct(t) {
+    const n = Number(t.percentage);
+    return Math.max(0, Math.min(100, isFinite(n) ? Math.round(n) : 0));
+  }
+
+  function colorOf(t) { return COLORS[t.color] || COLORS['blue-600']; }
+
+  function progressBar(t, tall) {
+    const c = colorOf(t);
+    const p = pct(t);
+    return '<div class="' + (tall ? 'h-4' : 'h-2') + ' rounded bg-gray-200 dark:bg-gray-700 overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p + '" aria-label="' + esc(t.title) + ' progress">' +
+      '<div class="h-full ' + c.bar + '" style="width:' + p + '%"></div></div>';
+  }
+
+  function box(inner, extra) {
+    return '<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 ' + (extra || 'text-center text-gray-500 dark:text-gray-400') + '">' + inner + '</div>';
+  }
+
+  function errorBox(message) {
+    return '<div class="rounded-lg border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-6 text-red-700 dark:text-red-300">' + esc(message) + '</div>';
+  }
+
+  function signInBox(text) {
+    return box('<p class="text-gray-600 dark:text-gray-300 mb-4">' + esc(text) + '</p><a href="/login" class="inline-flex items-center px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold"><i class="fa-solid fa-right-to-bracket mr-2"></i>Sign in</a>', 'text-center');
+  }
+
+  // Server messages such as "Authentication required" are not friendly, so
+  // an expired or missing login gets the sign-in prompt instead.
+  function failure(err) {
+    app.innerHTML = /authentication/i.test(err.message) ? signInBox('Your session has expired. Sign in to see your trackers.') : errorBox(err.message);
+  }
+
+  // List view
+  async function renderList() {
+    if (!token) {
+      app.innerHTML = signInBox('Sign in to see and create your progress trackers.');
+      return;
+    }
+    let trackers;
+    try {
+      const body = await api('/api/trackers');
+      trackers = body.trackers || [];
+    } catch (err) {
+      failure(err);
+      return;
+    }
+
+    let listHtml;
+    if (!trackers.length) {
+      listHtml = '<div class="p-8 text-center text-gray-500 dark:text-gray-400"><i class="fa-solid fa-bullseye text-4xl mb-4"></i><p class="mb-2">You have no trackers yet.</p><p class="text-sm">Create one to start tracking a goal.</p></div>';
+    } else {
+      listHtml = '<ul class="divide-y divide-gray-200 dark:divide-gray-700">' + trackers.map(function (t) {
+        const visibility = t.is_public
+          ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300"><i class="fa-solid fa-globe mr-1"></i>Public</span>'
+          : '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"><i class="fa-solid fa-lock mr-1"></i>Private</span>';
+        return '<li class="hover:bg-gray-50 dark:hover:bg-gray-700/50">' +
+          '<a href="/trackers?id=' + encodeURIComponent(t.id) + '" class="block p-4">' +
+            '<div class="flex flex-wrap justify-between items-center gap-2 mb-2">' +
+              '<span class="text-lg font-medium text-gray-900 dark:text-gray-100">' + esc(t.title) + '</span>' +
+              visibility +
+            '</div>' +
+            progressBar(t, false) +
+            '<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">' + esc(t.current_value) + ' of ' + esc(t.target_value) + ' &bull; ' + pct(t) + '%</p>' +
+          '</a>' +
+        '</li>';
+      }).join('') + '</ul>';
+    }
+
+    app.innerHTML =
+      '<div class="flex flex-wrap justify-between items-center gap-4 mb-6">' +
+        '<div><p class="text-sm uppercase tracking-wide text-teal-600 dark:text-teal-300 font-bold">Goals and progress</p><h2 class="text-3xl font-bold mt-1 text-gray-900 dark:text-gray-100">Progress Trackers</h2></div>' +
+        '<a href="/trackers?create=1" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-plus mr-2"></i>New Tracker</a>' +
+      '</div>' +
+      '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">' + listHtml + '</div>';
+  }
+
+  // Create view
+  function renderCreate() {
+    if (!token) {
+      app.innerHTML = signInBox('Sign in to create a tracker.');
+      return;
+    }
+    const inputCls = 'w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800';
+    const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
+    app.innerHTML =
+      '<h2 class="text-2xl font-bold mb-6 flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-bullseye text-teal-600 dark:text-teal-400 mr-2"></i>New Tracker</h2>' +
+      '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 max-w-2xl">' +
+        '<form id="tracker-create-form" class="space-y-4">' +
+          '<div><label for="tracker-title" class="' + labelCls + '">Title</label><input type="text" id="tracker-title" required maxlength="100" class="' + inputCls + '" /></div>' +
+          '<div><label for="tracker-description" class="' + labelCls + '">Description</label><textarea id="tracker-description" rows="3" maxlength="2000" class="' + inputCls + '"></textarea></div>' +
+          '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">' +
+            '<div><label for="tracker-target" class="' + labelCls + '">Target</label><input type="number" id="tracker-target" required min="1" max="' + MAX_VALUE + '" value="100" class="' + inputCls + '" /></div>' +
+            '<div><label for="tracker-current" class="' + labelCls + '">Current progress</label><input type="number" id="tracker-current" required min="0" max="' + MAX_VALUE + '" value="0" class="' + inputCls + '" /></div>' +
+          '</div>' +
+          '<div><label for="tracker-color" class="' + labelCls + '">Color</label><select id="tracker-color" class="' + inputCls + '">' +
+            Object.keys(COLORS).map(function (key) { return '<option value="' + esc(key) + '">' + esc(COLORS[key].label) + '</option>'; }).join('') +
+          '</select></div>' +
+          '<label class="flex items-center text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" id="tracker-public" class="mr-2" />Make this tracker public</label>' +
+          '<div id="tracker-error" class="hidden p-3 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm" role="alert"></div>' +
+          '<div class="flex flex-wrap gap-4 pt-2">' +
+            '<button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-save mr-2"></i>Create Tracker</button>' +
+            '<a href="/trackers" class="text-gray-600 dark:text-gray-400 hover:underline inline-flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i>Cancel</a>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+
+    document.getElementById('tracker-create-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const errBox = document.getElementById('tracker-error');
+      errBox.classList.add('hidden');
+      const submit = e.target.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      const payload = {
+        title: document.getElementById('tracker-title').value.trim(),
+        description: document.getElementById('tracker-description').value.trim(),
+        target_value: wholeNumber(document.getElementById('tracker-target')),
+        current_value: wholeNumber(document.getElementById('tracker-current')),
+        color: document.getElementById('tracker-color').value,
+        is_public: document.getElementById('tracker-public').checked
+      };
+      try {
+        const body = await api('/api/trackers', { method: 'POST', body: JSON.stringify(payload) });
+        location.href = '/trackers?id=' + encodeURIComponent(body.data.id);
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.classList.remove('hidden');
+        submit.disabled = false;
+      }
+    });
+  }
+
+  // Detail view
+  async function renderDetail(id) {
+    if (!token) {
+      app.innerHTML = signInBox('Sign in to see this tracker.');
+      return;
+    }
+    app.innerHTML = box('Loading tracker&hellip;');
+    let t;
+    try {
+      t = (await api('/api/trackers/' + encodeURIComponent(id))).data;
+    } catch (err) {
+      failure(err);
+      return;
+    }
+    drawDetail(t);
+  }
+
+  function drawDetail(t) {
+    const inputCls = 'w-32 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800';
+    const stepBtn = 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium px-3 py-2 rounded-lg';
+    app.innerHTML =
+      '<div class="flex flex-wrap justify-between items-start gap-4 mb-4">' +
+        '<h2 class="text-2xl font-bold flex items-center text-gray-900 dark:text-gray-100"><i class="fa-solid fa-bullseye text-teal-600 dark:text-teal-400 mr-2"></i>' + esc(t.title) + '</h2>' +
+        '<a href="/trackers" class="text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i>All trackers</a>' +
+      '</div>' +
+      (t.description ? '<p class="text-gray-600 dark:text-gray-400 mb-6 max-w-3xl whitespace-pre-line">' + esc(t.description) + '</p>' : '') +
+      '<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 max-w-2xl">' +
+        '<div class="flex justify-between items-baseline mb-2"><span class="text-3xl font-bold text-gray-900 dark:text-gray-100">' + pct(t) + '%</span><span class="text-sm text-gray-500 dark:text-gray-400">' + esc(t.current_value) + ' of ' + esc(t.target_value) + '</span></div>' +
+        progressBar(t, true) +
+        '<form id="tracker-update-form" class="mt-6 flex flex-wrap items-end gap-3">' +
+          '<div><label for="tracker-value" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current progress</label><input type="number" id="tracker-value" required min="0" max="' + MAX_VALUE + '" value="' + esc(t.current_value) + '" class="' + inputCls + '" /></div>' +
+          '<button type="button" data-step="-1" class="' + stepBtn + '" aria-label="Decrease by 1">&minus;1</button>' +
+          '<button type="button" data-step="1" class="' + stepBtn + '" aria-label="Increase by 1">+1</button>' +
+          '<button type="button" data-step="10" class="' + stepBtn + '" aria-label="Increase by 10">+10</button>' +
+          '<button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-floppy-disk mr-2"></i>Save</button>' +
+        '</form>' +
+        '<label class="flex items-center text-sm text-gray-700 dark:text-gray-300 mt-4"><input type="checkbox" id="tracker-visibility" class="mr-2"' + (t.is_public ? ' checked' : '') + ' />Public tracker</label>' +
+        (t.is_public && t.embed_code ? '<div class="mt-4"><label for="tracker-embed" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Embed on another site</label><textarea id="tracker-embed" readonly rows="3" class="w-full p-2 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900"></textarea><button type="button" id="tracker-embed-copy" class="mt-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium px-3 py-1 rounded-lg text-sm"><i class="fa-regular fa-copy mr-2"></i>Copy code</button></div>' : '') +
+        '<div id="tracker-message" class="hidden mt-4 p-3 rounded-md text-sm" role="status"></div>' +
+      '</div>' +
+      '<div class="mt-6"><button type="button" id="tracker-delete" class="border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/50 font-medium px-4 py-2 rounded-lg inline-flex items-center"><i class="fa-solid fa-trash-alt mr-2"></i>Delete tracker</button></div>';
+
+    const message = document.getElementById('tracker-message');
+    function show(text, good) {
+      message.textContent = text;
+      message.className = 'mt-4 p-3 rounded-md text-sm ' + (good
+        ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300'
+        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300');
+    }
+
+    // One save at a time: while a request is running every control is disabled,
+    // so an older response can never redraw the page over newer progress.
+    let saving = false;
+    function setBusy(busy) {
+      saving = busy;
+      app.querySelectorAll('button, input').forEach(function (el) { el.disabled = busy; });
+    }
+
+    // keepDraft keeps a number the person typed but has not saved yet (for
+    // example when only the public/private switch is saved).
+    async function save(changes, okText, keepDraft) {
+      if (saving) return false;
+      setBusy(true);
+      try {
+        const body = await api('/api/trackers/' + encodeURIComponent(t.id), { method: 'PATCH', body: JSON.stringify(changes) });
+        const draft = keepDraft ? valueInput.value : null;
+        drawDetail(body.data);
+        if (draft !== null) document.getElementById('tracker-value').value = draft;
+        const fresh = document.getElementById('tracker-message');
+        fresh.textContent = okText;
+        fresh.className = 'mt-4 p-3 rounded-md text-sm bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300';
+        return true;
+      } catch (err) {
+        setBusy(false);
+        show(err.message, false);
+        return false;
+      }
+    }
+
+    const embedBox = document.getElementById('tracker-embed');
+    if (embedBox) {
+      embedBox.value = '<iframe src="' + location.origin + '/trackers/embed?code=' + encodeURIComponent(t.embed_code) + '" width="100%" height="110" style="border:0;max-width:420px" loading="lazy" title="Progress tracker"></iframe>';
+      document.getElementById('tracker-embed-copy').addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(embedBox.value);
+          show('Embed code copied.', true);
+        } catch (e) {
+          embedBox.select();
+          show('Press Ctrl+C to copy the selected code.', true);
+        }
+      });
+    }
+
+    const valueInput = document.getElementById('tracker-value');
+    app.querySelectorAll('[data-step]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const current = wholeNumber(valueInput);
+        const next = (isNaN(current) ? 0 : current) + parseInt(btn.getAttribute('data-step'), 10);
+        valueInput.value = Math.max(0, Math.min(MAX_VALUE, next));
+      });
+    });
+    document.getElementById('tracker-update-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const value = wholeNumber(valueInput);
+      if (isNaN(value) || value < 0 || value > MAX_VALUE) {
+        show('Enter a whole number between 0 and ' + MAX_VALUE + '.', false);
+        return;
+      }
+      save({ current_value: value }, 'Progress saved.');
+    });
+    document.getElementById('tracker-visibility').addEventListener('change', async function (e) {
+      const box = e.target;
+      const wanted = box.checked;
+      const saved = await save({ is_public: wanted }, wanted ? 'Tracker is now public.' : 'Tracker is now private.', true);
+      if (!saved) box.checked = !wanted;
+    });
+    document.getElementById('tracker-delete').addEventListener('click', async function () {
+      if (!confirm('Delete this tracker? This cannot be undone.')) return;
+      try {
+        await api('/api/trackers/' + encodeURIComponent(t.id), { method: 'DELETE' });
+        location.href = '/trackers';
+      } catch (err) {
+        show(err.message, false);
+      }
+    });
+  }
+
+  // Router
+  const id = params.get('id');
+  if (id) renderDetail(id);
+  else if (params.get('create')) renderCreate();
+  else renderList();
+})();
+</script>
+{% endblock %}
