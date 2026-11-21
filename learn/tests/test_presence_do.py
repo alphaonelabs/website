@@ -46,8 +46,10 @@ def _make_presence_env(*, allow_anon="true", jwt_secret="test-jwt-secret"):
 
 def _make_request(path="ws://localhost/api/presence/room1",
                   upgrade="websocket",
-                  token=None, user_id=None, display_name=None):
+                  token=None, user_id=None, display_name=None, auth=True):
     """Build a minimal fake request object."""
+    if token is None and auth and user_id:
+        token = worker.create_token(user_id, display_name or user_id, "student", "test-jwt-secret")
     qs_parts = []
     if token:
         qs_parts.append(f"token={token}")
@@ -129,25 +131,38 @@ class TestPresenceDOOnFetch:
         resp = await do.on_fetch(req)
         assert resp.status == 426
 
-    async def test_rejects_unauthenticated_when_anon_disabled(self):
-        do  = _make_presence_do(allow_anon="false")
+    async def test_rejects_unauthenticated_without_user_id(self):
+        do  = _make_presence_do()
         req = _make_request(upgrade="websocket")  # no token, no user_id
         resp = await do.on_fetch(req)
         assert resp.status == 401
 
-    async def test_rejects_when_anon_disabled_even_with_user_id(self):
-        do  = _make_presence_do(allow_anon="false")
-        req = _make_request(upgrade="websocket", user_id="bob")
+    async def test_rejects_invalid_token(self):
+        do  = _make_presence_do()
+        req = _make_request(upgrade="websocket", token="invalid.jwt.token", user_id="bob")
         resp = await do.on_fetch(req)
         assert resp.status == 401
 
-    async def test_accepts_anon_join(self):
-        do  = _make_presence_do(allow_anon="true")
-        req = _make_request(upgrade="websocket", user_id="bob", display_name="Bob")
+    async def test_accepts_unauthenticated_viewer_as_read_only(self):
+        do  = _make_presence_do()
+        req = _make_request(upgrade="websocket", user_id="bob", display_name="Bob", auth=False)
         resp = await do.on_fetch(req)
         assert resp.status == 101
         assert len(do.sessions) == 1
-        assert "bob" in do.presence
+        sid = next(iter(do.sessions))
+        assert do.sessions[sid]["can_interact"] is False
+        assert "bob" not in do.presence
+
+        ws = do.sessions[sid]["ws"]
+        ws.deserializeAttachment.return_value = json.dumps({
+            "session_id": sid, "user_id": "bob", "display_name": "Bob",
+            "x": 0.5, "y": 0.5, "emoji": "", "hand_raised": False,
+            "can_interact": False,
+        })
+        ws.send.reset_mock()
+        await do.on_webSocketMessage(ws, json.dumps({"type": "presence", "x": 0.9}))
+        assert "bob" not in do.presence
+        ws.send.assert_not_called()
 
     async def test_authenticated_join_uses_token_identity(self):
         env = _make_presence_env(allow_anon="false")
