@@ -20,6 +20,26 @@ export function escapeHtml(str) {
 export function renderFunctionsList(containerEl, equations) {
   if (!containerEl) return;
 
+  // Capture active element before re-rendering so focus can be preserved
+  const activeEl = document.activeElement;
+  let focusInfo = null;
+  if (activeEl && containerEl.contains(activeEl)) {
+    if (activeEl.classList.contains('eq-raw-input')) {
+      focusInfo = {
+        type: 'input',
+        id: activeEl.dataset.id,
+        selStart: activeEl.selectionStart,
+        selEnd: activeEl.selectionEnd,
+      };
+    } else if (activeEl.dataset.action) {
+      focusInfo = {
+        type: 'action',
+        action: activeEl.dataset.action,
+        id: activeEl.dataset.id,
+      };
+    }
+  }
+
   if (!equations.length) {
     containerEl.innerHTML = `
       <div class="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
@@ -77,6 +97,24 @@ export function renderFunctionsList(containerEl, equations) {
       ><i class="fas fa-times text-xs"></i></button>
     </div>`;
   }).join('');
+
+  // Restore focus to equivalent control by equation ID if it was focused
+  if (focusInfo) {
+    if (focusInfo.type === 'input') {
+      const input = document.getElementById(`eq-raw-${focusInfo.id}`);
+      if (input) {
+        input.focus();
+        if (typeof focusInfo.selStart === 'number' && typeof focusInfo.selEnd === 'number') {
+          input.setSelectionRange(focusInfo.selStart, focusInfo.selEnd);
+        }
+      }
+    } else if (focusInfo.type === 'action') {
+      const btn = containerEl.querySelector(`[data-action="${focusInfo.action}"][data-id="${focusInfo.id}"]`);
+      if (btn) {
+        btn.focus();
+      }
+    }
+  }
 }
 
 /**
@@ -135,16 +173,19 @@ export function updateEquationInputState(id, hasError) {
 export function setClearConfirmVisible(show) {
   const btn = document.getElementById('clear-all-btn');
   const confirmWrap = document.getElementById('clear-confirm');
+  const noBtn = document.getElementById('clear-confirm-no');
   if (!btn || !confirmWrap) return;
 
   if (show) {
     btn.classList.add('hidden');
     confirmWrap.classList.remove('hidden');
     confirmWrap.classList.add('flex');
+    if (noBtn) noBtn.focus();
   } else {
-    btn.classList.remove('hidden');
     confirmWrap.classList.add('hidden');
     confirmWrap.classList.remove('flex');
+    btn.classList.remove('hidden');
+    if (btn) btn.focus();
   }
 }
 
@@ -182,14 +223,46 @@ export function setGridButtonActive(btnEl, isGridVisible) {
   btnEl.setAttribute('aria-pressed', String(isGridVisible));
 }
 
+let inertElements = [];
+
 export function toggleFullscreenOverlay(overlayEl, isOpen) {
   if (!overlayEl) return;
   if (isOpen) {
     overlayEl.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+
+    // Prevent background controls from receiving focus while fullscreen overlay is open
+    inertElements = [];
+    const rootChildren = Array.from(document.body.children);
+    for (const el of rootChildren) {
+      if (el !== overlayEl && !el.contains(overlayEl) && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') {
+        if (!el.hasAttribute('inert')) {
+          el.setAttribute('inert', '');
+          inertElements.push(el);
+        }
+      }
+    }
+
+    // Move keyboard focus to a visible control inside the overlay
+    const initialFocus = document.getElementById('fs-close-btn') || overlayEl.querySelector('button, [tabindex="0"]');
+    if (initialFocus) {
+      initialFocus.focus();
+    }
   } else {
     overlayEl.classList.add('hidden');
     document.body.style.overflow = '';
+
+    // Restore background elements interactivity
+    for (const el of inertElements) {
+      el.removeAttribute('inert');
+    }
+    inertElements = [];
+
+    // Restore focus to opener button
+    const opener = document.getElementById('fullscreen-btn');
+    if (opener) {
+      opener.focus();
+    }
   }
 }
 

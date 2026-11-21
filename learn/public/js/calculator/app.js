@@ -46,8 +46,22 @@ import {
   let equations = []; // { id, raw, color, enabled, fns, errors }
   let nextId = 0;
   let nextColorIdx = 0;
-  let debounceTimer = null;
+  const pendingTimers = new Map();
   let isFullscreenOpen = false;
+
+  function clearEquationTimer(id) {
+    if (pendingTimers.has(id)) {
+      clearTimeout(pendingTimers.get(id));
+      pendingTimers.delete(id);
+    }
+  }
+
+  function clearAllTimers() {
+    for (const timer of pendingTimers.values()) {
+      clearTimeout(timer);
+    }
+    pendingTimers.clear();
+  }
 
   const settings = {
     showGrid: true,
@@ -112,6 +126,7 @@ import {
   }
 
   function removeEquation(id) {
+    clearEquationTimer(id);
     equations = equations.filter((e) => e.id !== id);
     renderFunctionsList(functionsListEl, equations);
     render();
@@ -130,7 +145,12 @@ import {
     if (!eq) return;
     const i = PALETTE.indexOf(eq.color);
     eq.color = PALETTE[(i + 1) % PALETTE.length];
-    renderFunctionsList(functionsListEl, equations);
+    const dot = functionsListEl ? functionsListEl.querySelector(`[data-action="cycle-color"][data-id="${eq.id}"]`) : null;
+    if (dot) {
+      dot.style.background = eq.color;
+    } else {
+      renderFunctionsList(functionsListEl, equations);
+    }
     render();
   }
 
@@ -141,16 +161,19 @@ import {
     const wasArray = Array.isArray(eq.raw);
     eq.raw = wasArray ? splitTopLevel(val).map((s) => s.trim()).filter(Boolean) : val;
 
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
+    clearEquationTimer(id);
+    const timer = setTimeout(() => {
+      pendingTimers.delete(id);
       compileEquation(eq);
       updateEquationInputState(eq.id, eq.errors.length > 0);
       render();
       refreshErrors();
     }, DEBOUNCE_DELAY);
+    pendingTimers.set(id, timer);
   }
 
   function onCommit(id) {
+    clearEquationTimer(id);
     const eq = equations.find((e) => e.id === id);
     if (!eq) return;
     compileEquation(eq);
@@ -160,6 +183,7 @@ import {
   }
 
   function clearAllEquations() {
+    clearAllTimers();
     equations = [];
     nextColorIdx = 0;
     renderFunctionsList(functionsListEl, equations);
@@ -188,23 +212,35 @@ import {
     leftPanelNextSibling = leftPanel.nextElementSibling;
   }
 
-  if (fsToggleSidebarBtn) {
-    fsToggleSidebarBtn.addEventListener('click', () => {
-      isFsSidebarOpen = !isFsSidebarOpen;
-      if (leftPanel) {
-        leftPanel.classList.toggle('hidden', !isFsSidebarOpen);
-      }
+  function applyFsSidebarVisibility() {
+    if (leftPanel && isFullscreenOpen) {
+      leftPanel.classList.toggle('hidden', !isFsSidebarOpen);
+    }
+    if (fsToggleSidebarBtn) {
       fsToggleSidebarBtn.setAttribute('aria-pressed', String(isFsSidebarOpen));
       fsToggleSidebarBtn.classList.toggle('bg-teal-50', isFsSidebarOpen);
       fsToggleSidebarBtn.classList.toggle('text-teal-600', isFsSidebarOpen);
+    }
+  }
+
+  if (fsToggleSidebarBtn) {
+    fsToggleSidebarBtn.addEventListener('click', () => {
+      isFsSidebarOpen = !isFsSidebarOpen;
+      applyFsSidebarVisibility();
     });
   }
 
-  function setupFullscreen() {
+  function getFsToolbarHeight() {
+    const toolbar = fsOverlay ? fsOverlay.querySelector('div') : null;
+    return (toolbar && toolbar.offsetHeight) ? toolbar.offsetHeight : 44;
+  }
+
+  function setupFullscreen(silentAspect = true) {
     const w = window.innerWidth;
-    const h = window.innerHeight - 44;
+    const toolbarH = getFsToolbarHeight();
+    const h = Math.max(window.innerHeight - toolbarH, 0);
     renderer.resizeFullscreen(w, h);
-    renderer.drawFullscreen(controller.getView(), equations, settings);
+    controller.fitAspect(w, h, silentAspect);
   }
 
   function toggleFullscreen() {
@@ -224,10 +260,11 @@ import {
         leftPanel.style.bottom = '0';
         leftPanel.style.left = '';
         leftPanel.style.zIndex = '40';
-        leftPanel.style.background = document.documentElement.classList.contains('dark') ? '#000000' : '#ffffff';
-        leftPanel.style.borderLeft = document.documentElement.classList.contains('dark') ? '1px solid #121212' : '1px solid #e5e7eb';
       }
-      setupFullscreen();
+      applyFsSidebarVisibility();
+      setupFullscreen(true);
+      render();
+      refreshErrors();
     } else {
       if (leftPanel && leftPanelParent) {
         leftPanel.classList.remove(
@@ -241,24 +278,31 @@ import {
         leftPanel.style.bottom = '';
         leftPanel.style.left = '';
         leftPanel.style.zIndex = '';
-        leftPanel.style.background = '';
-        leftPanel.style.borderLeft = '';
         if (leftPanelNextSibling) {
           leftPanelParent.insertBefore(leftPanel, leftPanelNextSibling);
         } else {
           leftPanelParent.appendChild(leftPanel);
         }
+        // Restore normal-page visibility
+        leftPanel.classList.remove('hidden');
       }
+      // After reinserting the sidebar, resize and refit the main graph canvas
+      const { width, height } = renderer.resizeMain();
+      controller.fitAspect(width, height, true);
+      render();
+      refreshErrors();
     }
   }
 
   // --- Layout & Resize ---
 
   function handleResize() {
-    const { width, height } = renderer.resizeMain();
-    controller.fitAspect(width, height);
     if (isFullscreenOpen) {
-      setupFullscreen();
+      setupFullscreen(true);
+      renderer.resizeMain();
+    } else {
+      const { width, height } = renderer.resizeMain();
+      controller.fitAspect(width, height, true);
     }
     render();
   }
@@ -284,9 +328,15 @@ import {
     onZoomIn: () => controller.zoomIn(),
     onZoomOut: () => controller.zoomOut(),
     onResetView: () => {
-      const w = renderer.getMainWidth();
-      const h = renderer.getMainHeight();
-      controller.resetView(w, h);
+      if (isFullscreenOpen) {
+        const w = renderer.getFsWidth();
+        const h = renderer.getFsHeight();
+        controller.resetView(w, h);
+      } else {
+        const w = renderer.getMainWidth();
+        const h = renderer.getMainHeight();
+        controller.resetView(w, h);
+      }
       render();
     },
     onPanLeft: () => controller.panLeft(),

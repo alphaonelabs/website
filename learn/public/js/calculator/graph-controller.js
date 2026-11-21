@@ -52,7 +52,7 @@ export class GraphController {
   /**
    * Adjusts the yMin and yMax to preserve a 1:1 square aspect ratio based on width and height.
    */
-  fitAspect(w, h) {
+  fitAspect(w, h, silent = false) {
     if (!w || !h) return;
     const cx = (this.V.xMin + this.V.xMax) / 2;
     const cy = (this.V.yMin + this.V.yMax) / 2;
@@ -60,7 +60,9 @@ export class GraphController {
     const ratio = h / w;
     this.V.yMin = cy - rx * ratio;
     this.V.yMax = cy + rx * ratio;
-    this.notifyViewChange();
+    if (!silent) {
+      this.notifyViewChange();
+    }
   }
 
   resetView(w, h) {
@@ -75,10 +77,20 @@ export class GraphController {
   }
 
   zoomAround(cx, cy, factor) {
-    this.V.xMin = cx + (this.V.xMin - cx) * factor;
-    this.V.xMax = cx + (this.V.xMax - cx) * factor;
-    this.V.yMin = cy + (this.V.yMin - cy) * factor;
-    this.V.yMax = cy + (this.V.yMax - cy) * factor;
+    if (!isFinite(factor) || factor <= 0) return;
+    const nextXMin = cx + (this.V.xMin - cx) * factor;
+    const nextXMax = cx + (this.V.xMax - cx) * factor;
+    const nextYMin = cy + (this.V.yMin - cy) * factor;
+    const nextYMax = cy + (this.V.yMax - cy) * factor;
+    const rx = nextXMax - nextXMin;
+    const ry = nextYMax - nextYMin;
+    if (!isFinite(rx) || !isFinite(ry) || rx <= 1e-12 || ry <= 1e-12 || rx >= 1e14 || ry >= 1e14) {
+      return;
+    }
+    this.V.xMin = nextXMin;
+    this.V.xMax = nextXMax;
+    this.V.yMin = nextYMin;
+    this.V.yMax = nextYMax;
     this.notifyViewChange();
   }
 
@@ -180,47 +192,7 @@ export class GraphController {
     });
 
     // --- Touch Events ---
-    this.mainCanvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        this.drag = { on: true, sx: e.touches[0].clientX, sy: e.touches[0].clientY, V0: { ...this.V } };
-        this.touch.dist = null;
-      } else if (e.touches.length === 2) {
-        this.drag.on = false;
-        const [t1, t2] = [e.touches[0], e.touches[1]];
-        this.touch.dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        const rect = this.mainCanvas.getBoundingClientRect();
-        this.touch.cx = ((t1.clientX + t2.clientX) / 2) - rect.left;
-        this.touch.cy = ((t1.clientY + t2.clientY) / 2) - rect.top;
-      }
-      e.preventDefault();
-    }, { passive: false });
-
-    this.mainCanvas.addEventListener('touchmove', (e) => {
-      const w = this.mainCanvas.clientWidth;
-      const h = this.mainCanvas.clientHeight;
-
-      if (e.touches.length === 1 && this.drag.on) {
-        const rx = this.drag.V0.xMax - this.drag.V0.xMin;
-        const ry = this.drag.V0.yMax - this.drag.V0.yMin;
-        this.V.xMin = this.drag.V0.xMin - ((e.touches[0].clientX - this.drag.sx) / w) * rx;
-        this.V.xMax = this.drag.V0.xMax - ((e.touches[0].clientX - this.drag.sx) / w) * rx;
-        this.V.yMin = this.drag.V0.yMin + ((e.touches[0].clientY - this.drag.sy) / h) * ry;
-        this.V.yMax = this.drag.V0.yMax + ((e.touches[0].clientY - this.drag.sy) / h) * ry;
-        this.notifyViewChange();
-      } else if (e.touches.length === 2 && this.touch.dist !== null) {
-        const [t1, t2] = [e.touches[0], e.touches[1]];
-        const d2 = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        const { x, y } = this._toMath(this.touch.cx, this.touch.cy, w, h);
-        this.zoomAround(x, y, this.touch.dist / d2);
-        this.touch.dist = d2;
-      }
-      e.preventDefault();
-    }, { passive: false });
-
-    this.mainCanvas.addEventListener('touchend', () => {
-      this.drag.on = false;
-      this.touch.dist = null;
-    });
+    this._bindTouchEvents(this.mainCanvas);
 
     // --- Keyboard Navigation ---
     this.mainCanvas.addEventListener('keydown', (e) => {
@@ -290,6 +262,68 @@ export class GraphController {
         const factor = e.deltaY > 0 ? NAVIGATION.WHEEL_ZOOM_OUT : NAVIGATION.WHEEL_ZOOM_IN;
         this.zoomAround(x, y, factor);
       }, { passive: false });
+
+      this._bindTouchEvents(this.fsCanvas);
     }
+  }
+
+  /**
+   * Helper to bind touch drag and pinch-to-zoom gestures for a given canvas.
+   * @param {HTMLCanvasElement} targetCanvas
+   */
+  _bindTouchEvents(targetCanvas) {
+    if (!targetCanvas) return;
+
+    const touchState = {
+      drag: { on: false, sx: 0, sy: 0, V0: null },
+      pinch: { dist: null, cx: null, cy: null },
+    };
+
+    targetCanvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchState.drag = { on: true, sx: e.touches[0].clientX, sy: e.touches[0].clientY, V0: { ...this.V } };
+        touchState.pinch.dist = null;
+      } else if (e.touches.length === 2) {
+        touchState.drag.on = false;
+        const [t1, t2] = [e.touches[0], e.touches[1]];
+        touchState.pinch.dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const rect = targetCanvas.getBoundingClientRect();
+        touchState.pinch.cx = ((t1.clientX + t2.clientX) / 2) - rect.left;
+        touchState.pinch.cy = ((t1.clientY + t2.clientY) / 2) - rect.top;
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    targetCanvas.addEventListener('touchmove', (e) => {
+      const w = targetCanvas.clientWidth;
+      const h = targetCanvas.clientHeight;
+      if (!w || !h) return;
+
+      if (e.touches.length === 1 && touchState.drag.on && touchState.drag.V0) {
+        const rx = touchState.drag.V0.xMax - touchState.drag.V0.xMin;
+        const ry = touchState.drag.V0.yMax - touchState.drag.V0.yMin;
+        this.V.xMin = touchState.drag.V0.xMin - ((e.touches[0].clientX - touchState.drag.sx) / w) * rx;
+        this.V.xMax = touchState.drag.V0.xMax - ((e.touches[0].clientX - touchState.drag.sx) / w) * rx;
+        this.V.yMin = touchState.drag.V0.yMin + ((e.touches[0].clientY - touchState.drag.sy) / h) * ry;
+        this.V.yMax = touchState.drag.V0.yMax + ((e.touches[0].clientY - touchState.drag.sy) / h) * ry;
+        this.notifyViewChange();
+      } else if (e.touches.length === 2 && touchState.pinch.dist !== null) {
+        const [t1, t2] = [e.touches[0], e.touches[1]];
+        const d2 = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        if (d2 > 0) {
+          const { x, y } = this._toMath(touchState.pinch.cx, touchState.pinch.cy, w, h);
+          this.zoomAround(x, y, touchState.pinch.dist / d2);
+          touchState.pinch.dist = d2;
+        }
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    const endTouch = () => {
+      touchState.drag.on = false;
+      touchState.pinch.dist = null;
+    };
+    targetCanvas.addEventListener('touchend', endTouch);
+    targetCanvas.addEventListener('touchcancel', endTouch);
   }
 }

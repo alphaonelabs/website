@@ -10,7 +10,7 @@
 export function normalizeExpr(raw) {
   let e = (raw || '').trim();
   e = e.replace(/^[yfg]\s*\(?\s*x\s*\)?\s*=\s*/i, '').replace(/^y\s*=\s*/i, '');
-  e = e.replace(/(\d)([a-zA-Z\(])/g, '$1*$2');
+  e = e.replace(/\b(\d+(?:\.\d+)?)(?:\s*)(\(|[a-df-zA-DF-Z]|[eE](?![+-]?\d))/g, '$1*$2');
   e = e.replace(/\)([a-zA-Z\d\(])/g, ')*$1');
   e = e.replace(/\b([a-zA-Z])(x\b)/g, '$1*$2');
   return e;
@@ -95,7 +95,15 @@ export function compileEquation(eq) {
     try {
       const fn = compileFn(expr);
       if (fn) {
-        fn(0); // Test execution to catch any runtime evaluation error early
+        try {
+          fn(0); // Probe evaluation to detect unknown symbols or undefined variables
+        } catch (evalErr) {
+          if (/undefined symbol|Undefined|is not a function/i.test(evalErr.message)) {
+            eq.errors.push(friendlyErr(evalErr.message, expr));
+            continue;
+          }
+          // Domain errors outside x=0 should not reject the valid function; drawCurves will handle invalid samples
+        }
         eq.fns.push(fn);
       }
     } catch (err) {

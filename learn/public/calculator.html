@@ -37,6 +37,11 @@
 
       <aside id="left-panel" class="flex flex-col bg-transparent flex-shrink-0">
 
+        <div id="error-banner" class="hidden mx-4 mt-3 rounded-xl px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-300 flex items-start gap-2" role="alert" aria-live="polite">
+          <i class="fas fa-circle-exclamation mt-0.5 flex-shrink-0"></i>
+          <span id="error-text"></span>
+        </div>
+
         <div class="px-4 pt-4 pb-3">
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Enter Equation</p>
           <div class="flex gap-2">
@@ -153,11 +158,6 @@
       </aside>
 
       <div class="flex-1 min-w-0 flex flex-col gap-2 p-4 md:p-6">
-
-        <div id="error-banner" class="hidden rounded-xl px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-sm text-red-700 dark:text-red-300 flex items-start gap-2" role="alert" aria-live="polite">
-          <i class="fas fa-circle-exclamation mt-0.5 flex-shrink-0"></i>
-          <span id="error-text"></span>
-        </div>
 
         <div class="relative rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden flex-1" style="min-height:460px; height: calc(100vh - 70px - 120px);">
           <canvas id="graph-canvas"

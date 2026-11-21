@@ -133,7 +133,7 @@
 .dark .ctrl-btn.btn-inactive {
   background: #1a1a1a;
   border-color: #e1b746;
-  color: #7a6418;
+  color: #fde047;
 }
 
 /* Direction pad subtle background */
@@ -159,7 +159,6 @@
   height: calc(100vh - 70px);
   overflow-y: auto;
   overflow-x: hidden;
-  background: #ffffff;
   border-left: 1px solid #e5e7eb;
   border-right: none;
   border-top: none;
@@ -168,6 +167,16 @@
 }
 
 .dark #left-panel {
+  border-left-color: #121212;
+}
+
+/* Fullscreen drawer background to cover the graph */
+#fs-overlay #left-panel {
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+}
+
+.dark #fs-overlay #left-panel {
   background: #000000;
   border-left-color: #121212;
 }
@@ -218,7 +227,7 @@
 }
 
 @media (max-width: 1023px) {
-  #left-panel {
+  #left-panel:not(#fs-overlay *) {
     position: static;
     width: 100%;
     min-width: 0;
@@ -227,8 +236,17 @@
     border-bottom: 1px solid #e5e7eb;
   }
 
-  .dark #left-panel {
+  .dark #left-panel:not(#fs-overlay *) {
     border-bottom-color: #121212;
+  }
+}
+
+/* Narrow-screen fullscreen layout keeps part of graph canvas visible */
+@media (max-width: 640px) {
+  #fs-overlay #left-panel {
+    width: min(20rem, 80vw);
+    min-width: 0;
+    max-width: 85vw;
   }
 }
 
@@ -330,7 +348,7 @@
   cursor: grabbing;
 }
 
-/* Tooltip */
-[title] {
-  position: relative;
+/* Fullscreen toggle button positioning */
+#fullscreen-btn {
+  position: absolute;
 }

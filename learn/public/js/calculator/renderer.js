@@ -124,14 +124,28 @@ export class GraphRenderer {
    * Draws coordinate grid lines and tick labels.
    */
   drawGrid(ctx, w, h, V, dark, gridSizeMul = 1, maxTicksX = 10, maxTicksY = 8) {
+    if (!isFinite(V.xMin) || !isFinite(V.xMax) || !isFinite(V.yMin) || !isFinite(V.yMax) ||
+        V.xMax <= V.xMin || V.yMax <= V.yMin) {
+      return;
+    }
+
     const xStep = this.niceStep(V.xMax - V.xMin, maxTicksX, gridSizeMul);
     const yStep = this.niceStep(V.yMax - V.yMin, maxTicksY, gridSizeMul);
+    if (!isFinite(xStep) || xStep <= 0 || !isFinite(yStep) || yStep <= 0) {
+      return;
+    }
 
     ctx.strokeStyle = dark ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.065)';
     ctx.lineWidth = 1;
 
+    const MAX_TICKS = 200;
+
+    let countX = 0;
     const x0 = Math.ceil(V.xMin / xStep) * xStep;
-    for (let x = x0; x <= V.xMax + xStep * 0.01; x += xStep) {
+    let prevX = -Infinity;
+    for (let x = x0; x <= V.xMax + xStep * 0.01 && countX < MAX_TICKS; x += xStep, countX++) {
+      if (!isFinite(x) || x <= prevX) break;
+      prevX = x;
       const { px } = this.toPixel(x, 0, w, h, V);
       ctx.beginPath();
       ctx.moveTo(px, 0);
@@ -139,8 +153,12 @@ export class GraphRenderer {
       ctx.stroke();
     }
 
+    let countY = 0;
     const y0 = Math.ceil(V.yMin / yStep) * yStep;
-    for (let y = y0; y <= V.yMax + yStep * 0.01; y += yStep) {
+    let prevY = -Infinity;
+    for (let y = y0; y <= V.yMax + yStep * 0.01 && countY < MAX_TICKS; y += yStep, countY++) {
+      if (!isFinite(y) || y <= prevY) break;
+      prevY = y;
       const { py } = this.toPixel(0, y, w, h, V);
       ctx.beginPath();
       ctx.moveTo(0, py);
@@ -158,7 +176,11 @@ export class GraphRenderer {
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (let x = x0; x <= V.xMax + xStep * 0.01; x += xStep) {
+    let countLabelX = 0;
+    let prevLabelX = -Infinity;
+    for (let x = x0; x <= V.xMax + xStep * 0.01 && countLabelX < MAX_TICKS; x += xStep, countLabelX++) {
+      if (!isFinite(x) || x <= prevLabelX) break;
+      prevLabelX = x;
       if (Math.abs(x) < xStep * 0.01) continue;
       const { px } = this.toPixel(x, 0, w, h, V);
       ctx.fillText(this.formatNumber(x), px, ly);
@@ -166,7 +188,11 @@ export class GraphRenderer {
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    for (let y = y0; y <= V.yMax + yStep * 0.01; y += yStep) {
+    let countLabelY = 0;
+    let prevLabelY = -Infinity;
+    for (let y = y0; y <= V.yMax + yStep * 0.01 && countLabelY < MAX_TICKS; y += yStep, countLabelY++) {
+      if (!isFinite(y) || y <= prevLabelY) break;
+      prevLabelY = y;
       if (Math.abs(y) < yStep * 0.01) continue;
       const { py } = this.toPixel(0, y, w, h, V);
       ctx.fillText(this.formatNumber(y), lx, py);
