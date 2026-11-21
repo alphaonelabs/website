@@ -1,7 +1,7 @@
 """
 Tests for api_register() and api_login() handlers.
 """
-
+import re
 import base64
 import json
 import pytest
@@ -43,10 +43,15 @@ def _enc(val: str) -> str:
 
 class TestApiRegister:
     @pytest.fixture(autouse=True)
-    def _no_email(self, monkeypatch):
-        async def _sent(*_a, **_k):
+    def sent_emails(self, monkeypatch):
+        sent = []
+
+        async def _send_email(to_email, subject, html, env):
+            sent.append({"to": to_email, "subject": subject, "html": html})
             return True
-        monkeypatch.setattr(worker, "send_verification_email", _sent)
+
+        monkeypatch.setattr(worker, "_send_email", _send_email)
+        return sent
 
     def _req(self, payload):
         return json_request("/api/register", payload, headers={"CF-Connecting-IP": "127.0.0.1"})
@@ -111,7 +116,7 @@ class TestApiRegister:
         data = _parse(r)
         assert data["success"] is True  # name is stored in DB, not returned in response
 
-    async def test_duplicate_user_returns_409(self):
+    async def test_duplicate_user_returns_409(self,sent_emails):
         # Simulate UNIQUE constraint violation from D1
         stmt = make_stmt()
         stmt.bind.return_value.run.side_effect = Exception("UNIQUE constraint failed")
@@ -121,9 +126,10 @@ class TestApiRegister:
             env,
         )
         assert r.status == 409
+        assert sent_emails == []
         assert "already registered" in _parse(r).get("error", "")
 
-    async def test_db_error_returns_500(self):
+    async def test_db_error_returns_500(self, sent_emails):
         stmt = make_stmt()
         stmt.bind.return_value.run.side_effect = Exception("some DB error")
         env = make_env(db=MockDB([stmt]))
@@ -131,9 +137,9 @@ class TestApiRegister:
             self._req({"username": "alice", "email": "a@b.com", "password": "Str0ng-Pass!"}), env
         )
         assert r.status == 500
+        assert sent_emails == []
 
-    async def test_registration_sends_verification_message(self):
-        # Registration no longer issues a token; user must verify email first.
+    async def test_registration_sends_verification_message(self, sent_emails):
         env = make_env(db=MockDB([make_stmt()]))
         r = await worker.api_register(
             self._req({"username": "alice", "email": "a@b.com", "password": "Str0ng-Pass!"}), env
@@ -142,6 +148,14 @@ class TestApiRegister:
         data = _parse(r)
         assert data["success"] is True
         assert "email" in data["message"].lower()
+
+        assert len(sent_emails) == 1
+        mail = sent_emails[0]
+        assert mail["to"] == "a@b.com"
+        assert "Confirm" in mail["subject"]
+        link = re.search(r"http://localhost/verify-email\?token=([A-Za-z0-9_-]+)", mail["html"])
+        assert link is not None
+        assert len(link.group(1)) >= 32  # 256-bit urlsafe token
 
     async def test_invalid_json_returns_400(self):
         req = MockRequest(method="POST", url="http://localhost/api/register",
