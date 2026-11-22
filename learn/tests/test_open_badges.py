@@ -181,7 +181,7 @@ CREATE TABLE credentials (
     id TEXT PRIMARY KEY, certificate_id TEXT, user_id TEXT, activity_id TEXT NOT NULL,
     subject_id TEXT NOT NULL, name_disclosed INTEGER NOT NULL DEFAULT 0,
     credential_jws TEXT NOT NULL, kid TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'active', issued_at TEXT NOT NULL
+    status TEXT NOT NULL DEFAULT 'active', issued_at TEXT NOT NULL,status_list_index INTEGER
 );
 CREATE UNIQUE INDEX uq_active ON credentials (user_id, activity_id)
     WHERE user_id IS NOT NULL AND status = 'active';

@@ -56,6 +56,7 @@ import js
 from pyodide.ffi import to_js
 from js import WebSocketPair, WebSocketRequestResponsePair
 import uuid
+from status_list import STATUS_LIST_PATH
 
 
 _SENTRY_INITIALIZED = False
@@ -1087,6 +1088,13 @@ _DDL = [
     """CREATE UNIQUE INDEX IF NOT EXISTS uq_credentials_active_user_activity
         ON credentials (user_id, activity_id)
         WHERE user_id IS NOT NULL AND status = 'active'""",
+    """CREATE TABLE IF NOT EXISTS status_list_slots (
+        idx           INTEGER PRIMARY KEY AUTOINCREMENT,
+        credential_id TEXT NOT NULL UNIQUE
+    )""",
+    """CREATE UNIQUE INDEX IF NOT EXISTS uq_credentials_status_index
+        ON credentials (status_list_index)
+        WHERE status_list_index IS NOT NULL""",
     # Session attendance
     """CREATE TABLE IF NOT EXISTS session_attendance (
         id         TEXT PRIMARY KEY,
@@ -3315,6 +3323,7 @@ async def _issue_credential_for_certificate(env, request, enrollment, cert_uuid,
             criteria_narrative="Completed all required parts of the activity.",
             learner_name=learner_name,
             include_name=learner_name is not None,
+            status_list_url=f"{issuer_url}{STATUS_LIST_PATH}",
         ) or ""
     except Exception as exc:
         await capture_exception(exc, request, env, "api_generate_certificate.issue_credential")
@@ -3585,6 +3594,106 @@ async def api_get_credential(request, env, token: str, suffix=None):
         "Content-Type": "text/html; charset=utf-8",
         **_CREDENTIAL_NO_STORE, **_SECURITY_HEADERS, **_CORS})
 
+_CREDENTIAL_REVOKE_RE = re.compile(r"/api/credentials/([A-Za-z0-9_-]{22})/revoke")
+
+
+async def api_get_status_list(request, env):
+    """GET /status-lists/revocation/1 - signed Bitstring Status List credential."""
+    import credentials
+    import status_list
+    from open_badges import utc_now_iso
+
+    issuer_url = _credential_issuer_url(env)
+    kid = _env_str(env, "CREDENTIAL_SIGNING_KID")
+    key_b64 = _env_str(env, "CREDENTIAL_SIGNING_KEY")
+    if not (issuer_url and kid and key_b64):
+        return _credential_error("Status list not found", 404)
+
+    try:
+        res = await env.DB.prepare(
+            "SELECT status_list_index FROM credentials"
+            " WHERE status='revoked' AND status_list_index IS NOT NULL"
+        ).all()
+        rows = list(res.results or [])
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            await capture_exception(exc, request, env, "api_get_status_list.query")
+            return _credential_error("Could not load status list", 500)
+        rows = []
+
+    list_url = f"{issuer_url}{status_list.STATUS_LIST_PATH}"
+    payload = status_list.build_status_list_credential(
+        issuer_url, list_url,
+        status_list.encode_list([int(r.status_list_index) for r in rows]),
+        utc_now_iso(),
+    )
+    try:
+        jws = await credentials.sign_jws(payload, base64.b64decode(key_b64), kid, typ="vc+jwt")
+    except Exception as exc:
+        await capture_exception(exc, request, env, "api_get_status_list.sign")
+        return _credential_error("Could not sign status list", 500)
+    return Response(jws, headers={
+        "Content-Type": "application/vc+jwt", **_CREDENTIAL_NO_STORE, **_CORS})
+
+
+async def api_list_my_credentials(request, env):
+    """GET /api/credentials - the signed-in learner's credentials."""
+    user = verify_token(request.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    issuer_url = _credential_issuer_url(env)
+    try:
+        res = await env.DB.prepare(
+            "SELECT c.id, c.status, c.name_disclosed, c.issued_at, a.title"
+            " FROM credentials c JOIN activities a ON a.id = c.activity_id"
+            " WHERE c.user_id=? ORDER BY c.issued_at DESC"
+        ).bind(user["id"]).all()
+        rows = list(res.results or [])
+    except Exception as exc:
+        if not _is_no_such_table_error(exc):
+            await capture_exception(exc, request, env, "api_list_my_credentials")
+            return err("Could not load credentials", 500)
+        rows = []
+    return ok({"credentials": [{
+        "id": r.id,
+        "url": f"{issuer_url}/credentials/{r.id}" if issuer_url else "",
+        "title": r.title,
+        "status": r.status,
+        "name_disclosed": bool(r.name_disclosed),
+        "issued_at": r.issued_at,
+    } for r in rows]})
+
+
+async def api_revoke_credential(request, env, token: str):
+    """POST /api/credentials/<token>/revoke - the holder revokes their own credential."""
+    user = verify_token(request.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    try:
+        raw = await request.text()
+        body = json.loads(raw) if raw.strip() else {}
+    except Exception:
+        return err("Invalid JSON body", 400)
+    if not isinstance(body, dict):
+        return err("JSON body must be an object", 400)
+    reason = body.get("reason")
+    if reason is not None and not isinstance(reason, str):
+        return err("reason must be a string", 400)
+    reason = (reason or "learner_request").strip()[:200] or "learner_request"
+
+    try:
+        upd = await env.DB.prepare(
+            "UPDATE credentials SET status='revoked', revoked_at=datetime('now'), revoked_reason=?"
+            " WHERE id=? AND user_id=? AND status='active'"
+        ).bind(reason, token, user["id"]).run()
+    except Exception as exc:
+        if _is_no_such_table_error(exc):
+            return err("Credential not found", 404)
+        await capture_exception(exc, request, env, "api_revoke_credential")
+        return err("Could not revoke credential", 500)
+    if _rows_changed(upd) == 0:
+        return err("Credential not found or already revoked", 404)
+    return ok({"id": token, "status": "revoked"}, "Credential revoked")
 
 async def api_join(req, env):
     user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
@@ -5377,6 +5486,7 @@ STATIC_CLEAN_ROUTES = {
     "/success-stories": "/success-stories.html",
     "/feature-votes": "/feature-votes.html",
     "/messages": "/messages.html",
+    "/my-credentials": "/my-credentials.html",
 }
 
 
@@ -6983,7 +7093,7 @@ async def api_admin_table_counts(req, env):
 # Page views
 # ---------------------------------------------------------------------------
 
-_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/", "/credentials/")
+_VIEW_SKIP_PREFIXES = ("/api/", "/media/", "/images/", "/js/", "/css/", "/partials/", "/static/", "/fonts/", "/credentials/","/status-lists/")
 _VIEW_BOT_RE = re.compile(
     r"bot|crawl|spider|slurp|preview|monitor|uptime|curl|wget|python-|httpx|axios|headless|lighthouse|facebookexternalhit",
     re.IGNORECASE,
@@ -9385,6 +9495,9 @@ async def _dispatch(request, env):
     if m_cred and method == "GET":
         return await api_get_credential(request, env, m_cred.group(1), m_cred.group(2))
 
+    if path == "/status-lists/revocation/1" and method == "GET":
+        return await api_get_status_list(request, env)
+
     if path.startswith("/api/"):
         if path == "/api/init" and method == "POST":
             try:
@@ -9622,6 +9735,14 @@ async def _dispatch(request, env):
             return await api_get_notification_preferences(request, env)
         if path == "/api/notification-preferences" and method == "PATCH":
             return await api_patch_notification_preferences(request, env)
+        # Open Badges: learner credentials
+        if path == "/api/credentials" and method == "GET":
+            return await api_list_my_credentials(request, env)
+        m_cred_revoke = _CREDENTIAL_REVOKE_RE.fullmatch(path)
+        if m_cred_revoke and method == "POST":
+            return await api_revoke_credential(
+                request, env, m_cred_revoke.group(1)
+            )
 
         return err("API endpoint not found", 404)
 

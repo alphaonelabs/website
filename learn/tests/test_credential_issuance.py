@@ -86,7 +86,7 @@ def _data(resp):
 async def test_hook_issues_signed_credential_with_consented_name():
     insert = make_stmt()
     db = MockDB([make_stmt(first=_activity()), make_stmt(first=_learner_name()),
-                 make_stmt(first=None), insert])
+                 make_stmt(first=None), make_stmt(first=MockRow(idx=1)),insert,])
     env, pub = _env(db)
 
     cred_id = await worker._issue_credential_for_certificate(
@@ -113,7 +113,7 @@ async def test_hook_issues_signed_credential_with_consented_name():
 
 async def test_hook_without_consent_signs_no_name():
     insert = make_stmt()
-    db = MockDB([make_stmt(first=_activity()), make_stmt(first=None), insert])
+    db = MockDB([make_stmt(first=_activity()), make_stmt(first=None), make_stmt(first=MockRow(idx=1)),insert,])
     env, pub = _env(db)
 
     await worker._issue_credential_for_certificate(
@@ -187,6 +187,7 @@ async def test_generate_issues_named_credential_when_learner_consents():
         make_stmt(first=_activity()),      # hook: activity
         make_stmt(first=_learner_name()),  # hook: learner name
         make_stmt(first=None),             # hook: existing credential?
+        make_stmt(first=MockRow(idx=1)),
         insert,                            # hook: INSERT credential
     ])
     env, pub = _env(db)
@@ -214,6 +215,7 @@ async def test_generate_without_explicit_true_never_discloses_name(body):
         make_stmt(),
         make_stmt(first=_activity()),
         make_stmt(first=None),
+        make_stmt(first=MockRow(idx=1)),
         insert,
     ])
     env, pub = _env(db)
@@ -249,6 +251,7 @@ async def test_generate_issues_credential_for_pre_existing_certificate():
         make_stmt(first=_activity()),
         make_stmt(first=_learner_name()),
         make_stmt(first=None),
+        make_stmt(first=MockRow(idx=1)),
         insert,
     ])
     env, _ = _env(db)
@@ -289,6 +292,7 @@ async def test_generate_issues_credential_when_certificate_insert_races():
         make_stmt(first=_activity()),
         make_stmt(first=_learner_name()),
         make_stmt(first=None),
+        make_stmt(first=MockRow(idx=1)),
         insert,
     ])
     env, _ = _env(db)

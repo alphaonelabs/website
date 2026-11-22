@@ -16,6 +16,7 @@ import base64
 import os
 import uuid
 from datetime import datetime, timezone
+from status_list import STATUS_LIST_SIZE, build_status_entry
 
 OB3_CONTEXTS = [
     "https://www.w3.org/ns/credentials/v2",
@@ -66,6 +67,7 @@ def build_open_badge_credential(
     issued_at,
     subject_id,
     learner_name=None,
+    status_entry=None,
 ):
     """Return an unsigned OpenBadgeCredential as a plain dict.
 
@@ -97,7 +99,7 @@ def build_open_badge_credential(
             }
         ]
 
-    return {
+    credential = {
         "@context": list(OB3_CONTEXTS),
         "id": credential_url(base, token),
         "type": ["VerifiableCredential", "OpenBadgeCredential"],
@@ -111,6 +113,11 @@ def build_open_badge_credential(
         "validFrom": issued_at,
         "credentialSubject": subject,
     }
+
+    if status_entry:
+        credential["credentialStatus"] = status_entry
+
+    return credential
 
 
 # ---- storage (Cloudflare D1) -------------------------------------------------
@@ -126,6 +133,25 @@ async def _find_active_credential(db, user_id, activity_id):
         .first()
     )
 
+async def _allocate_status_index(db, token):
+    """Reserve a unique status-list slot within the configured capacity."""
+    row = await (
+        db.prepare(
+            """
+            INSERT INTO status_list_slots (credential_id)
+            SELECT ?
+            WHERE (SELECT COUNT(*) FROM status_list_slots) < ?
+            RETURNING idx
+            """
+        )
+        .bind(token, STATUS_LIST_SIZE)
+        .first()
+    )
+
+    if row is None:
+        raise ValueError("status list is full")
+
+    return int(row.idx)
 
 def _rows_changed(result):
     meta = getattr(result, "meta", None)
@@ -135,38 +161,27 @@ def _rows_changed(result):
 
 
 async def _insert_credential(db, row):
-    """Insert only while the learner's certificate and enrollment still exist.
-
-    Account deletion removes the enrollment first, so a late insert after
-    signing matches nothing and is skipped. Returns True if a row was inserted.
-    """
     result = await (
         db.prepare(
             "INSERT INTO credentials "
             "(id, certificate_id, user_id, activity_id, subject_id, name_disclosed, "
-            " credential_jws, kid, status, issued_at) "
-            "SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'active', ? "
+            " credential_jws, kid, status, issued_at, status_list_index) "
+            "SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ? "
             "WHERE EXISTS ("
             "  SELECT 1 FROM certificates c "
             "  JOIN enrollments e ON e.id = c.enrollment_id "
             "  WHERE c.id = ? AND e.user_id = ?)"
         )
         .bind(
-            row["id"],
-            row["certificate_id"],
-            row["user_id"],
-            row["activity_id"],
-            row["subject_id"],
-            1 if row["name_disclosed"] else 0,
-            row["credential_jws"],
-            row["kid"],
-            row["issued_at"],
-            row["certificate_id"],
-            row["user_id"],
+            row["id"], row["certificate_id"], row["user_id"], row["activity_id"],
+            row["subject_id"], 1 if row["name_disclosed"] else 0,
+            row["credential_jws"], row["kid"], row["issued_at"],
+            row.get("status_list_index"),
+            row["certificate_id"], row["user_id"],
         )
         .run()
     )
-    return _rows_changed(result) != 0   # None (unknown) counts as inserted
+    return _rows_changed(result) != 0
 
 async def issue_open_badge(
     *,
@@ -183,6 +198,7 @@ async def issue_open_badge(
     criteria_narrative,
     learner_name=None,
     include_name=False,
+    status_list_url=None,
 ):
     """Issue (or return the existing) credential. Returns the credential token.
 
@@ -197,6 +213,15 @@ async def issue_open_badge(
     token = new_credential_token()
     subject_id = new_subject_id()
     issued_at = utc_now_iso()
+    status_index = None
+    status_entry = None
+
+    if status_list_url:
+        status_index = await _allocate_status_index(db, token)
+        if status_index >= STATUS_LIST_SIZE:
+            raise ValueError("status list is full")
+
+    status_entry = build_status_entry(status_list_url, status_index)
     disclosed_name = clean_learner_name(learner_name) if include_name else None
 
     credential = build_open_badge_credential(
@@ -210,6 +235,7 @@ async def issue_open_badge(
         issued_at=issued_at,
         subject_id=subject_id,
         learner_name=disclosed_name,
+        status_entry=status_entry,
     )
 
     jws = await sign_fn(credential, kid)
@@ -226,6 +252,7 @@ async def issue_open_badge(
                 "name_disclosed": disclosed_name is not None,
                 "credential_jws": jws,
                 "kid": kid,
+                "status_list_index": status_index,
                 "issued_at": issued_at,
             },
         )
