@@ -261,3 +261,32 @@ async def test_insert_skipped_when_enrollment_is_gone():
     db = SqliteD1(with_enrollment=False)   # simulates account deletion mid-signing
     assert await _issue(db) is None
     assert db.active_rows() == []
+
+@pytest.mark.asyncio
+async def test_issue_without_status_list_url_has_no_status_entry_or_index():
+    db = SqliteD1()
+    seen = {}
+
+    async def capture(payload, kid):
+        seen["payload"] = payload
+        return "h.p.s"
+
+    token = await _issue(
+        db,
+        sign_fn=capture,
+        status_list_url=None,
+    )
+
+    assert token is not None
+
+    # The signed credential must not contain credentialStatus.
+    assert "credentialStatus" not in seen["payload"]
+
+    # The database must store NULL for status_list_index.
+    row = db.conn.execute(
+        "SELECT status_list_index FROM credentials WHERE id = ?",
+        (token,),
+    ).fetchone()
+
+    assert row is not None
+    assert row["status_list_index"] is None

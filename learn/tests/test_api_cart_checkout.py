@@ -408,6 +408,7 @@ class TestApiCreateCheckout:
             make_stmt(first=cart_row),            # 1. _active_cart_id
             make_stmt(all_results=[free_item]),   # 2. _cart_payload items
             mock_enroll_stmt,                     # 3. guarded enrollment INSERT
+            make_stmt(first=MockRow(id="usr-1")),
             make_stmt(),                          # 4. INSERT checkout session
             make_stmt(),                          # 5. UPDATE activity cart
         ]))
@@ -595,13 +596,16 @@ class TestApiCompleteCheckout:
         mock_enroll_stmt = make_stmt()
         mock_enroll_stmt.bind.return_value.run = AsyncMock(
             return_value=MockRow(meta={"changes": 1})
+       )
+        guarded_update_stmt = make_stmt()
+        guarded_update_stmt.bind.return_value.run = AsyncMock(
+            return_value=MockRow(meta={"changes": 1})
         )
 
         env = make_env(db=MockDB([
             make_stmt(all_results=[item_row]),  # 1. SELECT activity_id FROM activity_cart_items
             mock_enroll_stmt,                   # 2. INSERT OR IGNORE INTO enrollments
-            make_stmt(first=MockRow(id="usr-1")),  # Active account check
-            make_stmt(),                        # 3. UPDATE activity_carts SET status='checked_out'
+            guarded_update_stmt,                # Guarded checkout-session update
             make_stmt(),                        # 4. UPDATE activity_checkout_sessions SET status='paid'
         ]))
 
@@ -631,14 +635,19 @@ class TestApiCompleteCheckout:
             MockRow(activity_id="act-free", unit_price_cents=0),
         ]
         enroll_stmt = make_stmt()
-        enroll_stmt.bind.return_value.run = AsyncMock(return_value=MockRow(meta={"changes": 1}))
+        enroll_stmt.bind.return_value.run = AsyncMock(
+            return_value=MockRow(meta={"changes": 1})
+        )
+        guarded_update_stmt = make_stmt()
+        guarded_update_stmt.bind.return_value.run = AsyncMock(
+            return_value=MockRow(meta={"changes": 1})
+        )
 
         env = make_env(db=MockDB([
             make_stmt(all_results=rows),  # 1. SELECT activity_id,unit_price_cents FROM activity_cart_items
             enroll_stmt,                  # 2. INSERT OR IGNORE INTO enrollments (act-cheap)
             enroll_stmt,                  # 3. INSERT OR IGNORE INTO enrollments (act-free)
-            make_stmt(first=MockRow(id="usr-1")),
-            make_stmt(),                  # 4. UPDATE activity_carts SET status='checked_out'
+            guarded_update_stmt,
             make_stmt(),                  # 5. UPDATE activity_checkout_sessions SET status='paid'
         ]))
 

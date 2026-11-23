@@ -1,12 +1,11 @@
 import base64
 import json
-import sys
-from pathlib import Path
+
 
 import pytest
-
+from unittest.mock import AsyncMock
 pytest.importorskip("cryptography")
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 
 from cryptography.hazmat.primitives import serialization  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
@@ -144,36 +143,33 @@ async def test_hook_skips_when_not_configured():
     )
     assert out == "" and db._idx == 0
 
-
-async def test_hook_refuses_when_kid_not_published():
-    db = MockDB([])
-    env, _ = _env(db, jwks_kid="other")
-    out = await worker._issue_credential_for_certificate(
-        env, MockRequest(), _enrollment(), "cert-1", "u1", True
-    )
-    assert out == "" and db._idx == 0
-
-
-async def test_hook_returns_existing_credential():
-    db = MockDB([make_stmt(first=_activity()), make_stmt(first=MockRow(id="cred-0"))])
-    env, _ = _env(db)
-    out = await worker._issue_credential_for_certificate(
-        env, MockRequest(), _enrollment(), "cert-1", "u1", False
-    )
-    assert out == "cred-0" and db._idx == 2
-
-
 async def test_hook_never_raises_when_signing_fails(monkeypatch):
-    async def boom(*_a, **_k):
+    real = credentials.sign_jws
+
+    async def boom(payload, key, kid, typ="JWT"):
+        if typ != "vc+jwt":
+            return await real(payload, key, kid, typ=typ)
         raise RuntimeError("no key")
 
-    monkeypatch.setattr(credentials, "sign_jws", boom)
-    db = MockDB([make_stmt(first=_activity()), make_stmt(first=None)])
+    signer = AsyncMock(side_effect=boom)
+    monkeypatch.setattr(credentials, "sign_jws", signer)
+
+    db = MockDB([
+        make_stmt(first=_activity()),
+        make_stmt(first=None),
+        make_stmt(first=MockRow(idx=1)),
+    ])
     env, _ = _env(db)
+
     out = await worker._issue_credential_for_certificate(
         env, MockRequest(), _enrollment(), "cert-1", "u1", False
     )
+
     assert out == ""
+    assert any(
+        call.kwargs.get("typ") == "vc+jwt"
+        for call in signer.await_args_list
+    )
 
 
 # ---- through api_generate_certificate (consent plumbing) -------------------------

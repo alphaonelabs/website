@@ -3,6 +3,7 @@ Tests for password hashing: hash_password(), verify_password().
 """
 
 import base64
+import sqlite3
 from tests.helpers import load_worker
 
 worker = load_worker()
@@ -69,3 +70,26 @@ class TestVerifyPassword:
     def test_case_sensitive(self):
         stored = worker.hash_password("Password", "alice")
         assert worker.verify_password("password", stored, "alice") is False
+
+def test_production_password_updates_skip_deleted_accounts() -> None:
+    cases = (
+        worker._RESET_PASSWORD_SQL,
+        worker._CHANGE_PASSWORD_SQL,
+    )
+
+    for sql in cases:
+        conn = sqlite3.connect(":memory:")
+        try:
+            conn.executescript(
+                "CREATE TABLE users (id TEXT PRIMARY KEY, password_hash TEXT, email_verified INTEGER);"
+                "INSERT INTO users VALUES ('active','old',0), ('gone','deleted:xyz',0);"
+            )
+
+            assert conn.execute(sql, ("new", "active")).rowcount == 1
+            assert conn.execute(sql, ("new", "gone")).rowcount == 0
+
+            assert conn.execute(
+                "SELECT password_hash FROM users WHERE id='gone'"
+            ).fetchone() == ("deleted:xyz",)
+        finally:
+            conn.close()

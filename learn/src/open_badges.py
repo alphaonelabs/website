@@ -220,8 +220,7 @@ async def issue_open_badge(
         status_index = await _allocate_status_index(db, token)
         if status_index >= STATUS_LIST_SIZE:
             raise ValueError("status list is full")
-
-    status_entry = build_status_entry(status_list_url, status_index)
+        status_entry = build_status_entry(status_list_url, status_index)
     disclosed_name = clean_learner_name(learner_name) if include_name else None
 
     credential = build_open_badge_credential(

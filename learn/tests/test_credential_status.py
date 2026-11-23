@@ -1,13 +1,11 @@
 import base64
 import json
-import sys
-from pathlib import Path
+import sqlite3
 from types import SimpleNamespace
 
 import pytest
 
 pytest.importorskip("cryptography")
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cryptography.hazmat.primitives import serialization  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
@@ -37,6 +35,14 @@ def _env(db, configured=True):
     env.CREDENTIAL_ISSUER_URL = ISSUER if configured else ""
     env.CREDENTIAL_SIGNING_KID = KID
     env.CREDENTIAL_SIGNING_KEY = base64.b64encode(PKCS8).decode()
+    env.CREDENTIAL_PUBLIC_JWKS = json.dumps([{
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": credentials.b64url_encode(PUB),
+        "kid": KID,
+        "use": "sig",
+        "alg": "EdDSA",
+    }])
     return env
 
 
@@ -194,3 +200,34 @@ def test_revoke_route_regex_and_view_skip():
     req = MockRequest(method="GET", url="http://localhost/status-lists/revocation/1",
                       headers={"User-Agent": "Mozilla/5.0 (X11; Linux) Firefox/120"})
     assert worker._page_view_path(req, make_env()) is None
+
+def test_revoke_sql_enforces_owner_and_active_status():
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.executescript(
+            "CREATE TABLE credentials (id TEXT PRIMARY KEY, user_id TEXT, status TEXT,"
+            " revoked_at TEXT, revoked_reason TEXT);"
+            "INSERT INTO credentials VALUES ('mine','u1','active',NULL,NULL),"
+            " ('theirs','u2','active',NULL,NULL), ('done','u1','revoked','t','old');"
+        )
+
+        def revoke(token, uid):
+            return conn.execute(worker._REVOKE_SQL, ("why", token, uid)).rowcount
+
+        def row(token):
+            return conn.execute(
+                "SELECT status, revoked_reason FROM credentials WHERE id=?",
+                (token,)
+            ).fetchone()
+
+        assert revoke("nope", "u1") == 0
+        assert revoke("theirs", "u1") == 0
+        assert row("theirs") == ("active", None)
+
+        assert revoke("done", "u1") == 0
+        assert row("done") == ("revoked", "old")
+
+        assert revoke("mine", "u1") == 1
+        assert row("mine") == ("revoked", "why")
+    finally:
+        conn.close()

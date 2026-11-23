@@ -1,12 +1,12 @@
 
 """Generate an Ed25519 signing key for verifiable credentials.
 Usage: python scripts/generate_signing_key.py <key-id>
-Prints values for `wrangler secret put` / .dev.vars. Never commit the output.
+Prints values for a deployment secrets file / .dev.vars. Never commit the output.
 First key: use the three printed lines as they are.
 
 Rotating: keep the existing keys in `CREDENTIAL_PUBLIC_JWKS` and append the new JWK (the single object inside the printed array). Every key needs a unique id, because duplicate ids are rejected.
 Publish the updated public JWKS first. Wait at least 300 seconds after the updated JWKS is available, or longer if supported consumers may cache keys for longer. Only then switch `CREDENTIAL_SIGNING_KID` and `CREDENTIAL_SIGNING_KEY` to the new key.
-Keep old public keys published for as long as credentials signed with them need to be verified.
+Then set `CREDENTIAL_SIGNING_KID` and `CREDENTIAL_SIGNING_KEY` together in a single deployment, for example `wrangler deploy --secrets-file <file>`, and delete the file afterwards. Do not set them with separate `wrangler secret put` calls. The worker also refuses to issue if the key does not match the published JWK.
 """
 import base64
 import json

@@ -1,11 +1,18 @@
 """Verify a stored Open Badges credential against the published public keys."""
 
 import json
-
+from typing import Any, Optional, TypedDict
 import credentials
 
+class VerifyResult(TypedDict):
+    valid: bool
+    reason: str
+    payload: Optional[dict[str, Any]]
+    kid: str
 
-async def verify_credential_jws(jws, expected_id, expected_kid, jwks_raw):
+async def verify_credential_jws(
+    jws: str, expected_id: str, expected_kid: str, jwks_raw: str
+) -> VerifyResult:
     """Return {"valid", "reason", "payload", "kid"}. Reasons are fixed strings."""
     result = {"valid": False, "reason": "", "payload": None, "kid": expected_kid}
     try:

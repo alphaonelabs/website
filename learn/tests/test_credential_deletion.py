@@ -112,9 +112,14 @@ async def test_critical_changes_commit_in_one_batch_before_any_other_write() -> 
     assert resp.status == 200
 
     assert len(db.batch_attempts) == 1
-    unlink, enrollments, anonymize = db.batch_attempts[0]
+    revoke, unlink, enrollments, anonymize = db.batch_attempts[0]
+
+    assert revoke[0].startswith("UPDATE credentials SET status='revoked'")
+    assert revoke[1] == ("u1",)
+
     assert unlink == (UNLINK_SQL, ("u1",))
     assert enrollments == (ENROLLMENTS_SQL, ("u1",))
+
     assert anonymize[0].startswith("UPDATE users SET username_hash")
     assert anonymize[1][-1] == "u1"
 
@@ -150,11 +155,17 @@ async def test_missing_credentials_table_retries_without_unlink() -> None:
     assert resp.status == 200
     assert len(db.batch_attempts) == 2
     first, second = db.batch_attempts
-    assert [sql for sql, _ in first][:2] == [UNLINK_SQL, ENROLLMENTS_SQL]
-    assert first[0][1] == ("u1",) and first[1][1] == ("u1",)
-    assert len(first) == 3
-    assert [sql for sql, _ in second][0] == ENROLLMENTS_SQL
-    assert len(second) == 2 and second[1][0].startswith("UPDATE users SET username_hash")
+
+    assert first[0][0].startswith("UPDATE credentials SET status='revoked'")
+    assert first[0][1] == ("u1",)
+
+    assert first[1] == (UNLINK_SQL, ("u1",))
+    assert first[2] == (ENROLLMENTS_SQL, ("u1",))
+    assert len(first) == 4
+
+    assert second[0] == (ENROLLMENTS_SQL, ("u1",))
+    assert len(second) == 2
+    assert second[1][0].startswith("UPDATE users SET username_hash")
 
 
 async def test_other_missing_table_is_not_swallowed() -> None:

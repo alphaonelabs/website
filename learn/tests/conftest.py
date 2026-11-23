@@ -108,8 +108,14 @@ class _CryptoSubtle:
 
     async def importKey(self, fmt, key_data, algo, extractable, usages):
         if isinstance(algo, dict) and algo.get("name") == "Ed25519":
+            expected = {"pkcs8": "sign", "raw": "verify"}
+            assert fmt in expected, f"unexpected Ed25519 key format: {fmt}"
+            assert list(usages) == [expected[fmt]], (
+                f"unexpected usages for {fmt}: {list(usages)}"
+            )
             return _Ed25519Key(fmt, key_data)
-        return key_data
+        return key_data  # AES path unchanged
+
 
     async def sign(self, algo, key, data):
         from cryptography.hazmat.primitives import serialization

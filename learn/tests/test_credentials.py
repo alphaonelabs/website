@@ -1,11 +1,11 @@
 import sys
 import json
-from pathlib import Path
+
 
 import pytest
 
 pytest.importorskip("cryptography")
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 
 import credentials  # noqa: E402
 from cryptography.hazmat.primitives import serialization  # noqa: E402

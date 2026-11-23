@@ -1,11 +1,9 @@
 import json
-import sys
-from pathlib import Path
 
 import pytest
 
 pytest.importorskip("cryptography")
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 
 from cryptography.hazmat.primitives import serialization  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
@@ -174,3 +172,17 @@ def _assert_no_store(r):
     assert r.headers["Cache-Control"] == "no-store"
     assert r.headers["Vary"] == "Accept"
     assert r.headers["X-Robots-Tag"] == "noindex"
+
+def test_accept_q_zero_is_honored():
+    r = _req("text/html, application/vc+jwt;q=0")
+    assert worker._credential_format(r, None) == "html"
+
+    assert worker._credential_format(
+        _req("application/vc+jwt"), None
+    ) == "jwt"
+
+    assert worker._credential_format(
+        _req("application/json;q=0.5, text/html;q=0.1"), None
+    ) == "json"
+
+    assert worker._credential_format(_req("*/*"), None) == "html"
