@@ -399,7 +399,6 @@ class TestApiCreateCheckout:
             slug="free-meetup",
             image_url="",
         )
-
         mock_enroll_stmt = make_stmt()
         mock_enroll_stmt.bind.return_value.run = AsyncMock(
             return_value=MockRow(meta={"changes": 1})
@@ -408,12 +407,20 @@ class TestApiCreateCheckout:
         env = make_env(db=MockDB([
             make_stmt(first=cart_row),            # 1. _active_cart_id
             make_stmt(all_results=[free_item]),   # 2. _cart_payload items
-            mock_enroll_stmt,                     # 3. INSERT INTO enrollments
-            make_stmt(),                          # 4. INSERT INTO activity_checkout_sessions
-            make_stmt(),                          # 5. UPDATE activity_carts SET status='checked_out'
+            mock_enroll_stmt,                     # 3. guarded enrollment INSERT
+            make_stmt(first=MockRow(id="usr-1")),
+            make_stmt(),                          # 4. INSERT checkout session
+            make_stmt(),                          # 5. UPDATE activity cart
         ]))
 
         r = await worker.api_create_checkout(self._req(headers=_user_headers()), env)
+        assert mock_enroll_stmt.bind.called
+        bind_args = mock_enroll_stmt.bind.call_args.args
+        assert len(bind_args) == 6
+        assert bind_args[1] == "act-free-1"
+        assert bind_args[2] == "usr-1"
+        assert bind_args[3:5] == ("participant", "active")
+        assert bind_args[5] == "usr-1"
         assert r.status == 200
         data = _parse(r)
         assert data["success"] is True
@@ -589,12 +596,16 @@ class TestApiCompleteCheckout:
         mock_enroll_stmt = make_stmt()
         mock_enroll_stmt.bind.return_value.run = AsyncMock(
             return_value=MockRow(meta={"changes": 1})
+       )
+        guarded_update_stmt = make_stmt()
+        guarded_update_stmt.bind.return_value.run = AsyncMock(
+            return_value=MockRow(meta={"changes": 1})
         )
 
         env = make_env(db=MockDB([
             make_stmt(all_results=[item_row]),  # 1. SELECT activity_id FROM activity_cart_items
             mock_enroll_stmt,                   # 2. INSERT OR IGNORE INTO enrollments
-            make_stmt(),                        # 3. UPDATE activity_carts SET status='checked_out'
+            guarded_update_stmt,                # Guarded checkout-session update
             make_stmt(),                        # 4. UPDATE activity_checkout_sessions SET status='paid'
         ]))
 
@@ -624,13 +635,19 @@ class TestApiCompleteCheckout:
             MockRow(activity_id="act-free", unit_price_cents=0),
         ]
         enroll_stmt = make_stmt()
-        enroll_stmt.bind.return_value.run = AsyncMock(return_value=MockRow(meta={"changes": 1}))
+        enroll_stmt.bind.return_value.run = AsyncMock(
+            return_value=MockRow(meta={"changes": 1})
+        )
+        guarded_update_stmt = make_stmt()
+        guarded_update_stmt.bind.return_value.run = AsyncMock(
+            return_value=MockRow(meta={"changes": 1})
+        )
 
         env = make_env(db=MockDB([
             make_stmt(all_results=rows),  # 1. SELECT activity_id,unit_price_cents FROM activity_cart_items
             enroll_stmt,                  # 2. INSERT OR IGNORE INTO enrollments (act-cheap)
             enroll_stmt,                  # 3. INSERT OR IGNORE INTO enrollments (act-free)
-            make_stmt(),                  # 4. UPDATE activity_carts SET status='checked_out'
+            guarded_update_stmt,
             make_stmt(),                  # 5. UPDATE activity_checkout_sessions SET status='paid'
         ]))
 
@@ -643,32 +660,60 @@ class TestApiCompleteCheckout:
         enrolled_ids = [c.args[1] for c in enroll_stmt.bind.call_args_list]
         assert "act-expensive" not in enrolled_ids
         assert set(enrolled_ids) == {"act-cheap", "act-free"}
-
     async def test_successful_paid_completion_for_guest(self):
-        guest_id = worker._guest_cart_id(MockRequest(method="POST", headers=_guest_headers()), make_env())
+        guest_id = worker._guest_cart_id(
+            MockRequest(method="POST", headers=_guest_headers()),
+            make_env(),
+        )
+
         stripe_mock = AsyncMock(return_value={
-            "metadata": {"owner_kind": "guest", "guest_id": guest_id, "cart_id": "cart-guest-paid"},
+            "metadata": {
+                "owner_kind": "guest",
+                "guest_id": guest_id,
+                "cart_id": "cart-guest-paid",
+            },
             "payment_status": "paid",
             "amount_total": 3500,
-            "customer_details": {"email": "guest@example.com"},
+            "customer_details": {"email": "a@b.com"},
         })
 
+        execution_order = []
+
+        session_update_stmt = make_stmt()
+        session_update_stmt.bind.return_value.run = AsyncMock(
+            side_effect=lambda: execution_order.append("session")
+        )
+
+        cart_update_stmt = make_stmt()
+        cart_update_stmt.bind.return_value.run = AsyncMock(
+            side_effect=lambda: execution_order.append("cart")
+        )
+
         env = make_env(db=MockDB([
-            make_stmt(all_results=[]),  # 1. SELECT activity_id FROM activity_cart_items
-            make_stmt(),                # 2. UPDATE activity_carts SET status='checked_out'
-            make_stmt(),                # 3. UPDATE activity_checkout_sessions SET status='paid'
+            make_stmt(all_results=[]),  # 1. SELECT cart items
+            session_update_stmt,        # 2. UPDATE checkout session
+            cart_update_stmt,           # 3. UPDATE guest cart
         ]))
 
         with patch.object(worker, "_stripe_get_request", new=stripe_mock):
             r = await worker.api_complete_checkout(
-                self._req({"session_id": "cs_test_12345"}, headers=_guest_headers()), env
+                self._req({"session_id": "cs_test_1"}, headers=_guest_headers()),
+                env,
             )
-            assert r.status == 200
-            data = _parse(r)
-            assert data["success"] is True
-            assert data["data"]["guest"] is True
 
+        assert r.status == 200
+        data = _parse(r)
+        assert data["success"] is True
+        assert data["data"]["guest"] is True
 
+        session_update_stmt.bind.assert_called_once_with(
+            3500,
+            "a@b.com",
+            "cs_test_1",
+            guest_id,
+        )
+
+        assert execution_order == ["session", "cart"]
 # ===========================================================================
 # 7. api_create_donation_checkout()
 # ===========================================================================
