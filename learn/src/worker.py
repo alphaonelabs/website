@@ -7158,8 +7158,23 @@ async def api_complete_checkout(req, env):
             )
 
         # Guest checkout
+        customer_details = session.get("customer_details") or {}
+        guest_email = customer_details.get("email") or ""
+
         await env.DB.prepare(
-            "UPDATE activity_carts SET status='checked_out', updated_at=datetime('now') WHERE id=? AND guest_id=? AND owner_kind='guest'"
+            "UPDATE activity_checkout_sessions SET status='paid', completed_at=datetime('now'),"
+            " amount_total=?, guest_email=?"
+            " WHERE stripe_session_id=? AND guest_id=? AND owner_kind='guest'"
+        ).bind(
+            int(session.get("amount_total") or 0),
+            guest_email,
+            session_id,
+            owner["guest_id"],
+        ).run()
+
+        await env.DB.prepare(
+            "UPDATE activity_carts SET status='checked_out', updated_at=datetime('now')"
+            " WHERE id=? AND guest_id=? AND owner_kind='guest'"
         ).bind(
             cart_id,
             owner["guest_id"],

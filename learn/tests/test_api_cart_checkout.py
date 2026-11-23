@@ -660,32 +660,60 @@ class TestApiCompleteCheckout:
         enrolled_ids = [c.args[1] for c in enroll_stmt.bind.call_args_list]
         assert "act-expensive" not in enrolled_ids
         assert set(enrolled_ids) == {"act-cheap", "act-free"}
-
     async def test_successful_paid_completion_for_guest(self):
-        guest_id = worker._guest_cart_id(MockRequest(method="POST", headers=_guest_headers()), make_env())
+        guest_id = worker._guest_cart_id(
+            MockRequest(method="POST", headers=_guest_headers()),
+            make_env(),
+        )
+
         stripe_mock = AsyncMock(return_value={
-            "metadata": {"owner_kind": "guest", "guest_id": guest_id, "cart_id": "cart-guest-paid"},
+            "metadata": {
+                "owner_kind": "guest",
+                "guest_id": guest_id,
+                "cart_id": "cart-guest-paid",
+            },
             "payment_status": "paid",
             "amount_total": 3500,
-            "customer_details": {"email": "guest@example.com"},
+            "customer_details": {"email": "a@b.com"},
         })
 
+        execution_order = []
+
+        session_update_stmt = make_stmt()
+        session_update_stmt.bind.return_value.run = AsyncMock(
+            side_effect=lambda: execution_order.append("session")
+        )
+
+        cart_update_stmt = make_stmt()
+        cart_update_stmt.bind.return_value.run = AsyncMock(
+            side_effect=lambda: execution_order.append("cart")
+        )
+
         env = make_env(db=MockDB([
-            make_stmt(all_results=[]),  # 1. SELECT activity_id FROM activity_cart_items
-            make_stmt(),                # 2. UPDATE activity_carts SET status='checked_out'
-            make_stmt(),                # 3. UPDATE activity_checkout_sessions SET status='paid'
+            make_stmt(all_results=[]),  # 1. SELECT cart items
+            session_update_stmt,        # 2. UPDATE checkout session
+            cart_update_stmt,           # 3. UPDATE guest cart
         ]))
 
         with patch.object(worker, "_stripe_get_request", new=stripe_mock):
             r = await worker.api_complete_checkout(
-                self._req({"session_id": "cs_test_12345"}, headers=_guest_headers()), env
+                self._req({"session_id": "cs_test_1"}, headers=_guest_headers()),
+                env,
             )
-            assert r.status == 200
-            data = _parse(r)
-            assert data["success"] is True
-            assert data["data"]["guest"] is True
 
+        assert r.status == 200
+        data = _parse(r)
+        assert data["success"] is True
+        assert data["data"]["guest"] is True
 
+        session_update_stmt.bind.assert_called_once_with(
+            3500,
+            "a@b.com",
+            "cs_test_1",
+            guest_id,
+        )
+
+        assert execution_order == ["session", "cart"]
 # ===========================================================================
 # 7. api_create_donation_checkout()
 # ===========================================================================

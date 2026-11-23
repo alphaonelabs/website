@@ -50,6 +50,21 @@ def _mark_paid(conn):
         (1000, "cs_test", "u1", "u1"),
     ).rowcount
 
+def test_mark_paid_updates_an_active_account():
+    conn = _database()
+
+    try:
+        assert _mark_paid(conn) == 1
+
+        status = conn.execute(
+            "SELECT status FROM activity_checkout_sessions "
+            "WHERE stripe_session_id='cs_test'"
+        ).fetchone()[0]
+
+        assert status == "paid"
+
+    finally:
+        conn.close()
 
 def test_checkout_cannot_enroll_or_mark_paid_after_account_deletion():
     conn = _database()

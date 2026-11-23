@@ -212,13 +212,68 @@ def test_checkout_insert_is_skipped_for_a_deleted_account() -> None:
         )
         assert cur.rowcount == expected
 
-def test_password_updates_skip_deleted_accounts() -> None:
+def test_production_password_updates_skip_deleted_accounts() -> None:
+    for sql in (worker._RESET_PASSWORD_SQL, worker._CHANGE_PASSWORD_SQL):
+        conn = sqlite3.connect(":memory:")
+        try:
+            conn.executescript(
+                "CREATE TABLE users (id TEXT PRIMARY KEY, password_hash TEXT, email_verified INTEGER);"
+                "INSERT INTO users VALUES ('active','old',0), ('gone','deleted:xyz',0);"
+            )
+            assert conn.execute(sql, ("new", "active")).rowcount == 1
+            assert conn.execute(sql, ("new", "gone")).rowcount == 0
+            assert conn.execute(
+                "SELECT password_hash FROM users WHERE id='gone'"
+            ).fetchone()[0] == "deleted:xyz"
+        finally:
+            conn.close()
+
+def test_mark_paid_updates_an_active_account():
+    conn = _checkout_db()
+    try:
+        assert _mark_paid(conn) == 1
+
+        status = conn.execute(
+            "SELECT status FROM activity_checkout_sessions"
+            " WHERE stripe_session_id=?",
+            ("cs_test",),
+        ).fetchone()[0]
+
+        assert status == "paid"
+    finally:
+        conn.close()
+
+def _checkout_db() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.executescript(
-        "CREATE TABLE users (id TEXT PRIMARY KEY, password_hash TEXT);"
-        "INSERT INTO users VALUES ('active','old'), ('gone','deleted:xyz');"
+        """
+        CREATE TABLE users (
+            id TEXT PRIMARY KEY,
+            password_hash TEXT
+        );
+
+        CREATE TABLE activity_checkout_sessions (
+            stripe_session_id TEXT PRIMARY KEY,
+            user_id TEXT,
+            owner_kind TEXT,
+            status TEXT,
+            completed_at TEXT,
+            amount_total INTEGER
+        );
+
+        INSERT INTO users VALUES ('active', 'abc');
+
+        INSERT INTO activity_checkout_sessions
+            (stripe_session_id, user_id, owner_kind, status, amount_total)
+        VALUES
+            ('cs_test', 'active', 'user', 'pending', 0);
+        """
     )
-    sql = "UPDATE users SET password_hash=? WHERE id=? AND password_hash NOT LIKE 'deleted:%'"
-    assert conn.execute(sql, ("new", "active")).rowcount == 1
-    assert conn.execute(sql, ("new", "gone")).rowcount == 0
-    assert conn.execute("SELECT password_hash FROM users WHERE id='gone'").fetchone()[0] == "deleted:xyz"
+    return conn
+
+def _mark_paid(conn: sqlite3.Connection) -> int:
+    cur = conn.execute(
+        worker._MARK_CHECKOUT_PAID_SQL,
+        (3500, "cs_test", "active", "active"),
+    )
+    return cur.rowcount
