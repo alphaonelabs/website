@@ -170,3 +170,14 @@ http://localhost:3000
 | Method | Endpoint | Description |
 |----------|----------|-------------|
 | GET | /api/dashboard | User dashboard |
+
+### Challenges and points
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| POST | /api/challenges | Create a weekly or one-time challenge (hosts and admins only) |
+| GET | /api/challenges | List challenges (public; optional `type` and `limit`) |
+| GET | /api/challenges/current | The weekly challenge that is open today (public) |
+| GET | /api/challenges/:id | Get one challenge (adds `submitted` when logged in) |
+| POST | /api/challenges/:id/submit | Submit once while the challenge is open and earn its points |
+| GET | /api/points | Your total points and most recent awards |
