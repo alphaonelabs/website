@@ -92,11 +92,22 @@ class RecordingDB(MockDB):
     def __init__(self, stmts=None):
         super().__init__(stmts)
         self.sql = []
+        self.prepared = []  # (sql, statement) for every statement handed out, including fallbacks
         self.batch = AsyncMock(return_value=[])
 
     def prepare(self, sql):
-        self.sql.append(" ".join(sql.split()))
-        return super().prepare(sql)
+        clean = " ".join(sql.split())
+        self.sql.append(clean)
+        stmt = super().prepare(sql)
+        self.prepared.append((clean, stmt))
+        return stmt
+
+    def bound_args(self, sql_prefix):
+        """Arguments the first statement starting with sql_prefix was bound with."""
+        for sql, stmt in self.prepared:
+            if sql.startswith(sql_prefix):
+                return stmt.bind.call_args.args
+        raise AssertionError("no statement starting with " + sql_prefix)
 
 
 class TestCreateChallenge:
@@ -281,15 +292,21 @@ class TestSubmitChallenge:
     async def test_points_come_from_the_challenge_not_the_request(self):
         db = RecordingDB([make_stmt(first=_challenge_row(points=10)), make_stmt(first=None)])
         resp = await worker.api_submit_challenge(
-            _submit_req({"submission_text": "x", "points_awarded": 9999, "user_id": "other"}),
+            _submit_req({"submission_text": "x", "points_awarded": 9999, "user_id": "other"}, token=_token(uid="user-9")),
             make_env(db=db),
             "c-1",
         )
         assert _parse(resp)["data"]["points_awarded"] == 10
-        for stmt in db._stmts:
-            for call in stmt.bind.call_args_list:
-                assert 9999 not in call.args
-                assert "other" not in call.args
+
+        # INSERT INTO challenge_submissions (id, user_id, challenge_id, submission_text, points_awarded)
+        submission_args = db.bound_args("INSERT INTO challenge_submissions")
+        assert submission_args[1:] == ("user-9", "c-1", "x", 10)
+        # INSERT INTO user_points (id, user_id, challenge_id, amount, reason)
+        points_args = db.bound_args("INSERT INTO user_points")
+        assert points_args[1:4] == ("user-9", "c-1", 10)
+        for args in (submission_args, points_args):
+            assert 9999 not in args
+            assert "other" not in args
 
     async def test_second_submission_returns_409_without_writing(self):
         db = RecordingDB([make_stmt(first=_challenge_row()), make_stmt(first=MockRow(id="s-1"))])
