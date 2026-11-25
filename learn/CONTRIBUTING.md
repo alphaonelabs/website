@@ -33,8 +33,8 @@ Before you begin:
 2. Clone your fork locally:
 
    ```bash
-   git clone https://github.com/your-username/learn.git
-   cd learn
+   git clone https://github.com/your-username/website.git
+   cd website/learn
    ```
 
 3. Create a branch for your change:
