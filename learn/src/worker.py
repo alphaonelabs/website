@@ -6494,14 +6494,18 @@ async def api_complete_checkout(req, env):
                 activity_id = (product.get("metadata") or {}).get("activity_id") if isinstance(product, dict) else None
                 if activity_id:
                     paid_activity_ids.add(activity_id)
+            # Stripe's paid line items are the source of truth even if the
+            # buyer removed an activity from the cart while payment was open.
+            # Keep the existing behavior for free activities still in the cart.
+            enrollment_ids = set(paid_activity_ids)
             for row in res.results or []:
-                is_free = int(getattr(row, "unit_price_cents", 0) or 0) <= 0
-                if not is_free and row.activity_id not in paid_activity_ids:
-                    continue
+                if int(getattr(row, "unit_price_cents", 0) or 0) <= 0:
+                    enrollment_ids.add(row.activity_id)
+            for activity_id in sorted(enrollment_ids):
                 try:
                     insert_res = await env.DB.prepare(
                         "INSERT OR IGNORE INTO enrollments (id,activity_id,user_id,role,status) VALUES (?,?,?,?,?)"
-                    ).bind(new_id(), row.activity_id, owner["user_id"], "participant", "active").run()
+                    ).bind(new_id(), activity_id, owner["user_id"], "participant", "active").run()
                     meta = getattr(insert_res, "meta", None)
                     changes = meta.get("changes") if isinstance(meta, dict) else getattr(meta, "changes", None)
                     if changes != 0:

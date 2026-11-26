@@ -644,6 +644,35 @@ class TestApiCompleteCheckout:
         assert "act-expensive" not in enrolled_ids
         assert set(enrolled_ids) == {"act-cheap", "act-free"}
 
+    @pytest.mark.parametrize("remaining_rows", [
+        [],
+        [MockRow(activity_id="act-unpaid", unit_price_cents=50000)],
+    ])
+    async def test_paid_activity_removed_from_cart_is_still_enrolled(self, remaining_rows):
+        stripe_mock = AsyncMock(side_effect=[
+            {
+                "metadata": {"owner_kind": "user", "user_id": "usr-1", "cart_id": "cart-paid"},
+                "payment_status": "paid",
+                "amount_total": 4500,
+            },
+            {"data": [{"price": {"product": {"metadata": {"activity_id": "act-paid-removed"}}}}]},
+        ])
+        enroll_stmt = make_stmt()
+        enroll_stmt.bind.return_value.run = AsyncMock(return_value=MockRow(meta={"changes": 1}))
+        env = make_env(db=MockDB([
+            make_stmt(all_results=remaining_rows),
+            enroll_stmt,
+            make_stmt(),
+            make_stmt(),
+        ]))
+        with patch.object(worker, "_stripe_get_request", new=stripe_mock):
+            response = await worker.api_complete_checkout(
+                self._req({"session_id": "cs_test_removed"}, headers=_user_headers()), env
+            )
+        assert response.status == 200
+        assert _parse(response)["data"]["enrolled"] == 1
+        assert [call.args[1] for call in enroll_stmt.bind.call_args_list] == ["act-paid-removed"]
+
     async def test_successful_paid_completion_for_guest(self):
         guest_id = worker._guest_cart_id(MockRequest(method="POST", headers=_guest_headers()), make_env())
         stripe_mock = AsyncMock(return_value={
