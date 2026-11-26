@@ -189,6 +189,8 @@ class TestApiDashboard:
         tok = _token(uid="host-1", role="host")
         hosted_row = MockRow(
             id="act-1", title="My Course", type="course",
+            description=_enc("Hosted course description"),
+            slug="my-course",
             format="self_paced", schedule_type="ongoing",
             participant_count=3, session_count=1,
             created_at="2024-01-01",
@@ -201,12 +203,17 @@ class TestApiDashboard:
         r = await worker.api_dashboard(self._req(tok), env)
         data = _parse(r)
         assert len(data["hosted_activities"]) == 1
-        assert data["hosted_activities"][0]["title"] == "My Course"
+        hosted = data["hosted_activities"][0]
+        assert hosted["title"] == "My Course"
+        assert hosted["description"] == "Hosted course description"
+        assert hosted["slug"] == "my-course"
 
     async def test_joined_activities_returned(self):
         tok = _token(uid="member-1")
         joined_row = MockRow(
             id="act-1", title="Python 101", type="course",
+            description=_enc("Joined course description"),
+            slug="python-101",
             format="self_paced", schedule_type="ongoing",
             enr_role="participant", enr_status="active",
             host_name_enc=_enc("Alice"),
@@ -224,3 +231,5 @@ class TestApiDashboard:
         assert act["title"] == "Python 101"
         assert act["enr_role"] == "participant"
         assert act["host_name"] == "Alice"
+        assert act["description"] == "Joined course description"
+        assert act["slug"] == "python-101"
