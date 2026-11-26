@@ -181,3 +181,13 @@ http://localhost:3000
 | GET | /api/challenges/:id | Get one challenge (adds `submitted` when logged in) |
 | POST | /api/challenges/:id/submit | Submit once while the challenge is open and earn its points |
 | GET | /api/points | Your total points and most recent awards |
+
+### Badges
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| POST | /api/badges | Create a badge that a challenge awards (hosts and admins only) |
+| GET | /api/badges | List active badges (public; optional `challenge_id` and `limit`) |
+| GET | /api/badges/me | Badges you have earned |
+
+Submitting a challenge (`POST /api/challenges/:id/submit`) now also awards the challenge's active badges and lists them in `badges_awarded`.

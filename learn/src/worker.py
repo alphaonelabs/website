@@ -1219,6 +1219,36 @@ _DDL = [
         FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE SET NULL
     )""",
     "CREATE INDEX IF NOT EXISTS idx_user_points_user ON user_points(user_id, awarded_at)",
+    # Badges and earned badges
+    """CREATE TABLE IF NOT EXISTS badges (
+        id          TEXT PRIMARY KEY,
+        name        TEXT NOT NULL,
+        description TEXT NOT NULL,
+        badge_type  TEXT NOT NULL DEFAULT 'challenge'
+                    CHECK (badge_type IN ('challenge', 'course', 'achievement', 'teacher_awarded')),
+        challenge_id TEXT,
+        icon        TEXT NOT NULL DEFAULT 'medal',
+        is_active   INTEGER NOT NULL DEFAULT 1,
+        created_by  TEXT,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_badges_challenge ON badges(challenge_id)",
+    """CREATE TABLE IF NOT EXISTS user_badges (
+        id                      TEXT PRIMARY KEY,
+        user_id                 TEXT NOT NULL,
+        badge_id                TEXT NOT NULL,
+        award_method            TEXT NOT NULL
+                                CHECK (award_method IN ('challenge_completion', 'course_completion', 'teacher_awarded', 'system_awarded')),
+        challenge_submission_id TEXT,
+        awarded_at              TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (user_id, badge_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
+        FOREIGN KEY (challenge_submission_id) REFERENCES challenge_submissions(id) ON DELETE SET NULL
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id, awarded_at)",
 ]
 
 
@@ -3734,9 +3764,11 @@ async def api_delete_account(req, env):
             "DELETE FROM activity_checkout_sessions WHERE user_id=?",
             "DELETE FROM feedback_messages WHERE user_id=?",
             "DELETE FROM user_profiles WHERE user_id=?",
+            "DELETE FROM user_badges WHERE user_id=?",
             "DELETE FROM user_points WHERE user_id=?",
             "DELETE FROM challenge_submissions WHERE user_id=?",
             "UPDATE challenges SET created_by=NULL WHERE created_by=?",
+            "UPDATE badges SET created_by=NULL WHERE created_by=?",
         ]
         for sql in cleanup_sql:
             try:
@@ -9229,18 +9261,28 @@ async def api_submit_challenge(req, env, challenge_id: str):
     points = int(challenge.points or 0)
     submission_id = new_id()
     reason = ("Completed challenge: " + str(challenge.title))[:255]
+    badges = await _challenge_db(env, lambda: _challenge_active_badges(env, challenge_id))
+    statements = [
+        env.DB.prepare(
+            "INSERT INTO challenge_submissions "
+            "(id, user_id, challenge_id, submission_text, points_awarded) VALUES (?, ?, ?, ?, ?)"
+        ).bind(submission_id, user_id, challenge_id, text, points),
+        env.DB.prepare(
+            "INSERT INTO user_points (id, user_id, challenge_id, amount, reason, point_type) "
+            "VALUES (?, ?, ?, ?, ?, 'regular')"
+        ).bind(new_id(), user_id, challenge_id, points, reason),
+    ]
+    for badge in badges:
+        statements.append(
+            env.DB.prepare(
+                "INSERT OR IGNORE INTO user_badges "
+                "(id, user_id, badge_id, award_method, challenge_submission_id) "
+                "VALUES (?, ?, ?, 'challenge_completion', ?)"
+            ).bind(new_id(), user_id, badge.id, submission_id)
+        )
     try:
-        # One batch is one transaction, so a rejected duplicate never leaves points behind.
-        await env.DB.batch([
-            env.DB.prepare(
-                "INSERT INTO challenge_submissions "
-                "(id, user_id, challenge_id, submission_text, points_awarded) VALUES (?, ?, ?, ?, ?)"
-            ).bind(submission_id, user_id, challenge_id, text, points),
-            env.DB.prepare(
-                "INSERT INTO user_points (id, user_id, challenge_id, amount, reason, point_type) "
-                "VALUES (?, ?, ?, ?, ?, 'regular')"
-            ).bind(new_id(), user_id, challenge_id, points, reason),
-        ])
+        # One batch is one transaction, so a rejected duplicate never leaves points or badges behind.
+        await env.DB.batch(statements)
     except Exception as exc:
         if _challenge_is_unique_error(exc):
             return err("You have already submitted this challenge", 409)
@@ -9249,6 +9291,7 @@ async def api_submit_challenge(req, env, challenge_id: str):
         "submission_id": submission_id,
         "challenge_id": challenge_id,
         "points_awarded": points,
+        "badges_awarded": [{"id": b.id, "name": b.name} for b in badges],
     }, "Submission recorded")
 
 
@@ -9283,6 +9326,146 @@ async def api_my_points(req, env):
             for r in (recent.results or [])
         ],
     }, "Points retrieved")
+
+
+# ---------------------------------------------------------------------------
+# Badges (ported from the Django site)
+# ---------------------------------------------------------------------------
+
+_BADGE_CREATABLE_TYPES = {"challenge"}
+_BADGE_DEFAULT_ICON = "medal"
+_BADGE_COLUMNS = "id, name, description, badge_type, challenge_id, icon, is_active, created_at"
+
+
+def _badge_json(row):
+    return {
+        "id": row.id,
+        "name": row.name,
+        "description": row.description,
+        "badge_type": row.badge_type,
+        "challenge_id": row.challenge_id,
+        "icon": row.icon,
+        "is_active": bool(row.is_active),
+        "created_at": row.created_at,
+    }
+
+
+async def _challenge_active_badges(env, challenge_id: str):
+    """Active badges that a challenge awards when someone submits it."""
+    res = await env.DB.prepare(
+        "SELECT id, name FROM badges "
+        "WHERE challenge_id = ? AND badge_type = 'challenge' AND is_active = 1 ORDER BY name"
+    ).bind(challenge_id).all()
+    return list(res.results or [])
+
+
+async def api_create_badge(req, env):
+    """POST /api/badges - Create a badge that a challenge awards (hosts and admins only)."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    if user.get("role") not in _CHALLENGE_CREATOR_ROLES:
+        return err("Only hosts and admins can create badges", 403)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    name = str(body.get("name") or "").strip()[:100]
+    if not name:
+        return err("Badge name is required", 400)
+    description = str(body.get("description") or "").strip()[:1000]
+    if not description:
+        return err("Badge description is required", 400)
+
+    badge_type = str(body.get("badge_type") or "challenge").strip()
+    if badge_type not in _BADGE_CREATABLE_TYPES:
+        return err("Only challenge badges can be created for now", 400)
+
+    challenge_id = str(body.get("challenge_id") or "").strip()
+    if not challenge_id:
+        return err("challenge_id is required for challenge badges", 400)
+
+    icon = str(body.get("icon") or _BADGE_DEFAULT_ICON).strip()[:16] or _BADGE_DEFAULT_ICON
+
+    badge_id = new_id()
+
+    async def run():
+        found = await env.DB.prepare("SELECT id FROM challenges WHERE id = ?").bind(challenge_id).first()
+        if not found:
+            return False
+        await env.DB.prepare(
+            "INSERT INTO badges (id, name, description, badge_type, challenge_id, icon, created_by) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(badge_id, name, description, badge_type, challenge_id, icon, user.get("id")).run()
+        return True
+
+    if not await _challenge_db(env, run):
+        return err("Challenge not found", 404)
+    return ok({
+        "id": badge_id,
+        "name": name,
+        "description": description,
+        "badge_type": badge_type,
+        "challenge_id": challenge_id,
+        "icon": icon,
+        "is_active": True,
+    }, "Badge created")
+
+
+async def api_list_badges(req, env):
+    """GET /api/badges - Active badges (public). Optional ?challenge_id=...&limit=N."""
+    params = parse_qs(urlparse(req.url).query)
+    challenge_id = (params.get("challenge_id") or [""])[0].strip()
+    try:
+        limit = max(1, min(100, int((params.get("limit") or ["50"])[0])))
+    except ValueError:
+        limit = 50
+
+    async def run():
+        sql = f"SELECT {_BADGE_COLUMNS} FROM badges WHERE is_active = 1"
+        args = []
+        if challenge_id:
+            sql += " AND challenge_id = ?"
+            args.append(challenge_id)
+        sql += " ORDER BY name LIMIT ?"
+        args.append(limit)
+        res = await env.DB.prepare(sql).bind(*args).all()
+        return [_badge_json(r) for r in (res.results or [])]
+
+    return json_resp({"badges": await _challenge_db(env, run)})
+
+
+async def api_my_badges(req, env):
+    """GET /api/badges/me - The badges the caller has earned."""
+    user = verify_token(req.headers.get("Authorization"), env.JWT_SECRET)
+    if not user:
+        return err("Authentication required", 401)
+    user_id = user.get("id")
+
+    async def run():
+        res = await env.DB.prepare(
+            "SELECT b.id, b.name, b.description, b.icon, b.challenge_id, ub.award_method, ub.awarded_at "
+            "FROM user_badges ub JOIN badges b ON b.id = ub.badge_id "
+            "WHERE ub.user_id = ? ORDER BY ub.awarded_at DESC, b.name"
+        ).bind(user_id).all()
+        return list(res.results or [])
+
+    rows = await _challenge_db(env, run)
+    return ok({
+        "badges": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "description": r.description,
+                "icon": r.icon,
+                "challenge_id": r.challenge_id,
+                "award_method": r.award_method,
+                "awarded_at": r.awarded_at,
+            }
+            for r in rows
+        ],
+    }, "Badges retrieved")
 
 
 # ---------------------------------------------------------------------------
@@ -9504,6 +9687,12 @@ async def _dispatch(request, env):
             return await api_get_challenge(request, env, m_challenge_item.group(1))
         if path == "/api/points" and method == "GET":
             return await api_my_points(request, env)
+        if path == "/api/badges" and method == "POST":
+            return await api_create_badge(request, env)
+        if path == "/api/badges" and method == "GET":
+            return await api_list_badges(request, env)
+        if path == "/api/badges/me" and method == "GET":
+            return await api_my_badges(request, env)
 
         if path == "/api/sessions" and method == "POST":
             return await api_create_session(request, env)
