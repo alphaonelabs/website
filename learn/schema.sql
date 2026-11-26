@@ -198,3 +198,85 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
     FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id);
+
+-- CHALLENGES, SUBMISSIONS AND POINTS
+CREATE TABLE IF NOT EXISTS challenges (
+    id             TEXT PRIMARY KEY,
+    title          TEXT NOT NULL,
+    description    TEXT NOT NULL,
+    challenge_type TEXT NOT NULL DEFAULT 'weekly' CHECK (challenge_type IN ('weekly', 'one_time')),
+    week_number    INTEGER,
+    start_date     TEXT NOT NULL,
+    end_date       TEXT NOT NULL,
+    points         INTEGER NOT NULL DEFAULT 10 CHECK (points >= 1),
+    created_by     TEXT,
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_challenges_weekly_number
+    ON challenges(week_number) WHERE challenge_type = 'weekly';
+
+CREATE INDEX IF NOT EXISTS idx_challenges_dates ON challenges(start_date, end_date);
+
+CREATE TABLE IF NOT EXISTS challenge_submissions (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    challenge_id    TEXT NOT NULL,
+    submission_text TEXT NOT NULL,
+    points_awarded  INTEGER NOT NULL DEFAULT 10 CHECK (points_awarded >= 0),
+    submitted_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (user_id, challenge_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_challenge_submissions_challenge ON challenge_submissions(challenge_id);
+
+CREATE TABLE IF NOT EXISTS user_points (
+    id           TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL,
+    challenge_id TEXT,
+    amount       INTEGER NOT NULL CHECK (amount >= 0),
+    reason       TEXT NOT NULL,
+    point_type   TEXT NOT NULL DEFAULT 'regular' CHECK (point_type IN ('regular', 'streak', 'bonus')),
+    awarded_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_points_user ON user_points(user_id, awarded_at);
+
+-- BADGES AND EARNED BADGES
+CREATE TABLE IF NOT EXISTS badges (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT NOT NULL,
+    badge_type  TEXT NOT NULL DEFAULT 'challenge'
+                CHECK (badge_type IN ('challenge', 'course', 'achievement', 'teacher_awarded')),
+    challenge_id TEXT,
+    icon        TEXT NOT NULL DEFAULT 'medal',
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    created_by  TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_badges_challenge ON badges(challenge_id);
+
+CREATE TABLE IF NOT EXISTS user_badges (
+    id                      TEXT PRIMARY KEY,
+    user_id                 TEXT NOT NULL,
+    badge_id                TEXT NOT NULL,
+    award_method            TEXT NOT NULL
+                            CHECK (award_method IN ('challenge_completion', 'course_completion', 'teacher_awarded', 'system_awarded')),
+    challenge_submission_id TEXT,
+    awarded_at              TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (user_id, badge_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
+    FOREIGN KEY (challenge_submission_id) REFERENCES challenge_submissions(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id, awarded_at);
