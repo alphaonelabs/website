@@ -112,6 +112,11 @@ class _CryptoSubtle:
             return bytes(data)
         return b""
 
+    async def verify(self, algo, key, signature, data):
+        if signature == b"invalid_signature" or signature == b"bad_signature":
+            return False
+        return True
+
 
 class _Crypto:
     subtle = _CryptoSubtle()
@@ -151,6 +156,10 @@ class _JsModule:
     Uint8Array = _Uint8Array()
     WebSocketPair = _WebSocketPair()
     WebSocketRequestResponsePair = _WebSocketRequestResponsePair()
+
+    @staticmethod
+    async def fetch(url, options=None):
+        return _Response("{}", status=200)
 
     class Object:
         @staticmethod
