@@ -39,6 +39,7 @@ import html as _html
 import datetime
 import hashlib
 import hmac as _hmac
+import inspect
 import json
 import os
 import re
@@ -1179,6 +1180,18 @@ _DDL = [
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
     )""",
     "CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id)",
+    # OAuth Identities
+    """CREATE TABLE IF NOT EXISTS oauth_identities (
+        id                TEXT PRIMARY KEY,
+        user_id           TEXT NOT NULL,
+        provider          TEXT NOT NULL,
+        provider_user_id  TEXT NOT NULL,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (provider, provider_user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_oauth_identities_user_id ON oauth_identities(user_id)",
 ]
 
 
@@ -1897,6 +1910,394 @@ async def api_login(req, env):
          "user": {"id": user_id, "username": stored_username,
                   "name": real_name, "role": real_role,
                   "avatar_url": (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""}},
+        "Login successful",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Google OAuth / Google Identity Services Authentication
+# ---------------------------------------------------------------------------
+
+_GOOGLE_JWKS_CACHE: Dict[str, Any] = {"keys": [], "expires_at": 0}
+
+
+def _base64url_decode(s: str) -> bytes:
+    rem = len(s) % 4
+    if rem > 0:
+        s += "=" * (4 - rem)
+    return base64.urlsafe_b64decode(s)
+
+
+async def _get_google_jwks(env) -> list:
+    """Fetch and cache Google's public JWKS certificates."""
+    global _GOOGLE_JWKS_CACHE
+    now = int(time.time())
+    if _GOOGLE_JWKS_CACHE.get("expires_at", 0) > now and _GOOGLE_JWKS_CACHE.get("keys"):
+        return _GOOGLE_JWKS_CACHE["keys"]
+    try:
+        resp = await js.fetch("https://www.googleapis.com/oauth2/v3/certs")
+        if getattr(resp, "status", None) == 200:
+            if hasattr(resp, "text") and callable(resp.text):
+                text_val = resp.text()
+                raw_text = await text_val if inspect.isawaitable(text_val) or hasattr(text_val, "__await__") else text_val
+                data = json.loads(str(raw_text))
+            elif hasattr(resp, "json") and callable(resp.json):
+                raw_data = resp.json()
+                data = await raw_data if inspect.isawaitable(raw_data) or hasattr(raw_data, "__await__") else raw_data
+            else:
+                data = {}
+            keys = data.get("keys", []) if isinstance(data, dict) else []
+            if keys:
+                _GOOGLE_JWKS_CACHE = {
+                    "keys": keys,
+                    "expires_at": now + 3600,
+                }
+                return keys
+    except Exception as e:
+        print(json.dumps({"level": "warn", "where": "_get_google_jwks", "error": str(e)}))
+    return _GOOGLE_JWKS_CACHE.get("keys", [])
+
+
+async def verify_google_id_token(id_token: str, expected_client_id: str, env) -> tuple[Optional[dict], Optional[str]]:
+    """Validate Google ID token signature, issuer, audience, expiration, and verified email claim."""
+    if not id_token or not isinstance(id_token, str):
+        return None, "Invalid token"
+
+    parts = id_token.strip().split(".")
+    if len(parts) != 3:
+        return None, "Invalid token format"
+
+    # Decode header
+    try:
+        header_bytes = _base64url_decode(parts[0])
+        header = json.loads(header_bytes.decode("utf-8"))
+    except Exception:
+        return None, "Invalid token header"
+
+    if not isinstance(header, dict) or header.get("alg") != "RS256":
+        return None, "Unsupported token algorithm"
+
+    kid = header.get("kid")
+    if not kid:
+        return None, "Missing kid in token header"
+
+    # Decode payload
+    try:
+        payload_bytes = _base64url_decode(parts[1])
+        payload = json.loads(payload_bytes.decode("utf-8"))
+    except Exception:
+        return None, "Invalid token payload"
+
+    if not isinstance(payload, dict):
+        return None, "Invalid token payload"
+
+    # Validate issuer
+    iss = payload.get("iss")
+    if iss not in ("https://accounts.google.com", "accounts.google.com"):
+        return None, f"Invalid token issuer: {iss}"
+
+    # Validate audience
+    aud = payload.get("aud")
+    if aud != expected_client_id:
+        return None, "Token audience does not match client ID"
+
+    # Validate expiration
+    exp = payload.get("exp")
+    try:
+        exp_int = int(exp)
+    except (ValueError, TypeError):
+        return None, "Invalid token expiration claim"
+    if exp_int <= int(time.time()):
+        return None, "Token has expired"
+
+    # Validate verified email claim
+    email_verified = payload.get("email_verified")
+    if email_verified not in (True, "true", "True", 1):
+        return None, "Google email is not verified"
+
+    email = (payload.get("email") or "").strip().lower()
+    sub = (payload.get("sub") or "").strip()
+    if not email or not sub:
+        return None, "Missing required email or subject claims"
+
+    # Validate signature - fail closed if crypto is unavailable or key is missing
+    subtle = getattr(getattr(js, "crypto", None), "subtle", None)
+    if not (subtle and hasattr(subtle, "verify") and hasattr(subtle, "importKey")):
+        return None, "Cryptographic verification unavailable"
+
+    keys = await _get_google_jwks(env)
+    matching_key = next((k for k in keys if isinstance(k, dict) and k.get("kid") == kid), None)
+    if not matching_key:
+        return None, "No matching public key found for token"
+
+    try:
+        sig_bytes = _base64url_decode(parts[2])
+    except Exception:
+        return None, "Invalid token signature encoding"
+    data_bytes = f"{parts[0]}.{parts[1]}".encode("ascii")
+
+    try:
+        jwk_dict = {
+            "kty": matching_key.get("kty", "RSA"),
+            "alg": "RS256",
+            "use": "sig",
+            "n": matching_key.get("n"),
+            "e": matching_key.get("e"),
+            "ext": True,
+        }
+        jwk_js = to_js(jwk_dict, dict_converter=js.Object.fromEntries) if hasattr(js, "Object") else jwk_dict
+        algo_js = to_js({"name": "RSASSA-PKCS1-v1_5", "hash": "SHA-256"}, dict_converter=js.Object.fromEntries) if hasattr(js, "Object") else {"name": "RSASSA-PKCS1-v1_5", "hash": "SHA-256"}
+        usages_js = to_js(["verify"]) if hasattr(js, "Object") else ["verify"]
+        key_obj = await subtle.importKey(
+            "jwk",
+            jwk_js,
+            algo_js,
+            False,
+            usages_js,
+        )
+        sig_js = js.Uint8Array.new(sig_bytes) if hasattr(js, "Uint8Array") and hasattr(js.Uint8Array, "new") else sig_bytes
+        data_js = js.Uint8Array.new(data_bytes) if hasattr(js, "Uint8Array") and hasattr(js.Uint8Array, "new") else data_bytes
+        valid = await subtle.verify(
+            "RSASSA-PKCS1-v1_5",
+            key_obj,
+            sig_js,
+            data_js,
+        )
+        if not valid:
+            return None, "Invalid token signature"
+    except Exception as e:
+        return None, f"Signature verification failed: {e}"
+
+    return payload, None
+
+
+async def api_auth_config(req, env):
+    """GET /api/auth/config — expose the public Google Client ID."""
+    google_client_id = (getattr(env, "GOOGLE_CLIENT_ID", "") or "").strip()
+    return ok({"google_client_id": google_client_id})
+
+
+async def api_auth_google(req, env):
+    """POST /api/auth/google — authenticate via Google Identity Services."""
+    rate_limit_resp = _check_auth_rate_limit(req, env, "google_auth")
+    if rate_limit_resp:
+        return rate_limit_resp
+
+    client_id = (getattr(env, "GOOGLE_CLIENT_ID", "") or "").strip()
+    if not client_id:
+        return err("Google sign-in is not configured", 500)
+
+    body, bad_resp = await parse_json_object(req)
+    if bad_resp:
+        return bad_resp
+
+    credential = (body.get("credential") or body.get("id_token") or body.get("token") or "").strip()
+    if not credential:
+        return err("Google credential is required", 400)
+
+    payload, verify_err = await verify_google_id_token(credential, client_id, env)
+    if verify_err or not payload:
+        return err(verify_err or "Invalid Google token", 401)
+
+    sub = payload["sub"]
+    email = payload["email"].lower().strip()
+    raw_name = (payload.get("name") or "").strip()
+    picture = (payload.get("picture") or "").strip()
+
+    enc = env.ENCRYPTION_KEY
+    provider = "google"
+    # Store Google identity references using a hashed provider identifier rather than raw subject
+    provider_user_id = blind_index(f"{provider}:{sub}", enc)
+
+    # 1. Check if OAuth identity already exists
+    oauth_row = await env.DB.prepare(
+        "SELECT user_id FROM oauth_identities WHERE provider=? AND provider_user_id=?"
+    ).bind(provider, provider_user_id).first()
+
+    user_id = None
+    if oauth_row:
+        user_id = oauth_row.user_id
+
+    # 2. If not found by OAuth identity, link to existing account with matching email
+    if not user_id:
+        e_hash = blind_index(email, enc)
+        existing_email_row = await env.DB.prepare(
+            "SELECT id, role, email_verified FROM users WHERE email_hash=?"
+        ).bind(e_hash).first()
+        if existing_email_row:
+            role_val = getattr(existing_email_row, "role", None)
+            role_check = await decrypt_aes(role_val, enc) if role_val else ""
+            if role_check == "deleted" or role_val == "deleted":
+                return err("This account has been deleted", 403)
+
+            # Restrict first-time automatic linking to authoritative Google addresses
+            # (@gmail.com or domains with Google Workspace 'hd' claim)
+            is_authoritative = email.endswith("@gmail.com") or bool(payload.get("hd"))
+            if not is_authoritative:
+                return err("An account with this email already exists. Please log in with your password to link Google Sign-In.", 409)
+
+            user_id = existing_email_row.id
+            oid = new_id()
+            try:
+                await env.DB.prepare(
+                    "INSERT INTO oauth_identities (id, user_id, provider, provider_user_id) VALUES (?,?,?,?)"
+                ).bind(oid, user_id, provider, provider_user_id).run()
+            except Exception as e:
+                if "UNIQUE" in str(e):
+                    stored = await env.DB.prepare(
+                        "SELECT user_id FROM oauth_identities WHERE provider=? AND provider_user_id=?"
+                    ).bind(provider, provider_user_id).first()
+                    if not stored or stored.user_id != user_id:
+                        return err("Google account is already linked to another user", 409)
+                else:
+                    await capture_exception(e, req, env, "api_auth_google.link_identity")
+                    return err("Failed to record OAuth identity", 500)
+
+    # 3. If new user, create account automatically
+    if not user_id:
+        user_id = new_id()
+        base_username = re.sub(r"[^a-zA-Z0-9_]", "", email.split("@")[0]) or "user"
+        if len(base_username) < 3:
+            base_username = f"user_{base_username}"
+
+        candidate_username = base_username
+        for attempt in range(5):
+            u_hash = blind_index(candidate_username, enc)
+            existing_user = await env.DB.prepare("SELECT id FROM users WHERE username_hash=?").bind(u_hash).first()
+            if not existing_user:
+                break
+            candidate_username = f"{base_username}_{os.urandom(2).hex()}"
+
+        final_username = candidate_username
+        display_name = raw_name or final_username
+        role = "member"
+
+        try:
+            await env.DB.prepare(
+                "INSERT INTO users "
+                "(id,username_hash,email_hash,name,username,email,password_hash,role,email_verified)"
+                " VALUES (?,?,?,?,?,?,?,?,?)"
+            ).bind(
+                user_id,
+                blind_index(final_username, enc),
+                blind_index(email, enc),
+                await encrypt_aes(display_name, enc),
+                await encrypt_aes(final_username, enc),
+                await encrypt_aes(email, enc),
+                f"oauth:google:{os.urandom(24).hex()}",
+                await encrypt_aes(role, enc),
+                1,
+            ).run()
+        except Exception as e:
+            if "UNIQUE" in str(e):
+                e_hash = blind_index(email, enc)
+                race_user = await env.DB.prepare("SELECT id FROM users WHERE email_hash=?").bind(e_hash).first()
+                if race_user:
+                    user_id = race_user.id
+                else:
+                    await capture_exception(e, req, env, "api_auth_google.insert_user")
+                    return err("Authentication failed — please try again", 500)
+            else:
+                await capture_exception(e, req, env, "api_auth_google.insert_user")
+                return err("Authentication failed — please try again", 500)
+
+        oid = new_id()
+        try:
+            await env.DB.prepare(
+                "INSERT INTO oauth_identities (id, user_id, provider, provider_user_id) VALUES (?,?,?,?)"
+            ).bind(oid, user_id, provider, provider_user_id).run()
+        except Exception as e:
+            if "UNIQUE" in str(e):
+                stored = await env.DB.prepare(
+                    "SELECT user_id FROM oauth_identities WHERE provider=? AND provider_user_id=?"
+                ).bind(provider, provider_user_id).first()
+                if not stored or stored.user_id != user_id:
+                    try:
+                        await env.DB.prepare("DELETE FROM users WHERE id=?").bind(user_id).run()
+                    except Exception:
+                        pass
+                    return err("Google account is already linked to another user", 409)
+            else:
+                await capture_exception(e, req, env, "api_auth_google.insert_oauth_identity")
+                try:
+                    await env.DB.prepare("DELETE FROM users WHERE id=?").bind(user_id).run()
+                except Exception:
+                    pass
+                return err("Failed to record OAuth identity", 500)
+
+        await _seed_notification_preferences(env, user_id)
+        try:
+            await _ensure_user_profile(env, user_id, enc)
+            if picture:
+                await env.DB.prepare(
+                    "UPDATE user_profiles SET avatar_url=?, updated_at=datetime('now') WHERE user_id=?"
+                ).bind(picture, user_id).run()
+        except Exception:
+            pass
+
+    row = await env.DB.prepare(
+        "SELECT id, role, name, username, email_verified FROM users WHERE id=?"
+    ).bind(user_id).first()
+    if not row:
+        return err("User account not found", 404)
+
+    real_role = await decrypt_aes(row.role, enc) if row.role else "member"
+    if real_role == "deleted" or getattr(row, "role", "") == "deleted":
+        return err("This account has been deleted", 403)
+
+    if not getattr(row, "email_verified", 0):
+        try:
+            # Invalidate any unverified pre-registered password to prevent account takeover, and mark email verified
+            new_oauth_hash = f"oauth:google:reset:{os.urandom(24).hex()}"
+            await env.DB.prepare(
+                "UPDATE users SET email_verified=1, password_hash=? WHERE id=?"
+            ).bind(new_oauth_hash, user_id).run()
+        except Exception as e:
+            await capture_exception(e, req, env, "api_auth_google.verify_user")
+
+    try:
+        await env.DB.prepare(
+            "UPDATE oauth_identities SET updated_at=datetime('now') WHERE provider=? AND provider_user_id=?"
+        ).bind(provider, provider_user_id).run()
+    except Exception:
+        pass
+
+    stored_username = await decrypt_aes(row.username, enc) if row.username else ""
+    real_role = await decrypt_aes(row.role, enc) if row.role else "member"
+    real_name = await decrypt_aes(row.name, enc) if row.name else stored_username
+
+    ttl_val = getattr(env, "JWT_TTL_SECONDS", None)
+    try:
+        ttl_seconds = int(ttl_val) if ttl_val is not None else DEFAULT_JWT_TTL_SECONDS
+    except (ValueError, TypeError):
+        ttl_seconds = DEFAULT_JWT_TTL_SECONDS
+
+    token = create_token(user_id, stored_username, real_role, env.JWT_SECRET, ttl_seconds=ttl_seconds)
+
+    profile_row = await env.DB.prepare(
+        "SELECT avatar_url FROM user_profiles WHERE user_id=?"
+    ).bind(user_id).first()
+    avatar_url = (getattr(profile_row, "avatar_url", "") or "") if profile_row else ""
+    if not avatar_url and picture:
+        avatar_url = picture
+        try:
+            await env.DB.prepare(
+                "UPDATE user_profiles SET avatar_url=?, updated_at=datetime('now') WHERE user_id=?"
+            ).bind(picture, user_id).run()
+        except Exception:
+            pass
+
+    return ok(
+        {
+            "token": token,
+            "user": {
+                "id": user_id,
+                "username": stored_username,
+                "name": real_name,
+                "role": real_role,
+                "avatar_url": avatar_url,
+            },
+        },
         "Login successful",
     )
 
@@ -3678,6 +4079,9 @@ async def api_delete_account(req, env):
         cart_rows = await env.DB.prepare("SELECT id FROM activity_carts WHERE user_id=?").bind(uid).all()
         for cart in cart_rows.results or []:
             await env.DB.prepare("DELETE FROM activity_cart_items WHERE cart_id=?").bind(cart.id).run()
+
+        # Mandatory cleanup of external OAuth identities: must succeed for account deletion
+        await env.DB.prepare("DELETE FROM oauth_identities WHERE user_id=?").bind(uid).run()
 
         cleanup_sql = [
             "DELETE FROM notification_preferences WHERE user_id=?",
@@ -6798,7 +7202,7 @@ _SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
     "Permissions-Policy": "camera=(self), microphone=(), geolocation=(self), payment=(self)",
 }
 
@@ -9053,6 +9457,12 @@ async def _dispatch(request, env):
 
         if path == "/api/login" and method == "POST":
             return await api_login(request, env)
+
+        if path == "/api/auth/config" and method == "GET":
+            return await api_auth_config(request, env)
+
+        if path == "/api/auth/google" and method == "POST":
+            return await api_auth_google(request, env)
 
         if path == "/api/classes-near-me" and method == "GET":
             return await api_classes_near_me(request, env)
