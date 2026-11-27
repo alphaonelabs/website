@@ -165,7 +165,7 @@
                 <span class="bg-white dark:bg-gray-800 px-3 text-gray-500 dark:text-gray-400 font-medium">Or continue with</span>
               </div>
             </div>
-            <div id="google-btn-wrapper" class="relative w-full rounded-[4px] overflow-hidden cursor-pointer">
+            <div id="google-btn-wrapper" class="relative w-full rounded-[4px] overflow-hidden cursor-pointer focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-2 outline-none">
               <div class="google-custom-btn w-full h-[40px] flex items-center justify-center gap-[10px] px-4 rounded-[4px] border border-[#dadce0] dark:border-[#444746] bg-white dark:bg-[#131314] hover:bg-[#f8fafd] dark:hover:bg-[#1e1f20] hover:border-[#dadce0] dark:hover:border-[#5e6160] transition-colors duration-150 select-none">
                 <svg class="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -286,7 +286,7 @@
                 <span class="bg-white dark:bg-gray-800 px-3 text-gray-500 dark:text-gray-400 font-medium">Or continue with</span>
               </div>
             </div>
-            <div id="google-btn-wrapper-register" class="relative w-full rounded-[4px] overflow-hidden cursor-pointer">
+            <div id="google-btn-wrapper-register" class="relative w-full rounded-[4px] overflow-hidden cursor-pointer focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-2 outline-none">
               <div class="google-custom-btn w-full h-[40px] flex items-center justify-center gap-[10px] px-4 rounded-[4px] border border-[#dadce0] dark:border-[#444746] bg-white dark:bg-[#131314] hover:bg-[#f8fafd] dark:hover:bg-[#1e1f20] hover:border-[#dadce0] dark:hover:border-[#5e6160] transition-colors duration-150 select-none">
                 <svg class="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -738,6 +738,12 @@ async function initGoogleAuth() {
             ['google-btn-wrapper', 'google-btn-wrapper-register'].forEach(id => {
                 const wrapper = document.getElementById(id);
                 if (wrapper) {
+                    wrapper.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            wrapper.click();
+                        }
+                    });
                     wrapper.addEventListener('click', () => {
                         if (window.google && window.google.accounts && window.google.accounts.id) {
                             google.accounts.id.prompt();
@@ -764,7 +770,10 @@ async function initGoogleAuth() {
 
 async function handleGoogleCredentialResponse(response) {
     if (!response || !response.credential) return;
-    document.getElementById('login-err').classList.add('hidden');
+    const isRegister = !document.getElementById('panel-register')?.classList.contains('hidden');
+    const errTarget = isRegister ? 'register-err' : 'login-err';
+    document.getElementById('login-err')?.classList.add('hidden');
+    document.getElementById('register-err')?.classList.add('hidden');
     try {
         const res = await fetch(`${API}/api/auth/google`, {
             method: 'POST',
@@ -778,7 +787,7 @@ async function handleGoogleCredentialResponse(response) {
         storeAuth(data.data);
     } catch (err) {
         console.error('Google Sign-In error:', err);
-        showErr('login-err', err.message);
+        showErr(errTarget, err.message);
     }
 }
 

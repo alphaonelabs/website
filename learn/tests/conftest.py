@@ -12,6 +12,7 @@ We install lightweight stubs into ``sys.modules`` here (conftest is loaded
 first by pytest) so that ``import worker`` succeeds in tests.
 """
 
+import json
 import sys
 
 
@@ -113,6 +114,8 @@ class _CryptoSubtle:
         return b""
 
     async def verify(self, algo, key, signature, data):
+        if not key:
+            return False
         if signature == b"invalid_signature" or signature == b"bad_signature":
             return False
         return True
@@ -159,6 +162,22 @@ class _JsModule:
 
     @staticmethod
     async def fetch(url, options=None):
+        if "certs" in str(url):
+            class _AsyncJwksResponse:
+                status = 200
+                async def text(self):
+                    return json.dumps({
+                        "keys": [
+                            {"kty": "RSA", "alg": "RS256", "use": "sig", "kid": "test-kid", "n": "test-n", "e": "AQAB"}
+                        ]
+                    })
+                async def json(self):
+                    return {
+                        "keys": [
+                            {"kty": "RSA", "alg": "RS256", "use": "sig", "kid": "test-kid", "n": "test-n", "e": "AQAB"}
+                        ]
+                    }
+            return _AsyncJwksResponse()
         return _Response("{}", status=200)
 
     class Object:
